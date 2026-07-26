@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-export const config = {
+const config = {
   api: {
     bodyParser: false,
   },
@@ -145,7 +145,7 @@ async function sendWhatsApp(body) {
   return result.sid;
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === 'GET') {
     return res.status(200).json({ ok: true, service: 'shipsgo-twilio-bridge' });
   }
@@ -199,4 +199,7 @@ module.exports = async function handler(req, res) {
     console.error('ShipsGo webhook error:', error);
     return res.status(500).json({ error: 'Webhook processing failed' });
   }
-};
+}
+
+module.exports = handler;
+module.exports.config = config;
