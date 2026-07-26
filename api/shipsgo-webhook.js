@@ -54,17 +54,41 @@ function isValidSignature(rawBody, receivedSignature, secret) {
   return received.length === expected.length && crypto.timingSafeEqual(received, expected);
 }
 
+function getShipment(payload) {
+  return (
+    payload?.shipment ||
+    payload?.data?.shipment ||
+    payload?.data ||
+    payload?.resource ||
+    payload?.object ||
+    {}
+  );
+}
+
+function getContainerNumber(shipment, payload) {
+  return (
+    shipment?.container_number ||
+    shipment?.containerNumber ||
+    shipment?.containers?.[0]?.number ||
+    shipment?.containers?.[0]?.container_number ||
+    payload?.container_number ||
+    payload?.containerNumber ||
+    'sin número informado'
+  );
+}
+
 function getLatestActualMovement(shipment) {
   const movements = (shipment?.containers || [])
     .flatMap((container) =>
       (container.movements || []).map((movement) => ({
         ...movement,
-        containerNumber: container.number || shipment.container_number,
+        containerNumber:
+          container.number || container.container_number || shipment.container_number,
       }))
     )
     .filter(
       (movement) =>
-        movement.status === 'ACT' &&
+        String(movement.status || '').toUpperCase() === 'ACT' &&
         ALLOWED_EVENTS.has(String(movement.event || '').toUpperCase()) &&
         movement.timestamp
     )
@@ -81,11 +105,11 @@ function formatDate(timestamp, timezone) {
       timeZone: timezone || 'America/New_York',
     }).format(new Date(timestamp));
   } catch {
-    return timestamp;
+    return timestamp || new Date().toISOString();
   }
 }
 
-function buildMessage(shipment, movement) {
+function buildMovementMessage(shipment, movement) {
   const eventCode = String(movement.event || '').toUpperCase();
   const eventText = EVENT_LABELS[eventCode] || `actualizó su estado (${eventCode})`;
   const container = movement.containerNumber || shipment.container_number || 'sin número';
@@ -104,6 +128,29 @@ function buildMessage(shipment, movement) {
     vessel,
     voyage,
     booking,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+function buildFallbackMessage(eventName, shipment, payload) {
+  const container = getContainerNumber(shipment, payload);
+  const action = eventName?.endsWith('SHIPMENT_CREATED')
+    ? 'fue agregado al sistema de seguimiento'
+    : eventName?.endsWith('SHIPMENT_DELETED')
+      ? 'fue eliminado del sistema de seguimiento'
+      : 'recibió una actualización en ShipsGo';
+
+  const booking = shipment?.booking_number || shipment?.bookingNumber;
+  const carrier = shipment?.carrier?.name || shipment?.carrier_name || shipment?.shipping_line;
+
+  return [
+    '📦 *Export MCA Tracking*',
+    '',
+    `El contenedor *${container}* ${action}.`,
+    booking ? `📄 Booking/B/L: ${booking}` : '',
+    carrier ? `🚢 Naviera: ${carrier}` : '',
+    `🕒 Recibido: ${formatDate(new Date().toISOString(), 'America/New_York')}`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -147,7 +194,7 @@ async function sendWhatsApp(body) {
 
 async function handler(req, res) {
   if (req.method === 'GET') {
-    return res.status(200).json({ ok: true, service: 'shipsgo-twilio-bridge' });
+    return res.status(200).json({ ok: true, service: 'shipsgo-twilio-bridge', version: 2 });
   }
 
   if (req.method !== 'POST') {
@@ -171,33 +218,41 @@ async function handler(req, res) {
     }
 
     const payload = JSON.parse(rawBody.toString('utf8'));
-    const eventName = payload?.event?.name || webhookName;
+    const eventName = payload?.event?.name || payload?.event_name || webhookName || '';
 
-    if (eventName !== 'OCEAN.SHIPMENTS.SHIPMENT_UPDATED') {
+    const supportedEvent = [
+      'OCEAN.SHIPMENTS.SHIPMENT_CREATED',
+      'OCEAN.SHIPMENTS.SHIPMENT_UPDATED',
+      'OCEAN.SHIPMENTS.SHIPMENT_DELETED',
+    ].includes(eventName);
+
+    if (!supportedEvent) {
       return res.status(200).json({ ok: true, ignored: eventName || 'unknown event' });
     }
 
-    const shipment = payload.shipment;
+    const shipment = getShipment(payload);
     const movement = getLatestActualMovement(shipment);
+    const message = movement
+      ? buildMovementMessage(shipment, movement)
+      : buildFallbackMessage(eventName, shipment, payload);
 
-    if (!movement) {
-      return res.status(200).json({ ok: true, ignored: 'No supported actual movement' });
-    }
-
-    const message = buildMessage(shipment, movement);
     const twilioMessageSid = await sendWhatsApp(message);
 
     if (webhookId) recentWebhookIds.set(webhookId, Date.now());
 
     return res.status(200).json({
       ok: true,
-      container: movement.containerNumber,
-      event: movement.event,
+      eventName,
+      container: movement?.containerNumber || getContainerNumber(shipment, payload),
+      movementEvent: movement?.event || null,
       twilioMessageSid,
     });
   } catch (error) {
     console.error('ShipsGo webhook error:', error);
-    return res.status(500).json({ error: 'Webhook processing failed' });
+    return res.status(500).json({
+      error: 'Webhook processing failed',
+      detail: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
