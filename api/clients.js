@@ -7,6 +7,7 @@ export default async function handler(req, res) {
       const data = await supabase('clients', { query: '?select=*&order=created_at.desc' });
       return ok(res, { clients: data || [] });
     }
+
     if (req.method === 'POST') {
       const body = await readJson(req);
       const name = String(body.name || '').trim();
@@ -14,13 +15,35 @@ export default async function handler(req, res) {
       const phone = normalizePhone(body.phone);
       const created = await supabase('clients', {
         method: 'POST',
-        body: [{ name, company: String(body.company || '').trim() || null, phone, email: String(body.email || '').trim() || null, active: true }]
+        body: [{
+          name,
+          company: String(body.company || '').trim() || null,
+          phone,
+          email: String(body.email || '').trim() || null,
+          active: true
+        }]
       });
       return ok(res, { client: created?.[0] });
     }
+
+    if (req.method === 'DELETE') {
+      const id = String(req.query?.id || '').trim();
+      if (!id) return fail(res, 400, 'Falta el identificador del cliente');
+
+      const deleted = await supabase('clients', {
+        method: 'DELETE',
+        query: `?id=eq.${encodeURIComponent(id)}&select=id,name`
+      });
+
+      if (!deleted?.length) return fail(res, 404, 'Cliente no encontrado');
+      return ok(res, { deleted: true, client: deleted[0] });
+    }
+
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
-    const message = error.message === 'PHONE_INVALID' ? 'Número de WhatsApp inválido. Usa formato internacional, por ejemplo +5351234567.' : error.message;
+    const message = error.message === 'PHONE_INVALID'
+      ? 'Número de WhatsApp inválido. Usa formato internacional, por ejemplo +5351234567.'
+      : error.message;
     return fail(res, 400, message);
   }
 }
