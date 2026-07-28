@@ -6,6 +6,32 @@ async function history(shipment, eventType, title, details = null, source = 'adm
 async function audit(action, shipment, details = {}) {
   try { await supabase('audit_log', { method: 'POST', body: [{ action, entity_type: 'shipment', entity_id: shipment.id, details }] }); } catch {}
 }
+async function logNotification(shipment, type, data = {}) {
+  try {
+    await supabase('notifications', {
+      method: 'POST',
+      body: [{
+        shipment_id: shipment.id,
+        client_id: shipment.client_id,
+        event_type: type,
+        event_status: type,
+        channel: 'whatsapp',
+        recipient: shipment.clients?.phone || null,
+        recipient_phone: shipment.clients?.phone || null,
+        status: data.status || 'pending',
+        delivery_status: data.status || 'pending',
+        provider_message_id: data.sid || null,
+        twilio_message_sid: data.sid || null,
+        template_sid: data.template_sid || null,
+        payload: { container_number: shipment.container_number, client_name: shipment.clients?.name || null },
+        error_message: data.error || null,
+        sent_at: data.sent_at || null,
+        attempt_count: 1,
+        last_attempt_at: new Date().toISOString()
+      }]
+    });
+  } catch (error) { console.error('SHIPMENT_NOTIFICATION_LOG_FAILED', error.message); }
+}
 
 export default async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
@@ -34,12 +60,7 @@ export default async function handler(req, res) {
         try {
           await supabase('audit_log', {
             method: 'POST',
-            body: [{
-              action: 'whatsapp_test_sent',
-              entity_type: 'whatsapp_message',
-              entity_id: sent.sid,
-              details: { to, container_number: container, status, message_status: sent.status }
-            }]
+            body: [{ action: 'whatsapp_test_sent', entity_type: 'whatsapp_message', entity_id: sent.sid, details: { to, container_number: container, status, message_status: sent.status } }]
           });
         } catch {}
 
@@ -69,16 +90,24 @@ export default async function handler(req, res) {
       if (action === 'release') {
         if (shipment.released_at) return fail(res, 409, 'Este contenedor ya fue marcado como liberado');
         const contentSid = process.env.TWILIO_RELEASE_CONTENT_SID;
-        if (!contentSid) return fail(res, 400, 'Falta configurar TWILIO_RELEASE_CONTENT_SID en Vercel');
+        const now = new Date().toISOString();
+        if (!contentSid) {
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { operational_status: 'Liberado', last_status: 'Liberado', released_at: now, release_notification_status: 'pending', release_notification_error: 'Plantilla pendiente de aprobación', updated_at: now } });
+          await logNotification(shipment, 'release', { status: 'pending', error: 'Plantilla pendiente de aprobación' });
+          await history(shipment, 'released', 'Contenedor liberado', 'Notificación pendiente de plantilla');
+          await audit('shipment_released_pending_notification', shipment);
+          return ok(res, { released: true, notification_status: 'pending_template' });
+        }
         try {
           const sent = await sendWhatsApp({ to: shipment.clients.phone, contentSid, variables: { '1': shipment.clients.name, '2': shipment.container_number } });
-          const now = new Date().toISOString();
           await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { operational_status: 'Liberado', last_status: 'Liberado', released_at: now, release_notification_status: 'sent', release_notification_error: null, updated_at: now } });
+          await logNotification(shipment, 'release', { status: sent.status || 'queued', sid: sent.sid, template_sid: contentSid, sent_at: now });
           await history(shipment, 'released', 'Contenedor liberado', `WhatsApp enviado: ${sent.sid}`);
           await audit('shipment_released', shipment, { sid: sent.sid });
           return ok(res, { released: true, sid: sent.sid });
         } catch (error) {
           await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { release_notification_status: 'failed', release_notification_error: error.message, updated_at: new Date().toISOString() } });
+          await logNotification(shipment, 'release', { status: 'failed', error: error.message, template_sid: contentSid });
           await history(shipment, 'release_failed', 'Falló la notificación de liberación', error.message);
           return fail(res, 400, 'No se pudo enviar la liberación', error.message);
         }
@@ -90,6 +119,23 @@ export default async function handler(req, res) {
         await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { active, operational_status: status, last_status: status, delivered_at: active ? null : now, updated_at: now } });
         await history(shipment, active ? 'reactivated' : 'delivered', active ? 'Contenedor reactivado' : 'Contenedor entregado');
         await audit(active ? 'shipment_reactivated' : 'shipment_delivered', shipment);
+
+        if (!active) {
+          const contentSid = process.env.TWILIO_DELIVERED_CONTENT_SID;
+          if (!contentSid) {
+            await logNotification(shipment, 'delivered', { status: 'pending', error: 'Plantilla pendiente de aprobación' });
+            return ok(res, { active, status, notification_status: 'pending_template' });
+          }
+          try {
+            const sent = await sendWhatsApp({ to: shipment.clients.phone, contentSid, variables: { '1': shipment.clients.name, '2': shipment.container_number } });
+            await logNotification(shipment, 'delivered', { status: sent.status || 'queued', sid: sent.sid, template_sid: contentSid, sent_at: now });
+            return ok(res, { active, status, sid: sent.sid });
+          } catch (error) {
+            await logNotification(shipment, 'delivered', { status: 'failed', error: error.message, template_sid: contentSid });
+            return ok(res, { active, status, notification_status: 'failed', notification_error: error.message });
+          }
+        }
+
         return ok(res, { active, status });
       }
 
