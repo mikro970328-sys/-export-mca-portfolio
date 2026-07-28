@@ -1,4 +1,4 @@
-import { fail, normalizePhone, ok, readJson, requireAdmin, supabase } from './_lib.js';
+import { fail, normalizePhone, ok, readJson, requireAdmin, sendWhatsApp, supabase } from './_lib.js';
 
 export default async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
@@ -23,7 +23,23 @@ export default async function handler(req, res) {
           active: true
         }]
       });
-      return ok(res, { client: created?.[0] });
+
+      let welcome = { status: 'pending_config' };
+      const welcomeContentSid = process.env.TWILIO_WELCOME_CONTENT_SID;
+      if (welcomeContentSid) {
+        try {
+          const sent = await sendWhatsApp({
+            to: phone,
+            contentSid: welcomeContentSid,
+            variables: { '1': name }
+          });
+          welcome = { status: 'sent', sid: sent.sid };
+        } catch (error) {
+          welcome = { status: 'failed', error: error.message };
+        }
+      }
+
+      return ok(res, { client: created?.[0], welcome });
     }
 
     if (req.method === 'DELETE') {
