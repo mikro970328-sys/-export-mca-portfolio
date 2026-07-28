@@ -8,7 +8,7 @@ async function audit(action, shipment, details = {}) {
 }
 
 export default async function handler(req, res) {
-  if (!requireAdmin(req, res)) return;
+  if (!await requireAdmin(req, res)) return;
   try {
     if (req.method === 'GET') {
       const data = await supabase('shipments', { query: '?select=*,clients(id,name,company,phone,email,welcome_status)&order=created_at.desc' });
