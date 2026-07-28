@@ -1,4 +1,16 @@
+create extension if not exists pgcrypto;
+
 create schema if not exists auth;
+
+create or replace function auth.uid()
+returns uuid
+language sql
+stable
+as $$
+  select null::uuid;
+$$;
+
+create role authenticated;
 
 create table if not exists auth.users (
   id uuid primary key
