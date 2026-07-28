@@ -88,17 +88,17 @@ const cleanVariable = (value, fallback = 'No disponible') => {
   return result || fallback;
 };
 
-export async function sendWhatsApp({ to, variables }) {
+export async function sendWhatsApp({ to, variables, contentSid }) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const contentSid = process.env.TWILIO_CONTENT_SID;
+  const selectedContentSid = contentSid || process.env.TWILIO_CONTENT_SID;
   const sender = process.env.TWILIO_WHATSAPP_FROM;
-  if (!accountSid || !authToken || !contentSid || !sender) throw new Error('TWILIO_CONFIG_MISSING');
+  if (!accountSid || !authToken || !selectedContentSid || !sender) throw new Error('TWILIO_CONFIG_MISSING');
 
   const form = new URLSearchParams();
   form.set('To', `whatsapp:${normalizePhone(to)}`);
   form.set('From', sender.startsWith('whatsapp:') ? sender : `whatsapp:${sender}`);
-  form.set('ContentSid', contentSid);
+  form.set('ContentSid', selectedContentSid);
   form.set('ContentVariables', JSON.stringify(Object.fromEntries(Object.entries(variables).map(([k, v]) => [k, cleanVariable(v)]))));
   if (process.env.TWILIO_STATUS_CALLBACK_URL) form.set('StatusCallback', process.env.TWILIO_STATUS_CALLBACK_URL);
 
