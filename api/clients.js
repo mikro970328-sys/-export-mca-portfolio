@@ -23,7 +23,7 @@ async function sendWelcome(client) {
 }
 
 export default async function handler(req, res) {
-  if (!requireAdmin(req, res)) return;
+  if (!await requireAdmin(req, res)) return;
   try {
     if (req.method === 'GET') {
       const data = await supabase('clients', { query: '?select=*&order=created_at.desc' });
