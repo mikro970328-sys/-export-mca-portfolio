@@ -5,6 +5,7 @@ const architecturePath = 'docs/ARCHITECTURE_V1.md';
 
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const architecture = fs.readFileSync(architecturePath, 'utf8');
+const migrationLower = migration.toLowerCase();
 
 const errors = [];
 const requiredMigrationFragments = [
@@ -23,25 +24,25 @@ const requiredMigrationFragments = [
 ];
 
 for (const fragment of requiredMigrationFragments) {
-  if (!migration.toLowerCase().includes(fragment.toLowerCase())) {
+  if (!migrationLower.includes(fragment.toLowerCase())) {
     errors.push(`Falta en la migración: ${fragment}`);
   }
 }
 
-const forbiddenMigrationFragments = [
-  'create table if not exists public.customers',
-  'create table if not exists public.audit_logs',
-  'drop table public.clients',
-  'drop table public.shipments',
-  'drop table public.audit_log',
-  'alter table public.clients enable row level security',
-  'alter table public.shipments enable row level security',
-  'alter table public.audit_log enable row level security'
+const forbiddenRegexes = [
+  /create\s+table\s+(?:if\s+not\s+exists\s+)?public\.customers\s*\(/i,
+  /create\s+table\s+(?:if\s+not\s+exists\s+)?public\.audit_logs\s*\(/i,
+  /drop\s+table\s+(?:if\s+exists\s+)?public\.clients\b/i,
+  /drop\s+table\s+(?:if\s+exists\s+)?public\.shipments\b/i,
+  /drop\s+table\s+(?:if\s+exists\s+)?public\.audit_log\b/i,
+  /alter\s+table\s+public\.clients\s+enable\s+row\s+level\s+security/i,
+  /alter\s+table\s+public\.shipments\s+enable\s+row\s+level\s+security/i,
+  /alter\s+table\s+public\.audit_log\s+enable\s+row\s+level\s+security/i
 ];
 
-for (const fragment of forbiddenMigrationFragments) {
-  if (migration.toLowerCase().includes(fragment.toLowerCase())) {
-    errors.push(`Patrón incompatible detectado: ${fragment}`);
+for (const pattern of forbiddenRegexes) {
+  if (pattern.test(migration)) {
+    errors.push(`Patrón incompatible detectado: ${pattern}`);
   }
 }
 
@@ -53,15 +54,16 @@ if (duplicateTriggers.length) {
 }
 
 const requiredDocFragments = [
-  'Conserva como tablas operativas principales',
+  'conserva como tablas operativas principales',
   '`clients`',
   '`shipments`',
   '`shipment_history`',
   '`audit_log`',
-  'No se crea una tabla paralela `customers`'
+  'no se crea una tabla paralela `customers`'
 ];
+const architectureLower = architecture.toLowerCase();
 for (const fragment of requiredDocFragments) {
-  if (!architecture.includes(fragment)) {
+  if (!architectureLower.includes(fragment.toLowerCase())) {
     errors.push(`Falta en documentación: ${fragment}`);
   }
 }
