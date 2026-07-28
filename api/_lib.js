@@ -21,6 +21,7 @@ export async function readJson(req) {
 
 const b64url = (value) => Buffer.from(value).toString('base64url');
 const sign = (value, secret) => crypto.createHmac('sha256', secret).update(value).digest('base64url');
+const fromB64url = (value) => Buffer.from(value, 'base64url');
 
 export function createToken(payload) {
   const secret = process.env.JWT_SECRET;
@@ -47,8 +48,42 @@ export function verifyToken(token) {
 export function requireAdmin(req, res) {
   const auth = req.headers.authorization || '';
   const payload = verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : '');
-  if (!payload?.admin) { fail(res, 401, 'No autorizado'); return null; }
+  if (!payload?.admin || !payload?.admin_id || !['master_admin', 'admin'].includes(payload.role)) {
+    fail(res, 401, 'No autorizado');
+    return null;
+  }
   return payload;
+}
+
+export function requireMasterAdmin(req, res) {
+  const admin = requireAdmin(req, res);
+  if (!admin) return null;
+  if (admin.role !== 'master_admin') {
+    fail(res, 403, 'Solo el administrador maestro puede realizar esta acción');
+    return null;
+  }
+  return admin;
+}
+
+export function hashPassword(password, salt = crypto.randomBytes(16).toString('base64url')) {
+  const value = String(password || '');
+  if (value.length < 10) throw new Error('PASSWORD_TOO_SHORT');
+  const hash = crypto.scryptSync(value, fromB64url(salt), 64, { N: 16384, r: 8, p: 1 }).toString('base64url');
+  return { salt, hash };
+}
+
+export function verifyPassword(password, salt, expectedHash) {
+  try {
+    const actual = crypto.scryptSync(String(password || ''), fromB64url(salt), 64, { N: 16384, r: 8, p: 1 });
+    const expected = fromB64url(expectedHash);
+    return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+  } catch { return false; }
+}
+
+export function normalizeUsername(value = '') {
+  const username = String(value).trim();
+  if (!/^[A-Za-z0-9._-]{4,32}$/.test(username)) throw new Error('USERNAME_INVALID');
+  return username;
 }
 
 export function normalizePhone(value = '') {
@@ -63,7 +98,7 @@ export function normalizeContainer(value = '') {
   return cleaned;
 }
 
-export async function supabase(path, { method = 'GET', body, query = '' } = {}) {
+export async function supabase(path, { method = 'GET', body, query = '', prefer } = {}) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('SUPABASE_CONFIG_MISSING');
@@ -73,7 +108,7 @@ export async function supabase(path, { method = 'GET', body, query = '' } = {}) 
       apikey: key,
       Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
-      Prefer: method === 'POST' ? 'return=representation' : 'return=minimal'
+      Prefer: prefer || (method === 'POST' ? 'return=representation' : 'return=minimal')
     },
     body: body === undefined ? undefined : JSON.stringify(body)
   });
@@ -81,6 +116,24 @@ export async function supabase(path, { method = 'GET', body, query = '' } = {}) 
   const parsed = text ? JSON.parse(text) : null;
   if (!response.ok) throw new Error(`SUPABASE_${response.status}:${text}`);
   return parsed;
+}
+
+export async function writeAudit(admin, action, entityType, entityId = null, details = {}) {
+  try {
+    await supabase('audit_log', {
+      method: 'POST',
+      body: {
+        actor_admin_id: admin?.admin_id || null,
+        actor_username: admin?.username || null,
+        action,
+        entity_type: entityType,
+        entity_id: entityId,
+        details
+      }
+    });
+  } catch (error) {
+    console.error('AUDIT_LOG_FAILED', error.message);
+  }
 }
 
 const cleanVariable = (value, fallback = 'No disponible') => {
