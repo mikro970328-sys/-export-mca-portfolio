@@ -9,26 +9,45 @@ function setMessage(text, ok = false) {
   el.className = `msg ${ok ? 'ok' : 'bad'}`;
 }
 
+function setLegacyContext(session, user) {
+  window.__exportMcaAccessToken = session?.access_token || '';
+  window.__exportMcaCurrentUser = user
+    ? {
+        id: user.id,
+        username: user.email,
+        email: user.email,
+        role: String(user.email || '').toLowerCase() === SUPER_ADMIN_EMAIL ? 'master_admin' : 'admin',
+      }
+    : null;
+
+  // El panel existente usa variables globales léxicas. Este puente permite
+  // migrar la autenticación sin reescribir todavía todos sus módulos.
+  window.eval('token = window.__exportMcaAccessToken; currentUser = window.__exportMcaCurrentUser;');
+}
+
 function showLogin() {
+  setLegacyContext(null, null);
   document.getElementById('loginCard')?.classList.remove('hidden');
   document.getElementById('appShell')?.classList.add('hidden');
 }
 
-function showApp(user) {
-  window.currentUser = {
-    id: user.id,
-    username: user.email,
-    email: user.email,
-    role: user.email === SUPER_ADMIN_EMAIL ? 'master_admin' : 'admin',
-  };
+function showApp(session, user) {
+  if (!session?.access_token || !user?.id) {
+    showLogin();
+    return;
+  }
 
+  setLegacyContext(session, user);
+
+  const email = String(user.email || '').toLowerCase();
+  const isMaster = email === SUPER_ADMIN_EMAIL;
   const currentUserEl = document.getElementById('currentUser');
   const currentRoleEl = document.getElementById('currentRole');
   const adminNav = document.getElementById('adminNav');
 
   if (currentUserEl) currentUserEl.textContent = user.email || '';
-  if (currentRoleEl) currentRoleEl.textContent = user.email === SUPER_ADMIN_EMAIL ? 'Administrador maestro' : 'Administrador';
-  if (adminNav) adminNav.classList.toggle('hidden', user.email !== SUPER_ADMIN_EMAIL);
+  if (currentRoleEl) currentRoleEl.textContent = isMaster ? 'Administrador maestro' : 'Administrador';
+  if (adminNav) adminNav.classList.toggle('hidden', !isMaster);
 
   document.getElementById('loginCard')?.classList.add('hidden');
   document.getElementById('appShell')?.classList.remove('hidden');
@@ -46,11 +65,45 @@ async function bootstrap() {
     }
 
     const user = await getCurrentUser();
-    showApp(user);
+    showApp(session, user);
   } catch (error) {
-    console.error(error);
+    console.error('AUTH_BOOTSTRAP_ERROR', error);
     showLogin();
     setMessage('No se pudo verificar la sesión.');
+  }
+}
+
+async function exportCsvWithSession(event) {
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  const session = await getSession();
+  if (!session?.access_token) {
+    showLogin();
+    setMessage('La sesión expiró. Inicia sesión nuevamente.');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/export', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'No se pudo exportar el archivo');
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `export-mca-operaciones-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    alert(error.message);
   }
 }
 
@@ -59,6 +112,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const emailInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
   const logoutButton = document.getElementById('logout');
+  const exportButton = document.getElementById('exportCsv');
 
   if (emailInput) {
     emailInput.type = 'email';
@@ -79,11 +133,12 @@ window.addEventListener('DOMContentLoaded', () => {
     setMessage('Verificando acceso...', true);
 
     try {
-      const { user } = await signInWithEmail(email, password);
-      showApp(user);
+      const { session, user } = await signInWithEmail(email, password);
+      showApp(session, user);
+      if (passwordInput) passwordInput.value = '';
       setMessage('');
     } catch (error) {
-      console.error(error);
+      console.error('AUTH_LOGIN_ERROR', error);
       setMessage('Correo o contraseña incorrectos.');
     } finally {
       loginButton.disabled = false;
@@ -97,13 +152,32 @@ window.addEventListener('DOMContentLoaded', () => {
   logoutButton?.addEventListener('click', async () => {
     try {
       await signOut();
+    } catch (error) {
+      console.error('AUTH_LOGOUT_ERROR', error);
     } finally {
       showLogin();
     }
   });
 
-  onAuthStateChange((_event, session) => {
-    if (!session) showLogin();
+  exportButton?.addEventListener('click', exportCsvWithSession, true);
+
+  onAuthStateChange(async (event, session) => {
+    if (!session) {
+      showLogin();
+      return;
+    }
+
+    try {
+      const user = session.user || await getCurrentUser();
+      setLegacyContext(session, user);
+
+      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        showApp(session, user);
+      }
+    } catch (error) {
+      console.error('AUTH_STATE_ERROR', error);
+      showLogin();
+    }
   });
 
   bootstrap();
