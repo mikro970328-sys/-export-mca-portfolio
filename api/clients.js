@@ -57,6 +57,17 @@ async function sendWelcome(client) {
   }
 }
 
+async function findDuplicate({ phone, email, excludeId = null }) {
+  const clauses = [];
+  if (phone) clauses.push(`phone.eq.${encodeURIComponent(phone)}`);
+  if (email) clauses.push(`email.ilike.${encodeURIComponent(email)}`);
+  if (!clauses.length) return null;
+  let query = `?select=id,name,company,phone,email&or=(${clauses.join(',')})&limit=1`;
+  if (excludeId) query += `&id=neq.${encodeURIComponent(excludeId)}`;
+  const rows = await supabase('clients', { query });
+  return rows?.[0] || null;
+}
+
 export default async function handler(req, res) {
   if (!requireAdmin(req, res)) return;
   try {
@@ -70,7 +81,10 @@ export default async function handler(req, res) {
       const name = String(body.name || '').trim();
       if (!name) return fail(res, 400, 'El nombre del cliente es obligatorio');
       const phone = normalizePhone(body.phone);
-      const created = await supabase('clients', { method: 'POST', body: [{ name, company: String(body.company || '').trim() || null, phone, email: String(body.email || '').trim() || null, active: true, welcome_status: 'pending' }] });
+      const email = String(body.email || '').trim().toLowerCase() || null;
+      const duplicate = await findDuplicate({ phone, email });
+      if (duplicate) return fail(res, 409, 'Ese cliente ya existe', JSON.stringify({ existing_client: duplicate }));
+      const created = await supabase('clients', { method: 'POST', body: [{ name, company: String(body.company || '').trim() || null, phone, email, active: true, welcome_status: 'pending' }] });
       const client = created?.[0];
       await audit('client_created', client?.id, { name, phone });
       const welcome = client ? await sendWelcome(client) : { status: 'failed' };
@@ -89,7 +103,9 @@ export default async function handler(req, res) {
       if (body.name !== undefined) { patch.name = String(body.name).trim(); if (!patch.name) return fail(res, 400, 'El nombre es obligatorio'); }
       if (body.company !== undefined) patch.company = String(body.company).trim() || null;
       if (body.phone !== undefined) patch.phone = normalizePhone(body.phone);
-      if (body.email !== undefined) patch.email = String(body.email).trim() || null;
+      if (body.email !== undefined) patch.email = String(body.email).trim().toLowerCase() || null;
+      const duplicate = await findDuplicate({ phone: patch.phone || current.phone, email: patch.email ?? current.email, excludeId: id });
+      if (duplicate) return fail(res, 409, 'Otro cliente ya utiliza ese WhatsApp o correo', JSON.stringify({ existing_client: duplicate }));
       const updated = await supabase('clients', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}&select=*`, body: patch });
       await audit('client_updated', id, patch);
       return ok(res, { client: updated?.[0] || { ...current, ...patch } });
