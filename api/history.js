@@ -1,7 +1,7 @@
 import { fail, ok, requireAdmin, supabase } from './_lib.js';
 
 export default async function handler(req, res) {
-  if (!requireAdmin(req, res)) return;
+  if (!await requireAdmin(req, res)) return;
   if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
   try {
     const shipmentId = String(req.query?.shipment_id || '').trim();
