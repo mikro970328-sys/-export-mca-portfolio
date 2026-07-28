@@ -3,7 +3,7 @@ import { fail, hashPassword, normalizeUsername, ok, readJson, requireMasterAdmin
 const publicFields = 'id,full_name,username,role,is_active,last_login_at,created_at,updated_at';
 
 export default async function handler(req, res) {
-  const master = requireMasterAdmin(req, res);
+  const master = await requireMasterAdmin(req, res);
   if (!master) return;
 
   try {
