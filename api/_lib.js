@@ -45,18 +45,87 @@ export function verifyToken(token) {
   } catch { return null; }
 }
 
-export function requireAdmin(req, res) {
+async function verifySupabaseAccessToken(token) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!url || !key || !token) return null;
+
+  try {
+    const response = await fetch(`${url}/auth/v1/user`, {
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${token}`
+      }
+    });
+    if (!response.ok) return null;
+    const user = await response.json();
+    if (!user?.id || !user?.email) return null;
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveAdminFromSupabaseUser(user) {
+  const email = String(user.email || '').trim().toLowerCase();
+  const masterEmail = String(process.env.SUPER_ADMIN_EMAIL || 'mikro970328@gmail.com').trim().toLowerCase();
+
+  let profile = null;
+  try {
+    const rows = await supabase('profiles', {
+      query: `?select=id,full_name,email,is_active,company_id&auth_user_id=eq.${encodeURIComponent(user.id)}&limit=1`
+    });
+    profile = rows?.[0] || null;
+  } catch (error) {
+    console.error('PROFILE_LOOKUP_FAILED', error.message);
+  }
+
+  if (profile?.is_active === false) return null;
+
+  let role = email === masterEmail ? 'master_admin' : 'admin';
+  if (profile?.id) {
+    try {
+      const rows = await supabase('user_roles', {
+        query: `?select=roles(name)&profile_id=eq.${encodeURIComponent(profile.id)}`
+      });
+      const names = (rows || []).map((row) => row.roles?.name).filter(Boolean);
+      if (names.includes('master_admin') || names.includes('super_admin')) role = 'master_admin';
+      else if (names.length) role = names[0];
+    } catch (error) {
+      console.error('ROLE_LOOKUP_FAILED', error.message);
+    }
+  }
+
+  return {
+    admin: true,
+    admin_id: profile?.id || user.id,
+    auth_user_id: user.id,
+    username: email,
+    email,
+    full_name: profile?.full_name || user.user_metadata?.full_name || email,
+    role,
+    company_id: profile?.company_id || null
+  };
+}
+
+export async function requireAdmin(req, res) {
   const auth = req.headers.authorization || '';
-  const payload = verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : '');
-  if (!payload?.admin || !payload?.admin_id || !['master_admin', 'admin'].includes(payload.role)) {
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+  const legacy = verifyToken(token);
+  if (legacy?.admin && legacy?.admin_id && ['master_admin', 'admin'].includes(legacy.role)) return legacy;
+
+  const supabaseUser = await verifySupabaseAccessToken(token);
+  const admin = supabaseUser ? await resolveAdminFromSupabaseUser(supabaseUser) : null;
+  if (!admin || !['master_admin', 'admin'].includes(admin.role)) {
     fail(res, 401, 'No autorizado');
     return null;
   }
-  return payload;
+  return admin;
 }
 
-export function requireMasterAdmin(req, res) {
-  const admin = requireAdmin(req, res);
+export async function requireMasterAdmin(req, res) {
+  const admin = await requireAdmin(req, res);
   if (!admin) return null;
   if (admin.role !== 'master_admin') {
     fail(res, 403, 'Solo el administrador maestro puede realizar esta acción');
