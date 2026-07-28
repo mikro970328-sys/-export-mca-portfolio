@@ -38,7 +38,7 @@
     const target = byId('notificationsList');
     if (target) target.textContent = 'Cargando...';
     try {
-      const result = await api('/api/notifications');
+      const result = await api('/api/history?mode=notifications');
       rows = result.notifications || [];
       render();
     } catch (error) {
@@ -49,7 +49,7 @@
   async function retryNotification(id) {
     if (!confirm('¿Reintentar esta notificación?')) return;
     try {
-      const result = await api('/api/notifications', { method: 'PATCH', body: JSON.stringify({ id, action: 'retry' }) });
+      const result = await api('/api/history?mode=notifications', { method: 'PATCH', body: JSON.stringify({ id, action: 'retry' }) });
       alert(`Notificación reenviada. Estado: ${result.status || 'queued'}`);
       await loadNotifications();
       await loadAll();
