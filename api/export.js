@@ -3,7 +3,7 @@ import { fail, requireAdmin, supabase } from './_lib.js';
 const csv = (value) => `"${String(value ?? '').replaceAll('"','""')}"`;
 
 export default async function handler(req, res) {
-  if (!requireAdmin(req, res)) return;
+  if (!await requireAdmin(req, res)) return;
   if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
   try {
     const rows = await supabase('shipments', { query: '?select=*,clients(name,company,phone,email)&order=created_at.desc' });
