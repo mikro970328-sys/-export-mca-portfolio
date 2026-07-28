@@ -16,6 +16,13 @@
 <div style="margin-top:14px"><button id="login">Entrar</button></div><div id="loginMsg" class="msg"></div>
 </section>
 <div id="app" class="hidden">
+<section class="card">
+<div class="toolbar"><div><h2 style="margin:0 0 4px">Buscar contenedores</h2><div style="color:var(--muted);font-size:13px">Consulta primero los embarques activos, entregados o todos.</div></div><button id="refresh" class="alt">Actualizar</button></div>
+<div class="toolbar" style="margin-top:16px">
+<input id="shipmentSearch" class="search" placeholder="Buscar cliente, contenedor, WhatsApp, booking, B/L, naviera o producto">
+<div class="tabs"><button class="tab active" data-filter="active">Activos <span id="activeCount" class="count"></span></button><button class="tab" data-filter="delivered">Entregados <span id="deliveredCount" class="count"></span></button><button class="tab" data-filter="all">Todos <span id="allCount" class="count"></span></button></div>
+</div>
+<div id="shipments"></div></section>
 <div class="grid">
 <section class="card"><h2>Nuevo cliente</h2>
 <label>Nombre *</label><input id="clientName">
@@ -37,13 +44,6 @@
 <section class="card"><div class="row" style="justify-content:space-between"><h2>Clientes registrados</h2><button id="refreshClients" class="alt">Actualizar</button></div>
 <div class="warning">Al eliminar un cliente también se eliminarán sus contenedores y el historial asociado. Hazlo solamente cuando ya no necesites conservar esa información.</div>
 <div id="clients"></div></section>
-<section class="card">
-<div class="toolbar"><div><h2 style="margin:0 0 4px">Contenedores</h2><div style="color:var(--muted);font-size:13px">Separa embarques activos y entregados.</div></div><button id="refresh" class="alt">Actualizar</button></div>
-<div class="toolbar" style="margin-top:16px">
-<input id="shipmentSearch" class="search" placeholder="Buscar cliente, contenedor, WhatsApp, booking, B/L, naviera o producto">
-<div class="tabs"><button class="tab active" data-filter="active">Activos <span id="activeCount" class="count"></span></button><button class="tab" data-filter="delivered">Entregados <span id="deliveredCount" class="count"></span></button><button class="tab" data-filter="all">Todos <span id="allCount" class="count"></span></button></div>
-</div>
-<div id="shipments"></div></section>
 </div>
 </main>
 <script>
@@ -60,7 +60,7 @@ function renderShipments(items){const box=$('shipments');if(!items.length){box.i
 async function changeShipmentState(id,active,button){const label=active?'reactivar este contenedor':'marcar este contenedor como entregado';if(!confirm(`¿Confirmas que deseas ${label}?`))return;button.disabled=true;try{await api('/api/shipments',{method:'PATCH',body:JSON.stringify({id,active})});await loadAll()}catch(e){alert(e.message);button.disabled=false}}
 async function deleteClient(id,name,button){const confirmed=confirm(`¿Eliminar definitivamente a ${name}?\n\nTambién se eliminarán todos sus contenedores y su historial.`);if(!confirmed)return;button.disabled=true;try{await api(`/api/clients?id=${encodeURIComponent(id)}`,{method:'DELETE'});await loadAll()}catch(e){alert(e.message);button.disabled=false}}
 $('login').onclick=async()=>{try{const r=await api('/api/login',{method:'POST',body:JSON.stringify({password:$('password').value})});token=r.token;localStorage.setItem('export_mca_token',token);showApp()}catch(e){msg('loginMsg',e.message)}};
-$('saveClient').onclick=async()=>{try{await api('/api/clients',{method:'POST',body:JSON.stringify({name:$('clientName').value,company:$('clientCompany').value,phone:$('clientPhone').value,email:$('clientEmail').value})});msg('clientMsg','Cliente guardado.',true);['clientName','clientCompany','clientPhone','clientEmail'].forEach(id=>$(id).value='');loadAll()}catch(e){msg('clientMsg',e.message)}};
+$('saveClient').onclick=async()=>{try{const result=await api('/api/clients',{method:'POST',body:JSON.stringify({name:$('clientName').value,company:$('clientCompany').value,phone:$('clientPhone').value,email:$('clientEmail').value})});const welcome=result.welcome?.status==='sent'?'Cliente guardado y bienvenida enviada.':result.welcome?.status==='failed'?'Cliente guardado, pero la bienvenida no pudo enviarse.':'Cliente guardado. La bienvenida se enviará cuando configuremos y aprobemos su plantilla.';msg('clientMsg',welcome,result.welcome?.status!=='failed');['clientName','clientCompany','clientPhone','clientEmail'].forEach(id=>$(id).value='');loadAll()}catch(e){msg('clientMsg',e.message)}};
 $('saveShipment').onclick=async()=>{try{await api('/api/shipments',{method:'POST',body:JSON.stringify({client_id:$('shipmentClient').value,container_number:$('containerNumber').value,booking_number:$('bookingNumber').value,bol_number:$('bolNumber').value,carrier:$('carrier').value,product:$('product').value})});msg('shipmentMsg','Contenedor guardado y listo para recibir actualizaciones.',true);['containerNumber','bookingNumber','bolNumber','carrier','product'].forEach(id=>$(id).value='');loadAll()}catch(e){msg('shipmentMsg',e.message)}};
 $('shipmentSearch').oninput=renderShipmentView;document.querySelectorAll('[data-filter]').forEach(btn=>btn.onclick=()=>{shipmentFilter=btn.dataset.filter;document.querySelectorAll('[data-filter]').forEach(x=>x.classList.toggle('active',x===btn));renderShipmentView()});
 $('refresh').onclick=loadAll;$('refreshClients').onclick=loadAll;function logout(){token='';localStorage.removeItem('export_mca_token');location.reload()}$('logout').onclick=logout;if(token)showApp();
