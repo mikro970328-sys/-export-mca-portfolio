@@ -33,6 +33,24 @@ export default async function handler(req, res) {
       return ok(res, { shipment: created?.[0] });
     }
 
+    if (req.method === 'PATCH') {
+      const body = await readJson(req);
+      const id = String(body.id || '').trim();
+      if (!id) return fail(res, 400, 'Falta el identificador del contenedor');
+      if (typeof body.active !== 'boolean') return fail(res, 400, 'Estado inválido');
+
+      const updated = await supabase('shipments', {
+        method: 'PATCH',
+        query: `?id=eq.${encodeURIComponent(id)}`,
+        body: {
+          active: body.active,
+          last_status: body.active ? 'Activo' : 'Entregado',
+          updated_at: new Date().toISOString()
+        }
+      });
+      return ok(res, { shipment: updated?.[0] });
+    }
+
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
     const message = error.message === 'CONTAINER_INVALID'
