@@ -1,10 +1,19 @@
 -- Export Platform — Architecture 1.0 core
--- Safe foundation for multi-company auth, roles, customers, assignments and audit.
+-- Compatibility-first foundation for the existing CRM.
+-- Keeps current production tables (clients, shipments, shipment_history, audit_log)
+-- as the source of truth while adding multi-company auth, roles and assignments.
 
 create extension if not exists pgcrypto;
 
-create type public.record_status as enum ('active', 'inactive', 'archived');
-create type public.assignment_scope as enum ('general', 'commercial', 'logistics', 'finance', 'cuba_operations', 'delivery');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'record_status') THEN
+    CREATE TYPE public.record_status AS ENUM ('active', 'inactive', 'archived');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'assignment_scope') THEN
+    CREATE TYPE public.assignment_scope AS ENUM ('general', 'commercial', 'logistics', 'finance', 'cuba_operations', 'delivery');
+  END IF;
+END $$;
 
 create table if not exists public.companies (
   id uuid primary key default gen_random_uuid(),
@@ -89,32 +98,31 @@ create table if not exists public.user_permission_overrides (
   primary key (user_id, permission_id)
 );
 
-create table if not exists public.customers (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references public.companies(id),
-  legal_name text not null,
-  trade_name text,
-  tax_id text,
-  customer_type text,
-  email text,
-  phone text,
-  whatsapp text,
-  address_line1 text,
-  address_line2 text,
-  city text,
-  state_region text,
-  postal_code text,
-  country_code text,
-  notes text,
-  status public.record_status not null default 'active',
-  created_by uuid references auth.users(id),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+-- Compatibility layer: enrich the existing clients table instead of creating customers.
+DO $$
+BEGIN
+  IF to_regclass('public.clients') IS NOT NULL THEN
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id);
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS status public.record_status NOT NULL DEFAULT 'active';
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS legal_name text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS trade_name text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS tax_id text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS customer_type text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS whatsapp text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS address_line1 text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS address_line2 text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS city text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS state_region text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS postal_code text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS country_code text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS notes text;
+    ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES auth.users(id);
+  END IF;
+END $$;
 
-create table if not exists public.customer_contacts (
+create table if not exists public.client_contacts (
   id uuid primary key default gen_random_uuid(),
-  customer_id uuid not null references public.customers(id) on delete cascade,
+  client_id uuid not null references public.clients(id) on delete cascade,
   first_name text not null,
   last_name text,
   job_title text,
@@ -128,10 +136,10 @@ create table if not exists public.customer_contacts (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.customer_assignments (
+create table if not exists public.client_assignments (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id),
-  customer_id uuid not null references public.customers(id) on delete cascade,
+  client_id uuid not null references public.clients(id) on delete cascade,
   user_id uuid not null references auth.users(id),
   scope public.assignment_scope not null default 'general',
   is_primary boolean not null default false,
@@ -139,23 +147,22 @@ create table if not exists public.customer_assignments (
   ends_at timestamptz,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
-  unique (customer_id, user_id, scope, starts_at)
+  unique (client_id, user_id, scope, starts_at)
 );
 
-create table if not exists public.audit_logs (
-  id bigint generated always as identity primary key,
-  company_id uuid references public.companies(id),
-  actor_user_id uuid references auth.users(id),
-  action text not null,
-  entity_type text not null,
-  entity_id uuid,
-  old_data jsonb,
-  new_data jsonb,
-  metadata jsonb not null default '{}'::jsonb,
-  ip_address inet,
-  user_agent text,
-  created_at timestamptz not null default now()
-);
+-- Keep the current audit_log table as the single audit source.
+DO $$
+BEGIN
+  IF to_regclass('public.audit_log') IS NOT NULL THEN
+    ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id);
+    ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS actor_user_id uuid REFERENCES auth.users(id);
+    ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS old_data jsonb;
+    ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS new_data jsonb;
+    ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
+    ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS ip_address inet;
+    ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS user_agent text;
+  END IF;
+END $$;
 
 create table if not exists public.company_settings (
   company_id uuid primary key references public.companies(id) on delete cascade,
@@ -166,12 +173,12 @@ create table if not exists public.company_settings (
 
 create index if not exists idx_profiles_company on public.profiles(company_id);
 create index if not exists idx_roles_company on public.roles(company_id);
-create index if not exists idx_customers_company_status on public.customers(company_id, status);
-create index if not exists idx_customer_contacts_customer on public.customer_contacts(customer_id);
-create index if not exists idx_customer_assignments_customer_scope on public.customer_assignments(customer_id, scope);
-create index if not exists idx_customer_assignments_user on public.customer_assignments(user_id);
-create index if not exists idx_audit_logs_company_created on public.audit_logs(company_id, created_at desc);
-create index if not exists idx_audit_logs_entity on public.audit_logs(entity_type, entity_id);
+create index if not exists idx_clients_company_status on public.clients(company_id, status);
+create index if not exists idx_client_contacts_client on public.client_contacts(client_id);
+create index if not exists idx_client_assignments_client_scope on public.client_assignments(client_id, scope);
+create index if not exists idx_client_assignments_user on public.client_assignments(user_id);
+create index if not exists idx_audit_log_company_created on public.audit_log(company_id, created_at desc);
+create index if not exists idx_audit_log_entity on public.audit_log(entity_type, entity_id);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -183,24 +190,24 @@ begin
 end;
 $$;
 
+DROP TRIGGER IF EXISTS companies_set_updated_at ON public.companies;
 create trigger companies_set_updated_at
 before update on public.companies
 for each row execute function public.set_updated_at();
 
+DROP TRIGGER IF EXISTS profiles_set_updated_at ON public.profiles;
 create trigger profiles_set_updated_at
 before update on public.profiles
 for each row execute function public.set_updated_at();
 
+DROP TRIGGER IF EXISTS roles_set_updated_at ON public.roles;
 create trigger roles_set_updated_at
 before update on public.roles
 for each row execute function public.set_updated_at();
 
-create trigger customers_set_updated_at
-before update on public.customers
-for each row execute function public.set_updated_at();
-
-create trigger customer_contacts_set_updated_at
-before update on public.customer_contacts
+DROP TRIGGER IF EXISTS client_contacts_set_updated_at ON public.client_contacts;
+create trigger client_contacts_set_updated_at
+before update on public.client_contacts
 for each row execute function public.set_updated_at();
 
 insert into public.permissions (key, module, description) values
@@ -234,10 +241,8 @@ alter table public.permissions enable row level security;
 alter table public.role_permissions enable row level security;
 alter table public.user_roles enable row level security;
 alter table public.user_permission_overrides enable row level security;
-alter table public.customers enable row level security;
-alter table public.customer_contacts enable row level security;
-alter table public.customer_assignments enable row level security;
-alter table public.audit_logs enable row level security;
+alter table public.client_contacts enable row level security;
+alter table public.client_assignments enable row level security;
 alter table public.company_settings enable row level security;
 
 create or replace function public.current_company_id()
@@ -250,55 +255,57 @@ as $$
   select company_id from public.profiles where id = auth.uid();
 $$;
 
-create policy "profiles_same_company_read"
+DROP POLICY IF EXISTS profiles_same_company_read ON public.profiles;
+create policy profiles_same_company_read
 on public.profiles for select
 using (company_id = public.current_company_id());
 
-create policy "companies_same_company_read"
+DROP POLICY IF EXISTS companies_same_company_read ON public.companies;
+create policy companies_same_company_read
 on public.companies for select
 using (id = public.current_company_id());
 
-create policy "roles_same_company_read"
+DROP POLICY IF EXISTS roles_same_company_read ON public.roles;
+create policy roles_same_company_read
 on public.roles for select
 using (company_id = public.current_company_id());
 
-create policy "permissions_authenticated_read"
+DROP POLICY IF EXISTS permissions_authenticated_read ON public.permissions;
+create policy permissions_authenticated_read
 on public.permissions for select
 to authenticated
 using (true);
 
-create policy "customers_same_company_all"
-on public.customers for all
-using (company_id = public.current_company_id())
-with check (company_id = public.current_company_id());
-
-create policy "customer_contacts_same_company_all"
-on public.customer_contacts for all
+DROP POLICY IF EXISTS client_contacts_same_company_all ON public.client_contacts;
+create policy client_contacts_same_company_all
+on public.client_contacts for all
 using (
   exists (
-    select 1 from public.customers c
-    where c.id = customer_contacts.customer_id
+    select 1 from public.clients c
+    where c.id = client_contacts.client_id
       and c.company_id = public.current_company_id()
   )
 )
 with check (
   exists (
-    select 1 from public.customers c
-    where c.id = customer_contacts.customer_id
+    select 1 from public.clients c
+    where c.id = client_contacts.client_id
       and c.company_id = public.current_company_id()
   )
 );
 
-create policy "customer_assignments_same_company_all"
-on public.customer_assignments for all
+DROP POLICY IF EXISTS client_assignments_same_company_all ON public.client_assignments;
+create policy client_assignments_same_company_all
+on public.client_assignments for all
 using (company_id = public.current_company_id())
 with check (company_id = public.current_company_id());
 
-create policy "audit_logs_same_company_read"
-on public.audit_logs for select
-using (company_id = public.current_company_id());
-
-create policy "company_settings_same_company_all"
+DROP POLICY IF EXISTS company_settings_same_company_all ON public.company_settings;
+create policy company_settings_same_company_all
 on public.company_settings for all
 using (company_id = public.current_company_id())
 with check (company_id = public.current_company_id());
+
+-- Deliberately do not enable or modify RLS on clients, shipments, shipment_history
+-- or audit_log in this migration. The current backend continues to own those paths
+-- until each endpoint is migrated to Supabase Auth and permission checks.
