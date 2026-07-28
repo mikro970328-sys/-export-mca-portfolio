@@ -13,6 +13,24 @@ Diseñar la plataforma de Export MCA como un sistema modular, multiempresa, audi
 5. Cada operación puede tener responsables distintos por área.
 6. El portal del cliente y el CRM comparten la misma base de datos y API.
 7. La arquitectura es multiempresa mediante `company_id`.
+8. La transición desde el CRM existente será progresiva y sin duplicar fuentes de verdad.
+
+## Estrategia de convivencia con el CRM actual
+
+La primera migración conserva como tablas operativas principales:
+
+- `clients`
+- `shipments`
+- `shipment_history`
+- `audit_log`
+
+No se crea una tabla paralela `customers` ni una segunda tabla `audit_logs`.
+
+La migración amplía `clients` con campos de arquitectura, crea `client_contacts` y `client_assignments`, y amplía `audit_log` para soportar empresa, usuario, metadatos e información de seguridad.
+
+`shipments` seguirá funcionando sin cambios durante la transición. Más adelante se relacionará progresivamente con `operations` y `containers`, sin interrumpir el tracking, las liberaciones ni las entregas actuales.
+
+Las tablas existentes no recibirán nuevas políticas RLS en esta primera migración. Primero se migrarán los endpoints del backend a Supabase Auth y permisos; después se endurecerán las políticas de acceso de forma controlada.
 
 ## Módulos
 
@@ -96,10 +114,10 @@ La estructura evita acoplar el sistema a una sola empresa, interfaz o canal. Las
 
 ## Siguiente implementación
 
-1. Migración SQL del núcleo.
-2. RLS y políticas de acceso.
-3. Autenticación y perfiles.
-4. Usuarios, roles y permisos.
-5. Clientes y asignaciones.
-6. Productos, publicaciones y notificaciones push.
-7. Operaciones, contenedores, liberación y entrega.
+1. Ejecutar y validar la migración de compatibilidad en un entorno no productivo.
+2. Crear la empresa inicial y asociar los clientes existentes mediante `company_id`.
+3. Migrar autenticación, perfiles, roles y permisos.
+4. Actualizar las APIs de clientes para usar asignaciones y archivado lógico.
+5. Añadir productos, publicaciones y notificaciones push.
+6. Añadir operaciones y vincularlas gradualmente con `shipments`.
+7. Incorporar cuentas del portal, contenedores, liberación y entrega.
