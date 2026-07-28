@@ -4,19 +4,54 @@ async function audit(action, entityId, details = {}) {
   try { await supabase('audit_log', { method: 'POST', body: [{ action, entity_type: 'client', entity_id: entityId, details }] }); } catch {}
 }
 
+async function persistWelcomeNotification(client, data = {}) {
+  try {
+    await supabase('notifications', {
+      method: 'POST',
+      body: [{
+        client_id: client.id,
+        shipment_id: null,
+        event_type: 'welcome',
+        event_status: 'welcome',
+        channel: 'whatsapp',
+        recipient: client.phone,
+        recipient_phone: client.phone,
+        status: data.status || 'pending',
+        delivery_status: data.status || 'pending',
+        provider_message_id: data.sid || null,
+        twilio_message_sid: data.sid || null,
+        template_sid: data.template_sid || null,
+        payload: { client_name: client.name },
+        error_message: data.error || null,
+        sent_at: data.sent_at || null,
+        attempt_count: Number(data.attempt_count || 1),
+        last_attempt_at: new Date().toISOString()
+      }]
+    });
+  } catch (error) {
+    console.error('WELCOME_NOTIFICATION_LOG_FAILED', error.message);
+  }
+}
+
 async function sendWelcome(client) {
   const contentSid = process.env.TWILIO_WELCOME_CONTENT_SID;
   if (!contentSid) {
-    await supabase('clients', { method: 'PATCH', query: `?id=eq.${client.id}`, body: { welcome_status: 'pending', welcome_error: 'Plantilla no configurada', updated_at: new Date().toISOString() } });
-    return { status: 'pending_config' };
+    const error = 'Plantilla no configurada';
+    await supabase('clients', { method: 'PATCH', query: `?id=eq.${client.id}`, body: { welcome_status: 'pending', welcome_error: error, updated_at: new Date().toISOString() } });
+    await persistWelcomeNotification(client, { status: 'pending', error });
+    await audit('welcome_pending_config', client.id, { error });
+    return { status: 'pending_config', error };
   }
   try {
     const sent = await sendWhatsApp({ to: client.phone, contentSid, variables: { '1': client.name } });
-    await supabase('clients', { method: 'PATCH', query: `?id=eq.${client.id}`, body: { welcome_status: 'sent', welcome_sent_at: new Date().toISOString(), welcome_error: null, updated_at: new Date().toISOString() } });
+    const now = new Date().toISOString();
+    await supabase('clients', { method: 'PATCH', query: `?id=eq.${client.id}`, body: { welcome_status: 'sent', welcome_sent_at: now, welcome_error: null, updated_at: now } });
+    await persistWelcomeNotification(client, { status: sent.status || 'queued', sid: sent.sid, template_sid: contentSid, sent_at: now });
     await audit('welcome_sent', client.id, { sid: sent.sid });
     return { status: 'sent', sid: sent.sid };
   } catch (error) {
     await supabase('clients', { method: 'PATCH', query: `?id=eq.${client.id}`, body: { welcome_status: 'failed', welcome_error: error.message, updated_at: new Date().toISOString() } });
+    await persistWelcomeNotification(client, { status: 'failed', error: error.message, template_sid: contentSid });
     await audit('welcome_failed', client.id, { error: error.message });
     return { status: 'failed', error: error.message };
   }

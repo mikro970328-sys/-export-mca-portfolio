@@ -8,8 +8,12 @@ export default async function handler(req, res) {
     const clientId = String(req.query?.client_id || '').trim();
     if (!shipmentId && !clientId) return fail(res, 400, 'Indica shipment_id o client_id');
     const filter = shipmentId ? `shipment_id=eq.${encodeURIComponent(shipmentId)}` : `client_id=eq.${encodeURIComponent(clientId)}`;
-    const events = await supabase('shipment_history', { query: `?select=*&${filter}&order=created_at.desc&limit=200` });
-    const notifications = await supabase('notifications', { query: `?select=*&${filter}&order=created_at.desc&limit=200` });
-    return ok(res, { events: events || [], notifications: notifications || [] });
+    const tasks = [
+      supabase('shipment_history', { query: `?select=*&${filter}&order=created_at.desc&limit=200` }),
+      supabase('notifications', { query: `?select=*&${filter}&order=created_at.desc&limit=200` })
+    ];
+    if (clientId) tasks.push(supabase('audit_log', { query: `?select=*&entity_type=eq.client&entity_id=eq.${encodeURIComponent(clientId)}&order=created_at.desc&limit=200` }));
+    const [events, notifications, auditEvents = []] = await Promise.all(tasks);
+    return ok(res, { events: events || [], notifications: notifications || [], audit_events: auditEvents || [] });
   } catch (error) { return fail(res, 400, error.message); }
 }
