@@ -17,6 +17,35 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = await readJson(req);
+
+      if (body.action === 'send_test_whatsapp') {
+        const to = String(body.to || '').trim();
+        const container = normalizeContainer(body.container_number);
+        const status = String(body.status || '').trim();
+        if (!to) return fail(res, 400, 'Falta el número de destino');
+        if (!status) return fail(res, 400, 'Falta el estado del envío');
+
+        const sent = await sendWhatsApp({
+          to,
+          contentSid: body.content_sid || process.env.TWILIO_CONTENT_SID,
+          variables: { '1': container, '2': status }
+        });
+
+        try {
+          await supabase('audit_log', {
+            method: 'POST',
+            body: [{
+              action: 'whatsapp_test_sent',
+              entity_type: 'whatsapp_message',
+              entity_id: sent.sid,
+              details: { to, container_number: container, status, message_status: sent.status }
+            }]
+          });
+        } catch {}
+
+        return ok(res, { sent: true, sid: sent.sid, status: sent.status, to: sent.to });
+      }
+
       const clientId = String(body.client_id || '').trim();
       if (!clientId) return fail(res, 400, 'Selecciona un cliente');
       const containerNumber = normalizeContainer(body.container_number);
