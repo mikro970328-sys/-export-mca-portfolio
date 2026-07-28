@@ -12,34 +12,73 @@ async function logNotification(shipment, type, data = {}) {
   } catch (error) { console.error('SHIPMENT_NOTIFICATION_LOG_FAILED', error.message); }
 }
 
-async function shipsGoRequest(path, options = {}) {
+function shipsGoConfig() {
   const token = process.env.SHIPSGO_API_KEY || process.env.SHIPSGO_TOKEN;
-  const base = process.env.SHIPSGO_API_BASE_URL;
-  if (!token || !base) throw new Error('SHIPSGO_CONFIG_MISSING');
-  const response = await fetch(`${base.replace(/\/$/, '')}/${String(path).replace(/^\//, '')}`, {
+  const base = process.env.SHIPSGO_API_BASE_URL || 'https://api.shipsgo.com/v2';
+  if (!token) throw new Error('SHIPSGO_CONFIG_MISSING: falta SHIPSGO_API_KEY en Vercel');
+  return { token, base: base.replace(/\/$/, '') };
+}
+
+async function shipsGoRequest(path, options = {}) {
+  const { token, base } = shipsGoConfig();
+  const response = await fetch(`${base}/${String(path).replace(/^\//, '')}`, {
     method: options.method || 'GET',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers: {
+      'X-Shipsgo-User-Token': token,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    },
     body: options.body === undefined ? undefined : JSON.stringify(options.body)
   });
   const text = await response.text();
-  const data = text ? JSON.parse(text) : {};
-  if (!response.ok) throw new Error(`SHIPSGO_${response.status}:${data.message || text || 'Error de ShipsGo'}`);
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { message: text }; }
+  if (!response.ok) {
+    const message = data?.message || data?.detail || data?.error || text || 'Error de ShipsGo';
+    throw new Error(`SHIPSGO_${response.status}:${message}`);
+  }
   return data;
 }
 
+function firstShipsGoItem(response) {
+  if (Array.isArray(response)) return response[0] || null;
+  if (Array.isArray(response?.data)) return response.data[0] || null;
+  if (Array.isArray(response?.items)) return response.items[0] || null;
+  if (Array.isArray(response?.results)) return response.results[0] || null;
+  return null;
+}
+
 async function registerShipsGo(containerNumber, carrier = null) {
-  const searchPath = process.env.SHIPSGO_SEARCH_PATH || `shipments?containerNumber=${encodeURIComponent(containerNumber)}`;
+  const searchPath = process.env.SHIPSGO_SEARCH_PATH || `ocean/shipments?filters[container_number]=eq:${encodeURIComponent(containerNumber)}&take=1`;
   try {
     const found = await shipsGoRequest(searchPath);
-    const existing = found?.data?.[0] || found?.items?.[0] || found?.[0] || null;
-    if (existing) return { mode: 'linked', id: existing.id || existing.trackingId || existing.referenceId || null, raw: existing };
+    const existing = firstShipsGoItem(found);
+    if (existing) return { mode: 'linked', id: existing.id || existing.shipment_id || null, raw: existing };
   } catch (error) {
-    if (!String(error.message).includes('404')) console.warn('SHIPSGO_LOOKUP_FAILED', error.message);
+    const message = String(error.message || '');
+    if (!message.includes('SHIPSGO_404')) console.warn('SHIPSGO_LOOKUP_FAILED', message);
   }
-  const createPath = process.env.SHIPSGO_CREATE_PATH || 'shipments';
-  const created = await shipsGoRequest(createPath, { method: 'POST', body: { containerNumber, carrier: carrier || undefined } });
-  const item = created?.data || created;
-  return { mode: 'created', id: item?.id || item?.trackingId || item?.referenceId || null, raw: item };
+
+  const createPath = process.env.SHIPSGO_CREATE_PATH || 'ocean/shipments';
+  const payload = {
+    container_number: containerNumber,
+    reference: `EXPORT-MCA-${containerNumber}`
+  };
+  if (carrier) payload.carrier = String(carrier).trim();
+
+  try {
+    const created = await shipsGoRequest(createPath, { method: 'POST', body: payload });
+    const item = created?.data || created;
+    return { mode: 'created', id: item?.id || item?.shipment_id || null, raw: item };
+  } catch (error) {
+    if (String(error.message).includes('SHIPSGO_409')) {
+      const found = await shipsGoRequest(searchPath);
+      const existing = firstShipsGoItem(found);
+      if (existing) return { mode: 'linked', id: existing.id || existing.shipment_id || null, raw: existing };
+    }
+    throw error;
+  }
 }
 
 export default async function handler(req, res) {
@@ -129,10 +168,16 @@ export default async function handler(req, res) {
       }
 
       if (action === 'retry_shipsgo') {
-        const tracking = await registerShipsGo(shipment.container_number, shipment.carrier);
-        await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { shipsgo_status: 'active', shipsgo_tracking_id: tracking.id, shipsgo_link_mode: tracking.mode, shipsgo_error: null, updated_at: new Date().toISOString() } });
-        await history(shipment, 'shipsgo_ready', 'Tracking de ShipsGo activado', tracking.id || null, 'shipsgo');
-        return ok(res, { tracking });
+        try {
+          const tracking = await registerShipsGo(shipment.container_number, shipment.carrier);
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { shipsgo_status: 'active', shipsgo_tracking_id: tracking.id, shipsgo_link_mode: tracking.mode, shipsgo_error: null, updated_at: new Date().toISOString() } });
+          await history(shipment, 'shipsgo_ready', 'Tracking de ShipsGo activado', tracking.id || null, 'shipsgo');
+          return ok(res, { tracking });
+        } catch (error) {
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { shipsgo_status: 'failed', shipsgo_error: error.message, updated_at: new Date().toISOString() } });
+          await history(shipment, 'shipsgo_failed', 'No se pudo activar el tracking en ShipsGo', error.message, 'shipsgo');
+          return fail(res, 400, 'No se pudo activar ShipsGo', error.message);
+        }
       }
 
       if (action === 'deliver' || action === 'reactivate') {
