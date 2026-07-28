@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { fail, normalizeContainer, ok, readJson, requireAdmin, sendWhatsApp, supabase, writeAudit } from './_lib.js';
 
 const listSelect = [
   '*',
@@ -30,6 +30,126 @@ function cleanNullable(value) {
 function numeric(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+async function writeShipmentHistory(shipment, eventType, title, details = null, source = 'system') {
+  try {
+    await supabase('shipment_history', {
+      method: 'POST',
+      body: [{
+        shipment_id: shipment.id,
+        client_id: shipment.client_id,
+        event_type: eventType,
+        title,
+        details,
+        source
+      }]
+    });
+  } catch (error) {
+    console.error('SHIPMENT_HISTORY_FAILED', error.message);
+  }
+}
+
+async function createShipmentForOperation(operation, body, admin) {
+  if (!operation?.id || !operation.container_number) return null;
+
+  const containerNumber = normalizeContainer(operation.container_number);
+  const existing = await supabase('shipments', {
+    query: `?select=*&container_number=eq.${encodeURIComponent(containerNumber)}&limit=1`
+  });
+
+  let shipment = existing?.[0] || null;
+  if (!shipment) {
+    const created = await supabase('shipments', {
+      method: 'POST',
+      body: [{
+        client_id: operation.client_id,
+        container_number: containerNumber,
+        booking_number: operation.booking_number,
+        bol_number: operation.bol_number,
+        carrier: cleanNullable(body.carrier),
+        product: cleanNullable(body.product) || cleanNullable(body.items?.[0]?.description),
+        active: true,
+        last_status: 'Registrado',
+        operational_status: 'Registrado',
+        last_location: null,
+        last_event_at: null
+      }]
+    });
+    shipment = created?.[0] || null;
+
+    if (shipment) {
+      await writeShipmentHistory(shipment, 'created', 'Contenedor registrado', containerNumber);
+      await writeAudit(admin, 'create', 'shipment', shipment.id, { container_number: containerNumber, operation_id: operation.id });
+    }
+  }
+
+  if (!shipment) return null;
+
+  await supabase('operations', {
+    method: 'PATCH',
+    query: `?id=eq.${encodeURIComponent(operation.id)}`,
+    body: { shipment_id: shipment.id, container_number: containerNumber }
+  });
+
+  const clients = await supabase('clients', {
+    query: `?select=id,name,phone&id=eq.${encodeURIComponent(operation.client_id)}&limit=1`
+  });
+  const client = clients?.[0];
+  const contentSid = process.env.TWILIO_REGISTERED_CONTENT_SID;
+
+  if (client?.phone && contentSid) {
+    const existingNotifications = await supabase('notifications', {
+      query: `?select=id&shipment_id=eq.${encodeURIComponent(shipment.id)}&event_type=eq.registered&limit=1`
+    });
+
+    if (!existingNotifications?.length) {
+      try {
+        const sent = await sendWhatsApp({
+          to: client.phone,
+          contentSid,
+          variables: { '1': client.name, '2': containerNumber }
+        });
+
+        await supabase('notifications', {
+          method: 'POST',
+          body: [{
+            shipment_id: shipment.id,
+            client_id: client.id,
+            event_type: 'registered',
+            channel: 'whatsapp',
+            recipient: client.phone,
+            status: sent.status || 'queued',
+            provider_message_id: sent.sid,
+            template_sid: contentSid,
+            payload: { container_number: containerNumber, operation_id: operation.id },
+            sent_at: new Date().toISOString()
+          }]
+        });
+        await writeShipmentHistory(shipment, 'notification_sent', 'WhatsApp de contenedor registrado enviado', sent.sid);
+      } catch (error) {
+        try {
+          await supabase('notifications', {
+            method: 'POST',
+            body: [{
+              shipment_id: shipment.id,
+              client_id: client.id,
+              event_type: 'registered',
+              channel: 'whatsapp',
+              recipient: client.phone,
+              status: 'failed',
+              template_sid: contentSid,
+              payload: { container_number: containerNumber, operation_id: operation.id },
+              error_message: error.message
+            }]
+          });
+        } catch {}
+        await writeShipmentHistory(shipment, 'notification_failed', 'Falló WhatsApp de contenedor registrado', error.message);
+      }
+    }
+  }
+
+  return shipment;
 }
 
 export default async function handler(req, res) {
@@ -91,6 +211,10 @@ export default async function handler(req, res) {
             packages: item.packages === '' ? null : Math.trunc(numeric(item.packages))
           }));
         if (items.length) await supabase('operation_items', { method: 'POST', body: items });
+      }
+
+      if (row?.id && row.container_number && !row.shipment_id) {
+        await createShipmentForOperation(row, body, admin);
       }
 
       await writeAudit(admin, 'create', 'operation', row?.id, { operation_code: row?.operation_code });
