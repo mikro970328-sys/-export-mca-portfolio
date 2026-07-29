@@ -1,17 +1,16 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/",
-      "destination": "/domain-router.html"
+      "src": "^/$",
+      "dest": "/domain-router.html"
     },
     {
-      "source": "/tracking",
-      "destination": "/admin/index.html"
+      "src": "^/tracking(?:/.*)?$",
+      "dest": "/admin/index.html"
     },
     {
-      "source": "/tracking/:path*",
-      "destination": "/admin/index.html"
+      "handle": "filesystem"
     }
   ]
 }
