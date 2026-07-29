@@ -75,3 +75,40 @@
   window.loadNotifications = loadNotifications;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
 })();
+
+(() => {
+  function installShipmentDelete() {
+    if (typeof window.renderShipments !== 'function' || typeof window.api !== 'function') {
+      setTimeout(installShipmentDelete, 100);
+      return;
+    }
+
+    window.deleteShipment = async function (id, containerNumber) {
+      const confirmation = prompt(`Para eliminar ${containerNumber}, escribe ELIMINAR`);
+      if (confirmation === null) return;
+      if (confirmation.trim().toUpperCase() !== 'ELIMINAR') {
+        alert('Eliminación cancelada. Debes escribir ELIMINAR exactamente.');
+        return;
+      }
+      try {
+        await api('/api/delete-shipment?id=' + encodeURIComponent(id), { method: 'DELETE' });
+        alert(`Contenedor ${containerNumber} eliminado del ERP.`);
+        await loadAll();
+        if (window.loadNotifications) await window.loadNotifications();
+      } catch (error) {
+        alert(error.message);
+      }
+    };
+
+    window.renderShipments = function () {
+      const q = $('shipmentSearch').value.toLowerCase().trim();
+      let list = filter === 'active' ? shipments.filter(x => x.active !== false) : filter === 'delivered' ? shipments.filter(x => x.active === false) : shipments;
+      if (q) list = list.filter(x => searchable(x).includes(q));
+      $('shipments').innerHTML = list.length ? `<table><thead><tr><th>Contenedor</th><th>Cliente</th><th>Booking/B-L</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${list.map(x => `<tr><td><b>${esc(x.container_number)}</b><br><span class="muted">${esc(x.carrier || '')}</span></td><td>${esc(x.clients?.name || '-')}</td><td>${esc(x.booking_number || '-')}<br>${esc(x.bol_number || '-')}</td><td><span class="pill ${x.active === false ? 'done' : ''}">${esc(x.operational_status || x.last_status || 'Registrado')}</span></td><td><div class="actions"><button class="alt" onclick="editShipment('${x.id}')">Editar</button><button class="alt" onclick="historyView('${x.id}','${esc(x.container_number)}')">Historial</button>${x.active === false ? `<button class="success" onclick="shipmentAction('${x.id}','reactivate')">Reactivar</button>` : `<button class="orange" onclick="shipmentAction('${x.id}','release')">Liberar</button><button class="success" onclick="shipmentAction('${x.id}','deliver')">Entregado</button>`}<button class="danger" onclick="deleteShipment('${x.id}','${esc(x.container_number)}')">Eliminar</button></div></td></tr>`).join('')}</tbody></table>` : 'No hay resultados.';
+    };
+
+    window.renderShipments();
+  }
+
+  installShipmentDelete();
+})();
