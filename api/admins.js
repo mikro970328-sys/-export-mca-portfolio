@@ -1,7 +1,7 @@
 import { fail, hashPassword, normalizeUsername, ok, readJson, requireMasterAdmin, supabase, writeAudit } from './_lib.js';
 
 const publicFields = 'id,full_name,username,role,is_active,last_login_at,created_at,updated_at';
-const workerFields = 'id,full_name,phone,position,is_active,created_at,updated_at';
+const workerFields = 'id,full_name,phone,position,is_active,deactivation_reason,deactivated_at,created_at,updated_at';
 const cleanPhone = value => String(value || '').trim().replace(/[^+\d]/g, '');
 
 export default async function handler(req, res) {
@@ -50,9 +50,21 @@ export default async function handler(req, res) {
           patch.phone = phone;
         }
         if (body.position !== undefined) patch.position = String(body.position || '').trim() || null;
-        if (body.is_active !== undefined) patch.is_active = Boolean(body.is_active);
+        if (body.is_active !== undefined) {
+          const isActive = Boolean(body.is_active);
+          patch.is_active = isActive;
+          if (isActive) {
+            patch.deactivation_reason = null;
+            patch.deactivated_at = null;
+          } else {
+            const reason = String(body.deactivation_reason || '').trim();
+            if (reason.length < 3) return fail(res, 400, 'El motivo de desactivación es obligatorio');
+            patch.deactivation_reason = reason;
+            patch.deactivated_at = new Date().toISOString();
+          }
+        }
         await supabase('workers', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}`, body: patch });
-        await writeAudit(master, 'update_worker', 'worker', id, { fields: Object.keys(patch) });
+        await writeAudit(master, patch.is_active === false ? 'deactivate_worker' : patch.is_active === true ? 'reactivate_worker' : 'update_worker', 'worker', id, { fields: Object.keys(patch), deactivation_reason: patch.deactivation_reason || undefined });
         return ok(res, { updated: true });
       }
 
