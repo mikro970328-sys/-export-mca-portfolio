@@ -21,7 +21,10 @@ function clean(body, current = {}) {
   if (body.assigned_worker_id !== undefined) row.assigned_worker_id = String(body.assigned_worker_id || '').trim() || null;
   if (body.availability_status !== undefined) { const value = String(body.availability_status || '').trim(); if (!AVAILABILITY_STATUSES.has(value)) throw new Error('Disponibilidad inválida'); row.availability_status = value; }
   if (body.publication_status !== undefined) { const value = String(body.publication_status || '').trim(); if (!PUBLICATION_STATUSES.has(value)) throw new Error('Estado de publicación inválido'); row.publication_status = value; if (value === 'published' && current.publication_status !== 'published') row.published_at = new Date().toISOString(); }
-  if (body.image_urls !== undefined) { const urls = Array.isArray(body.image_urls) ? body.image_urls : String(body.image_urls || '').split(/\r?\n|,/); row.image_urls = urls.map(x => String(x).trim()).filter(Boolean).slice(0, 12); }
+  if (body.image_urls !== undefined) {
+    const urls = Array.isArray(body.image_urls) ? body.image_urls : String(body.image_urls || '').split(/\r?\n|,/);
+    row.image_urls = urls.map(x => String(x).trim()).filter(Boolean).slice(0, 2);
+  }
   if (row.price !== undefined && row.price !== null && (!Number.isFinite(row.price) || row.price < 0)) throw new Error('Precio inválido');
   if (row.quantity !== undefined && row.quantity !== null && (!Number.isFinite(row.quantity) || row.quantity < 0)) throw new Error('Cantidad inválida');
   return row;
