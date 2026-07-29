@@ -1,7 +1,7 @@
 import { fail, hashPassword, normalizeUsername, ok, readJson, requireMasterAdmin, supabase, writeAudit } from './_lib.js';
 
 const publicFields = 'id,full_name,username,role,is_active,last_login_at,created_at,updated_at';
-const workerFields = 'id,full_name,phone,is_active,created_at,updated_at';
+const workerFields = 'id,full_name,phone,position,is_active,created_at,updated_at';
 const cleanPhone = value => String(value || '').trim().replace(/[^+\d]/g, '');
 
 export default async function handler(req, res) {
@@ -22,15 +22,16 @@ export default async function handler(req, res) {
       if (req.method === 'POST') {
         const fullName = String(body.full_name || '').trim();
         const phone = cleanPhone(body.phone);
+        const position = String(body.position || '').trim();
         if (fullName.length < 3) return fail(res, 400, 'El nombre completo es obligatorio');
         if (phone.length < 8) return fail(res, 400, 'El número de teléfono no es válido');
 
         const rows = await supabase('workers', {
           method: 'POST',
-          body: { full_name: fullName, phone, is_active: true, created_by: master.admin_id }
+          body: { full_name: fullName, phone, position: position || null, is_active: true, created_by: master.admin_id }
         });
         const worker = rows?.[0] || null;
-        await writeAudit(master, 'create_worker', 'worker', worker?.id, { full_name: fullName, phone });
+        await writeAudit(master, 'create_worker', 'worker', worker?.id, { full_name: fullName, phone, position });
         return ok(res, { worker });
       }
 
@@ -48,6 +49,7 @@ export default async function handler(req, res) {
           if (phone.length < 8) return fail(res, 400, 'Teléfono inválido');
           patch.phone = phone;
         }
+        if (body.position !== undefined) patch.position = String(body.position || '').trim() || null;
         if (body.is_active !== undefined) patch.is_active = Boolean(body.is_active);
         await supabase('workers', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}`, body: patch });
         await writeAudit(master, 'update_worker', 'worker', id, { fields: Object.keys(patch) });
