@@ -114,7 +114,7 @@ function firstShipsGoItem(response) {
   return null;
 }
 
-async function registerShipsGo(containerNumber, carrier = null) {
+async function registerShipsGo(containerNumber) {
   const searchPath = process.env.SHIPSGO_SEARCH_PATH || `ocean/shipments?filters[container_number]=eq:${encodeURIComponent(containerNumber)}&take=1`;
   try {
     const found = await shipsGoRequest(searchPath);
@@ -127,7 +127,6 @@ async function registerShipsGo(containerNumber, carrier = null) {
 
   const createPath = process.env.SHIPSGO_CREATE_PATH || 'ocean/shipments';
   const payload = { container_number: containerNumber, reference: `EXPORT-MCA-${containerNumber}` };
-  if (carrier) payload.carrier = String(carrier).trim();
 
   try {
     const created = await shipsGoRequest(createPath, { method: 'POST', body: payload });
