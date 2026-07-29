@@ -102,6 +102,9 @@
   }
 
   function installShipmentDelete() {
+    if (window.__shipmentDeleteInstalled) return;
+    window.__shipmentDeleteInstalled = true;
+
     window.deleteShipment = async function (id, containerNumber) {
       const confirmation = prompt(`Para eliminar definitivamente ${containerNumber} del ERP, escribe ELIMINAR`);
       if (confirmation !== 'ELIMINAR') return;
@@ -122,7 +125,13 @@
         const containerNumber = row.querySelector('td b')?.textContent?.trim();
         const shipment = Array.isArray(shipments) ? shipments.find(item => item.container_number === containerNumber) : null;
         const actions = row.querySelector('.actions');
-        if (!shipment || !actions || actions.querySelector('[data-delete-shipment]')) return;
+        if (!shipment || !actions) return;
+
+        const deleteButtons = Array.from(actions.querySelectorAll('button')).filter(button =>
+          button.dataset.deleteShipment || button.textContent.trim().toLowerCase() === 'eliminar'
+        );
+        deleteButtons.forEach(button => button.remove());
+
         const button = document.createElement('button');
         button.className = 'danger';
         button.textContent = 'Eliminar';
@@ -134,7 +143,12 @@
 
     const target = byId('shipments');
     if (target) {
-      new MutationObserver(addButtons).observe(target, { childList: true, subtree: true });
+      const observer = new MutationObserver(() => {
+        observer.disconnect();
+        addButtons();
+        observer.observe(target, { childList: true, subtree: true });
+      });
+      observer.observe(target, { childList: true, subtree: true });
       addButtons();
     }
   }
