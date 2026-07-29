@@ -90,6 +90,26 @@ export default async function handler(req, res) {
       return ok(res, { shipments: data || [] });
     }
 
+    if (req.method === 'DELETE') {
+      const id = String(req.query?.id || '').trim();
+      if (!id) return fail(res, 400, 'Falta el identificador del contenedor');
+      const rows = await supabase('shipments', { query: `?select=id,client_id,container_number,shipsgo_tracking_id&id=eq.${encodeURIComponent(id)}&limit=1` });
+      const shipment = rows?.[0];
+      if (!shipment) return fail(res, 404, 'Contenedor no encontrado');
+
+      await audit('shipment_deleted', shipment, {
+        container_number: shipment.container_number,
+        shipsgo_tracking_id: shipment.shipsgo_tracking_id || null,
+        actor: admin.username,
+        deletion_scope: 'erp_only'
+      });
+      await supabase('notifications', { method: 'DELETE', query: `?shipment_id=eq.${encodeURIComponent(id)}` });
+      await supabase('shipment_history', { method: 'DELETE', query: `?shipment_id=eq.${encodeURIComponent(id)}` });
+      const deleted = await supabase('shipments', { method: 'DELETE', query: `?id=eq.${encodeURIComponent(id)}&select=id,container_number` });
+      if (!deleted?.length) return fail(res, 404, 'Contenedor no encontrado');
+      return ok(res, { deleted: true, shipment: deleted[0], shipsgo_deleted: false });
+    }
+
     if (req.method === 'POST') {
       const body = await readJson(req);
       if (body.action === 'send_test_whatsapp') {
