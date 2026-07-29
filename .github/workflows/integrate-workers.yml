@@ -1,0 +1,46 @@
+name: Integrate workers into admin ERP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/integrate-workers.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Insert workers module into admin page
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('admin/index.html')
+          s = p.read_text()
+          old = '<button class="nav-item" data-section="notificationsSection">✉ Notificaciones</button>'
+          new = old + '\n<button class="nav-item" data-section="workersSection">♟ Trabajadores</button>'
+          if 'data-section="workersSection"' not in s:
+              s = s.replace(old, new)
+          old_section = '<section id="adminsSection" class="app-section hidden">'
+          worker_section = '<section id="workersSection" class="app-section hidden"><div class="grid"><section class="card"><h2>Agregar trabajador</h2><label>Nombre completo *</label><input id="workerName" placeholder="Nombre del trabajador"><label>Teléfono / WhatsApp *</label><input id="workerPhone" placeholder="+5351234567"><label>Cargo</label><input id="workerPosition" placeholder="Ventas, logística, comercial..."><div style="margin-top:14px"><button id="saveWorker" class="orange">Guardar trabajador</button></div><div id="workerMsg" class="msg"></div></section><section class="card"><h2>Trabajadores registrados</h2><div id="workers">Cargando...</div></section></div></section>\n'
+          if 'id="workersSection"' not in s:
+              s = s.replace(old_section, worker_section + old_section)
+          old_titles = "adminsSection:'Administradores'"
+          if "workersSection:'Trabajadores'" not in s:
+              s = s.replace(old_titles, "workersSection:'Trabajadores'," + old_titles)
+          old_scripts = '<script src="/admin/erp.js"></script>'
+          new_scripts = '<script src="/admin/erp.js"></script><script src="/admin/workers-module.js"></script>'
+          if '/admin/workers-module.js' not in s:
+              s = s.replace(old_scripts, new_scripts)
+          p.write_text(s)
+          PY
+      - name: Commit integrated module
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin/index.html
+          git diff --cached --quiet || git commit -m "Show workers inside admin ERP"
+          git push
