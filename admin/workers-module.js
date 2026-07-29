@@ -2,19 +2,22 @@
   const byId = id => document.getElementById(id);
   const escW = value => String(value ?? '').replace(/[&<>'\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
   let workers = [];
+  const workersApi = '/api/admins?resource=workers';
 
   function mount() {
     if (window.__workersModuleMounted || currentUser?.role !== 'master_admin') return;
     window.__workersModuleMounted = true;
 
-    const adminSubmenu = byId('adminNav')?.querySelector('.submenu');
-    if (!adminSubmenu) return;
+    const sidebarNav = document.querySelector('.sidebar-nav');
+    if (!sidebarNav) return;
 
+    const adminNav = byId('adminNav');
     const navButton = document.createElement('button');
+    navButton.className = 'nav-item';
     navButton.dataset.section = 'workersSection';
-    navButton.textContent = 'Trabajadores';
+    navButton.textContent = '👥 Trabajadores';
     navButton.onclick = () => showSection('workersSection');
-    adminSubmenu.appendChild(navButton);
+    sidebarNav.insertBefore(navButton, adminNav || null);
 
     const main = document.querySelector('.main-shell main');
     const section = document.createElement('section');
@@ -31,11 +34,12 @@
 
   async function loadWorkers() {
     try {
-      const result = await api('/api/workers');
+      const result = await api(workersApi);
       workers = result.workers || [];
       renderWorkers();
     } catch (error) {
-      byId('workersList').textContent = error.message;
+      const target = byId('workersList');
+      if (target) target.textContent = error.message;
     }
   }
 
@@ -47,7 +51,7 @@
 
   async function saveWorker() {
     try {
-      await api('/api/workers', { method: 'POST', body: JSON.stringify({ full_name: byId('workerName').value, phone: byId('workerPhone').value }) });
+      await api(workersApi, { method: 'POST', body: JSON.stringify({ full_name: byId('workerName').value, phone: byId('workerPhone').value }) });
       note('workerMsg', 'Trabajador guardado correctamente.', true);
       byId('workerName').value = '';
       byId('workerPhone').value = '';
@@ -62,12 +66,12 @@
     if (full_name === null) return;
     const phone = prompt('Número de teléfono / WhatsApp', worker.phone);
     if (phone === null) return;
-    await api('/api/workers', { method: 'PATCH', body: JSON.stringify({ id, full_name, phone }) });
+    await api(workersApi, { method: 'PATCH', body: JSON.stringify({ id, full_name, phone }) });
     await loadWorkers();
   };
 
   window.toggleWorker = async (id, is_active) => {
-    await api('/api/workers', { method: 'PATCH', body: JSON.stringify({ id, is_active }) });
+    await api(workersApi, { method: 'PATCH', body: JSON.stringify({ id, is_active }) });
     await loadWorkers();
   };
 
