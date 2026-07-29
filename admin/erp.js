@@ -169,3 +169,12 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
 })();
+
+(() => {
+  if (document.querySelector('script[data-shipment-editor]')) return;
+  const script = document.createElement('script');
+  script.src = '/admin/shipment-editor.js';
+  script.dataset.shipmentEditor = 'true';
+  script.defer = true;
+  document.head.appendChild(script);
+})();
