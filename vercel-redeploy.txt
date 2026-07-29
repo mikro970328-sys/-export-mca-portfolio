@@ -1,0 +1,1 @@
+Redeploy requested after upgrading the Vercel project to Pro on 2026-07-29.
