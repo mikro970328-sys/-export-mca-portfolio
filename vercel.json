@@ -1,16 +1,35 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "app.exportmca.com" }],
+      "has": [
+        {
+          "type": "header",
+          "key": "host",
+          "value": "app\\.exportmca\\.com"
+        }
+      ],
       "destination": "/app/index.html"
     },
     {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "app.exportmca.com" }],
-      "destination": "/app/index.html"
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "host",
+          "value": "admin\\.exportmca\\.com"
+        }
+      ],
+      "destination": "/admin/index.html"
     },
-    { "source": "/tracking", "destination": "/admin/index.html" },
-    { "source": "/tracking/:path*", "destination": "/admin/index.html" }
+    {
+      "source": "/tracking",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/tracking/:path*",
+      "destination": "/admin/index.html"
+    }
   ]
 }
