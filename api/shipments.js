@@ -3,13 +3,79 @@ import { fail, normalizeContainer, ok, readJson, requireAdmin, sendWhatsApp, sup
 async function history(shipment, eventType, title, details = null, source = 'admin') {
   try { await supabase('shipment_history', { method: 'POST', body: [{ shipment_id: shipment.id, client_id: shipment.client_id, event_type: eventType, title, details, source }] }); } catch {}
 }
+
 async function audit(action, shipment, details = {}) {
   try { await supabase('audit_log', { method: 'POST', body: [{ action, entity_type: 'shipment', entity_id: shipment.id, details }] }); } catch {}
 }
+
 async function logNotification(shipment, type, data = {}) {
   try {
-    await supabase('notifications', { method: 'POST', body: [{ shipment_id: shipment.id, client_id: shipment.client_id, event_type: type, event_status: type, channel: 'whatsapp', recipient: shipment.clients?.phone || null, recipient_phone: shipment.clients?.phone || null, status: data.status || 'pending', delivery_status: data.status || 'pending', provider_message_id: data.sid || null, twilio_message_sid: data.sid || null, template_sid: data.template_sid || null, payload: { container_number: shipment.container_number, client_name: shipment.clients?.name || null }, error_message: data.error || null, sent_at: data.sent_at || null, attempt_count: 1, last_attempt_at: new Date().toISOString() }] });
-  } catch (error) { console.error('SHIPMENT_NOTIFICATION_LOG_FAILED', error.message); }
+    await supabase('notifications', {
+      method: 'POST',
+      body: [{
+        shipment_id: shipment.id,
+        client_id: shipment.client_id,
+        event_type: type,
+        event_status: type,
+        channel: 'whatsapp',
+        recipient: shipment.clients?.phone || null,
+        recipient_phone: shipment.clients?.phone || null,
+        status: data.status || 'pending',
+        delivery_status: data.status || 'pending',
+        provider_message_id: data.sid || null,
+        twilio_message_sid: data.sid || null,
+        template_sid: data.template_sid || null,
+        payload: {
+          container_number: shipment.container_number,
+          client_name: shipment.clients?.name || null,
+          status: data.payload?.status || shipment.last_status || shipment.operational_status || null,
+          location: data.payload?.location || shipment.last_location || null,
+          manual_test: Boolean(data.payload?.manual_test)
+        },
+        error_message: data.error || null,
+        sent_at: data.sent_at || null,
+        attempt_count: 1,
+        last_attempt_at: new Date().toISOString()
+      }]
+    });
+  } catch (error) {
+    console.error('SHIPMENT_NOTIFICATION_LOG_FAILED', error.message);
+  }
+}
+
+function templateConfig(type, shipment, body = {}) {
+  const name = shipment.clients?.name || 'Cliente';
+  const container = shipment.container_number || 'No disponible';
+  const status = String(body.status || shipment.last_status || shipment.operational_status || 'En tránsito').trim();
+  const location = String(body.location || shipment.last_location || 'No disponible').trim();
+  const map = {
+    welcome: {
+      sid: process.env.TWILIO_WELCOME_CONTENT_SID,
+      label: 'Bienvenida',
+      variables: { '1': name }
+    },
+    registered: {
+      sid: process.env.TWILIO_REGISTERED_CONTENT_SID,
+      label: 'Contenedor registrado',
+      variables: { '1': name, '2': container }
+    },
+    tracking: {
+      sid: process.env.TWILIO_CONTENT_SID,
+      label: 'Actualización de tracking',
+      variables: { '1': name, '2': container, '3': status, '4': location }
+    },
+    release: {
+      sid: process.env.TWILIO_RELEASE_CONTENT_SID,
+      label: 'Mercancía disponible',
+      variables: { '1': name, '2': container }
+    },
+    delivered: {
+      sid: process.env.TWILIO_DELIVERED_CONTENT_SID,
+      label: 'Contenedor entregado',
+      variables: { '1': name, '2': container }
+    }
+  };
+  return map[type] || null;
 }
 
 function shipsGoConfig() {
@@ -61,10 +127,7 @@ async function registerShipsGo(containerNumber, carrier = null) {
   }
 
   const createPath = process.env.SHIPSGO_CREATE_PATH || 'ocean/shipments';
-  const payload = {
-    container_number: containerNumber,
-    reference: `EXPORT-MCA-${containerNumber}`
-  };
+  const payload = { container_number: containerNumber, reference: `EXPORT-MCA-${containerNumber}` };
   if (carrier) payload.carrier = String(carrier).trim();
 
   try {
@@ -84,6 +147,7 @@ async function registerShipsGo(containerNumber, carrier = null) {
 export default async function handler(req, res) {
   const admin = requireAdmin(req, res);
   if (!admin) return;
+
   try {
     if (req.method === 'GET') {
       const data = await supabase('shipments', { query: '?select=*,clients(id,name,company,phone,email,welcome_status)&order=created_at.desc' });
@@ -159,6 +223,39 @@ export default async function handler(req, res) {
       if (!shipment) return fail(res, 404, 'Contenedor no encontrado');
       const action = body.action || 'edit';
 
+      if (action === 'manual_notification') {
+        const type = String(body.notification_type || '').trim().toLowerCase();
+        const config = templateConfig(type, shipment, body);
+        if (!config) return fail(res, 400, 'Tipo de plantilla no válido');
+        if (!shipment.clients?.phone) return fail(res, 400, 'El cliente no tiene un número de WhatsApp válido');
+        if (!config.sid) return fail(res, 400, `Falta configurar la plantilla ${type} en Vercel`);
+
+        const now = new Date().toISOString();
+        try {
+          const sent = await sendWhatsApp({ to: shipment.clients.phone, contentSid: config.sid, variables: config.variables });
+          await logNotification(shipment, type, {
+            status: sent.status || 'queued',
+            sid: sent.sid,
+            template_sid: config.sid,
+            sent_at: now,
+            payload: { status: body.status, location: body.location, manual_test: true }
+          });
+          await history(shipment, `whatsapp_${type}`, `WhatsApp manual · ${config.label}`, `SID: ${sent.sid} · Estado: ${sent.status || 'queued'}`, 'whatsapp');
+          await audit('manual_whatsapp_template_sent', shipment, { type, sid: sent.sid, actor: admin.username, test_mode: true });
+          return ok(res, { sent: true, type, label: config.label, sid: sent.sid, status: sent.status || 'queued' });
+        } catch (error) {
+          await logNotification(shipment, type, {
+            status: 'failed',
+            error: error.message,
+            template_sid: config.sid,
+            payload: { status: body.status, location: body.location, manual_test: true }
+          });
+          await history(shipment, `whatsapp_${type}_failed`, `Falló WhatsApp manual · ${config.label}`, error.message, 'whatsapp');
+          await audit('manual_whatsapp_template_failed', shipment, { type, error: error.message, actor: admin.username, test_mode: true });
+          return fail(res, 400, `No se pudo enviar ${config.label}`, error.message);
+        }
+      }
+
       if (action === 'release') {
         if (shipment.released_at) return fail(res, 409, 'Este contenedor ya fue marcado como liberado');
         const now = new Date().toISOString();
@@ -201,7 +298,9 @@ export default async function handler(req, res) {
       }
 
       if (action === 'deliver' || action === 'reactivate') {
-        const active = action === 'reactivate'; const now = new Date().toISOString(); const status = active ? 'Activo' : 'Entregado';
+        const active = action === 'reactivate';
+        const now = new Date().toISOString();
+        const status = active ? 'Activo' : 'Entregado';
         await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { active, operational_status: status, last_status: status, delivered_at: active ? null : now, updated_at: now } });
         await history(shipment, active ? 'reactivated' : 'delivered', active ? 'Contenedor reactivado' : 'Contenedor entregado');
         await audit(active ? 'shipment_reactivated' : 'shipment_delivered', shipment, { actor: admin.username });
@@ -216,13 +315,19 @@ export default async function handler(req, res) {
         if (duplicate?.length) return fail(res, 409, 'Ese número de contenedor ya está registrado');
         patch.container_number = number;
       }
-      for (const field of ['booking_number','bol_number','carrier','product']) if (body[field] !== undefined) patch[field] = String(body[field]).trim() || null;
-      if (body.operational_status !== undefined) { patch.operational_status = String(body.operational_status).trim(); patch.last_status = patch.operational_status; }
+      for (const field of ['booking_number', 'bol_number', 'carrier', 'product']) {
+        if (body[field] !== undefined) patch[field] = String(body[field]).trim() || null;
+      }
+      if (body.operational_status !== undefined) {
+        patch.operational_status = String(body.operational_status).trim();
+        patch.last_status = patch.operational_status;
+      }
       const updated = await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}&select=*`, body: patch });
       await history(shipment, 'updated', 'Datos del contenedor actualizados', JSON.stringify(patch));
       await audit('shipment_updated', shipment, patch);
       return ok(res, { shipment: updated?.[0] || { ...shipment, ...patch } });
     }
+
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
     const message = error.message === 'CONTAINER_INVALID' ? 'Número de contenedor inválido. Debe tener 4 letras y 7 números.' : error.message;
