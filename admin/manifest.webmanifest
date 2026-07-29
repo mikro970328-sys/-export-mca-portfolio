@@ -1,0 +1,19 @@
+{
+  "name": "Export MCA ERP",
+  "short_name": "MCA ERP",
+  "description": "Sistema administrativo y logístico de Export MCA LLC",
+  "start_url": "/admin/pwa.html",
+  "scope": "/admin/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f7fb",
+  "theme_color": "#06204a",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
