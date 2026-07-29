@@ -14,7 +14,37 @@
   <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f7fb}iframe{display:block;width:100%;height:100%;border:0;background:#f4f7fb}</style>
 </head>
 <body>
-  <iframe src="/app/index.html" title="Export MCA"></iframe>
-  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>
+  <iframe id="marketFrame" src="/app/index.html" title="Export MCA"></iframe>
+  <script>
+    if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+    const frame=document.getElementById('marketFrame');
+    const cleanPhone=value=>String(value||'').replace(/\D/g,'');
+    async function applyWorkerContacts(){
+      try{
+        const response=await fetch('/api/public/publications',{cache:'no-store'});
+        if(!response.ok)return;
+        const payload=await response.json();
+        const byTitle=new Map((payload.publications||[]).map(item=>[String(item.title||'').trim().toLowerCase(),item]));
+        const doc=frame.contentDocument;
+        if(!doc)return;
+        doc.querySelectorAll('.listing-card').forEach(card=>{
+          const title=card.querySelector('h3')?.textContent?.trim()||'';
+          const item=byTitle.get(title.toLowerCase());
+          const link=card.querySelector('.card-contact');
+          if(!link||!item)return;
+          const phone=cleanPhone(item.assigned_worker_phone)||'17868000735';
+          const worker=item.assigned_worker_name?` con ${item.assigned_worker_name}`:'';
+          const message=encodeURIComponent(`Hola${worker}, necesito información sobre ${item.title||'esta mercancía'}.`);
+          link.href=`https://wa.me/${phone}?text=${message}`;
+          if(item.assigned_worker_name)link.setAttribute('aria-label',`Consultar con ${item.assigned_worker_name}`);
+        });
+      }catch(error){console.error('No se pudieron asignar los contactos comerciales',error);}
+    }
+    frame.addEventListener('load',()=>{
+      applyWorkerContacts();
+      const doc=frame.contentDocument;
+      if(doc){new MutationObserver(()=>applyWorkerContacts()).observe(doc.body,{childList:true,subtree:true});}
+    });
+  </script>
 </body>
 </html>
