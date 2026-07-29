@@ -6,7 +6,7 @@
       "has": [
         {
           "type": "header",
-          "key": "host",
+          "key": "x-forwarded-host",
           "value": "app\\.exportmca\\.com"
         }
       ],
@@ -17,7 +17,7 @@
       "has": [
         {
           "type": "header",
-          "key": "host",
+          "key": "x-forwarded-host",
           "value": "admin\\.exportmca\\.com"
         }
       ],
