@@ -1,6 +1,15 @@
 import { fail, ok, readJson, requireAdmin, supabase } from './_lib.js';
 
-const CATEGORIES = new Set(['plaza_merchandise','plaza_containers','upcoming_shipments','us_warehouse']);
+const INPUT_CATEGORIES = new Set(['plaza_merchandise','plaza_containers','upcoming_shipments','us_warehouse','merchandise_plaza','containers_plaza','usa_warehouse']);
+const CATEGORY_STORAGE = {
+  plaza_merchandise: 'merchandise_plaza',
+  plaza_containers: 'containers_plaza',
+  upcoming_shipments: 'upcoming_shipments',
+  us_warehouse: 'usa_warehouse',
+  merchandise_plaza: 'merchandise_plaza',
+  containers_plaza: 'containers_plaza',
+  usa_warehouse: 'usa_warehouse'
+};
 const PUBLICATION_STATUSES = new Set(['draft','published','hidden','archived']);
 const AVAILABILITY_STATUSES = new Set(['available','reserved','sold','unavailable']);
 
@@ -8,8 +17,8 @@ function clean(body, current = {}) {
   const row = { updated_at: new Date().toISOString() };
   if (body.category !== undefined) {
     const value = String(body.category || '').trim();
-    if (!CATEGORIES.has(value)) throw new Error('Categoría inválida');
-    row.category = value;
+    if (!INPUT_CATEGORIES.has(value)) throw new Error('Categoría inválida');
+    row.category = CATEGORY_STORAGE[value];
   }
   if (body.title !== undefined) {
     const value = String(body.title || '').trim();
@@ -45,6 +54,15 @@ function clean(body, current = {}) {
   return row;
 }
 
+function validateUpcomingShipment(row, current = {}) {
+  const category = row.category ?? current.category;
+  const departureDate = row.departure_date !== undefined ? row.departure_date : current.departure_date;
+  const arrivalDate = row.arrival_date !== undefined ? row.arrival_date : current.arrival_date;
+  if (category === 'upcoming_shipments' && !departureDate && !arrivalDate) {
+    throw new Error('Para Próximos envíos debes indicar al menos la fecha de salida o la fecha de llegada');
+  }
+}
+
 async function audit(action, id, details = {}) {
   try { await supabase('audit_log', { method: 'POST', body: [{ action, entity_type: 'commercial_publication', entity_id: id, details }] }); } catch {}
 }
@@ -64,6 +82,7 @@ export default async function handler(req, res) {
       if (!row.title) throw new Error('El título es obligatorio');
       row.publication_status ||= 'draft';
       row.availability_status ||= 'available';
+      validateUpcomingShipment(row);
       row.created_by = admin.id || null;
       row.updated_by = admin.id || null;
       if (row.publication_status === 'published') row.published_at = new Date().toISOString();
@@ -79,6 +98,7 @@ export default async function handler(req, res) {
       const current = currentRows?.[0];
       if (!current) return fail(res, 404, 'Publicación no encontrada');
       const row = clean(body, current);
+      validateUpcomingShipment(row, current);
       row.updated_by = admin.id || null;
       const updated = await supabase('commercial_publications', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}&select=*`, body: row });
       await audit('publication_updated', id, { title: updated?.[0]?.title || current.title, status: updated?.[0]?.publication_status || current.publication_status });
