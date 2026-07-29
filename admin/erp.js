@@ -101,6 +101,43 @@
     } catch (error) { note('erpMsg', error.message); }
   }
 
+  function installShipmentDelete() {
+    const originalRenderShipments = window.renderShipments;
+    if (typeof originalRenderShipments !== 'function') return;
+
+    window.deleteShipment = async function (id, containerNumber) {
+      const confirmation = prompt(`Para eliminar definitivamente ${containerNumber} del ERP, escribe ELIMINAR`);
+      if (confirmation !== 'ELIMINAR') return;
+      try {
+        await api('/api/delete-shipment?id=' + encodeURIComponent(id), { method: 'DELETE' });
+        alert(`Contenedor ${containerNumber} eliminado del ERP.`);
+        await loadAll();
+        if (window.loadNotifications) window.loadNotifications();
+      } catch (error) {
+        alert(error.message);
+      }
+    };
+
+    window.renderShipments = function () {
+      originalRenderShipments();
+      const target = byId('shipments');
+      if (!target) return;
+      const rows = target.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        const containerNumber = row.querySelector('td b')?.textContent?.trim();
+        const shipment = (window.shipments || []).find(item => item.container_number === containerNumber);
+        const actions = row.querySelector('.actions');
+        if (!shipment || !actions || actions.querySelector('[data-delete-shipment]')) return;
+        const button = document.createElement('button');
+        button.className = 'danger';
+        button.textContent = 'Eliminar';
+        button.dataset.deleteShipment = shipment.id;
+        button.onclick = () => window.deleteShipment(shipment.id, shipment.container_number);
+        actions.appendChild(button);
+      });
+    };
+  }
+
   function mount() {
     const section = byId('newOperationsSection');
     if (!section) return;
@@ -110,6 +147,7 @@
     byId('saveErpOperation').onclick = saveOperation;
     byId('reloadOperations').onclick = loadOperations;
     loadOperations();
+    installShipmentDelete();
     const oldLoadAll = window.loadAll;
     if (typeof oldLoadAll === 'function') window.loadAll = async function () { await oldLoadAll(); fillClients(); await loadOperations(); };
   }
