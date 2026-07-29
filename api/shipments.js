@@ -47,7 +47,6 @@ function templateConfig(type, shipment, body = {}) {
   const name = shipment.clients?.name || 'Cliente';
   const container = shipment.container_number || 'No disponible';
   const status = String(body.status || shipment.last_status || shipment.operational_status || 'En tránsito').trim();
-  const location = String(body.location || shipment.last_location || 'No disponible').trim();
   const map = {
     welcome: {
       sid: process.env.TWILIO_WELCOME_CONTENT_SID,
@@ -62,7 +61,7 @@ function templateConfig(type, shipment, body = {}) {
     tracking: {
       sid: process.env.TWILIO_CONTENT_SID,
       label: 'Actualización de tracking',
-      variables: { '1': name, '2': container, '3': status, '4': location }
+      variables: { '1': container, '2': status }
     },
     release: {
       sid: process.env.TWILIO_RELEASE_CONTENT_SID,
@@ -160,13 +159,7 @@ export default async function handler(req, res) {
       const rows = await supabase('shipments', { query: `?select=id,client_id,container_number,shipsgo_tracking_id&id=eq.${encodeURIComponent(id)}&limit=1` });
       const shipment = rows?.[0];
       if (!shipment) return fail(res, 404, 'Contenedor no encontrado');
-
-      await audit('shipment_deleted', shipment, {
-        container_number: shipment.container_number,
-        shipsgo_tracking_id: shipment.shipsgo_tracking_id || null,
-        actor: admin.username,
-        deletion_scope: 'erp_only'
-      });
+      await audit('shipment_deleted', shipment, { container_number: shipment.container_number, shipsgo_tracking_id: shipment.shipsgo_tracking_id || null, actor: admin.username, deletion_scope: 'erp_only' });
       await supabase('notifications', { method: 'DELETE', query: `?shipment_id=eq.${encodeURIComponent(id)}` });
       await supabase('shipment_history', { method: 'DELETE', query: `?shipment_id=eq.${encodeURIComponent(id)}` });
       const deleted = await supabase('shipments', { method: 'DELETE', query: `?id=eq.${encodeURIComponent(id)}&select=id,container_number` });
@@ -229,27 +222,15 @@ export default async function handler(req, res) {
         if (!config) return fail(res, 400, 'Tipo de plantilla no válido');
         if (!shipment.clients?.phone) return fail(res, 400, 'El cliente no tiene un número de WhatsApp válido');
         if (!config.sid) return fail(res, 400, `Falta configurar la plantilla ${type} en Vercel`);
-
         const now = new Date().toISOString();
         try {
           const sent = await sendWhatsApp({ to: shipment.clients.phone, contentSid: config.sid, variables: config.variables });
-          await logNotification(shipment, type, {
-            status: sent.status || 'queued',
-            sid: sent.sid,
-            template_sid: config.sid,
-            sent_at: now,
-            payload: { status: body.status, location: body.location, manual_test: true }
-          });
+          await logNotification(shipment, type, { status: sent.status || 'queued', sid: sent.sid, template_sid: config.sid, sent_at: now, payload: { status: body.status, location: body.location, manual_test: true } });
           await history(shipment, `whatsapp_${type}`, `WhatsApp manual · ${config.label}`, `SID: ${sent.sid} · Estado: ${sent.status || 'queued'}`, 'whatsapp');
           await audit('manual_whatsapp_template_sent', shipment, { type, sid: sent.sid, actor: admin.username, test_mode: true });
           return ok(res, { sent: true, type, label: config.label, sid: sent.sid, status: sent.status || 'queued' });
         } catch (error) {
-          await logNotification(shipment, type, {
-            status: 'failed',
-            error: error.message,
-            template_sid: config.sid,
-            payload: { status: body.status, location: body.location, manual_test: true }
-          });
+          await logNotification(shipment, type, { status: 'failed', error: error.message, template_sid: config.sid, payload: { status: body.status, location: body.location, manual_test: true } });
           await history(shipment, `whatsapp_${type}_failed`, `Falló WhatsApp manual · ${config.label}`, error.message, 'whatsapp');
           await audit('manual_whatsapp_template_failed', shipment, { type, error: error.message, actor: admin.username, test_mode: true });
           return fail(res, 400, `No se pudo enviar ${config.label}`, error.message);
