@@ -102,14 +102,11 @@
   }
 
   function installShipmentDelete() {
-    const originalRenderShipments = window.renderShipments;
-    if (typeof originalRenderShipments !== 'function') return;
-
     window.deleteShipment = async function (id, containerNumber) {
       const confirmation = prompt(`Para eliminar definitivamente ${containerNumber} del ERP, escribe ELIMINAR`);
       if (confirmation !== 'ELIMINAR') return;
       try {
-        await api('/api/delete-shipment?id=' + encodeURIComponent(id), { method: 'DELETE' });
+        await api('/api/shipments?id=' + encodeURIComponent(id), { method: 'DELETE' });
         alert(`Contenedor ${containerNumber} eliminado del ERP.`);
         await loadAll();
         if (window.loadNotifications) window.loadNotifications();
@@ -118,14 +115,12 @@
       }
     };
 
-    window.renderShipments = function () {
-      originalRenderShipments();
+    const addButtons = () => {
       const target = byId('shipments');
       if (!target) return;
-      const rows = target.querySelectorAll('tbody tr');
-      rows.forEach(row => {
+      target.querySelectorAll('tbody tr').forEach(row => {
         const containerNumber = row.querySelector('td b')?.textContent?.trim();
-        const shipment = (window.shipments || []).find(item => item.container_number === containerNumber);
+        const shipment = Array.isArray(shipments) ? shipments.find(item => item.container_number === containerNumber) : null;
         const actions = row.querySelector('.actions');
         if (!shipment || !actions || actions.querySelector('[data-delete-shipment]')) return;
         const button = document.createElement('button');
@@ -136,6 +131,12 @@
         actions.appendChild(button);
       });
     };
+
+    const target = byId('shipments');
+    if (target) {
+      new MutationObserver(addButtons).observe(target, { childList: true, subtree: true });
+      addButtons();
+    }
   }
 
   function mount() {
