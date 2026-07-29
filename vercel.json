@@ -3,25 +3,7 @@
   "rewrites": [
     {
       "source": "/",
-      "has": [
-        {
-          "type": "header",
-          "key": "x-forwarded-host",
-          "value": "app\\.exportmca\\.com"
-        }
-      ],
-      "destination": "/app/index.html"
-    },
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "header",
-          "key": "x-forwarded-host",
-          "value": "admin\\.exportmca\\.com"
-        }
-      ],
-      "destination": "/admin/index.html"
+      "destination": "/domain-router.html"
     },
     {
       "source": "/tracking",
