@@ -1,0 +1,19 @@
+{
+  "name": "Export MCA",
+  "short_name": "Export MCA",
+  "description": "Plataforma comercial pública de Export MCA LLC",
+  "start_url": "/app/pwa.html",
+  "scope": "/app/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f7fb",
+  "theme_color": "#06204a",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
