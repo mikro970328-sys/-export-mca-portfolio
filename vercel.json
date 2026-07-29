@@ -1,5 +1,15 @@
 {
   "rewrites": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "app.exportmca.com" }],
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "app.exportmca.com" }],
+      "destination": "/app/index.html"
+    },
     { "source": "/tracking", "destination": "/admin/index.html" },
     { "source": "/tracking/:path*", "destination": "/admin/index.html" }
   ]
