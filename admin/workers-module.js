@@ -41,7 +41,7 @@
     if (!list.length) {
       return `<div class="empty-state">${inactive ? 'No hay trabajadores desactivados.' : 'No hay trabajadores activos.'}</div>`;
     }
-    return `<table><thead><tr><th>Nombre</th><th>Cargo</th><th>Teléfono / WhatsApp</th>${inactive ? '<th>Motivo</th>' : ''}<th>Estado</th><th>Acciones</th></tr></thead><tbody>${list.map(w => `<tr><td><b>${escW(w.full_name)}</b></td><td>${escW(w.position || '-')}</td><td>${escW(w.phone)}</td>${inactive ? `<td>${escW(w.deactivation_reason || 'Sin motivo registrado')}</td>` : ''}<td><span class="pill ${w.is_active ? 'done' : ''}">${w.is_active ? 'Activo' : 'Desactivado'}</span></td><td><div class="actions"><button class="alt" data-worker-edit="${w.id}">Editar</button>${w.is_active ? `<button class="danger" data-worker-deactivate="${w.id}">Desactivar</button>` : `<button class="success" data-worker-reactivate="${w.id}">Reactivar</button>`}</div></td></tr>`).join('')}</tbody></table>`;
+    return `<table><thead><tr><th>Nombre</th><th>Cargo</th><th>Teléfono / WhatsApp</th>${inactive ? '<th>Motivo actual</th>' : ''}<th>Estado</th><th>Acciones</th></tr></thead><tbody>${list.map(w => `<tr><td><b>${escW(w.full_name)}</b></td><td>${escW(w.position || '-')}</td><td>${escW(w.phone)}</td>${inactive ? `<td>${escW(w.deactivation_reason || 'Sin motivo registrado')}</td>` : ''}<td><span class="pill ${w.is_active ? 'done' : ''}">${w.is_active ? 'Activo' : 'Desactivado'}</span></td><td><div class="actions"><button class="alt" data-worker-history="${w.id}">Historial</button><button class="alt" data-worker-edit="${w.id}">Editar</button>${w.is_active ? `<button class="danger" data-worker-deactivate="${w.id}">Desactivar</button>` : `<button class="success" data-worker-reactivate="${w.id}">Reactivar</button>`}</div></td></tr>`).join('')}</tbody></table>`;
   }
 
   function renderWorkers() {
@@ -58,6 +58,7 @@
       </div>`;
 
     byId('reloadWorkersButton')?.addEventListener('click', loadWorkers);
+    target.querySelectorAll('[data-worker-history]').forEach(button => button.addEventListener('click', () => openWorkerHistory(button.dataset.workerHistory)));
     target.querySelectorAll('[data-worker-edit]').forEach(button => button.addEventListener('click', () => openWorkerEditor(button.dataset.workerEdit)));
     target.querySelectorAll('[data-worker-deactivate]').forEach(button => button.addEventListener('click', () => openDeactivateWorker(button.dataset.workerDeactivate)));
     target.querySelectorAll('[data-worker-reactivate]').forEach(button => button.addEventListener('click', () => openReactivateWorker(button.dataset.workerReactivate)));
@@ -78,6 +79,30 @@
       await loadWorkers();
     } catch (error) {
       note('workerMsg', error.message);
+    }
+  }
+
+  async function openWorkerHistory(id) {
+    const worker = workers.find(w => w.id === id);
+    if (!worker) return;
+    openModal(`Historial · ${worker.full_name}`, '<div id="workerHistoryContent">Cargando historial...</div>');
+    try {
+      const result = await api(`/api/admins?resource=worker_history&worker_id=${encodeURIComponent(id)}`);
+      const history = result.history || [];
+      const content = byId('workerHistoryContent');
+      if (!content) return;
+      content.innerHTML = history.length ? `
+        <div class="timeline">
+          ${history.map(event => {
+            const deactivated = event.action === 'deactivated';
+            const title = deactivated ? 'Trabajador desactivado' : 'Trabajador reactivado';
+            const detail = event.reason ? `<div style="margin-top:5px">${escW(event.reason)}</div>` : `<div class="muted" style="margin-top:5px">${deactivated ? 'Sin motivo registrado' : 'Sin nota de reactivación'}</div>`;
+            return `<div class="event"><b>${title}</b>${detail}<div class="muted">${new Date(event.created_at).toLocaleString('es-US')}</div></div>`;
+          }).join('')}
+        </div>` : '<div class="empty-state">Este trabajador todavía no tiene cambios de estado registrados.</div>';
+    } catch (error) {
+      const content = byId('workerHistoryContent');
+      if (content) content.textContent = error.message;
     }
   }
 
@@ -152,8 +177,10 @@
     const worker = workers.find(w => w.id === id);
     if (!worker) return;
     openModal('Reactivar trabajador', `
-      <p>¿Deseas volver a activar a <b>${escW(worker.full_name)}</b>?</p>
-      <div class="muted">Al reactivarlo volverá a estar disponible para asignaciones futuras.</div>
+      <p>Vas a reactivar a <b>${escW(worker.full_name)}</b>.</p>
+      <label>Nota de reactivación</label>
+      <textarea id="workerReactivationReason" rows="3" placeholder="Ejemplo: regresó a la empresa, nuevo contrato, reincorporación..."></textarea>
+      <div class="muted">La nota es opcional y quedará guardada en el historial.</div>
       <div class="toolbar" style="justify-content:flex-end;margin-top:18px">
         <button id="cancelWorkerReactivate" class="alt">Cancelar</button>
         <button id="confirmWorkerReactivate" class="success">Reactivar trabajador</button>
@@ -167,7 +194,11 @@
     try {
       await api('/api/admins?resource=workers', {
         method: 'PATCH',
-        body: JSON.stringify({ id, is_active: true })
+        body: JSON.stringify({
+          id,
+          is_active: true,
+          reactivation_reason: byId('workerReactivationReason')?.value.trim() || ''
+        })
       });
       closeModal();
       await loadWorkers();
