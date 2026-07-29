@@ -11,6 +11,16 @@ export default async function handler(req, res) {
   const resource = String(req.query?.resource || 'admins').toLowerCase();
 
   try {
+    if (resource === 'worker_history') {
+      if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
+      const workerId = String(req.query?.worker_id || '');
+      if (!workerId) return fail(res, 400, 'Trabajador inválido');
+      const history = await supabase('worker_status_history', {
+        query: `?select=id,worker_id,action,reason,changed_by,created_at&worker_id=eq.${encodeURIComponent(workerId)}&order=created_at.desc`
+      });
+      return ok(res, { history: history || [] });
+    }
+
     if (resource === 'workers') {
       if (req.method === 'GET') {
         const workers = await supabase('workers', { query: `?select=${workerFields}&order=full_name.asc` });
@@ -39,6 +49,8 @@ export default async function handler(req, res) {
         const id = String(body.id || '');
         if (!id) return fail(res, 400, 'Trabajador inválido');
         const patch = { updated_at: new Date().toISOString() };
+        let statusEvent = null;
+
         if (body.full_name !== undefined) {
           const fullName = String(body.full_name || '').trim();
           if (fullName.length < 3) return fail(res, 400, 'Nombre inválido');
@@ -56,15 +68,41 @@ export default async function handler(req, res) {
           if (isActive) {
             patch.deactivation_reason = null;
             patch.deactivated_at = null;
+            statusEvent = { action: 'reactivated', reason: String(body.reactivation_reason || '').trim() || null };
           } else {
             const reason = String(body.deactivation_reason || '').trim();
             if (reason.length < 3) return fail(res, 400, 'El motivo de desactivación es obligatorio');
             patch.deactivation_reason = reason;
             patch.deactivated_at = new Date().toISOString();
+            statusEvent = { action: 'deactivated', reason };
           }
         }
+
         await supabase('workers', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}`, body: patch });
-        await writeAudit(master, patch.is_active === false ? 'deactivate_worker' : patch.is_active === true ? 'reactivate_worker' : 'update_worker', 'worker', id, { fields: Object.keys(patch), deactivation_reason: patch.deactivation_reason || undefined });
+
+        if (statusEvent) {
+          await supabase('worker_status_history', {
+            method: 'POST',
+            body: {
+              worker_id: id,
+              action: statusEvent.action,
+              reason: statusEvent.reason,
+              changed_by: master.admin_id
+            }
+          });
+        }
+
+        await writeAudit(
+          master,
+          patch.is_active === false ? 'deactivate_worker' : patch.is_active === true ? 'reactivate_worker' : 'update_worker',
+          'worker',
+          id,
+          {
+            fields: Object.keys(patch),
+            deactivation_reason: patch.deactivation_reason || undefined,
+            reactivation_reason: statusEvent?.action === 'reactivated' ? statusEvent.reason || undefined : undefined
+          }
+        );
         return ok(res, { updated: true });
       }
 
