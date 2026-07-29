@@ -1,12 +1,62 @@
 import { fail, hashPassword, normalizeUsername, ok, readJson, requireMasterAdmin, supabase, writeAudit } from './_lib.js';
 
 const publicFields = 'id,full_name,username,role,is_active,last_login_at,created_at,updated_at';
+const workerFields = 'id,full_name,phone,is_active,created_at,updated_at';
+const cleanPhone = value => String(value || '').trim().replace(/[^+\d]/g, '');
 
 export default async function handler(req, res) {
   const master = requireMasterAdmin(req, res);
   if (!master) return;
 
+  const resource = String(req.query?.resource || 'admins').toLowerCase();
+
   try {
+    if (resource === 'workers') {
+      if (req.method === 'GET') {
+        const workers = await supabase('workers', { query: `?select=${workerFields}&order=full_name.asc` });
+        return ok(res, { workers: workers || [] });
+      }
+
+      const body = await readJson(req);
+
+      if (req.method === 'POST') {
+        const fullName = String(body.full_name || '').trim();
+        const phone = cleanPhone(body.phone);
+        if (fullName.length < 3) return fail(res, 400, 'El nombre completo es obligatorio');
+        if (phone.length < 8) return fail(res, 400, 'El número de teléfono no es válido');
+
+        const rows = await supabase('workers', {
+          method: 'POST',
+          body: { full_name: fullName, phone, is_active: true, created_by: master.admin_id }
+        });
+        const worker = rows?.[0] || null;
+        await writeAudit(master, 'create_worker', 'worker', worker?.id, { full_name: fullName, phone });
+        return ok(res, { worker });
+      }
+
+      if (req.method === 'PATCH') {
+        const id = String(body.id || '');
+        if (!id) return fail(res, 400, 'Trabajador inválido');
+        const patch = { updated_at: new Date().toISOString() };
+        if (body.full_name !== undefined) {
+          const fullName = String(body.full_name || '').trim();
+          if (fullName.length < 3) return fail(res, 400, 'Nombre inválido');
+          patch.full_name = fullName;
+        }
+        if (body.phone !== undefined) {
+          const phone = cleanPhone(body.phone);
+          if (phone.length < 8) return fail(res, 400, 'Teléfono inválido');
+          patch.phone = phone;
+        }
+        if (body.is_active !== undefined) patch.is_active = Boolean(body.is_active);
+        await supabase('workers', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}`, body: patch });
+        await writeAudit(master, 'update_worker', 'worker', id, { fields: Object.keys(patch) });
+        return ok(res, { updated: true });
+      }
+
+      return fail(res, 405, 'Método no permitido');
+    }
+
     if (req.method === 'GET') {
       const admins = await supabase('admin_users', { query: `?select=${publicFields}&order=created_at.asc` });
       return ok(res, { admins: admins || [] });
@@ -70,6 +120,7 @@ export default async function handler(req, res) {
     if (error.message === 'USERNAME_INVALID') return fail(res, 400, 'El usuario debe tener entre 4 y 32 caracteres y solo usar letras, números, punto, guion o guion bajo');
     if (error.message === 'PASSWORD_TOO_SHORT') return fail(res, 400, 'La contraseña debe tener al menos 10 caracteres');
     if (error.message.includes('admin_users_username_unique')) return fail(res, 409, 'Ese nombre de usuario ya existe');
+    if (error.message.includes('workers_phone_unique')) return fail(res, 409, 'Ese teléfono ya está registrado');
     return fail(res, 500, 'No se pudo completar la operación', error.message);
   }
 }
