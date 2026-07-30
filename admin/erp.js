@@ -41,8 +41,8 @@
   // duplicated onclick rebinding.
   loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core');
 
-  // One source of truth for dashboard cards and operational distribution.
-  loadScript('/admin/dashboard-operational-state.js?v=20260730-1', 'data-dashboard-operational-state');
+  // One source of truth for dashboard operational cards.
+  loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state');
 
   loadScript('/admin/erp-core.js', 'data-erp-core', () => {
     loadScript('/admin/workers-module.js', 'data-workers-module', () => {
@@ -59,10 +59,11 @@
     loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control');
     loadScript('/admin/module-export-controls.js', 'data-module-export-controls');
 
-    // Keep the operational alert center, but do not load the corrupted
-    // dashboard cleanup / phase4 chain that previously reintroduced competing
-    // navigation and bell handlers.
-    loadScript('/admin/operational-alert-center.js', 'data-operational-alert-center');
+    // Keep one operational alert center. The stability guard runs only after
+    // the center has exposed its refresh function.
+    loadScript('/admin/operational-alert-center.js?v=20260730-2', 'data-operational-alert-center', () => {
+      loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability');
+    });
 
     loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
       loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch', () => {
