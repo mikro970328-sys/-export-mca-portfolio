@@ -3,11 +3,9 @@
   window.__sectionStateInstalled = true;
 
   const STORAGE_KEY = 'export_mca_current_section';
-  const savedSection = localStorage.getItem(STORAGE_KEY) || 'dashboardSection';
+  const DYNAMIC_SECTION_KEY = 'export_mca_dynamic_section';
   const originalShowSection = window.showSection;
   if (typeof originalShowSection !== 'function') return;
-
-  const restrictedSections = new Set(['adminsSection', 'workersSection']);
 
   function getCurrentUser() {
     try {
@@ -22,54 +20,46 @@
 
   function canOpen(id) {
     if (!sectionExists(id)) return false;
-    if (restrictedSections.has(id) && getCurrentUser()?.role !== 'master_admin') return false;
+    const user = getCurrentUser();
+    if (id === 'adminsSection' && user?.role !== 'master_admin') return false;
+    if (id === 'workersSection' && user?.role !== 'master_admin') return false;
     return true;
   }
 
   function revealApp() {
     const appShell = document.getElementById('appShell');
-    if (appShell) {
-      appShell.style.visibility = '';
-      appShell.style.opacity = '';
-    }
+    if (appShell) appShell.style.visibility = '';
     window.__sectionRestorePending = false;
   }
 
-  function concealApp() {
-    if (savedSection === 'dashboardSection') return;
-    const appShell = document.getElementById('appShell');
-    if (appShell) {
-      appShell.style.visibility = 'hidden';
-      appShell.style.opacity = '0';
-    }
-    window.__sectionRestorePending = true;
-  }
-
-  concealApp();
-
   window.showSection = function (id) {
-    if (!id) return;
     originalShowSection(id);
-    if (canOpen(id)) localStorage.setItem(STORAGE_KEY, id);
+    if (canOpen(id)) {
+      localStorage.setItem(STORAGE_KEY, id);
+      if (id === 'registerContainerSection') localStorage.setItem(DYNAMIC_SECTION_KEY, id);
+      else localStorage.removeItem(DYNAMIC_SECTION_KEY);
+    }
   };
 
   function restoreSection(attempt = 0) {
-    const target = localStorage.getItem(STORAGE_KEY) || 'dashboardSection';
-
-    if (canOpen(target)) {
-      window.showSection(target);
+    const saved = localStorage.getItem(DYNAMIC_SECTION_KEY) || localStorage.getItem(STORAGE_KEY);
+    if (!saved || saved === 'dashboardSection') {
       revealApp();
       return;
     }
 
-    // Some sections, such as Registrar contenedor, are created after startup.
-    if (attempt < 60) {
-      setTimeout(() => restoreSection(attempt + 1), 25);
+    if (canOpen(saved)) {
+      window.showSection(saved);
+      revealApp();
       return;
     }
 
-    localStorage.setItem(STORAGE_KEY, 'dashboardSection');
-    window.showSection('dashboardSection');
+    if (attempt < 40) {
+      setTimeout(() => restoreSection(attempt + 1), 50);
+      return;
+    }
+
+    localStorage.removeItem(DYNAMIC_SECTION_KEY);
     revealApp();
   }
 
