@@ -20,8 +20,10 @@
   removeLegacyAdminControls();
 
   loadScript('/admin/erp-core.js', 'data-erp-core', () => {
-    loadScript('/admin/workers-module.js', 'data-workers-module');
-    loadScript('/admin/workers-responsive.js', 'data-workers-responsive');
+    loadScript('/admin/workers-module.js', 'data-workers-module', () => {
+      loadScript('/admin/workers-responsive.js', 'data-workers-responsive');
+      loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu');
+    });
     loadScript('/admin/client-extra-fields.js', 'data-client-extra-fields');
     loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking');
     loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control');
