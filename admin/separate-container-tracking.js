@@ -2,6 +2,9 @@
   if (window.__separateContainerTrackingInstalled) return;
   window.__separateContainerTrackingInstalled = true;
 
+  const STORAGE_KEY = 'export_mca_current_section';
+  const DYNAMIC_SECTION_KEY = 'export_mca_dynamic_section';
+
   function install() {
     const trackingSection = document.getElementById('containersSection');
     const main = trackingSection?.parentElement;
@@ -39,6 +42,8 @@
         registerNav.textContent = 'Registrar contenedor';
         oldNav.parentElement.insertBefore(registerNav, oldNav);
         registerNav.addEventListener('click', () => {
+          localStorage.setItem(STORAGE_KEY, 'registerContainerSection');
+          localStorage.setItem(DYNAMIC_SECTION_KEY, 'registerContainerSection');
           if (typeof window.showSection === 'function') window.showSection('registerContainerSection');
         });
       }
@@ -47,6 +52,12 @@
     document.querySelectorAll('[onclick*="showSection(\'containersSection\')"]').forEach(el => {
       if (/ver contenedores/i.test(el.textContent || '')) el.textContent = 'Ver tracking';
     });
+
+    if (localStorage.getItem(DYNAMIC_SECTION_KEY) === 'registerContainerSection' && typeof window.showSection === 'function') {
+      window.showSection('registerContainerSection');
+      const appShell = document.getElementById('appShell');
+      if (appShell) appShell.style.visibility = '';
+    }
 
     return true;
   }
