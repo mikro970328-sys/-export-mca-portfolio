@@ -41,6 +41,9 @@
   // duplicated onclick rebinding.
   loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core');
 
+  // One source of truth for dashboard cards and operational distribution.
+  loadScript('/admin/dashboard-operational-state.js?v=20260730-1', 'data-dashboard-operational-state');
+
   loadScript('/admin/erp-core.js', 'data-erp-core', () => {
     loadScript('/admin/workers-module.js', 'data-workers-module', () => {
       loadScript('/admin/workers-responsive.js', 'data-workers-responsive');
