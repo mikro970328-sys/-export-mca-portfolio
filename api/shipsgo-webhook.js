@@ -46,7 +46,7 @@ function extract(payload) {
   const status = EVENT_LABELS[code] || movement?.event_description || movement?.description || 'Nueva actualización del embarque';
   const location = movement?.location?.name || movement?.location || shipment?.current_location || 'No disponible';
   const eventTime = movement?.timestamp || new Date().toISOString();
-  return { shipment, movement, container, status, location, eventTime };
+  return { shipment, movement, container, code, status, location, eventTime };
 }
 
 async function resolveTrackingAlerts(shipmentId) {
@@ -60,6 +60,37 @@ async function resolveTrackingAlerts(shipmentId) {
     }
   });
   return rows?.length || 0;
+}
+
+async function writeTrackingHistory(shipment, event, details, source = 'shipsgo') {
+  try {
+    await supabase('shipment_history', {
+      method: 'POST',
+      body: [{
+        shipment_id: shipment.id,
+        client_id: shipment.client_id,
+        event_type: `shipsgo_${String(event.code || 'event').toLowerCase()}`,
+        title: `ShipsGo · ${event.status}`,
+        details,
+        source
+      }]
+    });
+  } catch (error) {
+    console.error('SHIPSGO_HISTORY_FAILED', error.message);
+  }
+}
+
+async function logWebhookEvent(event, payload, processed, errorMessage = null) {
+  await supabase('webhook_events', {
+    method: 'POST',
+    body: [{
+      container_number: event.container,
+      event_type: event.status,
+      payload,
+      processed,
+      error_message: errorMessage
+    }]
+  });
 }
 
 async function logWhatsAppFailure(shipment, event, payload, error) {
@@ -95,7 +126,7 @@ async function logWhatsAppFailure(shipment, event, payload, error) {
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 5 });
+  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 6 });
   if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
 
   try {
@@ -115,11 +146,45 @@ export default async function handler(req, res) {
     const shipment = rows?.[0];
 
     if (!shipment?.clients?.active) {
-      await supabase('webhook_events', {
-        method: 'POST',
-        body: [{ container_number: event.container, event_type: event.status, payload, processed: false, error_message: 'No hay cliente activo asociado' }]
-      });
+      await logWebhookEvent(event, payload, false, 'No hay cliente activo asociado');
       return ok(res, { received: true, notified: false, reason: 'shipment_not_found' });
+    }
+
+    const incomingTime = new Date(event.eventTime).getTime();
+    const currentTime = shipment.last_event_at ? new Date(shipment.last_event_at).getTime() : 0;
+
+    if (Number.isFinite(currentTime) && currentTime > 0 && Number.isFinite(incomingTime) && incomingTime <= currentTime) {
+      await logWebhookEvent(event, payload, false, 'Evento anterior o igual al último evento confirmado');
+      await writeTrackingHistory(
+        shipment,
+        event,
+        `Ignorado por antigüedad · Evento ShipsGo: ${event.eventTime} · Último evento ERP: ${shipment.last_event_at}`,
+        'shipsgo'
+      );
+      return ok(res, {
+        received: true,
+        tracking_updated: false,
+        notified: false,
+        reason: 'stale_event',
+        current_event_time: shipment.last_event_at,
+        incoming_event_time: event.eventTime
+      });
+    }
+
+    if (shipment.shipsgo_status === 'manual') {
+      await logWebhookEvent(event, payload, false, 'Evento recibido mientras el contenedor está en modo manual');
+      await writeTrackingHistory(
+        shipment,
+        event,
+        `Detectado por ShipsGo durante modo manual · ${event.location} · ${event.eventTime}`,
+        'shipsgo'
+      );
+      return ok(res, {
+        received: true,
+        tracking_updated: false,
+        notified: false,
+        reason: 'manual_mode'
+      });
     }
 
     const existing = await supabase('notifications', {
@@ -130,11 +195,13 @@ export default async function handler(req, res) {
       method: 'PATCH',
       body: {
         last_status: event.status,
+        operational_status: event.status,
         last_location: event.location,
         last_event_at: event.eventTime,
         updated_at: new Date().toISOString()
       }
     });
+    await writeTrackingHistory(shipment, event, `${event.location} · ${event.eventTime}`, 'shipsgo');
     const resolvedAlerts = await resolveTrackingAlerts(shipment.id);
 
     if (existing?.length) {
@@ -182,16 +249,7 @@ export default async function handler(req, res) {
       await logWhatsAppFailure(shipment, event, payload, twilioError);
     }
 
-    await supabase('webhook_events', {
-      method: 'POST',
-      body: [{
-        container_number: event.container,
-        event_type: event.status,
-        payload,
-        processed: true,
-        error_message: twilio ? null : 'Tracking actualizado; notificación WhatsApp fallida'
-      }]
-    });
+    await logWebhookEvent(event, payload, true, twilio ? null : 'Tracking actualizado; notificación WhatsApp fallida');
 
     return ok(res, {
       received: true,
