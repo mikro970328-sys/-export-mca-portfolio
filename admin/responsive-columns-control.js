@@ -62,6 +62,32 @@
     }
   }
 
+  function getControl(){
+    const trigger = document.querySelector('.mca-columns-btn');
+    const panel = document.querySelector('.mca-columns-panel');
+    return { trigger, panel };
+  }
+
+  function panelIsVisible(panel){
+    if (!panel) return false;
+    const styles = getComputedStyle(panel);
+    return styles.display !== 'none' && styles.visibility !== 'hidden' && panel.getClientRects().length > 0;
+  }
+
+  document.addEventListener('click', event => {
+    if (window.matchMedia('(max-width:700px)').matches) return;
+    const { trigger, panel } = getControl();
+    if (!trigger || !panel || !panelIsVisible(panel)) return;
+    if (trigger.contains(event.target) || panel.contains(event.target)) return;
+    setTimeout(() => trigger.click(), 0);
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const { trigger, panel } = getControl();
+    if (trigger && panelIsVisible(panel)) trigger.click();
+  });
+
   install();
   const observer = new MutationObserver(install);
   observer.observe(document.body,{childList:true,subtree:true});
