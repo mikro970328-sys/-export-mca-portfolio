@@ -96,8 +96,7 @@ export default async function handler(req, res) {
       }] });
       const client = created?.[0];
       await audit('client_created', client?.id, { name, phone, mipyme_name: client?.mipyme_name || null, importer_name: client?.importer_name || null });
-      const welcome = client ? await sendWelcome(client) : { status: 'failed' };
-      return ok(res, { client, welcome });
+      return ok(res, { client, welcome: { status: 'pending' } });
     }
 
     if (req.method === 'PATCH') {
