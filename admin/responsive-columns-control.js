@@ -15,7 +15,7 @@
     @media(max-width:700px){
       .mca-columns-wrap{margin:8px 0 10px}
       .mca-columns-btn{padding:9px 11px!important;font-size:12px!important}
-      .mca-columns-panel{position:fixed!important;left:12px!important;right:12px!important;top:auto!important;bottom:12px!important;width:auto!important;max-width:none!important;max-height:56vh!important;border-radius:16px!important;padding:14px!important;box-shadow:0 24px 70px rgba(0,0,0,.28)!important}
+      .mca-columns-panel{position:fixed!important;left:12px!important;right:12px!important;top:auto!important;bottom:12px!important;width:auto!important;max-width:none!important;max-height:56vh!important;border-radius:16px!important;padding:14px!important;box-shadow:0 24px 70px rgba(0,0,0,.28)!important;z-index:1401!important}
       .mca-columns-panel::before{content:'Seleccionar columnas';display:block;font-size:16px;font-weight:800;color:#06204a;padding:2px 4px 10px;border-bottom:1px solid #e6ebf2;margin-bottom:6px}
       .mca-columns-panel label{padding:12px 8px!important;font-size:15px!important}
     }
@@ -74,13 +74,21 @@
     return styles.display !== 'none' && styles.visibility !== 'hidden' && panel.getClientRects().length > 0;
   }
 
-  document.addEventListener('click', event => {
-    if (window.matchMedia('(max-width:700px)').matches) return;
+  let closing = false;
+  function closeFromOutside(event){
     const { trigger, panel } = getControl();
-    if (!trigger || !panel || !panelIsVisible(panel)) return;
+    if (!trigger || !panel || !panelIsVisible(panel) || closing) return;
     if (trigger.contains(event.target) || panel.contains(event.target)) return;
-    setTimeout(() => trigger.click(), 0);
-  });
+
+    closing = true;
+    setTimeout(() => {
+      if (panelIsVisible(panel)) trigger.click();
+      closing = false;
+    }, 0);
+  }
+
+  document.addEventListener('pointerdown', closeFromOutside, true);
+  document.addEventListener('touchstart', closeFromOutside, { capture:true, passive:true });
 
   document.addEventListener('keydown', event => {
     if (event.key !== 'Escape') return;
