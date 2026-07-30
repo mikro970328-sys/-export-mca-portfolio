@@ -91,6 +91,13 @@
     requestAnimationFrame(() => positionMenu(trigger));
   }
 
+  function welcomeActionLabel(row){
+    const status = String(row.querySelector('td:nth-child(4) .pill')?.textContent || 'pending').trim().toLowerCase();
+    if (status === 'sent') return 'Reenviar bienvenida';
+    if (status === 'failed') return 'Reintentar bienvenida';
+    return 'Enviar bienvenida';
+  }
+
   function decorate(){
     const clients = document.getElementById('clients');
     if (!clients) return;
@@ -100,6 +107,8 @@
       if (!actions || actions.dataset.clientMenuReady === '1') return;
       const buttons = Array.from(actions.querySelectorAll(':scope > button'));
       if (!buttons.length) return;
+
+      if (buttons[1]) buttons[1].textContent = welcomeActionLabel(row);
 
       actions.dataset.clientMenuReady = '1';
       const cell = actions.closest('td');
