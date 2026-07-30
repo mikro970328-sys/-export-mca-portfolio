@@ -47,21 +47,23 @@
   }
 
   document.addEventListener('click', event => {
-    const target = event.target instanceof Element ? event.target.closest('button,a,[role="button"]') : null;
-    if (!target) return;
+    const element = event.target instanceof Element ? event.target : null;
+    if (!element) return;
 
-    if (target.id === 'mobileMenuBtn' || target.id === 'sidebarToggle') {
-      if (!isMobile()) return;
+    const menuButton = element.closest('#mobileMenuBtn,#sidebarToggle');
+    if (menuButton && isMobile()) {
+      // The base page still has legacy onclick handlers for these buttons.
+      // Stop this click before it reaches them, otherwise the first handler
+      // opens the sidebar and the legacy handler closes it immediately.
       event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
       toggleMenu();
       return;
     }
 
-    if (target.id === 'mobileOverlay') {
-      event.preventDefault();
-      closeMenu();
-      return;
-    }
+    const target = element.closest('button,a,[role="button"]');
+    if (!target) return;
 
     if (target.id === 'logout') {
       event.preventDefault();
