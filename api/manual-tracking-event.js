@@ -45,6 +45,30 @@ const EVENTS = {
   }
 };
 
+async function claimNotification(shipmentId, eventStatus, source) {
+  try {
+    await supabase('notification_dispatch_claims', {
+      method: 'POST',
+      body: [{ shipment_id: shipmentId, event_status: eventStatus, source }]
+    });
+    return true;
+  } catch (error) {
+    if (String(error.message || '').includes('SUPABASE_409')) return false;
+    throw error;
+  }
+}
+
+async function releaseClaim(shipmentId, eventStatus) {
+  try {
+    await supabase('notification_dispatch_claims', {
+      method: 'DELETE',
+      query: `?shipment_id=eq.${encodeURIComponent(shipmentId)}&event_status=eq.${encodeURIComponent(eventStatus)}`
+    });
+  } catch (error) {
+    console.error('MANUAL_NOTIFICATION_CLAIM_RELEASE_FAILED', error.message);
+  }
+}
+
 async function writeHistory(shipment, event, admin, details) {
   try {
     await supabase('shipment_history', {
@@ -201,6 +225,19 @@ export default async function handler(req, res) {
       });
     }
 
+    const claimed = await claimNotification(shipment.id, event.status, 'manual');
+    if (!claimed) {
+      await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp no reenviado: esta etapa ya había sido notificada`);
+      await writeAudit(shipment, event, admin, { notification_status: 'already_notified', location });
+      return ok(res, {
+        updated: true,
+        event: eventKey,
+        status: event.status,
+        notification_status: 'already_notified',
+        notified: false
+      });
+    }
+
     try {
       const sent = await sendWhatsApp({
         to: shipment.clients.phone,
@@ -224,6 +261,7 @@ export default async function handler(req, res) {
         sid: sent.sid
       });
     } catch (error) {
+      await releaseClaim(shipment.id, event.status);
       await logNotification(shipment, event, {
         status: 'failed',
         templateSid,
