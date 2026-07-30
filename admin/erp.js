@@ -19,11 +19,8 @@
     const waTestCard = waTestButton?.closest('section.card');
     if (waTestCard) waTestCard.remove();
 
-    const refreshButton = document.getElementById('refresh');
-    if (refreshButton) refreshButton.remove();
-    const exportButton = document.getElementById('exportCsv');
-    if (exportButton) exportButton.remove();
-
+    document.getElementById('refresh')?.remove();
+    document.getElementById('exportCsv')?.remove();
     document.getElementById('trackingAlertBell')?.remove();
     document.getElementById('trackingAlertPopover')?.remove();
     document.getElementById('dashboardTrackingAlerts')?.remove();
@@ -39,6 +36,10 @@
   };
 
   removeLegacyAdminControls();
+
+  // Critical mobile controls must load independently. They must not depend on
+  // any optional dashboard, alert, tracking or worker module succeeding first.
+  loadScript('/admin/mobile-controls-stability.js?v=20260730-2', 'data-mobile-controls-stability');
 
   loadScript('/admin/erp-core.js', 'data-erp-core', () => {
     loadScript('/admin/workers-module.js', 'data-workers-module', () => {
@@ -57,9 +58,7 @@
     loadScript('/admin/operational-alert-center.js', 'data-operational-alert-center', () => {
       loadScript('/admin/dashboard-alert-cleanup.js', 'data-dashboard-alert-cleanup', () => {
         loadScript('/admin/phase4-operational-indicators.js', 'data-phase4-operational-indicators');
-        loadScript('/admin/phase4-hotfix-navigation-bell.js', 'data-phase4-hotfix-navigation-bell', () => {
-          loadScript('/admin/mobile-controls-stability.js', 'data-mobile-controls-stability');
-        });
+        loadScript('/admin/phase4-hotfix-navigation-bell.js', 'data-phase4-hotfix-navigation-bell');
       });
     });
     loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
