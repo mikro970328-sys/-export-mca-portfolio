@@ -77,6 +77,8 @@
       alert(`Evento actualizado, pero falló el WhatsApp:\n${result.notification_error || 'Error desconocido'}`);
     } else if (result.notification_status === 'pending_template') {
       alert(`Evento actualizado. Falta configurar ${result.missing_variable} en Vercel para enviar el WhatsApp.`);
+    } else if (result.notification_status === 'already_notified') {
+      alert('Evento actualizado. El cliente ya había recibido esta notificación, por lo que no se envió un WhatsApp duplicado.');
     } else {
       alert(`Evento actualizado y WhatsApp enviado.\nEstado: ${result.notification_status || 'queued'}`);
     }
