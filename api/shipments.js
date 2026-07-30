@@ -138,6 +138,28 @@ async function registerShipsGo(containerNumber, knownTrackingId = null) {
   }
 }
 
+async function deleteShipsGoTracking(shipment) {
+  let trackingId = shipment.shipsgo_tracking_id || null;
+  if (!trackingId) {
+    const found = await findShipsGoTracking(shipment.container_number);
+    trackingId = found?.id || found?.shipment_id || null;
+  }
+  if (!trackingId) return { deleted: false, reason: 'not_found', tracking_id: null };
+
+  const template = process.env.SHIPSGO_DELETE_PATH || 'ocean/shipments/{id}';
+  const path = template.includes('{id}')
+    ? template.replace('{id}', encodeURIComponent(trackingId))
+    : `${template.replace(/\/$/, '')}/${encodeURIComponent(trackingId)}`;
+
+  try {
+    const response = await shipsGoRequest(path, { method: 'DELETE' });
+    return { deleted: true, tracking_id: trackingId, response };
+  } catch (error) {
+    if (error.status === 404) return { deleted: true, tracking_id: trackingId, already_missing: true };
+    throw error;
+  }
+}
+
 export default async function handler(req, res) {
   const admin = requireAdmin(req, res);
   if (!admin) return;
@@ -154,12 +176,21 @@ export default async function handler(req, res) {
       const rows = await supabase('shipments', { query: `?select=id,client_id,container_number,shipsgo_tracking_id&id=eq.${encodeURIComponent(id)}&limit=1` });
       const shipment = rows?.[0];
       if (!shipment) return fail(res, 404, 'Contenedor no encontrado');
-      await audit('shipment_deleted', shipment, { container_number: shipment.container_number, shipsgo_tracking_id: shipment.shipsgo_tracking_id || null, actor: admin.username, deletion_scope: 'erp_only' });
+
+      let shipsgoResult;
+      try {
+        shipsgoResult = await deleteShipsGoTracking(shipment);
+      } catch (error) {
+        await audit('shipment_delete_blocked_shipsgo', shipment, { container_number: shipment.container_number, shipsgo_tracking_id: shipment.shipsgo_tracking_id || null, actor: admin.username, error: error.message });
+        return fail(res, 502, 'No se pudo borrar el tracking en ShipsGo. El contenedor no fue eliminado del ERP.', error.message);
+      }
+
+      await audit('shipment_deleted', shipment, { container_number: shipment.container_number, shipsgo_tracking_id: shipsgoResult.tracking_id || shipment.shipsgo_tracking_id || null, shipsgo_deleted: shipsgoResult.deleted, actor: admin.username, deletion_scope: 'erp_and_shipsgo' });
       await supabase('notifications', { method: 'DELETE', query: `?shipment_id=eq.${encodeURIComponent(id)}` });
       await supabase('shipment_history', { method: 'DELETE', query: `?shipment_id=eq.${encodeURIComponent(id)}` });
       const deleted = await supabase('shipments', { method: 'DELETE', query: `?id=eq.${encodeURIComponent(id)}&select=id,container_number` });
       if (!deleted?.length) return fail(res, 404, 'Contenedor no encontrado');
-      return ok(res, { deleted: true, shipment: deleted[0], shipsgo_deleted: false });
+      return ok(res, { deleted: true, shipment: deleted[0], shipsgo_deleted: shipsgoResult.deleted, shipsgo_tracking_id: shipsgoResult.tracking_id || null, shipsgo_reason: shipsgoResult.reason || null });
     }
 
     if (req.method === 'POST') {
@@ -177,8 +208,8 @@ export default async function handler(req, res) {
       const clientId = String(body.client_id || '').trim();
       if (!clientId) return fail(res, 400, 'Selecciona un cliente');
       const containerNumber = normalizeContainer(body.container_number);
-      const duplicate = await supabase('shipments', { query: `?select=id&container_number=eq.${encodeURIComponent(containerNumber)}&limit=1` });
-      if (duplicate?.length) return fail(res, 409, 'Ese número de contenedor ya está registrado');
+      const duplicate = await supabase('shipments', { query: `?select=id&container_number=eq.${encodeURIComponent(containerNumber)}&active=eq.true&limit=1` });
+      if (duplicate?.length) return fail(res, 409, 'Ese número de contenedor ya tiene una operación activa');
 
       const created = await supabase('shipments', { method: 'POST', body: [{ client_id: clientId, container_number: containerNumber, booking_number: String(body.booking_number || '').trim() || null, bol_number: String(body.bol_number || '').trim() || null, carrier: String(body.carrier || '').trim() || null, product: String(body.product || '').trim() || null, active: true, last_status: 'Registrado', operational_status: 'Registrado', last_location: null, last_event_at: null, shipsgo_status: 'pending' }] });
       let shipment = created?.[0];
@@ -289,8 +320,8 @@ export default async function handler(req, res) {
       if (body.client_id !== undefined) patch.client_id = String(body.client_id).trim();
       if (body.container_number !== undefined) {
         const number = normalizeContainer(body.container_number);
-        const duplicate = await supabase('shipments', { query: `?select=id&container_number=eq.${encodeURIComponent(number)}&id=neq.${encodeURIComponent(id)}&limit=1` });
-        if (duplicate?.length) return fail(res, 409, 'Ese número de contenedor ya está registrado');
+        const duplicate = await supabase('shipments', { query: `?select=id&container_number=eq.${encodeURIComponent(number)}&active=eq.true&id=neq.${encodeURIComponent(id)}&limit=1` });
+        if (duplicate?.length) return fail(res, 409, 'Ese número de contenedor ya tiene una operación activa');
         patch.container_number = number;
       }
       for (const field of ['booking_number', 'bol_number', 'carrier', 'product']) {
