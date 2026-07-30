@@ -40,6 +40,7 @@
       loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu');
     });
     loadScript('/admin/client-extra-fields.js', 'data-client-extra-fields');
+    loadScript('/admin/client-actions-menu.js', 'data-client-actions-menu');
 
     loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking', () => {
       loadScript('/admin/section-state.js', 'data-section-state');
