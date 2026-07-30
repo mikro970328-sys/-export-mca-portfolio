@@ -22,7 +22,12 @@
       #workers tbody{display:table-row-group!important}
       #workers tr{display:table-row!important}
       #workers th,#workers td{display:table-cell!important;width:auto!important;padding:10px 12px!important;white-space:nowrap!important}
-      #workers td:last-child,#workers th:last-child{position:sticky;right:0;background:#fff;z-index:4;box-shadow:none!important}
+      #workers td:last-child,#workers th:last-child{
+        position:sticky;right:0;background:#fff;z-index:4;
+        box-shadow:none!important;-webkit-box-shadow:none!important;
+        filter:none!important;border-left:0!important;outline:0!important
+      }
+      #workers td:last-child::before,#workers th:last-child::before{content:none!important;display:none!important}
       #workers th:last-child{background:#f8fafc;z-index:5}
       #workers .pill{display:inline-flex}
     }
