@@ -21,5 +21,8 @@
 
   loadScript('/admin/erp-core.js', 'data-erp-core', () => {
     loadScript('/admin/workers-module.js', 'data-workers-module');
+    loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
+      loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch');
+    });
   });
 })();
