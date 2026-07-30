@@ -23,9 +23,66 @@
       contain: layout paint;
     }
   `;
-  document.head.appendChild(style);
+  if (!document.getElementById(style.id)) document.head.appendChild(style);
 
   let booted = false;
+
+  const decodeTokenPayload = token => {
+    try {
+      const part = String(token || '').split('.')[1];
+      if (!part) return null;
+      const normalized = part.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      return JSON.parse(decodeURIComponent(escape(atob(padded))));
+    } catch {
+      return null;
+    }
+  };
+
+  const restorePersistedSession = () => {
+    const storedToken = localStorage.getItem('export_mca_token') || '';
+    if (!storedToken) return false;
+
+    const payload = decodeTokenPayload(storedToken);
+    if (!payload?.admin || !payload?.admin_id || !payload?.exp || payload.exp <= Math.floor(Date.now() / 1000)) {
+      localStorage.removeItem('export_mca_token');
+      localStorage.removeItem('export_mca_user');
+      return false;
+    }
+
+    let storedUser = null;
+    try { storedUser = JSON.parse(localStorage.getItem('export_mca_user') || 'null'); }
+    catch { storedUser = null; }
+
+    if (!storedUser?.id || !storedUser?.username || !storedUser?.role) {
+      storedUser = {
+        id: payload.admin_id,
+        username: payload.username || '',
+        full_name: payload.full_name || '',
+        role: payload.role || 'admin'
+      };
+      localStorage.setItem('export_mca_user', JSON.stringify(storedUser));
+    }
+
+    try {
+      if (typeof token !== 'undefined') token = storedToken;
+      if (typeof currentUser !== 'undefined') currentUser = storedUser;
+    } catch {}
+
+    const loginPage = document.getElementById('loginPage');
+    const appShell = document.getElementById('appShell');
+    if (loginPage && appShell) {
+      loginPage.classList.add('hidden');
+      appShell.classList.remove('hidden');
+      document.getElementById('currentUser').textContent = storedUser.username || '';
+      document.getElementById('currentRole').textContent = storedUser.role === 'master_admin' ? 'Administrador maestro' : 'Administrador';
+      document.getElementById('adminNav')?.classList.toggle('hidden', storedUser.role !== 'master_admin');
+      const dashboardDate = document.getElementById('dashboardDate');
+      if (dashboardDate) dashboardDate.textContent = new Date().toLocaleDateString('es-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
+    return true;
+  };
 
   const removeLegacyAdminControls = () => {
     const waTestButton = document.getElementById('sendWaTest');
@@ -49,7 +106,7 @@
   };
 
   const bootAdminModules = () => {
-    if (booted || !localStorage.getItem('export_mca_token')) return;
+    if (booted || !restorePersistedSession()) return;
     booted = true;
 
     removeLegacyAdminControls();
@@ -57,8 +114,8 @@
     loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core');
     loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state');
 
-    loadScript('/admin/erp-core.js?v=20260730-audit1', 'data-erp-core', () => {
-      loadScript('/admin/workers-module.js?v=20260730-audit1', 'data-workers-module', () => {
+    loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core', () => {
+      loadScript('/admin/workers-module.js?v=20260730-sessionfix1', 'data-workers-module', () => {
         loadScript('/admin/workers-responsive.js', 'data-workers-responsive');
         loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu');
       });
@@ -66,7 +123,7 @@
       loadScript('/admin/client-actions-menu.js', 'data-client-actions-menu');
 
       loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking', () => {
-        loadScript('/admin/section-state.js?v=20260730-audit1', 'data-section-state');
+        loadScript('/admin/section-state.js?v=20260730-sessionfix1', 'data-section-state');
       });
 
       loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control');
@@ -86,11 +143,13 @@
     });
   };
 
+  restorePersistedSession();
   bootAdminModules();
 
   const authWatcher = window.setInterval(() => {
     if (!localStorage.getItem('export_mca_token')) return;
     window.clearInterval(authWatcher);
+    restorePersistedSession();
     bootAdminModules();
   }, 250);
 })();
