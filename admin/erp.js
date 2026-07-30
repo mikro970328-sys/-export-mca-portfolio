@@ -1,9 +1,4 @@
 (() => {
-  const legacyToolbarStyle = document.createElement('style');
-  legacyToolbarStyle.id = 'legacyToolbarPrepaintHide';
-  legacyToolbarStyle.textContent = '#refresh,#exportCsv{display:none!important}';
-  document.head.appendChild(legacyToolbarStyle);
-
   const SECTION_KEY = 'export_mca_current_section';
   const DYNAMIC_SECTION_KEY = 'export_mca_dynamic_section';
   const savedSection = localStorage.getItem(DYNAMIC_SECTION_KEY) || localStorage.getItem(SECTION_KEY);
@@ -24,8 +19,11 @@
     const waTestCard = waTestButton?.closest('section.card');
     if (waTestCard) waTestCard.remove();
 
-    document.getElementById('refresh')?.remove();
-    document.getElementById('exportCsv')?.remove();
+    const refreshButton = document.getElementById('refresh');
+    if (refreshButton) refreshButton.remove();
+    const exportButton = document.getElementById('exportCsv');
+    if (exportButton) exportButton.remove();
+
     document.getElementById('trackingAlertBell')?.remove();
     document.getElementById('trackingAlertPopover')?.remove();
     document.getElementById('dashboardTrackingAlerts')?.remove();
@@ -43,7 +41,6 @@
   removeLegacyAdminControls();
 
   loadScript('/admin/erp-core.js', 'data-erp-core', () => {
-    removeLegacyAdminControls();
     loadScript('/admin/workers-module.js', 'data-workers-module', () => {
       loadScript('/admin/workers-responsive.js', 'data-workers-responsive');
       loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu');
@@ -60,7 +57,9 @@
     loadScript('/admin/operational-alert-center.js', 'data-operational-alert-center', () => {
       loadScript('/admin/dashboard-alert-cleanup.js', 'data-dashboard-alert-cleanup', () => {
         loadScript('/admin/phase4-operational-indicators.js', 'data-phase4-operational-indicators');
-        loadScript('/admin/phase4-hotfix-navigation-bell.js', 'data-phase4-hotfix-navigation-bell');
+        loadScript('/admin/phase4-hotfix-navigation-bell.js', 'data-phase4-hotfix-navigation-bell', () => {
+          loadScript('/admin/mobile-controls-stability.js', 'data-mobile-controls-stability');
+        });
       });
     });
     loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
