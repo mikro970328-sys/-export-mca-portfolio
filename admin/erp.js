@@ -119,7 +119,7 @@
         loadScript('/admin/workers-responsive.js', 'data-workers-responsive');
         loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu');
       });
-      loadScript('/admin/client-extra-fields.js?v=20260730-importer1', 'data-client-extra-fields');
+      loadScript('/admin/client-extra-fields.js', 'data-client-extra-fields');
       loadScript('/admin/client-actions-menu.js', 'data-client-actions-menu');
 
       loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking', () => {
