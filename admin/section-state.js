@@ -32,6 +32,7 @@
       appShell.style.removeProperty('display');
       appShell.style.visibility = '';
     }
+    document.documentElement.style.visibility = '';
     window.__sectionRestorePending = false;
   }
 
@@ -54,14 +55,14 @@
 
     if (canOpen(saved)) {
       window.showSection(saved);
-      requestAnimationFrame(revealApp);
+      requestAnimationFrame(() => requestAnimationFrame(revealApp));
       return;
     }
 
     localStorage.removeItem(DYNAMIC_SECTION_KEY);
     localStorage.removeItem(STORAGE_KEY);
     originalShowSection('dashboardSection');
-    revealApp();
+    requestAnimationFrame(revealApp);
   }
 
   restoreSection();
