@@ -55,6 +55,7 @@
     loadScript('/admin/operational-alert-center.js', 'data-operational-alert-center', () => {
       loadScript('/admin/dashboard-alert-cleanup.js', 'data-dashboard-alert-cleanup', () => {
         loadScript('/admin/phase4-operational-indicators.js', 'data-phase4-operational-indicators');
+        loadScript('/admin/phase4-hotfix-navigation-bell.js', 'data-phase4-hotfix-navigation-bell');
       });
     });
     loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
