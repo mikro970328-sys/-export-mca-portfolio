@@ -49,6 +49,7 @@
     loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control');
     loadScript('/admin/module-export-controls.js', 'data-module-export-controls');
     loadScript('/admin/tracking-alert-center.js', 'data-tracking-alert-center');
+    loadScript('/admin/operational-alert-center.js', 'data-operational-alert-center');
     loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
       loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch', () => {
         loadScript('/admin/shipment-actions-menu.js', 'data-shipment-actions-menu', () => {
