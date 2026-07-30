@@ -55,7 +55,7 @@ async function resolveInactiveAlerts(activeShipmentIds) {
 async function runCheck() {
   const [shipments, previousAlerts] = await Promise.all([
     supabase('shipments', {
-      query: '?select=id,client_id,container_number,shipsgo_status,last_event_at,created_at,active,clients(id,name,phone)&active=eq.true&shipsgo_status=neq.manual&order=created_at.asc'
+      query: '?select=id,client_id,container_number,shipsgo_status,last_event_at,created_at,active,clients(id,name,phone)&active=eq.true&or=(shipsgo_status.is.null,shipsgo_status.neq.manual)&order=created_at.asc'
     }),
     supabase('notifications', {
       query: '?select=id,shipment_id,created_at,updated_at,last_attempt_at,payload,status,event_type,event_status,attempt_count&event_type=eq.tracking_stale&status=eq.pending&order=created_at.desc&limit=1000'
