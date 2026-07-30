@@ -84,9 +84,18 @@ export default async function handler(req, res) {
       const email = String(body.email || '').trim().toLowerCase() || null;
       const duplicate = await findDuplicate({ phone, email });
       if (duplicate) return fail(res, 409, 'Ese cliente ya existe', JSON.stringify({ existing_client: duplicate }));
-      const created = await supabase('clients', { method: 'POST', body: [{ name, company: String(body.company || '').trim() || null, phone, email, active: true, welcome_status: 'pending' }] });
+      const created = await supabase('clients', { method: 'POST', body: [{
+        name,
+        company: String(body.company || '').trim() || null,
+        mipyme_name: String(body.mipyme_name || '').trim() || null,
+        importer_name: String(body.importer_name || '').trim() || null,
+        phone,
+        email,
+        active: true,
+        welcome_status: 'pending'
+      }] });
       const client = created?.[0];
-      await audit('client_created', client?.id, { name, phone });
+      await audit('client_created', client?.id, { name, phone, mipyme_name: client?.mipyme_name || null, importer_name: client?.importer_name || null });
       const welcome = client ? await sendWelcome(client) : { status: 'failed' };
       return ok(res, { client, welcome });
     }
@@ -102,6 +111,8 @@ export default async function handler(req, res) {
       const patch = { updated_at: new Date().toISOString() };
       if (body.name !== undefined) { patch.name = String(body.name).trim(); if (!patch.name) return fail(res, 400, 'El nombre es obligatorio'); }
       if (body.company !== undefined) patch.company = String(body.company).trim() || null;
+      if (body.mipyme_name !== undefined) patch.mipyme_name = String(body.mipyme_name).trim() || null;
+      if (body.importer_name !== undefined) patch.importer_name = String(body.importer_name).trim() || null;
       if (body.phone !== undefined) patch.phone = normalizePhone(body.phone);
       if (body.email !== undefined) patch.email = String(body.email).trim().toLowerCase() || null;
       const duplicate = await findDuplicate({ phone: patch.phone || current.phone, email: patch.email ?? current.email, excludeId: id });
