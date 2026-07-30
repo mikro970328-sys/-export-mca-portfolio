@@ -28,7 +28,10 @@
 
   function revealApp() {
     const appShell = document.getElementById('appShell');
-    if (appShell) appShell.style.visibility = '';
+    if (appShell) {
+      appShell.style.removeProperty('display');
+      appShell.style.visibility = '';
+    }
     window.__sectionRestorePending = false;
   }
 
@@ -41,8 +44,9 @@
     }
   };
 
-  function restoreSection(attempt = 0) {
+  function restoreSection() {
     const saved = localStorage.getItem(DYNAMIC_SECTION_KEY) || localStorage.getItem(STORAGE_KEY);
+
     if (!saved || saved === 'dashboardSection') {
       revealApp();
       return;
@@ -50,16 +54,13 @@
 
     if (canOpen(saved)) {
       window.showSection(saved);
-      revealApp();
-      return;
-    }
-
-    if (attempt < 40) {
-      setTimeout(() => restoreSection(attempt + 1), 50);
+      requestAnimationFrame(revealApp);
       return;
     }
 
     localStorage.removeItem(DYNAMIC_SECTION_KEY);
+    localStorage.removeItem(STORAGE_KEY);
+    originalShowSection('dashboardSection');
     revealApp();
   }
 
