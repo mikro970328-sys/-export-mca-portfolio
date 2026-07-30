@@ -8,6 +8,10 @@
     {
       "path": "/api/discharge-release-alerts",
       "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/manual-tracking-alerts",
+      "schedule": "30 * * * *"
     }
   ],
   "routes": [
