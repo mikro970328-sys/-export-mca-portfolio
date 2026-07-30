@@ -4,6 +4,7 @@
 
   const $ = id => document.getElementById(id);
   const token = () => localStorage.getItem('export_mca_token') || '';
+  const IMPORTER_LABEL = 'Importadora por la que importa';
 
   async function request(path, options = {}) {
     const response = await fetch(path, {
@@ -19,14 +20,33 @@
     return data;
   }
 
+  function removeLegacyImporterField() {
+    const importer = $('clientImporter');
+    if (!importer) return;
+    const label = importer.previousElementSibling;
+    if (label?.tagName === 'LABEL') label.remove();
+    importer.remove();
+  }
+
+  function applyLabels() {
+    const company = $('clientCompany');
+    const label = company?.previousElementSibling;
+    if (label?.tagName === 'LABEL') label.textContent = IMPORTER_LABEL;
+
+    document.querySelectorAll('#clients thead th').forEach(header => {
+      if (header.textContent.trim() === 'Empresa') header.textContent = IMPORTER_LABEL;
+    });
+  }
+
   function installFields() {
+    removeLegacyImporterField();
+    applyLabels();
+
     const company = $('clientCompany');
     if (!company || $('clientMipyme')) return;
     company.insertAdjacentHTML('afterend', `
       <label>Nombre de la MIPYME</label>
       <input id="clientMipyme" placeholder="Opcional, si el cliente tiene MIPYME">
-      <label>Importadora por la que importa</label>
-      <input id="clientImporter" placeholder="Ejemplo: Quimimport, Consumimport...">
     `);
   }
 
@@ -45,7 +65,6 @@
             name: $('clientName')?.value,
             company: $('clientCompany')?.value,
             mipyme_name: $('clientMipyme')?.value,
-            importer_name: $('clientImporter')?.value,
             phone: $('clientPhone')?.value,
             email: $('clientEmail')?.value
           })
@@ -53,7 +72,7 @@
         if (typeof window.note === 'function') {
           window.note('clientMsg', result.welcome?.status === 'sent' ? 'Cliente guardado y bienvenida enviada.' : 'Cliente guardado. Bienvenida pendiente de plantilla.', true);
         }
-        ['clientName','clientCompany','clientMipyme','clientImporter','clientPhone','clientEmail'].forEach(id => { if ($(id)) $(id).value = ''; });
+        ['clientName','clientCompany','clientMipyme','clientPhone','clientEmail'].forEach(id => { if ($(id)) $(id).value = ''; });
         if (typeof window.loadAll === 'function') await window.loadAll();
       } catch (error) {
         if (typeof window.note === 'function') window.note('clientMsg', error.message);
@@ -75,12 +94,10 @@
 
     const name = prompt('Nombre', client.name || '');
     if (name === null) return;
-    const company = prompt('Empresa', client.company || '');
+    const company = prompt(IMPORTER_LABEL, client.company || '');
     if (company === null) return;
     const mipyme_name = prompt('Nombre de la MIPYME', client.mipyme_name || '');
     if (mipyme_name === null) return;
-    const importer_name = prompt('Importadora por la que importa', client.importer_name || '');
-    if (importer_name === null) return;
     const phone = prompt('WhatsApp', client.phone || '');
     if (phone === null) return;
     const email = prompt('Correo', client.email || '');
@@ -88,13 +105,16 @@
 
     await request('/api/clients', {
       method: 'PATCH',
-      body: JSON.stringify({ id, name, company, mipyme_name, importer_name, phone, email })
+      body: JSON.stringify({ id, name, company, mipyme_name, phone, email })
     });
     if (typeof window.loadAll === 'function') await window.loadAll();
   };
 
   installFields();
   overrideSave();
-  const observer = new MutationObserver(() => { installFields(); overrideSave(); });
+  const observer = new MutationObserver(() => {
+    installFields();
+    overrideSave();
+  });
   observer.observe(document.body, { childList: true, subtree: true });
 })();
