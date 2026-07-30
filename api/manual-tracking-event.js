@@ -189,6 +189,9 @@ export default async function handler(req, res) {
       last_event_at: now,
       updated_at: now
     };
+    if (eventKey === 'discharged') {
+      patch.discharged_at = shipment.discharged_at || now;
+    }
     if (eventKey === 'released') {
       patch.released_at = shipment.released_at || now;
       patch.release_method = 'manual_tracking';
@@ -197,7 +200,7 @@ export default async function handler(req, res) {
     }
     if (eventKey === 'delivered') {
       patch.active = false;
-      patch.delivered_at = now;
+      patch.delivered_at = shipment.delivered_at || now;
     }
 
     await supabase('shipments', {
