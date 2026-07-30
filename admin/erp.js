@@ -21,6 +21,7 @@
 
   loadScript('/admin/erp-core.js', 'data-erp-core', () => {
     loadScript('/admin/workers-module.js', 'data-workers-module');
+    loadScript('/admin/client-extra-fields.js', 'data-client-extra-fields');
     loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
       loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch', () => {
         loadScript('/admin/shipment-actions-menu.js', 'data-shipment-actions-menu', () => {
