@@ -1,3 +1,4 @@
+// Restored stable interface before company removal.
 (() => {
   const SECTION_KEY = 'export_mca_current_section';
   const DYNAMIC_SECTION_KEY = 'export_mca_dynamic_section';
