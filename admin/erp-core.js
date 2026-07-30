@@ -173,7 +173,7 @@
 (() => {
   if (document.querySelector('script[data-shipment-editor]')) return;
   const script = document.createElement('script');
-  script.src = '/admin/shipment-editor.js';
+  script.src = '/admin/shipment-editor.js?v=20260730-2';
   script.dataset.shipmentEditor = 'true';
   script.defer = true;
   document.head.appendChild(script);
