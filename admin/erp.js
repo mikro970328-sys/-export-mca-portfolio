@@ -37,9 +37,9 @@
 
   removeLegacyAdminControls();
 
-  // Critical mobile controls must load independently. They must not depend on
-  // any optional dashboard, alert, tracking or worker module succeeding first.
-  loadScript('/admin/mobile-controls-stability.js?v=20260730-2', 'data-mobile-controls-stability');
+  // Single audited mobile controller. No global MutationObserver and no
+  // duplicated onclick rebinding.
+  loadScript('/admin/mobile-interaction-core.js?v=20260730-1', 'data-mobile-interaction-core');
 
   loadScript('/admin/erp-core.js', 'data-erp-core', () => {
     loadScript('/admin/workers-module.js', 'data-workers-module', () => {
@@ -55,12 +55,12 @@
 
     loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control');
     loadScript('/admin/module-export-controls.js', 'data-module-export-controls');
-    loadScript('/admin/operational-alert-center.js', 'data-operational-alert-center', () => {
-      loadScript('/admin/dashboard-alert-cleanup.js', 'data-dashboard-alert-cleanup', () => {
-        loadScript('/admin/phase4-operational-indicators.js', 'data-phase4-operational-indicators');
-        loadScript('/admin/phase4-hotfix-navigation-bell.js', 'data-phase4-hotfix-navigation-bell');
-      });
-    });
+
+    // Keep the operational alert center, but do not load the corrupted
+    // dashboard cleanup / phase4 chain that previously reintroduced competing
+    // navigation and bell handlers.
+    loadScript('/admin/operational-alert-center.js', 'data-operational-alert-center');
+
     loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
       loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch', () => {
         loadScript('/admin/shipment-actions-menu.js', 'data-shipment-actions-menu', () => {
