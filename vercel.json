@@ -4,6 +4,10 @@
     {
       "path": "/api/tracking-alerts",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/discharge-release-alerts",
+      "schedule": "15 * * * *"
     }
   ],
   "routes": [
