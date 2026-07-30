@@ -4,10 +4,14 @@
   const savedSection = localStorage.getItem(DYNAMIC_SECTION_KEY) || localStorage.getItem(SECTION_KEY);
   const appShell = document.getElementById('appShell');
 
+  if (savedSection && savedSection !== 'dashboardSection') {
+    document.documentElement.style.visibility = 'hidden';
+    window.__sectionRestorePending = true;
+  }
+
   if (appShell && savedSection && savedSection !== 'dashboardSection') {
     appShell.style.setProperty('display', 'none', 'important');
     appShell.style.visibility = 'hidden';
-    window.__sectionRestorePending = true;
   }
 
   const removeLegacyAdminControls = () => {
@@ -37,8 +41,6 @@
     });
     loadScript('/admin/client-extra-fields.js', 'data-client-extra-fields');
 
-    // Registrar contenedor is created dynamically. Build it first, then restore
-    // the saved section, so the app never renders Inicio as an intermediate state.
     loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking', () => {
       loadScript('/admin/section-state.js', 'data-section-state');
     });
