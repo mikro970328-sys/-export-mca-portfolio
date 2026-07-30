@@ -5,6 +5,7 @@
   const appShell = document.getElementById('appShell');
 
   if (appShell && savedSection && savedSection !== 'dashboardSection') {
+    appShell.style.setProperty('display', 'none', 'important');
     appShell.style.visibility = 'hidden';
     window.__sectionRestorePending = true;
   }
@@ -35,10 +36,15 @@
       loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu');
     });
     loadScript('/admin/client-extra-fields.js', 'data-client-extra-fields');
-    loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking');
+
+    // Registrar contenedor is created dynamically. Build it first, then restore
+    // the saved section, so the app never renders Inicio as an intermediate state.
+    loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking', () => {
+      loadScript('/admin/section-state.js', 'data-section-state');
+    });
+
     loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control');
     loadScript('/admin/module-export-controls.js', 'data-module-export-controls');
-    loadScript('/admin/section-state.js', 'data-section-state');
     loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
       loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch', () => {
         loadScript('/admin/shipment-actions-menu.js', 'data-shipment-actions-menu', () => {
