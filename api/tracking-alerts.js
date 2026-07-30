@@ -91,7 +91,7 @@ function isSnoozed(row, nowMs) {
 
 async function processClientAlerts(activeAlerts, now, nowMs) {
   const [clients, shipments] = await Promise.all([
-    supabase('clients', { query: '?select=id,name,company,created_at,status&order=created_at.asc&limit=5000' }),
+    supabase('clients', { query: '?select=id,name,company,created_at,active&order=created_at.asc&limit=5000' }),
     supabase('shipments', { query: '?select=id,client_id&limit=5000' })
   ]);
 
@@ -103,7 +103,7 @@ async function processClientAlerts(activeAlerts, now, nowMs) {
     const key = activeAlertKey('client_without_shipment', client.id);
     const previous = activeAlerts.get(key);
     const createdAt = validDate(client.created_at);
-    const inactive = client.status && !['active', 'activo'].includes(String(client.status).toLowerCase());
+    const inactive = client.active === false;
     const resolvedReason = inactive ? 'client_inactive' : clientsWithShipment.has(client.id) ? 'shipment_assigned' : null;
 
     if (resolvedReason) {
