@@ -49,6 +49,30 @@ function extract(payload) {
   return { shipment, movement, container, code, status, location, eventTime };
 }
 
+async function claimNotification(shipmentId, eventStatus) {
+  try {
+    await supabase('notification_dispatch_claims', {
+      method: 'POST',
+      body: [{ shipment_id: shipmentId, event_status: eventStatus, source: 'shipsgo' }]
+    });
+    return true;
+  } catch (error) {
+    if (String(error.message || '').includes('SUPABASE_409')) return false;
+    throw error;
+  }
+}
+
+async function releaseClaim(shipmentId, eventStatus) {
+  try {
+    await supabase('notification_dispatch_claims', {
+      method: 'DELETE',
+      query: `?shipment_id=eq.${encodeURIComponent(shipmentId)}&event_status=eq.${encodeURIComponent(eventStatus)}`
+    });
+  } catch (error) {
+    console.error('SHIPSGO_NOTIFICATION_CLAIM_RELEASE_FAILED', error.message);
+  }
+}
+
 async function resolveTrackingAlerts(shipmentId) {
   const rows = await supabase('notifications', {
     method: 'PATCH',
@@ -126,7 +150,7 @@ async function logWhatsAppFailure(shipment, event, payload, error) {
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 6 });
+  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 7 });
   if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
 
   try {
@@ -187,10 +211,6 @@ export default async function handler(req, res) {
       });
     }
 
-    const existing = await supabase('notifications', {
-      query: `?select=id&shipment_id=eq.${shipment.id}&event_status=eq.${encodeURIComponent(event.status)}&event_time=eq.${encodeURIComponent(event.eventTime)}&limit=1`
-    });
-
     await supabase(`shipments?id=eq.${shipment.id}`, {
       method: 'PATCH',
       body: {
@@ -204,13 +224,21 @@ export default async function handler(req, res) {
     await writeTrackingHistory(shipment, event, `${event.location} · ${event.eventTime}`, 'shipsgo');
     const resolvedAlerts = await resolveTrackingAlerts(shipment.id);
 
-    if (existing?.length) {
+    const claimed = await claimNotification(shipment.id, event.status);
+    if (!claimed) {
+      await logWebhookEvent(event, payload, true, 'Etapa ya notificada previamente por ShipsGo o manual');
+      await writeTrackingHistory(
+        shipment,
+        event,
+        'Tracking actualizado sin reenviar WhatsApp · La etapa ya había sido notificada',
+        'shipsgo'
+      );
       return ok(res, {
         received: true,
         tracking_updated: true,
         resolved_alerts: resolvedAlerts,
         notified: false,
-        reason: 'duplicate'
+        reason: 'already_notified'
       });
     }
 
@@ -246,6 +274,7 @@ export default async function handler(req, res) {
       });
     } catch (twilioError) {
       console.error('SHIPSGO_WHATSAPP_ERROR', twilioError);
+      await releaseClaim(shipment.id, event.status);
       await logWhatsAppFailure(shipment, event, payload, twilioError);
     }
 
