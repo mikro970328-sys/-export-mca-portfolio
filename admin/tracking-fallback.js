@@ -121,15 +121,45 @@
           actions.appendChild(manual);
         }
 
-        if (shipment.shipsgo_status === 'failed' || shipment.shipsgo_status === 'manual') {
+        if (shipment.shipsgo_status === 'manual') {
+          const resume = document.createElement('button');
+          resume.className = 'alt';
+          resume.textContent = shipment.shipsgo_tracking_id ? 'Volver a automático' : 'Reconectar ShipsGo';
+          resume.onclick = async () => {
+            const hasExistingTracking = Boolean(shipment.shipsgo_tracking_id);
+            const question = hasExistingTracking
+              ? `¿Volver ${shipment.container_number} al seguimiento automático? Se conservará el tracking existente de ShipsGo.`
+              : `Este contenedor no tiene un tracking vinculado. ¿Intentar conectarlo nuevamente con ShipsGo?`;
+            if (!confirm(question)) return;
+
+            try {
+              if (hasExistingTracking) {
+                await request('/api/tracking-mode', {
+                  method: 'PATCH',
+                  body: JSON.stringify({ id: shipment.id, action: 'enable_auto' })
+                });
+                alert('Seguimiento automático reanudado. ShipsGo seguirá enviando los próximos eventos.');
+              } else {
+                await request('/api/shipments', {
+                  method: 'PATCH',
+                  body: JSON.stringify({ id: shipment.id, action: 'retry_shipsgo' })
+                });
+                alert('ShipsGo quedó conectado y el seguimiento automático está activo.');
+              }
+              if (typeof window.loadAll === 'function') await window.loadAll();
+            } catch (error) {
+              alert(error.message);
+            }
+          };
+          actions.appendChild(resume);
+        }
+
+        if (shipment.shipsgo_status === 'failed') {
           const retry = document.createElement('button');
           retry.className = 'alt';
-          retry.textContent = 'Intentar ShipsGo';
+          retry.textContent = 'Reconectar ShipsGo';
           retry.onclick = async () => {
-            const question = shipment.shipsgo_status === 'manual'
-              ? `¿Intentar conectar ${shipment.container_number} con ShipsGo? Si funciona, volverá al modo automático.`
-              : `¿Reintentar ShipsGo para ${shipment.container_number}?`;
-            if (!confirm(question)) return;
+            if (!confirm(`¿Reintentar ShipsGo para ${shipment.container_number}?`)) return;
             try {
               await request('/api/shipments', {
                 method: 'PATCH',
