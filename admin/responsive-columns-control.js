@@ -2,6 +2,8 @@
   if (window.__responsiveColumnsControlInstalled) return;
   window.__responsiveColumnsControlInstalled = true;
 
+  let keepOpenUntil = 0;
+
   const style = document.createElement('style');
   style.textContent = `
     .mca-columns-wrap{display:flex;justify-content:flex-end;align-items:center;margin:10px 0;position:relative}
@@ -43,6 +45,7 @@
   }
 
   function closeColumns(){
+    keepOpenUntil = 0;
     const { details } = getControl();
     if (details) details.open = false;
     backdrop.classList.remove('show');
@@ -57,6 +60,14 @@
     document.body.classList.toggle('mca-columns-open', mobile && open);
   }
 
+  function reopenAfterRender(){
+    if (Date.now() > keepOpenUntil) return;
+    const { details } = getControl();
+    if (!details) return;
+    details.open = true;
+    syncOpenState();
+  }
+
   function install(){
     const tracking = document.getElementById('trackingSection') || document.getElementById('containersSection');
     if (!tracking) return;
@@ -64,6 +75,7 @@
     const candidates = [...tracking.querySelectorAll('button,summary,[role="button"]')];
     const trigger = candidates.find(el => ['columnas','ver columnas','personalizar columnas'].includes(textOf(el)));
     if (!trigger || trigger.dataset.responsiveColumnsReady === '1') {
+      reopenAfterRender();
       syncOpenState();
       return;
     }
@@ -115,6 +127,8 @@
       details.dataset.mcaToggleReady = '1';
       details.addEventListener('toggle', syncOpenState);
     }
+
+    reopenAfterRender();
     syncOpenState();
   }
 
@@ -123,6 +137,25 @@
     event.preventDefault();
     closeColumns();
   });
+
+  document.addEventListener('change', event => {
+    const checkbox = event.target.closest?.('.mca-columns-panel input[type="checkbox"]');
+    if (!checkbox) return;
+
+    // The tracking table is re-rendered after every checkbox change. Keep the
+    // selector open through that render so several columns can be changed at once.
+    keepOpenUntil = Date.now() + 1500;
+    requestAnimationFrame(() => requestAnimationFrame(reopenAfterRender));
+    setTimeout(reopenAfterRender, 0);
+    setTimeout(reopenAfterRender, 60);
+    setTimeout(reopenAfterRender, 180);
+  }, true);
+
+  document.addEventListener('click', event => {
+    if (event.target.closest?.('.mca-columns-panel label, .mca-columns-panel input[type="checkbox"]')) {
+      keepOpenUntil = Date.now() + 1500;
+    }
+  }, true);
 
   document.addEventListener('pointerdown', event => {
     const { trigger, panel, details } = getControl();
@@ -137,6 +170,9 @@
 
   window.addEventListener('resize', syncOpenState);
   install();
-  const observer = new MutationObserver(install);
+  const observer = new MutationObserver(() => {
+    install();
+    reopenAfterRender();
+  });
   observer.observe(document.body,{childList:true,subtree:true});
 })();
