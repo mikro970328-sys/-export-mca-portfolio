@@ -10,7 +10,7 @@ function cronAuthorized(req) {
 }
 
 function referenceTime(shipment) {
-  const value = shipment.last_event_at || shipment.updated_at || shipment.created_at;
+  const value = shipment.last_event_at || shipment.created_at;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
@@ -21,73 +21,140 @@ function alertLevel(ageMs) {
   return null;
 }
 
+function lastAlertTime(alert) {
+  const value = alert?.last_attempt_at || alert?.updated_at || alert?.created_at;
+  const date = new Date(value || 0).getTime();
+  return Number.isFinite(date) ? date : 0;
+}
+
 function alertDue(previous, level, nowMs) {
   if (!previous) return true;
-  const previousLevel = previous.payload?.alert_level;
-  const lastAt = new Date(previous.created_at).getTime();
+  const previousLevel = previous.payload?.alert_level || previous.event_status;
   if (level === 'critical' && previousLevel !== 'critical') return true;
-  return level === 'critical' && Number.isFinite(lastAt) && nowMs - lastAt >= TWELVE_HOURS;
+  return level === 'critical' && nowMs - lastAlertTime(previous) >= TWELVE_HOURS;
+}
+
+async function resolveInactiveAlerts(activeShipmentIds) {
+  const pending = await supabase('notifications', {
+    query: '?select=id,shipment_id&event_type=eq.tracking_stale&status=eq.pending&limit=1000'
+  });
+
+  const inactive = (pending || []).filter(row => !activeShipmentIds.has(row.shipment_id));
+  await Promise.all(inactive.map(row => supabase('notifications', {
+    method: 'PATCH',
+    query: `?id=eq.${encodeURIComponent(row.id)}`,
+    body: {
+      status: 'resolved',
+      delivery_status: 'resolved',
+      updated_at: new Date().toISOString()
+    }
+  })));
+  return inactive.length;
 }
 
 async function runCheck() {
   const [shipments, previousAlerts] = await Promise.all([
     supabase('shipments', {
-      query: '?select=id,client_id,container_number,shipsgo_status,last_event_at,updated_at,created_at,active,clients(id,name,phone)&active=eq.true&shipsgo_status=neq.manual&order=created_at.asc'
+      query: '?select=id,client_id,container_number,shipsgo_status,last_event_at,created_at,active,clients(id,name,phone)&active=eq.true&shipsgo_status=neq.manual&order=created_at.asc'
     }),
     supabase('notifications', {
-      query: '?select=id,shipment_id,created_at,payload,status,event_type&event_type=eq.tracking_stale&order=created_at.desc&limit=1000'
+      query: '?select=id,shipment_id,created_at,updated_at,last_attempt_at,payload,status,event_type,event_status,attempt_count&event_type=eq.tracking_stale&status=eq.pending&order=created_at.desc&limit=1000'
     })
   ]);
 
   const latestByShipment = new Map();
-  for (const row of previousAlerts || []) if (!latestByShipment.has(row.shipment_id)) latestByShipment.set(row.shipment_id, row);
+  for (const row of previousAlerts || []) {
+    if (!latestByShipment.has(row.shipment_id)) latestByShipment.set(row.shipment_id, row);
+  }
 
   const now = new Date();
-  const created = [];
+  const nowMs = now.getTime();
+  const activeShipmentIds = new Set((shipments || []).map(row => row.id));
+  const changed = [];
+
   for (const shipment of shipments || []) {
     const reference = referenceTime(shipment);
     if (!reference) continue;
-    const ageMs = now.getTime() - reference.getTime();
+
+    const ageMs = nowMs - reference.getTime();
     const level = alertLevel(ageMs);
-    if (!level) continue;
-
     const previous = latestByShipment.get(shipment.id);
-    if (!alertDue(previous, level, now.getTime())) continue;
 
-    const repeatCount = Number(previous?.payload?.repeat_count || 0) + 1;
+    if (!level) {
+      if (previous) {
+        await supabase('notifications', {
+          method: 'PATCH',
+          query: `?id=eq.${encodeURIComponent(previous.id)}`,
+          body: { status: 'resolved', delivery_status: 'resolved', updated_at: now.toISOString() }
+        });
+      }
+      continue;
+    }
+
+    if (!alertDue(previous, level, nowMs)) continue;
+
+    const repeatCount = previous
+      ? Number(previous.payload?.repeat_count || previous.attempt_count || 1) + 1
+      : 1;
     const hoursWithoutUpdate = Math.floor(ageMs / (60 * 60 * 1000));
-    const title = level === 'critical' ? 'Tracking sin actualización por 12 horas' : 'Tracking sin actualización por 6 horas';
+    const title = level === 'critical'
+      ? 'Tracking sin actualización por 12 horas'
+      : 'Tracking sin actualización por 6 horas';
+    const payload = {
+      title,
+      container_number: shipment.container_number,
+      client_name: shipment.clients?.name || null,
+      alert_level: level,
+      hours_without_update: hoursWithoutUpdate,
+      reference_at: reference.toISOString(),
+      repeat_count: repeatCount,
+      required_action: 'enable_manual'
+    };
 
-    const inserted = await supabase('notifications', {
-      method: 'POST',
-      body: [{
-        shipment_id: shipment.id,
-        client_id: shipment.client_id,
-        event_type: 'tracking_stale',
-        event_status: level,
-        channel: 'internal',
-        status: 'pending',
-        delivery_status: 'pending',
-        recipient: null,
-        recipient_phone: null,
-        payload: {
-          title,
-          container_number: shipment.container_number,
-          client_name: shipment.clients?.name || null,
-          alert_level: level,
-          hours_without_update: hoursWithoutUpdate,
-          reference_at: reference.toISOString(),
-          repeat_count: repeatCount,
-          required_action: 'enable_manual'
-        },
-        attempt_count: repeatCount,
-        last_attempt_at: now.toISOString()
-      }]
-    });
-    created.push(inserted?.[0] || { shipment_id: shipment.id, level });
+    if (previous) {
+      const updated = await supabase('notifications', {
+        method: 'PATCH',
+        query: `?id=eq.${encodeURIComponent(previous.id)}&select=*`,
+        body: {
+          event_status: level,
+          status: 'pending',
+          delivery_status: 'pending',
+          payload,
+          attempt_count: repeatCount,
+          last_attempt_at: now.toISOString(),
+          updated_at: now.toISOString()
+        }
+      });
+      changed.push(updated?.[0] || { id: previous.id, shipment_id: shipment.id, level, action: 'updated' });
+    } else {
+      const inserted = await supabase('notifications', {
+        method: 'POST',
+        body: [{
+          shipment_id: shipment.id,
+          client_id: shipment.client_id,
+          event_type: 'tracking_stale',
+          event_status: level,
+          channel: 'internal',
+          status: 'pending',
+          delivery_status: 'pending',
+          recipient: null,
+          recipient_phone: null,
+          payload,
+          attempt_count: repeatCount,
+          last_attempt_at: now.toISOString()
+        }]
+      });
+      changed.push(inserted?.[0] || { shipment_id: shipment.id, level, action: 'created' });
+    }
   }
 
-  return { checked: (shipments || []).length, created: created.length, alerts: created };
+  const resolvedInactive = await resolveInactiveAlerts(activeShipmentIds);
+  return {
+    checked: (shipments || []).length,
+    changed: changed.length,
+    resolved_inactive: resolvedInactive,
+    alerts: changed
+  };
 }
 
 export default async function handler(req, res) {
@@ -117,7 +184,7 @@ export default async function handler(req, res) {
       await supabase('notifications', {
         method: 'PATCH',
         query: `?id=eq.${encodeURIComponent(id)}`,
-        body: { status: 'resolved', delivery_status: 'resolved' }
+        body: { status: 'resolved', delivery_status: 'resolved', updated_at: new Date().toISOString() }
       });
       await writeAudit(admin, 'tracking_stale_alert_resolved', 'notification', id, {});
       return ok(res, { resolved: true });
