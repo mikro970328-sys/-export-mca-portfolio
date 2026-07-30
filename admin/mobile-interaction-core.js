@@ -57,7 +57,20 @@
       Promise.resolve(window.loadOperationalAlerts()).catch(error => console.error('DASHBOARD_ALERT_REFRESH_ERROR', error));
     } else if (typeof window.loadNotifications === 'function') {
       Promise.resolve(window.loadNotifications()).catch(error => console.error('DASHBOARD_ALERT_REFRESH_ERROR', error));
+    } else {
+      setTimeout(refreshDashboardAlerts, 250);
     }
+  }
+
+  function installLoadAllAlertGuard() {
+    if (window.__dashboardAlertLoadAllGuardInstalled || typeof window.loadAll !== 'function') return;
+    window.__dashboardAlertLoadAllGuardInstalled = true;
+    const originalLoadAll = window.loadAll;
+    window.loadAll = async function (...args) {
+      const result = await originalLoadAll.apply(this, args);
+      queueMicrotask(refreshDashboardAlerts);
+      return result;
+    };
   }
 
   function groupKey(group, index) {
@@ -151,7 +164,10 @@
   window.addEventListener('pageshow', () => {
     closeMenu();
     initializeGroups();
+    installLoadAllAlertGuard();
+    queueMicrotask(refreshDashboardAlerts);
   });
 
   initializeGroups();
+  installLoadAllAlertGuard();
 })();
