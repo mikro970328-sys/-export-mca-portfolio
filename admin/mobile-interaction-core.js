@@ -46,15 +46,25 @@
     location.replace('/admin/');
   }
 
+  function refreshDashboardAlerts() {
+    const target = byId('alerts');
+    if (target) {
+      target.className = 'dashboard-alert-list';
+      target.innerHTML = '<div class="empty-state">Actualizando alertas operativas...</div>';
+    }
+    if (typeof window.loadOperationalAlerts === 'function') {
+      Promise.resolve(window.loadOperationalAlerts()).catch(error => console.error('DASHBOARD_ALERT_REFRESH_ERROR', error));
+    } else if (typeof window.loadNotifications === 'function') {
+      Promise.resolve(window.loadNotifications()).catch(error => console.error('DASHBOARD_ALERT_REFRESH_ERROR', error));
+    }
+  }
+
   document.addEventListener('click', event => {
     const element = event.target instanceof Element ? event.target : null;
     if (!element) return;
 
     const menuButton = element.closest('#mobileMenuBtn,#sidebarToggle');
     if (menuButton && isMobile()) {
-      // The base page still has legacy onclick handlers for these buttons.
-      // Stop this click before it reaches them, otherwise the first handler
-      // opens the sidebar and the legacy handler closes it immediately.
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -76,6 +86,7 @@
       if (section && typeof window.showSection === 'function') {
         event.preventDefault();
         window.showSection(section);
+        if (section === 'dashboardSection') queueMicrotask(refreshDashboardAlerts);
       }
       if (isMobile()) closeMenu();
       return;
