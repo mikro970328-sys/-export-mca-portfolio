@@ -49,8 +49,53 @@ function extract(payload) {
   return { shipment, movement, container, status, location, eventTime };
 }
 
+async function resolveTrackingAlerts(shipmentId) {
+  const rows = await supabase('notifications', {
+    method: 'PATCH',
+    query: `?shipment_id=eq.${encodeURIComponent(shipmentId)}&event_type=eq.tracking_stale&status=eq.pending&select=id`,
+    body: {
+      status: 'resolved',
+      delivery_status: 'resolved',
+      updated_at: new Date().toISOString()
+    }
+  });
+  return rows?.length || 0;
+}
+
+async function logWhatsAppFailure(shipment, event, payload, error) {
+  try {
+    await supabase('notifications', {
+      method: 'POST',
+      body: [{
+        shipment_id: shipment.id,
+        client_id: shipment.client_id,
+        recipient_phone: shipment.clients.phone,
+        event_status: event.status,
+        event_location: event.location,
+        event_time: event.eventTime,
+        delivery_status: 'failed',
+        event_type: 'tracking',
+        channel: 'whatsapp',
+        status: 'failed',
+        error_message: error.message,
+        raw_event: payload,
+        payload: {
+          container_number: event.container,
+          client_name: shipment.clients.name,
+          status: event.status,
+          location: event.location
+        },
+        attempt_count: 1,
+        last_attempt_at: new Date().toISOString()
+      }]
+    });
+  } catch (logError) {
+    console.error('SHIPSGO_WHATSAPP_FAILURE_LOG_ERROR', logError);
+  }
+}
+
 export default async function handler(req, res) {
-  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 4 });
+  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 5 });
   if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
 
   try {
@@ -80,32 +125,6 @@ export default async function handler(req, res) {
     const existing = await supabase('notifications', {
       query: `?select=id&shipment_id=eq.${shipment.id}&event_status=eq.${encodeURIComponent(event.status)}&event_time=eq.${encodeURIComponent(event.eventTime)}&limit=1`
     });
-    if (existing?.length) return ok(res, { received: true, notified: false, reason: 'duplicate' });
-
-    const twilio = await sendWhatsApp({
-      to: shipment.clients.phone,
-      variables: {
-        '1': shipment.clients.name,
-        '2': event.container,
-        '3': event.status,
-        '4': event.location
-      }
-    });
-
-    await supabase('notifications', {
-      method: 'POST',
-      body: [{
-        shipment_id: shipment.id,
-        client_id: shipment.client_id,
-        twilio_message_sid: twilio.sid,
-        recipient_phone: shipment.clients.phone,
-        event_status: event.status,
-        event_location: event.location,
-        event_time: event.eventTime,
-        delivery_status: twilio.status || 'queued',
-        raw_event: payload
-      }]
-    });
 
     await supabase(`shipments?id=eq.${shipment.id}`, {
       method: 'PATCH',
@@ -116,13 +135,71 @@ export default async function handler(req, res) {
         updated_at: new Date().toISOString()
       }
     });
+    const resolvedAlerts = await resolveTrackingAlerts(shipment.id);
+
+    if (existing?.length) {
+      return ok(res, {
+        received: true,
+        tracking_updated: true,
+        resolved_alerts: resolvedAlerts,
+        notified: false,
+        reason: 'duplicate'
+      });
+    }
+
+    let twilio;
+    try {
+      twilio = await sendWhatsApp({
+        to: shipment.clients.phone,
+        variables: {
+          '1': shipment.clients.name,
+          '2': event.container,
+          '3': event.status,
+          '4': event.location
+        }
+      });
+
+      await supabase('notifications', {
+        method: 'POST',
+        body: [{
+          shipment_id: shipment.id,
+          client_id: shipment.client_id,
+          twilio_message_sid: twilio.sid,
+          recipient_phone: shipment.clients.phone,
+          event_status: event.status,
+          event_location: event.location,
+          event_time: event.eventTime,
+          delivery_status: twilio.status || 'queued',
+          event_type: 'tracking',
+          channel: 'whatsapp',
+          status: twilio.status || 'queued',
+          provider_message_id: twilio.sid,
+          raw_event: payload
+        }]
+      });
+    } catch (twilioError) {
+      console.error('SHIPSGO_WHATSAPP_ERROR', twilioError);
+      await logWhatsAppFailure(shipment, event, payload, twilioError);
+    }
 
     await supabase('webhook_events', {
       method: 'POST',
-      body: [{ container_number: event.container, event_type: event.status, payload, processed: true }]
+      body: [{
+        container_number: event.container,
+        event_type: event.status,
+        payload,
+        processed: true,
+        error_message: twilio ? null : 'Tracking actualizado; notificación WhatsApp fallida'
+      }]
     });
 
-    return ok(res, { received: true, notified: true, message_sid: twilio.sid });
+    return ok(res, {
+      received: true,
+      tracking_updated: true,
+      resolved_alerts: resolvedAlerts,
+      notified: Boolean(twilio),
+      message_sid: twilio?.sid || null
+    });
   } catch (error) {
     console.error('ShipsGo webhook error:', error);
     return fail(res, 500, 'No se pudo procesar la actualización', error.message);
