@@ -21,6 +21,10 @@
 
     const refreshButton = document.getElementById('refresh');
     if (refreshButton) refreshButton.remove();
+
+    document.getElementById('trackingAlertBell')?.remove();
+    document.getElementById('trackingAlertPopover')?.remove();
+    document.getElementById('dashboardTrackingAlerts')?.remove();
   };
 
   const loadScript = (src, marker, onload) => {
@@ -48,7 +52,6 @@
 
     loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control');
     loadScript('/admin/module-export-controls.js', 'data-module-export-controls');
-    loadScript('/admin/tracking-alert-center.js', 'data-tracking-alert-center');
     loadScript('/admin/operational-alert-center.js', 'data-operational-alert-center');
     loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
       loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch', () => {
