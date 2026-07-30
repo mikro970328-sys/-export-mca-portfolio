@@ -15,6 +15,11 @@ function normalizeStatus(row) {
   return String(value(row, 'status', 'delivery_status') || 'pending').toLowerCase();
 }
 
+function normalizeAlertStatus(row) {
+  if (row.notification_scope !== 'operational') return null;
+  return String(row.alert_status || (row.resolved_at ? 'resolved' : 'pending')).toLowerCase();
+}
+
 function notificationType(row) {
   return String(value(row, 'event_type', 'event_status') || 'tracking');
 }
@@ -53,6 +58,59 @@ async function getNotification(id) {
   return rows?.[0] || null;
 }
 
+async function updateOperationalNotification(admin, row, action, body) {
+  if (row.notification_scope !== 'operational') {
+    return { error: 'Esta acción solo aplica a alertas operativas', status: 400 };
+  }
+
+  const now = new Date().toISOString();
+  const patch = { updated_at: now };
+  let auditAction = '';
+
+  if (action === 'mark_read') {
+    patch.read_at = row.read_at || now;
+    auditAction = 'operational_notification_read';
+  } else if (action === 'resolve') {
+    patch.alert_status = 'resolved';
+    patch.resolved_at = now;
+    patch.resolved_by = admin.id || null;
+    patch.resolved_reason = String(body.reason || 'manual').trim() || 'manual';
+    patch.snoozed_until = null;
+    auditAction = 'operational_notification_resolved';
+  } else if (action === 'snooze') {
+    const hours = Math.max(1, Math.min(168, Number(body.hours || 24)));
+    if (!Number.isFinite(hours)) return { error: 'Cantidad de horas no válida', status: 400 };
+    patch.alert_status = 'snoozed';
+    patch.snoozed_until = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    patch.resolved_at = null;
+    patch.resolved_by = null;
+    patch.resolved_reason = null;
+    auditAction = 'operational_notification_snoozed';
+  } else if (action === 'reopen') {
+    patch.alert_status = 'pending';
+    patch.resolved_at = null;
+    patch.resolved_by = null;
+    patch.resolved_reason = null;
+    patch.snoozed_until = null;
+    auditAction = 'operational_notification_reopened';
+  } else {
+    return { error: 'Acción no válida', status: 400 };
+  }
+
+  await supabase('notifications', {
+    method: 'PATCH',
+    query: `?id=eq.${encodeURIComponent(row.id)}`,
+    body: patch
+  });
+  await writeAudit(admin, auditAction, 'notification', row.id, {
+    event_type: notificationType(row),
+    entity_type: row.entity_type,
+    entity_id: row.entity_id,
+    ...patch
+  });
+  return { notification: { ...row, ...patch } };
+}
+
 export default async function handler(req, res) {
   const admin = requireAdmin(req, res);
   if (!admin) return;
@@ -63,14 +121,27 @@ export default async function handler(req, res) {
     if (mode === 'notifications') {
       if (req.method === 'GET') {
         const status = String(req.query?.status || '').trim().toLowerCase();
+        const alertStatus = String(req.query?.alert_status || '').trim().toLowerCase();
+        const scope = String(req.query?.scope || '').trim().toLowerCase();
         const clientId = String(req.query?.client_id || '').trim();
         const shipmentId = String(req.query?.shipment_id || '').trim();
+        const entityType = String(req.query?.entity_type || '').trim().toLowerCase();
+        const entityId = String(req.query?.entity_id || '').trim();
         const clauses = [];
         if (clientId) clauses.push(`client_id=eq.${encodeURIComponent(clientId)}`);
         if (shipmentId) clauses.push(`shipment_id=eq.${encodeURIComponent(shipmentId)}`);
+        if (scope) clauses.push(`notification_scope=eq.${encodeURIComponent(scope)}`);
+        if (alertStatus) clauses.push(`alert_status=eq.${encodeURIComponent(alertStatus)}`);
+        if (entityType) clauses.push(`entity_type=eq.${encodeURIComponent(entityType)}`);
+        if (entityId) clauses.push(`entity_id=eq.${encodeURIComponent(entityId)}`);
         const query = `?select=${encodeURIComponent(selectFields)}${clauses.length ? `&${clauses.join('&')}` : ''}&order=created_at.desc&limit=300`;
         let rows = await supabase('notifications', { query });
-        rows = (rows || []).map((row) => ({ ...row, normalized_status: normalizeStatus(row), notification_type: notificationType(row) }));
+        rows = (rows || []).map((row) => ({
+          ...row,
+          normalized_status: normalizeStatus(row),
+          normalized_alert_status: normalizeAlertStatus(row),
+          notification_type: notificationType(row)
+        }));
         if (status) rows = rows.filter((row) => row.normalized_status === status);
         return ok(res, { notifications: rows });
       }
@@ -78,11 +149,21 @@ export default async function handler(req, res) {
       if (req.method === 'PATCH') {
         const body = await readJson(req);
         const id = String(body.id || '').trim();
+        const action = String(body.action || '').trim().toLowerCase();
         if (!id) return fail(res, 400, 'Falta el identificador de la notificación');
-        if (body.action !== 'retry') return fail(res, 400, 'Acción no válida');
 
         const row = await getNotification(id);
         if (!row) return fail(res, 404, 'Notificación no encontrada');
+
+        if (['mark_read', 'resolve', 'snooze', 'reopen'].includes(action)) {
+          const result = await updateOperationalNotification(admin, row, action, body);
+          if (result.error) return fail(res, result.status || 400, result.error);
+          return ok(res, result);
+        }
+
+        if (action !== 'retry') return fail(res, 400, 'Acción no válida');
+        if (row.notification_scope === 'operational') return fail(res, 400, 'Las alertas operativas no se reenvían por WhatsApp');
+
         const client = row.clients || {};
         const type = notificationType(row);
         const to = value(row, 'recipient', 'recipient_phone') || client.phone;
@@ -102,7 +183,8 @@ export default async function handler(req, res) {
             error_message: null,
             attempt_count: attempt,
             last_attempt_at: retryAt,
-            sent_at: retryAt
+            sent_at: retryAt,
+            updated_at: retryAt
           };
           await supabase('notifications', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}`, body: patch });
           await writeAudit(admin, 'notification_retry_sent', 'notification', id, { type, sid: sent.sid, attempt });
@@ -111,7 +193,7 @@ export default async function handler(req, res) {
           await supabase('notifications', {
             method: 'PATCH',
             query: `?id=eq.${encodeURIComponent(id)}`,
-            body: { status: 'failed', delivery_status: 'failed', error_message: error.message, attempt_count: attempt, last_attempt_at: retryAt }
+            body: { status: 'failed', delivery_status: 'failed', error_message: error.message, attempt_count: attempt, last_attempt_at: retryAt, updated_at: retryAt }
           });
           await writeAudit(admin, 'notification_retry_failed', 'notification', id, { type, error: error.message, attempt });
           return fail(res, 400, 'No se pudo reenviar la notificación', error.message);
