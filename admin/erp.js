@@ -1,4 +1,13 @@
 (() => {
+  const SECTION_KEY = 'export_mca_current_section';
+  const savedSection = localStorage.getItem(SECTION_KEY);
+  const appShell = document.getElementById('appShell');
+
+  if (appShell && savedSection && savedSection !== 'dashboardSection') {
+    appShell.style.visibility = 'hidden';
+    window.__sectionRestorePending = true;
+  }
+
   const removeLegacyAdminControls = () => {
     const waTestButton = document.getElementById('sendWaTest');
     const waTestCard = waTestButton?.closest('section.card');
