@@ -1,159 +1,281 @@
 import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
 
-const SIX_HOURS = 6 * 60 * 60 * 1000;
-const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+const CLIENT_ALERT_AFTER = 48 * HOUR;
+const CLIENT_CRITICAL_AFTER = 7 * 24 * HOUR;
+const TRACKING_ALERT_AFTER = 12 * HOUR;
+const TRACKING_REPEAT_EVERY = 12 * HOUR;
 
 function cronAuthorized(req) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.authorization === `Bearer ${secret}`;
+  return Boolean(secret) && req.headers.authorization === `Bearer ${secret}`;
 }
 
-function referenceTime(shipment) {
-  const value = shipment.last_event_at || shipment.created_at;
-  const date = new Date(value);
+function validDate(value) {
+  const date = new Date(value || 0);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function alertLevel(ageMs) {
-  if (ageMs >= TWELVE_HOURS) return 'critical';
-  if (ageMs >= SIX_HOURS) return 'warning';
-  return null;
+function elapsedHours(from, nowMs) {
+  return Math.max(0, Math.floor((nowMs - from.getTime()) / HOUR));
 }
 
-function lastAlertTime(alert) {
-  const value = alert?.last_attempt_at || alert?.updated_at || alert?.created_at;
-  const date = new Date(value || 0).getTime();
-  return Number.isFinite(date) ? date : 0;
+function activeAlertKey(type, entityId) {
+  return `${type}:${entityId}`;
 }
 
-function alertDue(previous, level, nowMs) {
-  if (!previous) return true;
-  const previousLevel = previous.payload?.alert_level || previous.event_status;
-  if (level === 'critical' && previousLevel !== 'critical') return true;
-  return level === 'critical' && nowMs - lastAlertTime(previous) >= TWELVE_HOURS;
-}
-
-async function resolveInactiveAlerts(activeShipmentIds) {
-  const pending = await supabase('notifications', {
-    query: '?select=id,shipment_id&event_type=eq.tracking_stale&status=eq.pending&limit=1000'
+async function loadActiveOperationalAlerts() {
+  const rows = await supabase('notifications', {
+    query: '?select=*&notification_scope=eq.operational&resolved_at=is.null&order=created_at.desc&limit=2000'
   });
-
-  const inactive = (pending || []).filter(row => !activeShipmentIds.has(row.shipment_id));
-  await Promise.all(inactive.map(row => supabase('notifications', {
-    method: 'PATCH',
-    query: `?id=eq.${encodeURIComponent(row.id)}`,
-    body: {
-      status: 'resolved',
-      delivery_status: 'resolved',
-      updated_at: new Date().toISOString()
-    }
-  })));
-  return inactive.length;
+  return new Map((rows || []).filter(row => row.dedupe_key).map(row => [row.dedupe_key, row]));
 }
 
-async function runCheck() {
-  const [shipments, previousAlerts] = await Promise.all([
-    supabase('shipments', {
-      query: '?select=id,client_id,container_number,shipsgo_status,last_event_at,created_at,active,clients(id,name,phone)&active=eq.true&or=(shipsgo_status.is.null,shipsgo_status.neq.manual)&order=created_at.asc'
-    }),
-    supabase('notifications', {
-      query: '?select=id,shipment_id,created_at,updated_at,last_attempt_at,payload,status,event_type,event_status,attempt_count&event_type=eq.tracking_stale&status=eq.pending&order=created_at.desc&limit=1000'
-    })
+async function createAlert(data) {
+  const inserted = await supabase('notifications', {
+    method: 'POST',
+    body: [{
+      client_id: data.client_id,
+      shipment_id: data.shipment_id || null,
+      event_type: data.event_type,
+      event_status: data.severity,
+      channel: 'internal',
+      status: 'pending',
+      delivery_status: 'pending',
+      notification_scope: 'operational',
+      entity_type: data.entity_type,
+      entity_id: data.entity_id,
+      alert_status: 'pending',
+      severity: data.severity,
+      title: data.title,
+      message: data.message,
+      dedupe_key: data.dedupe_key,
+      due_at: data.due_at || null,
+      first_triggered_at: data.now,
+      last_triggered_at: data.now,
+      occurrence_count: 1,
+      payload: data.payload || {},
+      attempt_count: 0,
+      last_attempt_at: null,
+      updated_at: data.now
+    }]
+  });
+  return inserted?.[0] || null;
+}
+
+async function updateAlert(row, patch) {
+  const updated = await supabase('notifications', {
+    method: 'PATCH',
+    query: `?id=eq.${encodeURIComponent(row.id)}&select=*`,
+    body: { ...patch, updated_at: new Date().toISOString() }
+  });
+  return updated?.[0] || { ...row, ...patch };
+}
+
+async function resolveAlert(row, reason, now) {
+  return updateAlert(row, {
+    alert_status: 'resolved',
+    status: 'resolved',
+    delivery_status: 'resolved',
+    resolved_at: now,
+    resolved_reason: reason,
+    snoozed_until: null
+  });
+}
+
+function isSnoozed(row, nowMs) {
+  if (row.alert_status !== 'snoozed') return false;
+  const until = validDate(row.snoozed_until);
+  return Boolean(until && until.getTime() > nowMs);
+}
+
+async function processClientAlerts(activeAlerts, now, nowMs) {
+  const [clients, shipments] = await Promise.all([
+    supabase('clients', { query: '?select=id,name,company,created_at,status&order=created_at.asc&limit=5000' }),
+    supabase('shipments', { query: '?select=id,client_id&limit=5000' })
   ]);
 
-  const latestByShipment = new Map();
-  for (const row of previousAlerts || []) {
-    if (!latestByShipment.has(row.shipment_id)) latestByShipment.set(row.shipment_id, row);
-  }
-
-  const now = new Date();
-  const nowMs = now.getTime();
-  const activeShipmentIds = new Set((shipments || []).map(row => row.id));
+  const clientsWithShipment = new Set((shipments || []).map(row => row.client_id));
+  const eligibleKeys = new Set();
   const changed = [];
 
-  for (const shipment of shipments || []) {
-    const reference = referenceTime(shipment);
-    if (!reference) continue;
+  for (const client of clients || []) {
+    const key = activeAlertKey('client_without_shipment', client.id);
+    const previous = activeAlerts.get(key);
+    const createdAt = validDate(client.created_at);
+    const inactive = client.status && !['active', 'activo'].includes(String(client.status).toLowerCase());
+    const resolvedReason = inactive ? 'client_inactive' : clientsWithShipment.has(client.id) ? 'shipment_assigned' : null;
 
-    const ageMs = nowMs - reference.getTime();
-    const level = alertLevel(ageMs);
-    const previous = latestByShipment.get(shipment.id);
+    if (resolvedReason) {
+      if (previous) changed.push(await resolveAlert(previous, resolvedReason, now));
+      continue;
+    }
+    if (!createdAt || nowMs - createdAt.getTime() < CLIENT_ALERT_AFTER) continue;
 
-    if (!level) {
-      if (previous) {
-        await supabase('notifications', {
-          method: 'PATCH',
-          query: `?id=eq.${encodeURIComponent(previous.id)}`,
-          body: { status: 'resolved', delivery_status: 'resolved', updated_at: now.toISOString() }
-        });
-      }
+    eligibleKeys.add(key);
+    const ageHours = elapsedHours(createdAt, nowMs);
+    const critical = nowMs - createdAt.getTime() >= CLIENT_CRITICAL_AFTER;
+    const severity = critical ? 'critical' : 'warning';
+    const title = critical ? 'Cliente sin contenedor por 7 días' : 'Cliente sin contenedor por 48 horas';
+    const message = `${client.name || 'Cliente'} lleva ${ageHours} horas sin un contenedor asociado.`;
+    const payload = { client_name: client.name, company: client.company, hours_without_shipment: ageHours };
+
+    if (!previous) {
+      const created = await createAlert({
+        client_id: client.id,
+        event_type: 'client_without_shipment',
+        entity_type: 'client',
+        entity_id: client.id,
+        severity,
+        title,
+        message,
+        dedupe_key: key,
+        due_at: new Date(createdAt.getTime() + CLIENT_ALERT_AFTER).toISOString(),
+        payload,
+        now
+      });
+      if (created) changed.push(created);
       continue;
     }
 
-    if (!alertDue(previous, level, nowMs)) continue;
-
-    const repeatCount = previous
-      ? Number(previous.payload?.repeat_count || previous.attempt_count || 1) + 1
-      : 1;
-    const hoursWithoutUpdate = Math.floor(ageMs / (60 * 60 * 1000));
-    const title = level === 'critical'
-      ? 'Tracking sin actualización por 12 horas'
-      : 'Tracking sin actualización por 6 horas';
-    const payload = {
-      title,
-      container_number: shipment.container_number,
-      client_name: shipment.clients?.name || null,
-      alert_level: level,
-      hours_without_update: hoursWithoutUpdate,
-      reference_at: reference.toISOString(),
-      repeat_count: repeatCount,
-      required_action: 'enable_manual'
-    };
-
-    if (previous) {
-      const updated = await supabase('notifications', {
-        method: 'PATCH',
-        query: `?id=eq.${encodeURIComponent(previous.id)}&select=*`,
-        body: {
-          event_status: level,
-          status: 'pending',
-          delivery_status: 'pending',
-          payload,
-          attempt_count: repeatCount,
-          last_attempt_at: now.toISOString(),
-          updated_at: now.toISOString()
-        }
-      });
-      changed.push(updated?.[0] || { id: previous.id, shipment_id: shipment.id, level, action: 'updated' });
-    } else {
-      const inserted = await supabase('notifications', {
-        method: 'POST',
-        body: [{
-          shipment_id: shipment.id,
-          client_id: shipment.client_id,
-          event_type: 'tracking_stale',
-          event_status: level,
-          channel: 'internal',
-          status: 'pending',
-          delivery_status: 'pending',
-          recipient: null,
-          recipient_phone: null,
-          payload,
-          attempt_count: repeatCount,
-          last_attempt_at: now.toISOString()
-        }]
-      });
-      changed.push(inserted?.[0] || { shipment_id: shipment.id, level, action: 'created' });
+    if (isSnoozed(previous, nowMs)) continue;
+    const needsUpdate = previous.severity !== severity || previous.alert_status === 'snoozed';
+    if (needsUpdate) {
+      changed.push(await updateAlert(previous, {
+        alert_status: 'pending',
+        severity,
+        event_status: severity,
+        title,
+        message,
+        payload,
+        snoozed_until: null,
+        last_triggered_at: now,
+        occurrence_count: Number(previous.occurrence_count || 1) + 1
+      }));
     }
   }
 
-  const resolvedInactive = await resolveInactiveAlerts(activeShipmentIds);
+  for (const [key, row] of activeAlerts) {
+    if (row.event_type === 'client_without_shipment' && !eligibleKeys.has(key) && !row.resolved_at) {
+      const alreadyChanged = changed.some(item => item?.id === row.id);
+      if (!alreadyChanged) changed.push(await resolveAlert(row, 'condition_cleared', now));
+    }
+  }
+
+  return { checked: (clients || []).length, changed };
+}
+
+async function processTrackingAlerts(activeAlerts, now, nowMs) {
+  const shipments = await supabase('shipments', {
+    query: '?select=id,client_id,container_number,shipsgo_status,shipsgo_link_mode,last_event_at,created_at,active,clients(id,name)&active=eq.true&order=created_at.asc&limit=5000'
+  });
+
+  const eligibleKeys = new Set();
+  const changed = [];
+
+  for (const shipment of shipments || []) {
+    const key = activeAlertKey('shipment_stale_tracking', shipment.id);
+    const previous = activeAlerts.get(key);
+    const manual = shipment.shipsgo_status === 'manual' || shipment.shipsgo_link_mode === 'manual';
+    if (manual) {
+      if (previous) changed.push(await resolveAlert(previous, 'manual_mode_enabled', now));
+      continue;
+    }
+
+    const reference = validDate(shipment.last_event_at || shipment.created_at);
+    if (!reference || nowMs - reference.getTime() < TRACKING_ALERT_AFTER) {
+      if (previous) changed.push(await resolveAlert(previous, 'tracking_updated', now));
+      continue;
+    }
+
+    eligibleKeys.add(key);
+    const hours = elapsedHours(reference, nowMs);
+    const interval = Math.max(1, Math.floor(hours / 12));
+    const title = `Tracking sin actualización por ${hours} horas`;
+    const message = `El contenedor ${shipment.container_number} no recibe una actualización automática desde hace ${hours} horas.`;
+    const payload = {
+      container_number: shipment.container_number,
+      client_name: shipment.clients?.name || null,
+      hours_without_update: hours,
+      reference_at: reference.toISOString(),
+      repeat_interval: interval,
+      required_action: 'review_or_enable_manual'
+    };
+
+    if (!previous) {
+      const created = await createAlert({
+        client_id: shipment.client_id,
+        shipment_id: shipment.id,
+        event_type: 'shipment_stale_tracking',
+        entity_type: 'shipment',
+        entity_id: shipment.id,
+        severity: 'critical',
+        title,
+        message,
+        dedupe_key: key,
+        due_at: new Date(reference.getTime() + TRACKING_ALERT_AFTER).toISOString(),
+        payload,
+        now
+      });
+      if (created) changed.push(created);
+      continue;
+    }
+
+    if (isSnoozed(previous, nowMs)) continue;
+    const lastTriggered = validDate(previous.last_triggered_at || previous.first_triggered_at || previous.created_at);
+    const repeatDue = !lastTriggered || nowMs - lastTriggered.getTime() >= TRACKING_REPEAT_EVERY;
+    if (repeatDue || previous.alert_status === 'snoozed') {
+      changed.push(await updateAlert(previous, {
+        alert_status: 'pending',
+        severity: 'critical',
+        event_status: 'critical',
+        title,
+        message,
+        payload,
+        snoozed_until: null,
+        last_triggered_at: now,
+        occurrence_count: Number(previous.occurrence_count || 1) + 1
+      }));
+    }
+  }
+
+  for (const [key, row] of activeAlerts) {
+    if (row.event_type === 'shipment_stale_tracking' && !eligibleKeys.has(key) && !row.resolved_at) {
+      const alreadyChanged = changed.some(item => item?.id === row.id);
+      if (!alreadyChanged) changed.push(await resolveAlert(row, 'condition_cleared', now));
+    }
+  }
+
+  return { checked: (shipments || []).length, changed };
+}
+
+async function resolveLegacyTrackingAlerts(now) {
+  const rows = await supabase('notifications', {
+    query: '?select=id&event_type=eq.tracking_stale&status=eq.pending&limit=1000'
+  });
+  await Promise.all((rows || []).map(row => supabase('notifications', {
+    method: 'PATCH',
+    query: `?id=eq.${encodeURIComponent(row.id)}`,
+    body: { status: 'resolved', delivery_status: 'resolved', updated_at: now }
+  })));
+  return (rows || []).length;
+}
+
+async function runCheck() {
+  const now = new Date().toISOString();
+  const nowMs = Date.now();
+  const activeAlerts = await loadActiveOperationalAlerts();
+  const [clients, tracking, legacyResolved] = await Promise.all([
+    processClientAlerts(activeAlerts, now, nowMs),
+    processTrackingAlerts(activeAlerts, now, nowMs),
+    resolveLegacyTrackingAlerts(now)
+  ]);
   return {
-    checked: (shipments || []).length,
-    changed: changed.length,
-    resolved_inactive: resolvedInactive,
-    alerts: changed
+    clients_checked: clients.checked,
+    tracking_checked: tracking.checked,
+    client_alerts_changed: clients.changed.length,
+    tracking_alerts_changed: tracking.changed.length,
+    legacy_tracking_alerts_resolved: legacyResolved
   };
 }
 
@@ -166,12 +288,11 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       if (isCron || String(req.query?.action || '') === 'check') {
         const result = await runCheck();
-        await writeAudit(admin, 'tracking_stale_check', 'system', null, result);
+        await writeAudit(admin, 'operational_alerts_check', 'system', null, result);
         return ok(res, result);
       }
-
       const rows = await supabase('notifications', {
-        query: '?select=*,clients(id,name),shipments(id,container_number,shipsgo_status,last_event_at,created_at)&event_type=eq.tracking_stale&status=eq.pending&order=created_at.desc&limit=300'
+        query: '?select=*,clients(id,name),shipments(id,container_number,shipsgo_status,last_event_at)&notification_scope=eq.operational&resolved_at=is.null&order=created_at.desc&limit=500'
       });
       return ok(res, { alerts: rows || [] });
     }
@@ -181,18 +302,26 @@ export default async function handler(req, res) {
       const id = String(body.id || '').trim();
       if (!id) return fail(res, 400, 'Falta el identificador de la alerta');
       if (body.action !== 'resolve') return fail(res, 400, 'Acción no válida');
+      const now = new Date().toISOString();
       await supabase('notifications', {
         method: 'PATCH',
         query: `?id=eq.${encodeURIComponent(id)}`,
-        body: { status: 'resolved', delivery_status: 'resolved', updated_at: new Date().toISOString() }
+        body: {
+          alert_status: 'resolved',
+          status: 'resolved',
+          delivery_status: 'resolved',
+          resolved_at: now,
+          resolved_reason: 'manual',
+          updated_at: now
+        }
       });
-      await writeAudit(admin, 'tracking_stale_alert_resolved', 'notification', id, {});
+      await writeAudit(admin, 'operational_alert_resolved', 'notification', id, {});
       return ok(res, { resolved: true });
     }
 
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
-    console.error('TRACKING_ALERTS_ERROR', error);
-    return fail(res, 400, 'No se pudieron procesar las alertas de tracking', error.message);
+    console.error('OPERATIONAL_ALERTS_ERROR', error);
+    return fail(res, 400, 'No se pudieron procesar las alertas operativas', error.message);
   }
 }
