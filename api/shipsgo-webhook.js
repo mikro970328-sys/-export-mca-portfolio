@@ -50,7 +50,7 @@ function extract(payload) {
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 3 });
+  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 4 });
   if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
 
   try {
