@@ -1,20 +1,5 @@
 // Restored stable interface before company removal.
 (() => {
-  const SECTION_KEY = 'export_mca_current_section';
-  const DYNAMIC_SECTION_KEY = 'export_mca_dynamic_section';
-  const savedSection = localStorage.getItem(DYNAMIC_SECTION_KEY) || localStorage.getItem(SECTION_KEY);
-  const appShell = document.getElementById('appShell');
-
-  if (savedSection && savedSection !== 'dashboardSection') {
-    document.documentElement.style.visibility = 'hidden';
-    window.__sectionRestorePending = true;
-  }
-
-  if (appShell && savedSection && savedSection !== 'dashboardSection') {
-    appShell.style.setProperty('display', 'none', 'important');
-    appShell.style.visibility = 'hidden';
-  }
-
   const removeLegacyAdminControls = () => {
     const waTestButton = document.getElementById('sendWaTest');
     const waTestCard = waTestButton?.closest('section.card');
@@ -45,7 +30,7 @@
   // One source of truth for dashboard operational cards.
   loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state');
 
-  loadScript('/admin/erp-core.js', 'data-erp-core', () => {
+  loadScript('/admin/erp-core.js?v=20260730-loginfix1', 'data-erp-core', () => {
     loadScript('/admin/workers-module.js', 'data-workers-module', () => {
       loadScript('/admin/workers-responsive.js', 'data-workers-responsive');
       loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu');
@@ -54,7 +39,7 @@
     loadScript('/admin/client-actions-menu.js', 'data-client-actions-menu');
 
     loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking', () => {
-      loadScript('/admin/section-state.js', 'data-section-state');
+      loadScript('/admin/section-state.js?v=20260730-loginfix1', 'data-section-state');
     });
 
     loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control');
