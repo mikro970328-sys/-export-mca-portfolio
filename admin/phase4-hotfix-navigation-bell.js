@@ -60,12 +60,46 @@
     });
   }
 
+  function installReusableContainerRegistration() {
+    const button = $('saveShipment');
+    if (!button || button.dataset.reuseReady === '1') return;
+    button.dataset.reuseReady = '1';
+    button.onclick = async () => {
+      try {
+        const result = await api('/api/shipments-register', {
+          method: 'POST',
+          body: JSON.stringify({
+            client_id: $('shipmentClient')?.value,
+            container_number: $('shipmentContainer')?.value,
+            booking_number: $('shipmentBooking')?.value,
+            bol_number: $('shipmentBol')?.value,
+            carrier: $('shipmentCarrier')?.value,
+            product: $('shipmentProduct')?.value
+          })
+        });
+        note('shipmentMsg', result.reused_number ? 'Contenedor registrado. El número fue reutilizado después de una operación cerrada.' : 'Contenedor registrado correctamente.', true);
+        ['shipmentContainer','shipmentBooking','shipmentBol','shipmentCarrier','shipmentProduct'].forEach(id => { if ($(id)) $(id).value = ''; });
+        await loadAll();
+        if (window.loadNotifications) await window.loadNotifications();
+      } catch (error) {
+        note('shipmentMsg', error.message);
+      }
+    };
+  }
+
   function mount() {
     installTrackingNavigation();
     repairBell();
-    const observer = new MutationObserver(() => repairBell());
+    installReusableContainerRegistration();
+    const observer = new MutationObserver(() => {
+      repairBell();
+      installReusableContainerRegistration();
+    });
     observer.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener('pageshow', repairBell);
+    window.addEventListener('pageshow', () => {
+      repairBell();
+      installReusableContainerRegistration();
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
