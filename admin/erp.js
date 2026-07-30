@@ -1,6 +1,7 @@
 (() => {
   const SECTION_KEY = 'export_mca_current_section';
-  const savedSection = localStorage.getItem(SECTION_KEY);
+  const DYNAMIC_SECTION_KEY = 'export_mca_dynamic_section';
+  const savedSection = localStorage.getItem(DYNAMIC_SECTION_KEY) || localStorage.getItem(SECTION_KEY);
   const appShell = document.getElementById('appShell');
 
   if (appShell && savedSection && savedSection !== 'dashboardSection') {
