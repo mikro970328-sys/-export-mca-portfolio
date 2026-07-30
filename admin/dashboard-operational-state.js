@@ -10,6 +10,17 @@
     .toLowerCase()
     .trim();
 
+  function removeDistributionSection() {
+    const distribution = byId('statusDistribution');
+    const card = distribution?.closest('section.card');
+    const grid = card?.parentElement;
+
+    if (card) card.remove();
+    if (grid?.classList.contains('dashboard-grid')) {
+      grid.style.gridTemplateColumns = '1fr';
+    }
+  }
+
   function classifyShipment(shipment) {
     const status = normalize(shipment.operational_status || shipment.last_status || 'registrado');
 
@@ -54,21 +65,9 @@
       : '<div class="empty-state">No hay actividad reciente.</div>';
   }
 
-  function renderDistribution(stats) {
-    const target = byId('statusDistribution');
-    if (!target) return;
-    const groups = [
-      ['En tránsito', stats.inTransit],
-      ['En destino', stats.atDestination],
-      ['Esperando liberación', stats.awaitingRelease],
-      ['Liberados', stats.released],
-      ['Entregados', stats.delivered]
-    ];
-    const total = Math.max(stats.total, 1);
-    target.innerHTML = groups.map(([label, count]) => `<div class="status-row"><div class="status-top"><b>${label}</b><span>${count}</span></div><div class="status-bar"><div class="status-fill" style="width:${Math.min(100, (count / total) * 100)}%"></div></div></div>`).join('');
-  }
-
   function renderUnifiedDashboard(apiDashboard = {}) {
+    removeDistributionSection();
+
     const rows = Array.isArray(window.shipments) ? window.shipments : (typeof shipments !== 'undefined' && Array.isArray(shipments) ? shipments : []);
     const stats = calculateOperationalStats(rows);
     const apiStats = apiDashboard.stats || {};
@@ -89,7 +88,6 @@
     }
 
     renderRecentActivity(rows);
-    renderDistribution(stats);
     return stats;
   }
 
@@ -118,6 +116,8 @@
     }, 100);
     setTimeout(() => clearInterval(timer), 10000);
   }
+
+  removeDistributionSection();
 
   queueMicrotask(() => {
     if (typeof window.loadAll === 'function') window.loadAll();
