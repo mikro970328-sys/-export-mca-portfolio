@@ -48,31 +48,11 @@ function templateConfig(type, shipment, body = {}) {
   const container = shipment.container_number || 'No disponible';
   const status = String(body.status || shipment.last_status || shipment.operational_status || 'En tránsito').trim();
   const map = {
-    welcome: {
-      sid: process.env.TWILIO_WELCOME_CONTENT_SID,
-      label: 'Bienvenida',
-      variables: { '1': name }
-    },
-    registered: {
-      sid: process.env.TWILIO_REGISTERED_CONTENT_SID,
-      label: 'Contenedor registrado',
-      variables: { '1': name, '2': container }
-    },
-    tracking: {
-      sid: process.env.TWILIO_CONTENT_SID,
-      label: 'Actualización de tracking',
-      variables: { '1': container, '2': status }
-    },
-    release: {
-      sid: process.env.TWILIO_RELEASE_CONTENT_SID,
-      label: 'Mercancía disponible',
-      variables: { '1': name, '2': container }
-    },
-    delivered: {
-      sid: process.env.TWILIO_DELIVERED_CONTENT_SID,
-      label: 'Contenedor entregado',
-      variables: { '1': name, '2': container }
-    }
+    welcome: { sid: process.env.TWILIO_WELCOME_CONTENT_SID, label: 'Bienvenida', variables: { '1': name } },
+    registered: { sid: process.env.TWILIO_REGISTERED_CONTENT_SID, label: 'Contenedor registrado', variables: { '1': name, '2': container } },
+    tracking: { sid: process.env.TWILIO_CONTENT_SID, label: 'Actualización de tracking', variables: { '1': container, '2': status } },
+    release: { sid: process.env.TWILIO_RELEASE_CONTENT_SID, label: 'Mercancía disponible', variables: { '1': name, '2': container } },
+    delivered: { sid: process.env.TWILIO_DELIVERED_CONTENT_SID, label: 'Contenedor entregado', variables: { '1': name, '2': container } }
   };
   return map[type] || null;
 }
@@ -101,7 +81,10 @@ async function shipsGoRequest(path, options = {}) {
   try { data = text ? JSON.parse(text) : {}; } catch { data = { message: text }; }
   if (!response.ok) {
     const message = data?.message || data?.detail || data?.error || text || 'Error de ShipsGo';
-    throw new Error(`SHIPSGO_${response.status}:${message}`);
+    const error = new Error(`SHIPSGO_${response.status}:${message}`);
+    error.status = response.status;
+    error.data = data;
+    throw error;
   }
   return data;
 }
@@ -114,16 +97,29 @@ function firstShipsGoItem(response) {
   return null;
 }
 
-async function registerShipsGo(containerNumber) {
-  const searchPath = process.env.SHIPSGO_SEARCH_PATH || `ocean/shipments?filters[container_number]=eq:${encodeURIComponent(containerNumber)}&take=1`;
-  try {
-    const found = await shipsGoRequest(searchPath);
-    const existing = firstShipsGoItem(found);
-    if (existing) return { mode: 'linked', id: existing.id || existing.shipment_id || null, raw: existing };
-  } catch (error) {
-    const message = String(error.message || '');
-    if (!message.includes('SHIPSGO_404')) console.warn('SHIPSGO_LOOKUP_FAILED', message);
+async function findShipsGoTracking(containerNumber) {
+  const paths = [
+    process.env.SHIPSGO_SEARCH_PATH || `ocean/shipments?filters[container_number]=eq:${encodeURIComponent(containerNumber)}&take=1`,
+    `ocean/shipments?container_number=${encodeURIComponent(containerNumber)}&take=1`
+  ];
+  for (const path of [...new Set(paths)]) {
+    try {
+      const found = await shipsGoRequest(path);
+      const existing = firstShipsGoItem(found);
+      if (existing) return existing;
+    } catch (error) {
+      const message = String(error.message || '');
+      if (!message.includes('SHIPSGO_404')) console.warn('SHIPSGO_LOOKUP_FAILED', message);
+    }
   }
+  return null;
+}
+
+async function registerShipsGo(containerNumber, knownTrackingId = null) {
+  if (knownTrackingId) return { mode: 'reused', id: knownTrackingId, raw: null };
+
+  const existing = await findShipsGoTracking(containerNumber);
+  if (existing) return { mode: 'linked', id: existing.id || existing.shipment_id || null, raw: existing };
 
   const createPath = process.env.SHIPSGO_CREATE_PATH || 'ocean/shipments';
   const payload = { container_number: containerNumber, reference: `EXPORT-MCA-${containerNumber}` };
@@ -133,10 +129,10 @@ async function registerShipsGo(containerNumber) {
     const item = created?.data || created;
     return { mode: 'created', id: item?.id || item?.shipment_id || null, raw: item };
   } catch (error) {
-    if (String(error.message).includes('SHIPSGO_409')) {
-      const found = await shipsGoRequest(searchPath);
-      const existing = firstShipsGoItem(found);
-      if (existing) return { mode: 'linked', id: existing.id || existing.shipment_id || null, raw: existing };
+    if (error.status === 409 || String(error.message).includes('SHIPSGO_409')) {
+      const linked = await findShipsGoTracking(containerNumber);
+      if (linked) return { mode: 'linked', id: linked.id || linked.shipment_id || null, raw: linked };
+      return { mode: 'already_exists', id: null, raw: error.data || null };
     }
     throw error;
   }
@@ -190,10 +186,10 @@ export default async function handler(req, res) {
         await history(shipment, 'created', 'Contenedor registrado', containerNumber);
         await audit('shipment_created', shipment, { container_number: containerNumber, actor: admin.username });
         try {
-          const tracking = await registerShipsGo(containerNumber, shipment.carrier);
+          const tracking = await registerShipsGo(containerNumber);
           const now = new Date().toISOString();
           await supabase('shipments', { method: 'PATCH', query: `?id=eq.${shipment.id}`, body: { shipsgo_status: 'active', shipsgo_tracking_id: tracking.id, shipsgo_link_mode: tracking.mode, shipsgo_error: null, updated_at: now } });
-          await history(shipment, tracking.mode === 'linked' ? 'shipsgo_linked' : 'shipsgo_created', tracking.mode === 'linked' ? 'Tracking existente vinculado en ShipsGo' : 'Tracking creado en ShipsGo', tracking.id || null, 'shipsgo');
+          await history(shipment, tracking.mode === 'created' ? 'shipsgo_created' : 'shipsgo_linked', tracking.mode === 'created' ? 'Tracking creado en ShipsGo' : 'Tracking existente vinculado en ShipsGo', tracking.id || null, 'shipsgo');
           await audit('shipsgo_tracking_ready', shipment, { tracking_id: tracking.id, mode: tracking.mode });
           shipment = { ...shipment, shipsgo_status: 'active', shipsgo_tracking_id: tracking.id, shipsgo_link_mode: tracking.mode };
         } catch (error) {
@@ -266,10 +262,12 @@ export default async function handler(req, res) {
 
       if (action === 'retry_shipsgo') {
         try {
-          const tracking = await registerShipsGo(shipment.container_number, shipment.carrier);
-          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { shipsgo_status: 'active', shipsgo_tracking_id: tracking.id, shipsgo_link_mode: tracking.mode, shipsgo_error: null, updated_at: new Date().toISOString() } });
-          await history(shipment, 'shipsgo_ready', 'Tracking de ShipsGo activado', tracking.id || null, 'shipsgo');
-          return ok(res, { tracking });
+          const tracking = await registerShipsGo(shipment.container_number, shipment.shipsgo_tracking_id);
+          const trackingId = tracking.id || shipment.shipsgo_tracking_id || null;
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { shipsgo_status: 'active', shipsgo_tracking_id: trackingId, shipsgo_link_mode: tracking.mode, shipsgo_error: null, updated_at: new Date().toISOString() } });
+          await history(shipment, 'shipsgo_ready', tracking.mode === 'reused' ? 'Tracking automático reactivado' : 'Tracking de ShipsGo activado', trackingId || shipment.container_number, 'shipsgo');
+          await audit('shipsgo_tracking_reactivated', shipment, { tracking_id: trackingId, mode: tracking.mode, actor: admin.username });
+          return ok(res, { tracking: { ...tracking, id: trackingId } });
         } catch (error) {
           await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { shipsgo_status: 'failed', shipsgo_error: error.message, updated_at: new Date().toISOString() } });
           await history(shipment, 'shipsgo_failed', 'No se pudo activar el tracking en ShipsGo', error.message, 'shipsgo');
