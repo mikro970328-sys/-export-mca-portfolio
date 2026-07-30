@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/tracking-alerts",
+      "schedule": "0 * * * *"
+    }
+  ],
   "routes": [
     {
       "src": "^/$",
