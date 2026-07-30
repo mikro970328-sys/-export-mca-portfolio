@@ -39,7 +39,7 @@
 
   // Single audited mobile controller. No global MutationObserver and no
   // duplicated onclick rebinding.
-  loadScript('/admin/mobile-interaction-core.js?v=20260730-3', 'data-mobile-interaction-core');
+  loadScript('/admin/mobile-interaction-core.js?v=20260730-4', 'data-mobile-interaction-core');
 
   loadScript('/admin/erp-core.js', 'data-erp-core', () => {
     loadScript('/admin/workers-module.js', 'data-workers-module', () => {
