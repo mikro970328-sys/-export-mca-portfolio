@@ -24,7 +24,6 @@
         <section>
           <h3 style="margin:0 0 8px;color:#06204a">Cliente</h3>
           ${detailRow('Nombre', client.name)}
-          ${detailRow('Empresa', client.company)}
           ${detailRow('Nombre de la MIPYME', client.mipyme_name)}
           ${detailRow('Importadora por la que importa', client.importer_name)}
           ${detailRow('Teléfono / WhatsApp', client.phone)}
