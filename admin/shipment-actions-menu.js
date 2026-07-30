@@ -32,8 +32,9 @@
     const t = label.toLowerCase();
     if (t.includes('editar')) return '✎';
     if (t.includes('historial')) return '◷';
+    if (t.includes('actualizar estado')) return '📍';
     if (t.includes('liberar')) return '🔓';
-    if (t.includes('entregado')) return '✓';
+    if (t.includes('entregado') || t.includes('entregar')) return '✓';
     if (t.includes('manual')) return '↻';
     if (t.includes('shipsgo') || t.includes('automático')) return '↻';
     if (t.includes('reactivar')) return '↺';
@@ -44,9 +45,56 @@
   const classFor = button => {
     if (button.classList.contains('danger') || /eliminar/i.test(button.textContent)) return 'danger';
     if (button.classList.contains('orange') || /liberar/i.test(button.textContent)) return 'orange';
-    if (button.classList.contains('success') || /entregado|reactivar/i.test(button.textContent)) return 'success';
+    if (button.classList.contains('success') || /entregado|entregar|reactivar/i.test(button.textContent)) return 'success';
     return '';
   };
+
+  const actionKey = label => {
+    const t = label.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (/cambiar a manual|pasar a manual|activar seguimiento manual/.test(t)) return 'enable_manual';
+    if (/volver a automático|reanudar shipsgo|tracking automático/.test(t)) return 'resume_auto';
+    if (/reconectar shipsgo|intentar shipsgo|reintentar shipsgo/.test(t)) return 'reconnect';
+    if (/liberar/.test(t)) return 'release';
+    if (/entregado|entregar/.test(t)) return 'deliver';
+    if (/editar/.test(t)) return 'edit';
+    if (/historial/.test(t)) return 'history';
+    if (/actualizar estado/.test(t)) return 'update_status';
+    if (/eliminar/.test(t)) return 'delete';
+    return t;
+  };
+
+  function cleanActions(actions, buttons) {
+    const row = actions.closest('tr');
+    const rowText = String(row?.textContent || '').toLowerCase();
+    const hasShipsGoError = /error|failed|falló|pendiente/.test(rowText);
+    const isDelivered = /entregado/.test(rowText);
+    const isReleased = /liberado/.test(rowText);
+    const seen = new Set();
+    const result = [];
+
+    buttons.forEach(button => {
+      if (button.disabled || button.hidden || button.getAttribute('aria-hidden') === 'true') return;
+      const label = String(button.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!label) return;
+      const key = actionKey(label);
+
+      if (key === 'reconnect' && !hasShipsGoError) return;
+      if (key === 'release' && isReleased) return;
+      if (key === 'deliver' && isDelivered) return;
+      if (seen.has(key)) return;
+
+      seen.add(key);
+      result.push({ button, key, label });
+    });
+
+    const order = ['edit', 'history', 'update_status', 'enable_manual', 'resume_auto', 'reconnect', 'release', 'deliver', 'delete'];
+    result.sort((a, b) => {
+      const ai = order.indexOf(a.key);
+      const bi = order.indexOf(b.key);
+      return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+    });
+    return result;
+  }
 
   function closeMenu() {
     popover.classList.remove('open');
@@ -68,15 +116,14 @@
     popover.style.top = `${top}px`;
   }
 
-  function openMenu(trigger, actions) {
+  function openMenu(trigger, actions, rawButtons) {
     if (activeTrigger === trigger && popover.classList.contains('open')) return closeMenu();
     activeTrigger = trigger;
     popover.innerHTML = '';
 
-    actions.forEach((button, index) => {
-      const label = button.textContent.trim();
-      if (!label) return;
-      if (/eliminar/i.test(label) && index > 0) {
+    const cleaned = cleanActions(actions, rawButtons);
+    cleaned.forEach(({ button, key, label }, index) => {
+      if (key === 'delete' && index > 0) {
         const sep = document.createElement('div');
         sep.className = 'shipment-menu-separator';
         popover.appendChild(sep);
@@ -92,6 +139,13 @@
       };
       popover.appendChild(item);
     });
+
+    if (!cleaned.length) {
+      const empty = document.createElement('div');
+      empty.className = 'shipment-action-item';
+      empty.textContent = 'No hay acciones disponibles';
+      popover.appendChild(empty);
+    }
 
     positionMenu(trigger);
   }
@@ -114,7 +168,7 @@
       trigger.onclick = event => {
         event.stopPropagation();
         const currentButtons = [...actions.children].filter(el => el.tagName === 'BUTTON' && !el.classList.contains('shipment-menu-trigger'));
-        openMenu(trigger, currentButtons);
+        openMenu(trigger, actions, currentButtons);
       };
     });
   }
