@@ -18,6 +18,20 @@ async function audit(action, shipment, details = {}) {
   } catch {}
 }
 
+async function resolveTrackingAlerts(shipmentId) {
+  const resolvedAt = new Date().toISOString();
+  const rows = await supabase('notifications', {
+    method: 'PATCH',
+    query: `?shipment_id=eq.${encodeURIComponent(shipmentId)}&event_type=eq.tracking_stale&status=eq.pending&select=id`,
+    body: {
+      status: 'resolved',
+      delivery_status: 'resolved',
+      updated_at: resolvedAt
+    }
+  });
+  return rows?.length || 0;
+}
+
 export default async function handler(req, res) {
   const admin = requireAdmin(req, res);
   if (!admin) return;
@@ -47,6 +61,8 @@ export default async function handler(req, res) {
       }
     });
 
+    const resolvedAlerts = await resolveTrackingAlerts(id);
+
     await history(
       shipment,
       'tracking_manual_enabled',
@@ -57,10 +73,14 @@ export default async function handler(req, res) {
     await audit('tracking_manual_enabled', shipment, {
       actor: admin.username,
       previous_status: shipment.shipsgo_status || null,
-      previous_error: shipment.shipsgo_error || null
+      previous_error: shipment.shipsgo_error || null,
+      resolved_tracking_alerts: resolvedAlerts
     });
 
-    return ok(res, { shipment: updated?.[0] || { ...shipment, shipsgo_status: 'manual', shipsgo_link_mode: 'manual' } });
+    return ok(res, {
+      shipment: updated?.[0] || { ...shipment, shipsgo_status: 'manual', shipsgo_link_mode: 'manual' },
+      resolved_alerts: resolvedAlerts
+    });
   } catch (error) {
     return fail(res, 400, error.message || 'No se pudo activar el seguimiento manual');
   }
