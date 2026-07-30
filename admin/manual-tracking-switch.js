@@ -74,7 +74,15 @@
     }
   }
 
+  function removeLegacyManualActions(actions) {
+    actions.querySelectorAll('button').forEach(button => {
+      const handler = String(button.getAttribute('onclick') || '');
+      if (handler.includes("'release'") || handler.includes("'deliver'")) button.remove();
+    });
+  }
+
   function addManualWorkflow(actions, shipment) {
+    removeLegacyManualActions(actions);
     if (actions.querySelector('[data-manual-tracking-flow]')) return;
 
     const wrapper = document.createElement('div');
