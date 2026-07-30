@@ -21,7 +21,22 @@
     erpFrame.addEventListener('load',()=>{
       try{
         const win=erpFrame.contentWindow,doc=erpFrame.contentDocument;
-        if(!doc||doc.getElementById('publicationsSection'))return;
+        if(!doc)return;
+
+        const refreshButton=doc.getElementById('refresh');
+        if(refreshButton)refreshButton.remove();
+
+        if(!win.__exportMcaAutoSyncInstalled){
+          win.__exportMcaAutoSyncInstalled=true;
+          const sync=()=>{
+            if(typeof win.loadAll==='function')win.loadAll();
+            if(typeof win.loadNotifications==='function')win.loadNotifications();
+          };
+          doc.addEventListener('visibilitychange',()=>{if(!doc.hidden)sync();});
+          win.addEventListener('focus',sync);
+        }
+
+        if(doc.getElementById('publicationsSection'))return;
         const nav=doc.querySelector('.sidebar-nav');
         const main=doc.querySelector('main');
         if(!nav||!main||typeof win.showSection!=='function')return;
@@ -38,7 +53,7 @@
         main.appendChild(section);
         if(win.titles&&typeof win.titles==='object')win.titles.publicationsSection='Publicaciones comerciales';
         button.onclick=()=>win.showSection('publicationsSection');
-      }catch(error){console.error('PUBLICATIONS_NAV_INTEGRATION_FAILED',error);}
+      }catch(error){console.error('ADMIN_PWA_INTEGRATION_FAILED',error);}
     });
   </script>
 </body>
