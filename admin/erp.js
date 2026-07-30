@@ -28,6 +28,7 @@
     loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking');
     loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control');
     loadScript('/admin/module-export-controls.js', 'data-module-export-controls');
+    loadScript('/admin/section-state.js', 'data-section-state');
     loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
       loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch', () => {
         loadScript('/admin/shipment-actions-menu.js', 'data-shipment-actions-menu', () => {
