@@ -122,8 +122,7 @@
 
   const hydrateSecondaryModules = async () => {
     const independentModules = [
-      loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core'),
-      loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state')
+      loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core')
     ];
 
     const clientsModule = loadScript('/admin/clients-module.js?v=20260731-3', 'data-clients-module');
@@ -158,6 +157,7 @@
 
     bootPromise = (async () => {
       await loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core');
+      await loadScript('/admin/dashboard-operational-state.js?v=20260731-critical1', 'data-dashboard-operational-state');
       await loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking');
       await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');
       await revealAdminShell();
