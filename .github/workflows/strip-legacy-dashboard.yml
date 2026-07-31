@@ -1,0 +1,43 @@
+name: Strip legacy dashboard HTML
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/global-initial-render
+    paths:
+      - .github/workflows/strip-legacy-dashboard.yml
+permissions:
+  contents: write
+jobs:
+  strip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/global-initial-render
+      - name: Remove old dashboard markup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('admin/index.html')
+          html = path.read_text()
+          start_marker = '<section id="dashboardSection" class="app-section">'
+          next_marker = '<section id="clientsSection"'
+          start = html.find(start_marker)
+          end = html.find(next_marker, start)
+          if start < 0 or end < 0:
+              raise SystemExit('Dashboard boundaries not found')
+          if html.count(start_marker) != 1:
+              raise SystemExit('Expected exactly one dashboard section')
+          html = html[:start] + '<section id="dashboardSection" class="app-section"></section>\n' + html[end:]
+          path.write_text(html)
+          PY
+      - name: Validate and commit
+        run: |
+          grep -q '<section id="dashboardSection" class="app-section"></section>' admin/index.html
+          if grep -q 'Distribución operativa' admin/index.html; then exit 1; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin/index.html
+          git commit -m "Delete legacy dashboard HTML structure"
+          git push origin HEAD:fix/global-initial-render
