@@ -112,8 +112,7 @@
     document.head.appendChild(script);
   });
 
-  const revealAdminShell = async () => {
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const revealAdminShell = () => {
     document.getElementById('loginPage')?.classList.add('hidden');
     document.getElementById('appShell')?.classList.remove('hidden');
     root.classList.remove('admin-preparing');
@@ -157,10 +156,21 @@
 
     bootPromise = (async () => {
       await loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core');
-      await loadScript('/admin/dashboard-operational-state.js?v=20260731-critical1', 'data-dashboard-operational-state');
+      await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
       await loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking');
       await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');
-      await revealAdminShell();
+
+      if (typeof window.loadAll !== 'function') {
+        throw new Error('El cargador inicial de datos no está disponible.');
+      }
+
+      await window.loadAll();
+
+      if (typeof window.initializeOperationalDashboard === 'function') {
+        window.initializeOperationalDashboard();
+      }
+
+      revealAdminShell();
 
       hydrateSecondaryModules().catch(error => {
         console.error('[admin secondary modules]', error);
