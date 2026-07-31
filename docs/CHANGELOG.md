@@ -29,6 +29,13 @@ Rama: `refactor/clients-consolidation`
   - Eliminar
 - `admin/client-extra-fields.js` permanece guardado, pero dejó de cargarse.
 - `admin/client-actions-menu.js` permanece guardado, pero dejó de cargarse.
+- `admin/erp-core.js` dejó de construir localmente las opciones de `erpClient`.
+- Expedientes utiliza ahora `fillClientSelects()` como fuente compartida con Registrar contenedor.
+- `admin/erp-core.js` dejó de envolver `window.loadAll` para refrescar clientes.
+- Se añadió el evento explícito `export-mca:clients-changed` para recargar Expedientes después de crear o editar un cliente.
+- `admin/shipment-row-details.js` dejó de consultar nuevamente `/api/clients` y `/api/shipments`.
+- Los detalles de tracking reutilizan ahora las colecciones `clients` y `shipments` ya cargadas.
+- El `MutationObserver` de detalles de tracking se mantiene temporalmente para la fase específica de Tracking.
 - No se modificaron Supabase, `/api/clients`, Twilio, ShipsGo ni los CSV.
 - Se añadió `scripts/check-clients-consolidation.mjs`.
 - Se añadió `.github/workflows/clients-consolidation-check.yml`.
@@ -38,19 +45,28 @@ Rama: `refactor/clients-consolidation`
   - `replaceWith`
   - `window.clients`
   - peticiones GET directas adicionales a `/api/clients`
-- GitHub Actions run `30600879695` terminó con resultado `success`.
-- Vercel generó la Preview `dpl_FgBtJBL1MeBP8FQvChC9KXbbQSFV` en estado `READY` para el commit `20537df4d038a3b0185df4a2a2c7079e62541f22`.
+- La validación también comprueba:
+  - uso de `fillClientSelects()` en Expedientes;
+  - ausencia de la función local `fillClients`;
+  - ausencia del wrapper de `window.loadAll` en `erp-core.js`;
+  - reutilización de datos cargados en detalles de tracking;
+  - ausencia de consultas duplicadas en ese detalle.
+- GitHub Actions run `30601356712` terminó con resultado `success` para el commit `3c1ae4c3a73e075a5a82bfb3a1f86fcd295aad38`.
+- Vercel generó la Preview `dpl_2AeGj7UdhDCNVsFz8ohetFJG5Lsa` en estado `READY` para ese commit.
 - La Preview está protegida por SSO; todavía no se han aprobado pruebas visuales autenticadas ni pruebas de escritura.
 - La PR funcional permanece abierta como borrador y no está autorizada para producción.
 
 Pendiente:
 
-- unificar el selector `erpClient` con `fillClientSelects()`;
-- retirar la construcción local de opciones en `admin/erp-core.js`;
-- eliminar posteriormente la consulta duplicada de Clientes en `shipment-row-details.js`;
-- ejecutar pruebas manuales con un registro QA autorizado;
-- probar escritorio, móvil y PWA;
-- documentar resultados antes de solicitar fusión.
+- ejecutar la matriz manual no destructiva en la Preview autenticada;
+- verificar formulario y listado en escritorio;
+- verificar menú y responsividad en iPhone/PWA;
+- comprobar que `shipmentClient` y `erpClient` estén sincronizados;
+- comprobar detalles de tracking con datos existentes;
+- crear y editar un registro QA únicamente con autorización expresa;
+- verificar bienvenida, historial y CSV;
+- documentar resultados antes de solicitar fusión;
+- no ejecutar eliminación física de clientes reales.
 
 ### Baseline del módulo Clientes
 
