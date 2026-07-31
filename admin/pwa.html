@@ -33,7 +33,6 @@
             if(typeof win.loadNotifications==='function')win.loadNotifications();
           };
           doc.addEventListener('visibilitychange',()=>{if(!doc.hidden)sync();});
-          win.addEventListener('focus',sync);
         }
 
         if(doc.getElementById('publicationsSection'))return;
