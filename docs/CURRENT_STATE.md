@@ -9,18 +9,17 @@ Limpiar progresivamente la deuda técnica del ERP sin perder funciones existente
 ## Producción
 
 - Rama productiva: `main`
-- Producción permanece sin cambios funcionales por esta auditoría.
-- Supabase no ha sido modificado por la fase de limpieza.
-- La PR de Arquitectura 1.0 continúa separada y no debe ejecutarse en producción.
+- Último commit documental relevante: `1807f4a5e343c8b500e3f1534513a3e5234d56bb`
+- La auditoría no modificó código operativo, APIs ni Supabase.
+- La PR de Arquitectura 1.0 continúa separada y no debe ejecutarse en producción durante esta limpieza.
 
-## Auditoría activa
+## Baseline documental
 
-- Rama: `audit/technical-debt-inventory`
-- PR: `#11 — Inventariar deuda técnica y definir plan de limpieza`
-- Estado: borrador, no fusionada
+- PR `#11 — Inventariar deuda técnica y definir plan de limpieza`
+- Estado: fusionada en `main`
 - Alcance: documentación e inventario solamente
 
-## Documentos disponibles en la rama de auditoría
+Documentos disponibles directamente en `main`:
 
 - `docs/AI_CONTEXT.md`
 - `docs/CURRENT_STATE.md`
@@ -28,9 +27,11 @@ Limpiar progresivamente la deuda técnica del ERP sin perder funciones existente
 - `docs/CLEANUP_PLAN.md`
 - `docs/CHANGELOG.md`
 
+Cualquier IA, desarrollador o chat nuevo debe leer estos documentos antes de proponer o ejecutar cambios.
+
 ## Hallazgos confirmados
 
-- El frontend administrativo depende de loaders dinámicos y orden de carga.
+- El frontend administrativo depende de loaders dinámicos y del orden de carga.
 - Existen al menos 12 `MutationObserver` en los módulos inspeccionados.
 - Varias funciones globales son sustituidas o envueltas.
 - Clientes y contenedores clonan y reemplazan botones originales.
@@ -47,23 +48,23 @@ Trabajo completado:
 - inventario inicial de deuda técnica;
 - identificación de módulos críticos;
 - definición del orden de limpieza;
-- creación de rama y PR de auditoría;
+- creación y fusión del baseline documental;
 - definición de reglas de continuidad entre chats.
 
 Trabajo pendiente de Fase 0:
 
-- completar inventario de todos los archivos administrativos y APIs relacionadas;
-- preparar matriz de pruebas de regresión para Clientes;
-- documentar comportamiento actual de crear, editar, listar, exportar, bienvenida e historial;
+- completar el inventario de archivos administrativos y APIs relacionadas;
+- preparar la matriz de pruebas de regresión para Clientes;
+- documentar el comportamiento actual de crear, editar, listar, exportar, bienvenida e historial;
 - definir el punto exacto de integración de `client-extra-fields.js` y `client-actions-menu.js`;
-- crear rama funcional exclusiva para Clientes desde el `main` más reciente;
-- generar Preview de Vercel antes de cualquier integración a producción.
+- crear una rama funcional exclusiva para Clientes desde el `main` más reciente;
+- generar una Preview de Vercel antes de cualquier integración funcional a producción.
 
 ## Próxima acción exacta
 
-Crear la matriz de pruebas y el mapa de dependencias del módulo Clientes. No cambiar código todavía.
+Crear la matriz de pruebas y el mapa completo de dependencias del módulo Clientes. No cambiar código funcional todavía.
 
-Después de aprobar esa matriz, crear una rama como:
+Después de aprobar esa matriz, crear la rama:
 
 `refactor/clients-consolidation`
 
@@ -71,7 +72,7 @@ En esa rama se integrará el comportamiento útil de los parches dentro de la im
 
 ## Criterio para comenzar código
 
-No comenzar refactor funcional hasta tener documentado:
+No comenzar el refactor funcional hasta tener documentado:
 
 1. todos los campos y su correspondencia con Supabase;
 2. todos los puntos que consumen `company`, `mipyme_name` e `importer_name`;
@@ -97,4 +98,4 @@ Antes de terminar cualquier sesión o chat se debe actualizar este archivo con:
 
 ## Estado de producción al cierre
 
-La limpieza técnica todavía no ha modificado el software productivo.
+La documentación de continuidad está en `main`. La limpieza técnica todavía no ha modificado el comportamiento del ERP.
