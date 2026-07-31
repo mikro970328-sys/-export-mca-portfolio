@@ -1,0 +1,78 @@
+name: Fix auth first render
+
+on:
+  push:
+    branches:
+      - fix/global-initial-render
+    paths:
+      - .github/workflows/fix-auth-first-render.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix-auth-render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/global-initial-render
+          fetch-depth: 0
+      - name: Apply structural auth bootstrap
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          index = Path('admin/index.html')
+          text = index.read_text()
+
+          old = '<html lang="es">\n<head>'
+          new = '''<html lang="es" class="auth-pending">\n<head>\n<script>\n(() => {\n  const root = document.documentElement;\n  try {\n    const hasSession = Boolean(localStorage.getItem('export_mca_token'));\n    root.classList.replace('auth-pending', hasSession ? 'auth-session' : 'auth-login');\n  } catch {\n    root.classList.replace('auth-pending', 'auth-login');\n  }\n})();\n</script>'''
+          if old not in text:
+              raise SystemExit('index html root marker not found')
+          text = text.replace(old, new, 1)
+
+          css_marker = '.hidden{display:none!important}'
+          css_replacement = ".hidden{display:none!important}html.auth-pending #loginPage,html.auth-pending #appShell,html.auth-session #loginPage,html.auth-login #appShell{display:none!important}"
+          if css_marker not in text:
+              raise SystemExit('CSS marker not found')
+          text = text.replace(css_marker, css_replacement, 1)
+
+          show_old = "function logoutNow(){localStorage.removeItem('export_mca_token');localStorage.removeItem('export_mca_user');location.reload()}function show(){$('loginPage').classList.add('hidden');"
+          show_new = "function logoutNow(){localStorage.removeItem('export_mca_token');localStorage.removeItem('export_mca_user');location.reload()}function show(){document.documentElement.classList.remove('auth-pending','auth-login');document.documentElement.classList.add('auth-session');$('loginPage').classList.add('hidden');"
+          if show_old not in text:
+              raise SystemExit('show function marker not found')
+          text = text.replace(show_old, show_new, 1)
+          index.write_text(text)
+
+          erp = Path('admin/erp.js')
+          text = erp.read_text()
+
+          invalid_old = "      root.classList.remove('admin-preparing');\n      return false;"
+          invalid_new = "      root.classList.remove('admin-preparing', 'auth-session', 'auth-pending');\n      root.classList.add('auth-login');\n      return false;"
+          if invalid_old not in text:
+              raise SystemExit('invalid session marker not found')
+          text = text.replace(invalid_old, invalid_new, 1)
+
+          valid_old = "    const loginPage = document.getElementById('loginPage');"
+          valid_new = "    root.classList.remove('auth-login', 'auth-pending');\n    root.classList.add('auth-session');\n\n    const loginPage = document.getElementById('loginPage');"
+          if valid_old not in text:
+              raise SystemExit('valid session marker not found')
+          text = text.replace(valid_old, valid_new, 1)
+
+          catch_old = "      root.classList.remove('admin-preparing');\n      const loginPage = document.getElementById('loginPage');"
+          catch_new = "      root.classList.remove('admin-preparing', 'auth-session', 'auth-pending');\n      root.classList.add('auth-login');\n      const loginPage = document.getElementById('loginPage');"
+          if catch_old not in text:
+              raise SystemExit('boot catch marker not found')
+          text = text.replace(catch_old, catch_new, 1)
+          erp.write_text(text)
+          PY
+      - name: Remove temporary workflow
+        run: rm .github/workflows/fix-auth-first-render.yml
+      - name: Commit correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin/index.html admin/erp.js .github/workflows/fix-auth-first-render.yml
+          git commit -m "Resolve authentication state before first render"
+          git push origin fix/global-initial-render
