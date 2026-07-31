@@ -56,7 +56,8 @@
     if (!payload?.admin || !payload?.admin_id || !payload?.exp || payload.exp <= Math.floor(Date.now() / 1000)) {
       localStorage.removeItem('export_mca_token');
       localStorage.removeItem('export_mca_user');
-      root.classList.remove('admin-preparing');
+      root.classList.remove('admin-preparing', 'auth-session', 'auth-pending');
+      root.classList.add('auth-login');
       return false;
     }
 
@@ -78,6 +79,9 @@
       if (typeof token !== 'undefined') token = storedToken;
       if (typeof currentUser !== 'undefined') currentUser = storedUser;
     } catch {}
+
+    root.classList.remove('auth-login', 'auth-pending');
+    root.classList.add('auth-session');
 
     const loginPage = document.getElementById('loginPage');
     const appShell = document.getElementById('appShell');
@@ -183,7 +187,8 @@
       return true;
     })().catch(error => {
       console.error('[admin boot]', error);
-      root.classList.remove('admin-preparing');
+      root.classList.remove('admin-preparing', 'auth-session', 'auth-pending');
+      root.classList.add('auth-login');
       const loginPage = document.getElementById('loginPage');
       const appShell = document.getElementById('appShell');
       loginPage?.classList.remove('hidden');
