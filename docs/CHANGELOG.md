@@ -6,7 +6,7 @@ Este archivo registra cambios técnicos y funcionales confirmados. No se debe re
 
 ### Baseline del módulo Clientes
 
-Estado: **rama `audit/clients-baseline`; documentación solamente**
+Estado: **documentación fusionada en `main`; sin cambios funcionales**
 
 - Se inspeccionó el flujo completo de Clientes en frontend, backend y Supabase.
 - Se creó `docs/MODULE_CLIENTS_BASELINE.md` con:
@@ -35,6 +35,8 @@ Estado: **rama `audit/clients-baseline`; documentación solamente**
 - Se determinó que eliminar un cliente real puede borrar información asociada o fallar según sus relaciones.
 - Se estableció que las pruebas destructivas no se ejecutarán en producción.
 - No se pudo confirmar mediante las herramientas disponibles si Vercel Preview usa variables de Supabase separadas.
+- La PR documental `#13` fue fusionada mediante squash.
+- Commit de fusión: `6cbe2cdb02ccb25c42163f5f8c57501bd6304837`.
 
 ### Auditoría general de deuda técnica
 
@@ -63,5 +65,5 @@ Estado: **documentación fusionada en `main`; sin cambios funcionales**
 - No se modificó Supabase.
 - No se modificaron APIs.
 - No se cambió el comportamiento del ERP.
-- La documentación de continuidad está disponible en la rama `main`.
-- El baseline de Clientes permanece en una rama de auditoría hasta su revisión y fusión.
+- La documentación de continuidad y el baseline de Clientes están disponibles en `main`.
+- La próxima fase es la consolidación funcional de Clientes en una rama separada.
