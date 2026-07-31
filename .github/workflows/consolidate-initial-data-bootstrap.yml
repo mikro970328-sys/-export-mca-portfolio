@@ -1,0 +1,51 @@
+name: Consolidate initial data bootstrap
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/global-initial-render
+    paths:
+      - .github/workflows/consolidate-initial-data-bootstrap.yml
+permissions:
+  contents: write
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/global-initial-render
+      - name: Give bootstrap sole ownership of initial data
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          dashboard_path = Path('admin/dashboard-operational-state.js')
+          dashboard = dashboard_path.read_text()
+          old_tail = """  queueMicrotask(() => {\n    ensureDashboardStructure();\n    if (typeof window.loadAll === 'function') window.loadAll();\n    else renderUnifiedDashboard({});\n  });\n})();"""
+          new_tail = """  ensureDashboardStructure();\n  window.initializeOperationalDashboard = () => {\n    ensureDashboardStructure();\n    return renderUnifiedDashboard(window.__lastDashboardPayload || {});\n  };\n})();"""
+          if dashboard.count(old_tail) != 1:
+              raise SystemExit('Expected one autonomous dashboard startup block')
+          dashboard_path.write_text(dashboard.replace(old_tail, new_tail))
+
+          erp_path = Path('admin/erp.js')
+          erp = erp_path.read_text()
+          old_boot = """      await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner1', 'data-dashboard-operational-state');\n      await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');\n      await revealAdminShell();"""
+          new_boot = """      await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');\n      await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');\n\n      if (typeof window.loadAll !== 'function') {\n        throw new Error('El cargador inicial de datos no está disponible.');\n      }\n      await window.loadAll();\n      if (typeof window.initializeOperationalDashboard === 'function') {\n        window.initializeOperationalDashboard();\n      }\n\n      await revealAdminShell();"""
+          if erp.count(old_boot) != 1:
+              raise SystemExit('Expected one critical bootstrap sequence')
+          erp_path.write_text(erp.replace(old_boot, new_boot))
+          PY
+      - name: Validate architecture
+        run: |
+          ! grep -q "queueMicrotask" admin/dashboard-operational-state.js
+          grep -q "await window.loadAll()" admin/erp.js
+          grep -q "initializeOperationalDashboard" admin/dashboard-operational-state.js
+      - name: Commit consolidated bootstrap and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin/erp.js admin/dashboard-operational-state.js
+          git rm .github/workflows/consolidate-initial-data-bootstrap.yml
+          git commit -m "Make bootstrap own and await initial ERP data"
+          git push origin HEAD:fix/global-initial-render
