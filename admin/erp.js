@@ -148,6 +148,38 @@
     window.dispatchEvent(new CustomEvent('export-mca:admin-ready'));
   };
 
+  const hydrateSecondaryModules = async () => {
+    const independentModules = [
+      loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core'),
+      loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state')
+    ];
+
+    const clientsModule = loadScript('/admin/clients-module.js?v=20260731-3', 'data-clients-module');
+
+    const sectionChain = loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking')
+      .then(() => loadScript('/admin/section-state.js?v=20260730-sessionfix1', 'data-section-state'));
+
+    const alertChain = loadScript('/admin/operational-alert-center.js?v=20260730-2', 'data-operational-alert-center')
+      .then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
+
+    const trackingChain = loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback')
+      .then(() => loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch'))
+      .then(() => loadScript('/admin/shipment-actions-menu.js', 'data-shipment-actions-menu'))
+      .then(() => loadScript('/admin/shipment-row-details.js', 'data-shipment-row-details'));
+
+    await Promise.all([
+      ...independentModules,
+      clientsModule,
+      sectionChain,
+      loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control'),
+      loadScript('/admin/module-export-controls.js', 'data-module-export-controls'),
+      alertChain,
+      trackingChain
+    ]);
+
+    window.dispatchEvent(new CustomEvent('export-mca:modules-ready'));
+  };
+
   const bootAdminModules = () => {
     if (bootPromise) return bootPromise;
     if (booted || !restorePersistedSession()) return Promise.resolve(false);
@@ -157,37 +189,13 @@
     removeLegacyAdminControls();
 
     bootPromise = (async () => {
-      const independentModules = [
-        loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core'),
-        loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state')
-      ];
-
       await loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core');
-
-      const clientsModule = loadScript('/admin/clients-module.js?v=20260731-3', 'data-clients-module');
-
-      const sectionChain = loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking')
-        .then(() => loadScript('/admin/section-state.js?v=20260730-sessionfix1', 'data-section-state'));
-
-      const alertChain = loadScript('/admin/operational-alert-center.js?v=20260730-2', 'data-operational-alert-center')
-        .then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
-
-      const trackingChain = loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback')
-        .then(() => loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch'))
-        .then(() => loadScript('/admin/shipment-actions-menu.js', 'data-shipment-actions-menu'))
-        .then(() => loadScript('/admin/shipment-row-details.js', 'data-shipment-row-details'));
-
-      await Promise.all([
-        ...independentModules,
-        clientsModule,
-        sectionChain,
-        loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control'),
-        loadScript('/admin/module-export-controls.js', 'data-module-export-controls'),
-        alertChain,
-        trackingChain
-      ]);
-
       await revealAdminShell();
+
+      hydrateSecondaryModules().catch(error => {
+        console.error('[admin secondary modules]', error);
+      });
+
       return true;
     })().catch(error => {
       console.error('[admin boot]', error);
