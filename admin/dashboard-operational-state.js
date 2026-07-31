@@ -105,6 +105,10 @@
     window.__lastDashboardPayload = payload || {};
     renderUnifiedDashboard(window.__lastDashboardPayload);
   };
+  window.initializeOperationalDashboard = () => {
+    ensureDashboardStructure();
+    return renderUnifiedDashboard(window.__lastDashboardPayload || {});
+  };
 
   ensureDashboardStructure();
 
@@ -126,10 +130,4 @@
     }, 100);
     setTimeout(() => clearInterval(timer), 10000);
   }
-
-  queueMicrotask(() => {
-    ensureDashboardStructure();
-    if (typeof window.loadAll === 'function') window.loadAll();
-    else renderUnifiedDashboard({});
-  });
 })();
