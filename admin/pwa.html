@@ -26,13 +26,6 @@
         const refreshButton=doc.getElementById('refresh');
         if(refreshButton)refreshButton.remove();
 
-        if(!doc.querySelector('script[data-tracking-fallback]')){
-          const trackingScript=doc.createElement('script');
-          trackingScript.src='/admin/tracking-fallback.js?v=1';
-          trackingScript.dataset.trackingFallback='true';
-          doc.body.appendChild(trackingScript);
-        }
-
         if(!win.__exportMcaAutoSyncInstalled){
           win.__exportMcaAutoSyncInstalled=true;
           const sync=()=>{
