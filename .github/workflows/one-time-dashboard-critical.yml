@@ -1,0 +1,45 @@
+name: One-time dashboard critical boot
+on:
+  push:
+    branches: [fix/global-initial-render]
+    paths: [.github/workflows/one-time-dashboard-critical.yml]
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/global-initial-render
+      - name: Move dashboard to critical boot
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('admin/erp.js')
+          s = p.read_text()
+          old_secondary = "      loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core'),\n      loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state')\n"
+          new_secondary = "      loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core')\n"
+          old_critical = "      await loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core');\n      await loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking');\n      await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');\n"
+          new_critical = "      await loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core');\n      await loadScript('/admin/dashboard-operational-state.js?v=20260731-critical1', 'data-dashboard-operational-state');\n      await loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking');\n      await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');\n"
+          if s.count(old_secondary) != 1:
+              raise SystemExit(f'Expected one secondary dashboard loader, found {s.count(old_secondary)}')
+          if s.count(old_critical) != 1:
+              raise SystemExit(f'Expected one critical boot block, found {s.count(old_critical)}')
+          s = s.replace(old_secondary, new_secondary).replace(old_critical, new_critical)
+          if s.count('dashboard-operational-state.js') != 1:
+              raise SystemExit('Dashboard module must have exactly one loader after update')
+          p.write_text(s)
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add admin/erp.js
+          git commit -m "Load current dashboard before revealing admin shell"
+          git push
+      - name: Remove workflow
+        run: |
+          git pull --rebase
+          rm .github/workflows/one-time-dashboard-critical.yml
+          git add .github/workflows/one-time-dashboard-critical.yml
+          git commit -m "Remove one-time dashboard boot workflow"
+          git push
