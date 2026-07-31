@@ -4,6 +4,70 @@ Este archivo registra cambios técnicos y funcionales confirmados. No se debe re
 
 ## 2026-07-30
 
+### Consolidación funcional del módulo Clientes
+
+Estado: **PR #15 en borrador; Preview solamente; no fusionado a producción**
+
+Rama: `refactor/clients-consolidation`
+
+- Se creó `admin/clients-module.js` como implementación explícita del módulo Clientes.
+- Se integraron directamente los seis campos actuales:
+  - Nombre
+  - Empresa
+  - Nombre de la MIPYME
+  - Importadora por la que importa
+  - WhatsApp
+  - Correo
+- Se implementó un único flujo de creación con protección contra doble clic.
+- Se implementó una única edición modal para los seis campos.
+- Se corrigió el mensaje posterior a la creación para indicar que la bienvenida queda pendiente cuando no fue enviada.
+- Se integró el menú de acciones dentro del módulo principal para escritorio y móvil.
+- Las acciones usan claves estables para:
+  - Editar
+  - Enviar/Reenviar/Reintentar bienvenida
+  - Historial
+  - Eliminar
+- `admin/client-extra-fields.js` permanece guardado, pero dejó de cargarse.
+- `admin/client-actions-menu.js` permanece guardado, pero dejó de cargarse.
+- `admin/erp-core.js` dejó de construir localmente las opciones de `erpClient`.
+- Expedientes utiliza ahora `fillClientSelects()` como fuente compartida con Registrar contenedor.
+- `admin/erp-core.js` dejó de envolver `window.loadAll` para refrescar clientes.
+- Se añadió el evento explícito `export-mca:clients-changed` para recargar Expedientes después de crear o editar un cliente.
+- `admin/shipment-row-details.js` dejó de consultar nuevamente `/api/clients` y `/api/shipments`.
+- Los detalles de tracking reutilizan ahora las colecciones `clients` y `shipments` ya cargadas.
+- El `MutationObserver` de detalles de tracking se mantiene temporalmente para la fase específica de Tracking.
+- No se modificaron Supabase, `/api/clients`, Twilio, ShipsGo ni los CSV.
+- Se añadió `scripts/check-clients-consolidation.mjs`.
+- Se añadió `.github/workflows/clients-consolidation-check.yml`.
+- La validación prohíbe en el módulo nuevo:
+  - `MutationObserver`
+  - `cloneNode`
+  - `replaceWith`
+  - `window.clients`
+  - peticiones GET directas adicionales a `/api/clients`
+- La validación también comprueba:
+  - uso de `fillClientSelects()` en Expedientes;
+  - ausencia de la función local `fillClients`;
+  - ausencia del wrapper de `window.loadAll` en `erp-core.js`;
+  - reutilización de datos cargados en detalles de tracking;
+  - ausencia de consultas duplicadas en ese detalle.
+- GitHub Actions run `30601356712` terminó con resultado `success` para el commit `3c1ae4c3a73e075a5a82bfb3a1f86fcd295aad38`.
+- Vercel generó la Preview `dpl_2AeGj7UdhDCNVsFz8ohetFJG5Lsa` en estado `READY` para ese commit.
+- La Preview está protegida por SSO; todavía no se han aprobado pruebas visuales autenticadas ni pruebas de escritura.
+- La PR funcional permanece abierta como borrador y no está autorizada para producción.
+
+Pendiente:
+
+- ejecutar la matriz manual no destructiva en la Preview autenticada;
+- verificar formulario y listado en escritorio;
+- verificar menú y responsividad en iPhone/PWA;
+- comprobar que `shipmentClient` y `erpClient` estén sincronizados;
+- comprobar detalles de tracking con datos existentes;
+- crear y editar un registro QA únicamente con autorización expresa;
+- verificar bienvenida, historial y CSV;
+- documentar resultados antes de solicitar fusión;
+- no ejecutar eliminación física de clientes reales.
+
 ### Baseline del módulo Clientes
 
 Estado: **documentación fusionada en `main`; sin cambios funcionales**
@@ -61,9 +125,8 @@ Estado: **documentación fusionada en `main`; sin cambios funcionales**
 
 ### Producción
 
-- No se modificó código operativo.
 - No se modificó Supabase.
 - No se modificaron APIs.
-- No se cambió el comportamiento del ERP.
+- La consolidación funcional de Clientes no está en `main`.
+- Producción conserva el módulo anterior.
 - La documentación de continuidad y el baseline de Clientes están disponibles en `main`.
-- La próxima fase es la consolidación funcional de Clientes en una rama separada.

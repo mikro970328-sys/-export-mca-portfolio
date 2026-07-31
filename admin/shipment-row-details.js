@@ -2,16 +2,8 @@
   if (window.__shipmentRowDetailsInstalled) return;
   window.__shipmentRowDetailsInstalled = true;
 
-  const token = () => localStorage.getItem('export_mca_token') || '';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fmt = value => value ? new Date(value).toLocaleString('es-US') : 'No disponible';
-
-  async function request(path) {
-    const response = await fetch(path, { headers: { Authorization: `Bearer ${token()}` } });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || 'No se pudieron cargar los detalles');
-    return data;
-  }
 
   function detailRow(label, value) {
     return `<div style="padding:11px 0;border-bottom:1px solid #e6ebf2"><div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#667085;margin-bottom:4px">${esc(label)}</div><div style="font-size:15px;color:#152238;word-break:break-word">${esc(value || 'No disponible')}</div></div>`;
@@ -52,16 +44,17 @@
     alert(`${shipment.container_number}\nCliente: ${client.name || '-'}\nMIPYME: ${client.mipyme_name || '-'}\nImportadora: ${client.importer_name || '-'}\nTeléfono: ${client.phone || '-'}\nCreado: ${fmt(shipment.created_at)}`);
   }
 
-  async function bindRows() {
+  function bindRows() {
     const container = document.getElementById('shipments');
     if (!container || container.dataset.rowDetailsBinding === '1') return;
     container.dataset.rowDetailsBinding = '1';
+
     try {
-      const [shipmentData, clientData] = await Promise.all([request('/api/shipments'), request('/api/clients')]);
-      const shipments = shipmentData.shipments || [];
-      const clients = clientData.clients || [];
-      const clientsById = new Map(clients.map(c => [String(c.id), c]));
-      const byNumber = new Map(shipments.map(s => [String(s.container_number || '').trim(), s]));
+      const shipmentRows = Array.isArray(shipments) ? shipments : [];
+      const clientRows = Array.isArray(clients) ? clients : [];
+      const clientsById = new Map(clientRows.map(client => [String(client.id), client]));
+      const byNumber = new Map(shipmentRows.map(shipment => [String(shipment.container_number || '').trim(), shipment]));
+
       container.querySelectorAll('tbody tr').forEach(row => {
         if (row.dataset.rowDetailsBound === '1') return;
         const number = row.querySelector('td:first-child b')?.textContent?.trim();
