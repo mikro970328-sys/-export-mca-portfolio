@@ -156,12 +156,6 @@
 
       await loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core');
 
-      const workersChain = loadScript('/admin/workers-module.js?v=20260730-sessionfix1', 'data-workers-module')
-        .then(() => Promise.all([
-          loadScript('/admin/workers-responsive.js', 'data-workers-responsive'),
-          loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu')
-        ]));
-
       const clientsModule = loadScript('/admin/clients-module.js?v=20260731-3', 'data-clients-module');
 
       const sectionChain = loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking')
@@ -177,7 +171,6 @@
 
       await Promise.all([
         ...independentModules,
-        workersChain,
         clientsModule,
         sectionChain,
         loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control'),
