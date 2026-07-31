@@ -1,6 +1,6 @@
 # Current State — Export MCA ERP
 
-Última actualización: 2026-07-30 22:43 ET
+Última actualización: 2026-07-30 22:58 ET
 
 ## Objetivo actual
 
@@ -9,41 +9,28 @@ Limpiar progresivamente la deuda técnica del ERP sin perder funciones existente
 ## Producción
 
 - Rama productiva: `main`
-- Último commit documental fusionado: `ffe2a764696f786bb9d758ec63168b10ca82f839`
-- La fase actual no ha modificado código operativo, APIs ni Supabase.
+- Último commit documental fusionado: `6cbe2cdb02ccb25c42163f5f8c57501bd6304837`
+- PR `#13 — Documentar baseline y matriz de pruebas de Clientes`: fusionada.
+- No se ha modificado código operativo, APIs ni Supabase.
 - La PR de Arquitectura 1.0 continúa separada y no debe ejecutarse en producción durante esta limpieza.
 
-## Documentación base en `main`
+## Documentación disponible en `main`
 
 - `docs/AI_CONTEXT.md`
 - `docs/CURRENT_STATE.md`
 - `docs/TECH_DEBT_INVENTORY.md`
 - `docs/CLEANUP_PLAN.md`
 - `docs/CHANGELOG.md`
-
-Cualquier IA, desarrollador o chat nuevo debe leer esos documentos antes de proponer o ejecutar cambios.
-
-## Fase actual
-
-**Fase 0 — Baseline y control de cambios**
-
-### Rama activa
-
-`audit/clients-baseline`
-
-### Alcance
-
-Auditoría documental completa del módulo Clientes. No se está cambiando comportamiento.
-
-### Archivos creados en la rama
-
 - `docs/MODULE_CLIENTS_BASELINE.md`
 - `docs/CLIENTS_TEST_MATRIX.md`
 
-### Commits de la rama
+Cualquier IA, desarrollador o chat nuevo debe leer estos documentos antes de proponer o ejecutar cambios.
 
-- `a85290942cc52e71a606f0d43aa8c30da8bd374c` — baseline técnico y mapa de dependencias
-- `03e6ebf52bdd57b126beb6ec06198f863bf82528` — matriz de pruebas de regresión
+## Fase actual
+
+**Fase 1 — Preparación de la consolidación del módulo Clientes**
+
+La Fase 0 documental de Clientes está completada y fusionada.
 
 ## Hallazgos confirmados del módulo Clientes
 
@@ -53,89 +40,94 @@ Auditoría documental completa del módulo Clientes. No se está cambiando compo
 - `admin/client-extra-fields.js` inserta `mipyme_name` e `importer_name` después de cargar.
 - Ese archivo clona y reemplaza `saveClient`, sustituye `editClient` y mantiene el parche mediante `MutationObserver`.
 - `admin/client-actions-menu.js` asume posiciones de columnas y botones, oculta acciones originales y crea un menú mediante otro `MutationObserver`.
-- La colección `clients` es una variable léxica; `window.clients` no es una fuente confiable. El parche de edición puede volver a consultar `/api/clients`.
+- La colección `clients` es una variable léxica; `window.clients` no es una fuente confiable.
 - El selector de Expedientes es actualizado por dos implementaciones diferentes: `fillClientSelects()` y el wrapper de `admin/erp-core.js`.
 
-### Backend
+### Backend y Supabase
 
 - `api/clients.js` soporta GET, POST, PATCH, reenvío de bienvenida y DELETE físico.
 - La creación guarda `welcome_status = pending`; no envía automáticamente la bienvenida.
-- La detección de duplicados por WhatsApp o correo está implementada en la API.
 - No existe una restricción única de base de datos para teléfono o correo.
+- La tabla `clients` tiene 13 columnas actuales.
+- Reglas de eliminación:
+  - `CASCADE`: `shipments`, `notifications`, `documents`
+  - `SET NULL`: `shipment_history`
+  - `RESTRICT`: `operations`, `invoices`, `payments`
 
-### Supabase
+No se ejecutarán pruebas destructivas sobre clientes reales.
 
-La tabla `clients` tiene 13 columnas actuales, incluyendo:
+## Verificación de Preview
 
-- `company`
-- `mipyme_name`
-- `importer_name`
-- estado, fecha y error de bienvenida
+Vercel crea despliegues Preview para ramas, pero las herramientas disponibles no exponen el alcance de las variables de entorno. No se ha confirmado que Preview use una Supabase separada.
 
-Relaciones al eliminar cliente:
+Mientras esto no se confirme:
 
-- `CASCADE`: `shipments`, `notifications`, `documents`
-- `SET NULL`: `shipment_history`
-- `RESTRICT`: `operations`, `invoices`, `payments`
+- se permiten pruebas estáticas y de lectura;
+- se permiten registros QA explícitos sin relaciones críticas;
+- no se permiten eliminaciones destructivas ni cambios sobre clientes reales;
+- una Preview no se considera por sí sola un entorno aislado.
 
-Por ese motivo, no se ejecutarán pruebas destructivas sobre clientes reales.
-
-### Dependencias externas
-
-Los datos del cliente se consumen en:
-
-- selector y búsqueda de Contenedores;
-- selector y listado de Expedientes;
-- detalles del tracking;
-- Dashboard y alertas de bienvenida;
-- historial;
-- CSV de clientes, tracking, expedientes y notificaciones.
-
-## Verificación de entorno Preview
-
-Se confirmó que Vercel crea despliegues Preview para ramas, pero las herramientas disponibles no permiten verificar el alcance de las variables de entorno ni confirmar si Preview usa una Supabase separada.
-
-**Bloqueador de pruebas destructivas:** una Preview no se considerará base aislada hasta verificar las variables de entorno. Mientras tanto, las pruebas deberán ser estáticas, de lectura o utilizar registros QA no relacionados.
-
-## Trabajo completado de Fase 0
+## Trabajo completado
 
 - inventario general de deuda técnica;
-- baseline documental fusionado en `main`;
-- mapa real del módulo Clientes;
-- diccionario de datos de `clients`;
-- inventario de relaciones y reglas de eliminación;
+- documentación de continuidad en `main`;
+- mapa completo del módulo Clientes;
+- diccionario de datos y relaciones;
 - flujo de creación, edición, listado, bienvenida e historial;
 - dependencias con Contenedores, Expedientes, Dashboard y CSV;
-- matriz de pruebas no destructivas y destructivas aisladas;
-- estrategia de rollback propuesta.
-
-## Trabajo pendiente antes de código funcional
-
-1. Revisar y fusionar la documentación de `audit/clients-baseline`.
-2. Confirmar si Preview dispone de Supabase aislada o establecer una estrategia QA segura.
-3. Crear `refactor/clients-consolidation` desde el `main` más reciente.
-4. Registrar SHA inicial de cada archivo funcional que se vaya a modificar.
-5. Implementar la consolidación en commits pequeños.
-6. No retirar los parches hasta aprobar la matriz de pruebas.
+- matriz de pruebas;
+- estrategia de rollback;
+- PR documental #13 fusionada.
 
 ## Próxima acción exacta
 
-Abrir una PR documental para `audit/clients-baseline`, verificar que solo incluya documentación y fusionarla en `main`.
-
-Después, crear la rama funcional:
+Crear desde el commit `6cbe2cdb02ccb25c42163f5f8c57501bd6304837` la rama:
 
 `refactor/clients-consolidation`
 
-El primer commit funcional deberá integrar los seis campos y un solo flujo de creación/edición, sin cambiar nombres técnicos ni Supabase.
+Antes del primer cambio funcional se deben registrar los SHA actuales de:
 
-## Reglas para la futura rama funcional
+- `admin/index.html`
+- `admin/erp.js`
+- `admin/client-extra-fields.js`
+- `admin/client-actions-menu.js`
+- `admin/erp-core.js`
+- `admin/shipment-row-details.js`
+
+## Primer bloque funcional aprobado
+
+El primer bloque debe integrar dentro de la implementación principal:
+
+1. los seis campos del formulario;
+2. un único flujo de creación;
+3. una única implementación de edición;
+4. acciones con claves estables;
+5. una sola fuente para los selectores de clientes.
+
+No debe cambiar:
+
+- los nombres técnicos `company`, `mipyme_name` e `importer_name`;
+- Supabase;
+- contratos de `/api/clients`;
+- bienvenida, historial o CSV;
+- semántica comercial de los campos.
+
+## Estrategia de commits funcionales
+
+1. Integrar formulario y creación sin retirar parches.
+2. Integrar edición y acciones estables.
+3. Unificar selectores y eliminar consultas duplicadas.
+4. Ejecutar pruebas estáticas y Preview.
+5. Retirar `client-extra-fields.js` y `client-actions-menu.js` en un commit separado.
+6. Actualizar documentación y resultados.
+
+## Reglas obligatorias
 
 - No trabajar directamente en `main`.
-- No cambiar la semántica de `company`, `mipyme_name` o `importer_name`.
 - No añadir nuevos `MutationObserver`.
-- No retirar `client-extra-fields.js` ni `client-actions-menu.js` hasta que la implementación consolidada esté probada.
+- No borrar parches antes de integrar y probar su funcionalidad.
 - No ejecutar eliminación de clientes reales.
-- No fusionar a producción sin aprobación explícita.
+- No fusionar código funcional a producción sin aprobación explícita.
 
 ## Regla para cerrar una sesión de trabajo
 
@@ -152,4 +144,4 @@ Antes de terminar cualquier sesión o chat se debe actualizar este archivo con:
 
 ## Estado de producción al cierre
 
-La documentación base está en `main`. El baseline de Clientes está en una rama de auditoría. No se ha modificado el comportamiento productivo del ERP.
+La documentación de Clientes está fusionada en `main`. La consolidación funcional todavía no ha comenzado y el comportamiento productivo del ERP permanece sin cambios.
