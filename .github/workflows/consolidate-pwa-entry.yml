@@ -1,0 +1,111 @@
+name: Consolidate PWA entry
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/global-initial-render
+    paths:
+      - .github/workflows/consolidate-pwa-entry.yml
+permissions:
+  contents: write
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/global-initial-render
+      - name: Integrate publications and remove outer iframe
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          index_path = Path('admin/index.html')
+          html = index_path.read_text()
+
+          # PWA metadata belongs to the actual application document.
+          if 'rel="manifest" href="/admin/manifest.webmanifest' not in html:
+              html = html.replace(
+                  '<link rel="icon" href="/logo.png">',
+                  '<link rel="icon" href="/logo.png">\n'
+                  '<meta name="theme-color" content="#06204a">\n'
+                  '<meta name="apple-mobile-web-app-capable" content="yes">\n'
+                  '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n'
+                  '<meta name="apple-mobile-web-app-title" content="MCA ERP">\n'
+                  '<link rel="manifest" href="/admin/manifest.webmanifest?v=2">\n'
+                  '<link rel="apple-touch-icon" sizes="180x180" href="/admin/apple-touch-icon.png?v=2">'
+              )
+
+          # Publications navigation must exist in the real document before section restoration.
+          publications_nav = '<button class="nav-item" data-section="publicationsSection">▦ Publicaciones comerciales</button>\n'
+          if 'data-section="publicationsSection"' not in html:
+              marker = '<button class="nav-item" data-section="notificationsSection">'
+              pos = html.find(marker)
+              if pos < 0:
+                  raise SystemExit('Notifications navigation marker not found')
+              html = html[:pos] + publications_nav + html[pos:]
+
+          # Publications section must be static, not injected by pwa.html.
+          if 'id="publicationsSection"' not in html:
+              marker = '<section id="notificationsSection"'
+              pos = html.find(marker)
+              if pos < 0:
+                  raise SystemExit('Notifications section marker not found')
+              publications_section = (
+                  '<section id="publicationsSection" class="app-section hidden">'
+                  '<iframe src="/admin/publications.html?embedded=1" title="Publicaciones comerciales" '
+                  'style="width:100%;height:calc(100vh - 120px);min-height:720px;border:0;border-radius:14px;background:#f4f7fb"></iframe>'
+                  '</section>\n'
+              )
+              html = html[:pos] + publications_section + html[pos:]
+
+          # Register a title in the existing title map, regardless of quote style.
+          if 'publicationsSection' not in re.sub(r'id="publicationsSection".*?</section>', '', html, flags=re.S):
+              title_patterns = [
+                  (r'(dashboardSection\s*:\s*[\'\"]Inicio[\'\"]\s*,)', r"\1publicationsSection:'Publicaciones comerciales',"),
+                  (r'([\'\"]dashboardSection[\'\"]\s*:\s*[\'\"]Inicio[\'\"]\s*,)', r"\1'publicationsSection':'Publicaciones comerciales',")
+              ]
+              for pattern, replacement in title_patterns:
+                  html2, count = re.subn(pattern, replacement, html, count=1)
+                  if count:
+                      html = html2
+                      break
+
+          # Register the service worker in the actual document once.
+          if "navigator.serviceWorker.register('/sw.js')" not in html:
+              sw_script = "<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}</script>\n"
+              html = html.replace('</body>', sw_script + '</body>')
+
+          index_path.write_text(html)
+
+          # pwa.html becomes a clean entry point; no iframe, no view injection, no second document lifecycle.
+          Path('admin/pwa.html').write_text('''<!doctype html>
+          <html lang="es">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+            <title>MCA ERP</title>
+            <meta name="theme-color" content="#06204a">
+            <link rel="manifest" href="/admin/manifest.webmanifest?v=2">
+            <script>location.replace('/admin/index.html');</script>
+          </head>
+          <body></body>
+          </html>
+          ''')
+          PY
+      - name: Validate architecture
+        run: |
+          grep -q 'data-section="publicationsSection"' admin/index.html
+          grep -q 'id="publicationsSection"' admin/index.html
+          grep -q 'manifest.webmanifest' admin/index.html
+          if grep -q '<iframe id="erpFrame"' admin/pwa.html; then exit 1; fi
+          if grep -q 'contentWindow' admin/pwa.html; then exit 1; fi
+          if grep -q 'createElement.*publicationsSection' admin/pwa.html; then exit 1; fi
+      - name: Commit structural consolidation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin/index.html admin/pwa.html
+          git commit -m "Remove outer PWA iframe and integrate publications into admin"
+          git push origin HEAD:fix/global-initial-render
