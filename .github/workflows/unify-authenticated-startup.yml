@@ -1,0 +1,99 @@
+name: Unify authenticated startup
+
+on:
+  push:
+    branches:
+      - fix/global-initial-render
+    paths:
+      - .github/workflows/unify-authenticated-startup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  unify-startup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/global-initial-render
+          fetch-depth: 0
+
+      - name: Replace competing login startup flows
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          index_path = Path('admin/index.html')
+          index = index_path.read_text()
+
+          old_login = "$('login').onclick=async()=>{try{const r=await api('/api/login',{method:'POST',body:JSON.stringify({username:$('username').value,password:$('password').value})});token=r.token;currentUser=r.user;localStorage.setItem('export_mca_token',token);localStorage.setItem('export_mca_user',JSON.stringify(currentUser));show()}catch(e){note('loginMsg',e.message)}};"
+          new_login = "$('login').onclick=async()=>{try{const r=await api('/api/login',{method:'POST',body:JSON.stringify({username:$('username').value,password:$('password').value})});token=r.token;currentUser=r.user;localStorage.setItem('export_mca_token',token);localStorage.setItem('export_mca_user',JSON.stringify(currentUser));if(typeof window.startAuthenticatedAdmin!=='function')throw new Error('No se pudo iniciar la plataforma.');await window.startAuthenticatedAdmin()}catch(e){note('loginMsg',e.message)}};"
+
+          if old_login not in index:
+              raise SystemExit('Expected legacy login handler was not found')
+          index = index.replace(old_login, new_login, 1)
+          index_path.write_text(index)
+
+          erp_path = Path('admin/erp.js')
+          erp = erp_path.read_text()
+
+          old_tail = """  restorePersistedSession();
+  bootAdminModules();
+
+  const authWatcher = window.setInterval(() => {
+    if (!localStorage.getItem('export_mca_token')) return;
+    window.clearInterval(authWatcher);
+    root.classList.add('admin-preparing');
+    restorePersistedSession();
+    bootAdminModules();
+  }, 250);
+})();
+"""
+
+          new_tail = """  window.startAuthenticatedAdmin = async () => {
+    root.classList.remove('auth-login', 'auth-pending');
+    root.classList.add('auth-session', 'admin-preparing');
+
+    const restored = restorePersistedSession();
+    if (!restored) {
+      root.classList.remove('admin-preparing', 'auth-session');
+      root.classList.add('auth-login');
+      return false;
+    }
+
+    return bootAdminModules();
+  };
+
+  if (hasStoredSession) window.startAuthenticatedAdmin();
+})();
+"""
+
+          if old_tail not in erp:
+              raise SystemExit('Expected auth watcher startup block was not found')
+          erp = erp.replace(old_tail, new_tail, 1)
+          erp_path.write_text(erp)
+          PY
+
+      - name: Validate unified ownership
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          index = Path('admin/index.html').read_text()
+          erp = Path('admin/erp.js').read_text()
+          assert "await window.startAuthenticatedAdmin()" in index
+          assert ";show()}catch" not in index
+          assert "window.startAuthenticatedAdmin = async" in erp
+          assert "authWatcher" not in erp
+          assert "setInterval" not in erp
+          print('Authenticated startup has one owner')
+          PY
+
+      - name: Commit correction and remove workflow
+        run: |
+          rm .github/workflows/unify-authenticated-startup.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin/index.html admin/erp.js .github/workflows/unify-authenticated-startup.yml
+          git commit -m "Unify post-login and restored-session startup"
+          git push origin fix/global-initial-render
