@@ -14,7 +14,8 @@
   - `importer_name` continúa almacenando el identificador interno.
 - No se modificó Supabase.
 - No se eliminaron campos del DOM.
-- No se reemplazaron las funciones centrales de clientes, selectores o búsqueda.
+- Los selectores, búsquedas y APIs conservaron su implementación y contratos actuales.
+- El encabezado de la tabla se ajusta mediante un decorador no destructivo de `renderClients`; la función original continúa ejecutándose y únicamente se cambia el texto visible después del renderizado.
 
 ### Archivos modificados
 
