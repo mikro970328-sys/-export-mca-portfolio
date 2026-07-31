@@ -4,6 +4,54 @@ Este archivo registra cambios técnicos y funcionales confirmados. No se debe re
 
 ## 2026-07-30
 
+### Consolidación funcional del módulo Clientes
+
+Estado: **PR #15 en borrador; Preview solamente; no fusionado a producción**
+
+Rama: `refactor/clients-consolidation`
+
+- Se creó `admin/clients-module.js` como implementación explícita del módulo Clientes.
+- Se integraron directamente los seis campos actuales:
+  - Nombre
+  - Empresa
+  - Nombre de la MIPYME
+  - Importadora por la que importa
+  - WhatsApp
+  - Correo
+- Se implementó un único flujo de creación con protección contra doble clic.
+- Se implementó una única edición modal para los seis campos.
+- Se corrigió el mensaje posterior a la creación para indicar que la bienvenida queda pendiente cuando no fue enviada.
+- Se integró el menú de acciones dentro del módulo principal para escritorio y móvil.
+- Las acciones usan claves estables para:
+  - Editar
+  - Enviar/Reenviar/Reintentar bienvenida
+  - Historial
+  - Eliminar
+- `admin/client-extra-fields.js` permanece guardado, pero dejó de cargarse.
+- `admin/client-actions-menu.js` permanece guardado, pero dejó de cargarse.
+- No se modificaron Supabase, `/api/clients`, Twilio, ShipsGo ni los CSV.
+- Se añadió `scripts/check-clients-consolidation.mjs`.
+- Se añadió `.github/workflows/clients-consolidation-check.yml`.
+- La validación prohíbe en el módulo nuevo:
+  - `MutationObserver`
+  - `cloneNode`
+  - `replaceWith`
+  - `window.clients`
+  - peticiones GET directas adicionales a `/api/clients`
+- GitHub Actions run `30600879695` terminó con resultado `success`.
+- Vercel generó la Preview `dpl_FgBtJBL1MeBP8FQvChC9KXbbQSFV` en estado `READY` para el commit `20537df4d038a3b0185df4a2a2c7079e62541f22`.
+- La Preview está protegida por SSO; todavía no se han aprobado pruebas visuales autenticadas ni pruebas de escritura.
+- La PR funcional permanece abierta como borrador y no está autorizada para producción.
+
+Pendiente:
+
+- unificar el selector `erpClient` con `fillClientSelects()`;
+- retirar la construcción local de opciones en `admin/erp-core.js`;
+- eliminar posteriormente la consulta duplicada de Clientes en `shipment-row-details.js`;
+- ejecutar pruebas manuales con un registro QA autorizado;
+- probar escritorio, móvil y PWA;
+- documentar resultados antes de solicitar fusión.
+
 ### Baseline del módulo Clientes
 
 Estado: **documentación fusionada en `main`; sin cambios funcionales**
@@ -61,9 +109,8 @@ Estado: **documentación fusionada en `main`; sin cambios funcionales**
 
 ### Producción
 
-- No se modificó código operativo.
 - No se modificó Supabase.
 - No se modificaron APIs.
-- No se cambió el comportamiento del ERP.
+- La consolidación funcional de Clientes no está en `main`.
+- Producción conserva el módulo anterior.
 - La documentación de continuidad y el baseline de Clientes están disponibles en `main`.
-- La próxima fase es la consolidación funcional de Clientes en una rama separada.
