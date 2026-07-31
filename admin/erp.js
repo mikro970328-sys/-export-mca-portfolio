@@ -83,9 +83,11 @@
     const appShell = document.getElementById('appShell');
     if (loginPage && appShell) {
       loginPage.classList.add('hidden');
-      appShell.classList.remove('hidden');
-      document.getElementById('currentUser').textContent = storedUser.username || '';
-      document.getElementById('currentRole').textContent = storedUser.role === 'master_admin' ? 'Administrador maestro' : 'Administrador';
+      appShell.classList.add('hidden');
+      const currentUserLabel = document.getElementById('currentUser');
+      const currentRoleLabel = document.getElementById('currentRole');
+      if (currentUserLabel) currentUserLabel.textContent = storedUser.username || '';
+      if (currentRoleLabel) currentRoleLabel.textContent = storedUser.role === 'master_admin' ? 'Administrador maestro' : 'Administrador';
       document.getElementById('adminNav')?.classList.toggle('hidden', storedUser.role !== 'master_admin');
       const dashboardDate = document.getElementById('dashboardDate');
       if (dashboardDate) dashboardDate.textContent = new Date().toLocaleDateString('es-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -130,6 +132,10 @@
 
   const revealAdminShell = async () => {
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const loginPage = document.getElementById('loginPage');
+    const appShell = document.getElementById('appShell');
+    loginPage?.classList.add('hidden');
+    appShell?.classList.remove('hidden');
     root.classList.remove('admin-preparing');
     window.dispatchEvent(new CustomEvent('export-mca:admin-ready'));
   };
@@ -185,6 +191,12 @@
     })().catch(error => {
       console.error('[admin boot]', error);
       root.classList.remove('admin-preparing');
+      const loginPage = document.getElementById('loginPage');
+      const appShell = document.getElementById('appShell');
+      loginPage?.classList.remove('hidden');
+      appShell?.classList.add('hidden');
+      booted = false;
+      bootPromise = null;
       return false;
     });
 
