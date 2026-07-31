@@ -128,9 +128,6 @@
 
     const clientsModule = loadScript('/admin/clients-module.js?v=20260731-3', 'data-clients-module');
 
-    const sectionChain = loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking')
-      .then(() => loadScript('/admin/section-state.js?v=20260730-sessionfix1', 'data-section-state'));
-
     const alertChain = loadScript('/admin/operational-alert-center.js?v=20260730-2', 'data-operational-alert-center')
       .then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
 
@@ -142,7 +139,6 @@
     await Promise.all([
       ...independentModules,
       clientsModule,
-      sectionChain,
       loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control'),
       loadScript('/admin/module-export-controls.js', 'data-module-export-controls'),
       alertChain,
@@ -162,6 +158,8 @@
 
     bootPromise = (async () => {
       await loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core');
+      await loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking');
+      await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');
       await revealAdminShell();
 
       hydrateSecondaryModules().catch(error => {
