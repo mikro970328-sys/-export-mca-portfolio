@@ -5,34 +5,6 @@
 
   if (hasStoredSession) root.classList.add('admin-preparing');
 
-  const style = document.createElement('style');
-  style.id = 'loginViewportStability';
-  style.textContent = `
-    html.admin-preparing #appShell {
-      display: none !important;
-    }
-    #loginPage.login-page {
-      min-height: 100vh;
-      min-height: 100svh;
-      height: 100svh;
-      overflow-y: auto;
-      overscroll-behavior: none;
-      align-items: center;
-      justify-items: center;
-      padding-top: max(24px, env(safe-area-inset-top));
-      padding-right: max(20px, env(safe-area-inset-right));
-      padding-bottom: max(24px, env(safe-area-inset-bottom));
-      padding-left: max(20px, env(safe-area-inset-left));
-    }
-    #loginCard.login-card {
-      transform: translateZ(0);
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
-      contain: layout paint;
-    }
-  `;
-  if (!document.getElementById(style.id)) document.head.appendChild(style);
-
   let booted = false;
   let bootPromise = null;
 
