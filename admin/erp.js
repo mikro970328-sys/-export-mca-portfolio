@@ -1,8 +1,16 @@
 // Stable admin loader. The login remains isolated until authentication.
 (() => {
+  const root = document.documentElement;
+  const hasStoredSession = Boolean(localStorage.getItem('export_mca_token'));
+
+  if (hasStoredSession) root.classList.add('admin-preparing');
+
   const style = document.createElement('style');
   style.id = 'loginViewportStability';
   style.textContent = `
+    html.admin-preparing #appShell {
+      display: none !important;
+    }
     #loginPage.login-page {
       min-height: 100vh;
       min-height: 100svh;
@@ -26,10 +34,11 @@
   if (!document.getElementById(style.id)) document.head.appendChild(style);
 
   let booted = false;
+  let bootPromise = null;
 
-  const decodeTokenPayload = token => {
+  const decodeTokenPayload = tokenValue => {
     try {
-      const part = String(token || '').split('.')[1];
+      const part = String(tokenValue || '').split('.')[1];
       if (!part) return null;
       const normalized = part.replace(/-/g, '+').replace(/_/g, '/');
       const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
@@ -47,6 +56,7 @@
     if (!payload?.admin || !payload?.admin_id || !payload?.exp || payload.exp <= Math.floor(Date.now() / 1000)) {
       localStorage.removeItem('export_mca_token');
       localStorage.removeItem('export_mca_user');
+      root.classList.remove('admin-preparing');
       return false;
     }
 
@@ -96,51 +106,89 @@
     document.getElementById('dashboardTrackingAlerts')?.remove();
   };
 
-  const loadScript = (src, marker, onload) => {
-    if (document.querySelector(`script[${marker}]`)) return onload?.();
+  const loadScript = (src, marker) => new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[${marker}]`);
+    if (existing) {
+      if (existing.dataset.loaded === 'true') resolve();
+      else {
+        existing.addEventListener('load', resolve, { once: true });
+        existing.addEventListener('error', reject, { once: true });
+      }
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = src;
     script.setAttribute(marker, 'true');
-    script.onload = () => onload?.();
+    script.onload = () => {
+      script.dataset.loaded = 'true';
+      resolve();
+    };
+    script.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
     document.head.appendChild(script);
+  });
+
+  const revealAdminShell = async () => {
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    root.classList.remove('admin-preparing');
+    window.dispatchEvent(new CustomEvent('export-mca:admin-ready'));
   };
 
   const bootAdminModules = () => {
-    if (booted || !restorePersistedSession()) return;
-    booted = true;
+    if (bootPromise) return bootPromise;
+    if (booted || !restorePersistedSession()) return Promise.resolve(false);
 
+    booted = true;
+    root.classList.add('admin-preparing');
     removeLegacyAdminControls();
 
-    loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core');
-    loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state');
+    bootPromise = (async () => {
+      const independentModules = [
+        loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core'),
+        loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state')
+      ];
 
-    loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core', () => {
-      loadScript('/admin/workers-module.js?v=20260730-sessionfix1', 'data-workers-module', () => {
-        loadScript('/admin/workers-responsive.js', 'data-workers-responsive');
-        loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu');
-      });
+      await loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core');
 
-      loadScript('/admin/clients-module.js?v=20260731-3', 'data-clients-module');
+      const workersChain = loadScript('/admin/workers-module.js?v=20260730-sessionfix1', 'data-workers-module')
+        .then(() => Promise.all([
+          loadScript('/admin/workers-responsive.js', 'data-workers-responsive'),
+          loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu')
+        ]));
 
-      loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking', () => {
-        loadScript('/admin/section-state.js?v=20260730-sessionfix1', 'data-section-state');
-      });
+      const clientsModule = loadScript('/admin/clients-module.js?v=20260731-3', 'data-clients-module');
 
-      loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control');
-      loadScript('/admin/module-export-controls.js', 'data-module-export-controls');
+      const sectionChain = loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking')
+        .then(() => loadScript('/admin/section-state.js?v=20260730-sessionfix1', 'data-section-state'));
 
-      loadScript('/admin/operational-alert-center.js?v=20260730-2', 'data-operational-alert-center', () => {
-        loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability');
-      });
+      const alertChain = loadScript('/admin/operational-alert-center.js?v=20260730-2', 'data-operational-alert-center')
+        .then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
 
-      loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback', () => {
-        loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch', () => {
-          loadScript('/admin/shipment-actions-menu.js', 'data-shipment-actions-menu', () => {
-            loadScript('/admin/shipment-row-details.js', 'data-shipment-row-details');
-          });
-        });
-      });
+      const trackingChain = loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback')
+        .then(() => loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch'))
+        .then(() => loadScript('/admin/shipment-actions-menu.js', 'data-shipment-actions-menu'))
+        .then(() => loadScript('/admin/shipment-row-details.js', 'data-shipment-row-details'));
+
+      await Promise.all([
+        ...independentModules,
+        workersChain,
+        clientsModule,
+        sectionChain,
+        loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control'),
+        loadScript('/admin/module-export-controls.js', 'data-module-export-controls'),
+        alertChain,
+        trackingChain
+      ]);
+
+      await revealAdminShell();
+      return true;
+    })().catch(error => {
+      console.error('[admin boot]', error);
+      root.classList.remove('admin-preparing');
+      return false;
     });
+
+    return bootPromise;
   };
 
   restorePersistedSession();
@@ -149,6 +197,7 @@
   const authWatcher = window.setInterval(() => {
     if (!localStorage.getItem('export_mca_token')) return;
     window.clearInterval(authWatcher);
+    root.classList.add('admin-preparing');
     restorePersistedSession();
     bootAdminModules();
   }, 250);
