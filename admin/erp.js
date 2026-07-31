@@ -1,4 +1,4 @@
-// Stable admin loader. The login remains isolated until authentication.
+// Stable admin loader. Authentication and module boot have one owner.
 (() => {
   const root = document.documentElement;
   const hasStoredSession = Boolean(localStorage.getItem('export_mca_token'));
@@ -48,6 +48,13 @@
     }
   };
 
+  const showLoginState = () => {
+    root.classList.remove('admin-preparing', 'auth-session', 'auth-pending');
+    root.classList.add('auth-login');
+    document.getElementById('loginPage')?.classList.remove('hidden');
+    document.getElementById('appShell')?.classList.add('hidden');
+  };
+
   const restorePersistedSession = () => {
     const storedToken = localStorage.getItem('export_mca_token') || '';
     if (!storedToken) return false;
@@ -56,8 +63,7 @@
     if (!payload?.admin || !payload?.admin_id || !payload?.exp || payload.exp <= Math.floor(Date.now() / 1000)) {
       localStorage.removeItem('export_mca_token');
       localStorage.removeItem('export_mca_user');
-      root.classList.remove('admin-preparing', 'auth-session', 'auth-pending');
-      root.classList.add('auth-login');
+      showLoginState();
       return false;
     }
 
@@ -136,10 +142,8 @@
 
   const revealAdminShell = async () => {
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const loginPage = document.getElementById('loginPage');
-    const appShell = document.getElementById('appShell');
-    loginPage?.classList.add('hidden');
-    appShell?.classList.remove('hidden');
+    document.getElementById('loginPage')?.classList.add('hidden');
+    document.getElementById('appShell')?.classList.remove('hidden');
     root.classList.remove('admin-preparing');
     window.dispatchEvent(new CustomEvent('export-mca:admin-ready'));
   };
@@ -187,12 +191,7 @@
       return true;
     })().catch(error => {
       console.error('[admin boot]', error);
-      root.classList.remove('admin-preparing', 'auth-session', 'auth-pending');
-      root.classList.add('auth-login');
-      const loginPage = document.getElementById('loginPage');
-      const appShell = document.getElementById('appShell');
-      loginPage?.classList.remove('hidden');
-      appShell?.classList.add('hidden');
+      showLoginState();
       booted = false;
       bootPromise = null;
       return false;
@@ -201,14 +200,40 @@
     return bootPromise;
   };
 
-  restorePersistedSession();
-  bootAdminModules();
+  const startAuthenticatedAdmin = async () => {
+    root.classList.remove('auth-login', 'auth-pending');
+    root.classList.add('auth-session', 'admin-preparing');
 
-  const authWatcher = window.setInterval(() => {
-    if (!localStorage.getItem('export_mca_token')) return;
-    window.clearInterval(authWatcher);
-    root.classList.add('admin-preparing');
-    restorePersistedSession();
-    bootAdminModules();
-  }, 250);
+    if (!restorePersistedSession()) return false;
+    return bootAdminModules();
+  };
+
+  window.startAuthenticatedAdmin = startAuthenticatedAdmin;
+
+  const loginButton = document.getElementById('login');
+  if (loginButton) {
+    loginButton.onclick = async () => {
+      try {
+        const response = await api('/api/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: document.getElementById('username')?.value || '',
+            password: document.getElementById('password')?.value || ''
+          })
+        });
+
+        token = response.token;
+        currentUser = response.user;
+        localStorage.setItem('export_mca_token', token);
+        localStorage.setItem('export_mca_user', JSON.stringify(currentUser));
+
+        const started = await startAuthenticatedAdmin();
+        if (!started) throw new Error('No se pudo iniciar la plataforma.');
+      } catch (error) {
+        note('loginMsg', error.message || 'No se pudo iniciar sesión.');
+      }
+    };
+  }
+
+  if (hasStoredSession) startAuthenticatedAdmin();
 })();
