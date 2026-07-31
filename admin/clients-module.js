@@ -20,6 +20,37 @@
     'clientEmail'
   ];
 
+  let activeMenuTrigger = null;
+  let activeMenuClientId = null;
+  let menuBackdrop = null;
+  let menuPopover = null;
+
+  function installStyles() {
+    if (byId('clientsModuleStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'clientsModuleStyles';
+    style.textContent = `
+      .client-actions-cell{width:1%;white-space:nowrap;text-align:right}
+      .client-actions-trigger{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border:1px solid #cfd7e3!important;border-radius:10px!important;background:#fff!important;color:#06204a!important;font-size:24px!important;line-height:1!important;display:inline-grid!important;place-items:center!important;box-shadow:none!important}
+      .client-actions-trigger:hover{background:#f7f9fc!important}
+      .client-actions-popover{position:fixed;z-index:1800;min-width:230px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #dfe5ee;border-radius:12px;padding:7px;box-shadow:0 18px 45px rgba(6,32,74,.22)}
+      .client-actions-popover.hidden{display:none!important}
+      .client-actions-popover button{width:100%!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;text-align:left!important;background:#fff!important;color:#152238!important;border:0!important;border-radius:8px!important;padding:11px 12px!important;font-size:14px!important;font-weight:700!important;white-space:nowrap!important}
+      .client-actions-popover button:hover{background:#f4f7fb!important}
+      .client-actions-popover button.danger{color:#b42318!important;border-top:1px solid #e6ebf2!important;border-radius:0 0 8px 8px!important;margin-top:5px!important;padding-top:14px!important}
+      .client-actions-backdrop{display:none;position:fixed;inset:0;z-index:1799;background:rgba(6,20,42,.35)}
+      .client-actions-backdrop.show{display:block}
+      @media(max-width:700px){
+        .client-actions-cell{position:sticky!important;right:0!important;background:#fff!important;z-index:3!important}
+        .client-actions-popover{left:12px!important;right:12px!important;bottom:12px!important;top:auto!important;min-width:0!important;width:auto!important;border-radius:16px!important;padding:10px!important}
+        .client-actions-popover::before{content:'Acciones del cliente';display:block;padding:5px 8px 10px;font-size:16px;font-weight:800;color:#06204a;border-bottom:1px solid #e6ebf2;margin-bottom:5px}
+        .client-actions-popover button{padding:14px 12px!important;font-size:15px!important}
+        body.client-actions-open{overflow:hidden!important}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function clientsSectionHtml() {
     return `
       <div class="grid">
@@ -85,9 +116,117 @@
     return 'Cliente guardado. La bienvenida está pendiente de envío.';
   }
 
+  function findClient(id) {
+    return Array.isArray(clients)
+      ? clients.find(item => String(item.id) === String(id))
+      : null;
+  }
+
+  function closeClientMenu() {
+    menuPopover?.classList.add('hidden');
+    if (menuPopover) menuPopover.innerHTML = '';
+    menuBackdrop?.classList.remove('show');
+    document.body.classList.remove('client-actions-open');
+    activeMenuTrigger?.setAttribute('aria-expanded', 'false');
+    activeMenuTrigger = null;
+    activeMenuClientId = null;
+  }
+
+  function positionClientMenu(trigger) {
+    if (!menuPopover || window.matchMedia('(max-width:700px)').matches) return;
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.max(230, menuPopover.offsetWidth || 230);
+    const height = Math.max(190, menuPopover.offsetHeight || 190);
+    let left = rect.right - width;
+    let top = rect.bottom + 7;
+
+    left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+    if (top + height > window.innerHeight - 8) {
+      top = Math.max(8, rect.top - height - 7);
+    }
+
+    menuPopover.style.left = `${left}px`;
+    menuPopover.style.top = `${top}px`;
+    menuPopover.style.right = 'auto';
+    menuPopover.style.bottom = 'auto';
+  }
+
+  function openClientMenu(client, trigger) {
+    if (!menuPopover || !menuBackdrop) return;
+    if (activeMenuTrigger === trigger && !menuPopover.classList.contains('hidden')) {
+      closeClientMenu();
+      return;
+    }
+
+    closeClientMenu();
+    activeMenuTrigger = trigger;
+    activeMenuClientId = client.id;
+    trigger.setAttribute('aria-expanded', 'true');
+
+    const actions = [
+      ['edit', 'Editar', ''],
+      ['welcome', welcomeLabel(client.welcome_status), ''],
+      ['history', 'Historial', ''],
+      ['delete', 'Eliminar', 'danger']
+    ];
+
+    menuPopover.innerHTML = actions.map(([action, label, className]) => `
+      <button type="button" class="${className}" data-client-action="${action}" data-client-id="${escapeHtml(client.id)}">${escapeHtml(label)}</button>`).join('');
+    menuPopover.classList.remove('hidden');
+
+    if (window.matchMedia('(max-width:700px)').matches) {
+      menuBackdrop.classList.add('show');
+      document.body.classList.add('client-actions-open');
+    } else {
+      requestAnimationFrame(() => positionClientMenu(trigger));
+    }
+  }
+
+  function ensureActionMenu() {
+    installStyles();
+
+    menuBackdrop = document.querySelector('.client-actions-backdrop');
+    if (!menuBackdrop) {
+      menuBackdrop = document.createElement('div');
+      menuBackdrop.className = 'client-actions-backdrop';
+      menuBackdrop.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(menuBackdrop);
+    }
+
+    menuPopover = document.querySelector('.client-actions-popover');
+    if (!menuPopover) {
+      menuPopover = document.createElement('div');
+      menuPopover.className = 'client-actions-popover hidden';
+      menuPopover.setAttribute('role', 'menu');
+      document.body.appendChild(menuPopover);
+    }
+
+    menuBackdrop.addEventListener('click', closeClientMenu);
+    menuPopover.addEventListener('click', event => {
+      const actionButton = event.target.closest('[data-client-action]');
+      if (!actionButton) return;
+      const action = actionButton.dataset.clientAction;
+      const id = actionButton.dataset.clientId || activeMenuClientId;
+      closeClientMenu();
+      Promise.resolve(executeClientAction(action, id)).catch(error => alert(error.message));
+    });
+
+    document.addEventListener('pointerdown', event => {
+      if (menuPopover?.classList.contains('hidden')) return;
+      if (menuPopover?.contains(event.target) || activeMenuTrigger?.contains(event.target)) return;
+      closeClientMenu();
+    }, true);
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeClientMenu();
+    });
+    window.addEventListener('resize', closeClientMenu);
+    window.addEventListener('scroll', closeClientMenu, true);
+  }
+
   function renderClientTable() {
     const target = byId('clients');
     if (!target) return;
+    closeClientMenu();
 
     if (!Array.isArray(clients) || clients.length === 0) {
       target.innerHTML = '<div class="empty-state">No hay clientes registrados.</div>';
@@ -112,13 +251,16 @@
               <td>${escapeHtml(client.company || '-')}</td>
               <td>${escapeHtml(client.phone || '-')}</td>
               <td><span class="pill ${client.welcome_status === 'sent' ? 'done' : ''}">${escapeHtml(client.welcome_status || 'pending')}</span></td>
-              <td>
-                <div class="actions">
-                  <button class="alt" type="button" data-client-action="edit">Editar</button>
-                  <button class="success" type="button" data-client-action="welcome">${welcomeLabel(client.welcome_status)}</button>
-                  <button class="alt" type="button" data-client-action="history">Historial</button>
-                  <button class="danger" type="button" data-client-action="delete">Eliminar</button>
-                </div>
+              <td class="client-actions-cell">
+                <button
+                  class="client-actions-trigger"
+                  type="button"
+                  data-client-menu-trigger
+                  aria-label="Abrir acciones del cliente"
+                  aria-haspopup="menu"
+                  aria-expanded="false"
+                  title="Acciones"
+                >⋮</button>
               </td>
             </tr>`).join('')}
         </tbody>
@@ -196,10 +338,7 @@
   }
 
   function openClientEditor(id) {
-    const client = Array.isArray(clients)
-      ? clients.find(item => String(item.id) === String(id))
-      : null;
-
+    const client = findClient(id);
     if (!client) {
       alert('Cliente no encontrado. Actualiza la lista e inténtalo nuevamente.');
       return;
@@ -231,18 +370,10 @@
     });
   }
 
-  async function handleClientAction(event) {
-    const button = event.target.closest('[data-client-action]');
-    if (!button) return;
+  async function executeClientAction(action, id) {
+    const client = findClient(id);
+    if (!client) return;
 
-    const row = button.closest('[data-client-id]');
-    const id = row?.dataset.clientId;
-    const client = Array.isArray(clients)
-      ? clients.find(item => String(item.id) === String(id))
-      : null;
-    if (!id || !client) return;
-
-    const action = button.dataset.clientAction;
     if (action === 'edit') {
       openClientEditor(id);
       return;
@@ -260,15 +391,22 @@
     }
   }
 
+  function handleClientListClick(event) {
+    const trigger = event.target.closest('[data-client-menu-trigger]');
+    if (!trigger) return;
+    const row = trigger.closest('[data-client-id]');
+    const client = findClient(row?.dataset.clientId);
+    if (client) openClientMenu(client, trigger);
+  }
+
   function mount() {
     const section = byId('clientsSection');
     if (!section) return;
 
     section.innerHTML = clientsSectionHtml();
+    ensureActionMenu();
     byId('saveClient')?.addEventListener('click', saveClientRecord);
-    byId('clients')?.addEventListener('click', event => {
-      Promise.resolve(handleClientAction(event)).catch(error => alert(error.message));
-    });
+    byId('clients')?.addEventListener('click', handleClientListClick);
 
     window.renderClients = renderClientTable;
     window.editClient = openClientEditor;
