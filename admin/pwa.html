@@ -5,55 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>MCA ERP</title>
   <meta name="theme-color" content="#06204a">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="MCA ERP">
   <link rel="manifest" href="/admin/manifest.webmanifest?v=2">
-  <link rel="apple-touch-icon" sizes="180x180" href="/admin/apple-touch-icon.png?v=2">
-  <link rel="icon" type="image/png" href="/admin/apple-touch-icon.png?v=2">
-  <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f7fb}iframe{display:block;width:100%;height:100%;border:0;background:#f4f7fb}</style>
+  <script>location.replace('/admin/index.html');</script>
 </head>
-<body>
-  <iframe id="erpFrame" src="/admin/index.html" title="MCA ERP"></iframe>
-  <script>
-    if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
-    const erpFrame=document.getElementById('erpFrame');
-    erpFrame.addEventListener('load',()=>{
-      try{
-        const win=erpFrame.contentWindow,doc=erpFrame.contentDocument;
-        if(!doc)return;
-
-        const refreshButton=doc.getElementById('refresh');
-        if(refreshButton)refreshButton.remove();
-
-        if(!win.__exportMcaAutoSyncInstalled){
-          win.__exportMcaAutoSyncInstalled=true;
-          const sync=()=>{
-            if(typeof win.loadAll==='function')win.loadAll();
-            if(typeof win.loadNotifications==='function')win.loadNotifications();
-          };
-          doc.addEventListener('visibilitychange',()=>{if(!doc.hidden)sync();});
-        }
-
-        if(doc.getElementById('publicationsSection'))return;
-        const nav=doc.querySelector('.sidebar-nav');
-        const main=doc.querySelector('main');
-        if(!nav||!main||typeof win.showSection!=='function')return;
-        const button=doc.createElement('button');
-        button.className='nav-item';
-        button.dataset.section='publicationsSection';
-        button.innerHTML='▦ Publicaciones comerciales';
-        const notifications=nav.querySelector('[data-section="notificationsSection"]');
-        nav.insertBefore(button,notifications||null);
-        const section=doc.createElement('section');
-        section.id='publicationsSection';
-        section.className='app-section hidden';
-        section.innerHTML='<iframe src="/admin/publications.html?embedded=1" title="Publicaciones comerciales" style="width:100%;height:calc(100vh - 120px);min-height:720px;border:0;border-radius:14px;background:#f4f7fb"></iframe>';
-        main.appendChild(section);
-        if(win.titles&&typeof win.titles==='object')win.titles.publicationsSection='Publicaciones comerciales';
-        button.onclick=()=>win.showSection('publicationsSection');
-      }catch(error){console.error('ADMIN_PWA_INTEGRATION_FAILED',error);}
-    });
-  </script>
-</body>
+<body></body>
 </html>
