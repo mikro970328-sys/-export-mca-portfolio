@@ -6,6 +6,7 @@ on:
       - 'admin/clients-module.js'
       - 'admin/erp.js'
       - 'admin/erp-core.js'
+      - 'admin/shipment-row-details.js'
       - 'scripts/check-clients-consolidation.mjs'
       - '.github/workflows/clients-consolidation-check.yml'
   workflow_dispatch:
