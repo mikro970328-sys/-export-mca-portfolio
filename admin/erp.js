@@ -33,7 +33,7 @@
       if (!part) return null;
       const normalized = part.replace(/-/g, '+').replace(/_/g, '/');
       const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-      return JSON.parse(deURIComponent(escape(atob(padded))));
+      return JSON.parse(decodeURIComponent(escape(atob(padded))));
     } catch {
       return null;
     }
