@@ -4,52 +4,58 @@
 
   const byId = id => document.getElementById(id);
   const escHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c]));
-  const normalize = value => String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
+  const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
-  function removeDistributionSection() {
-    const distribution = byId('statusDistribution');
-    const card = distribution?.closest('section.card');
-    const grid = card?.parentElement;
+  function ensureDashboardStructure() {
+    const section = byId('dashboardSection');
+    if (!section) return false;
+    if (section.dataset.dashboardOwner === 'operational') return true;
 
-    if (card) card.remove();
-    if (grid?.classList.contains('dashboard-grid')) {
-      grid.style.gridTemplateColumns = '1fr';
-    }
+    section.dataset.dashboardOwner = 'operational';
+    section.innerHTML = `
+      <section class="card dashboard-hero">
+        <h1>Centro de Operaciones</h1>
+        <p>Visión ejecutiva de clientes, contenedores, movimiento logístico y alertas.</p>
+        <div class="dashboard-meta">
+          <span class="dashboard-chip" id="dashboardDate"></span>
+          <span class="dashboard-chip">Admin Portal</span>
+          <span class="dashboard-chip">Datos en tiempo real</span>
+        </div>
+      </section>
+      <section id="stats" class="stats"></section>
+      <section class="card">
+        <div class="section-head"><h3>Actividad reciente</h3><button class="alt" id="dashboardOpenContainers">Ver contenedores</button></div>
+        <div id="recentActivity" class="activity-list"></div>
+      </section>
+      <section class="card">
+        <div class="section-head"><h3>Alertas que requieren atención</h3></div>
+        <div id="alerts" class="alert-grid"></div>
+      </section>`;
+
+    const date = byId('dashboardDate');
+    if (date) date.textContent = new Date().toLocaleDateString('es-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const openContainers = byId('dashboardOpenContainers');
+    if (openContainers) openContainers.onclick = () => showSection('containersSection');
+    return true;
   }
 
   function classifyShipment(shipment) {
     const status = normalize(shipment.operational_status || shipment.last_status || 'registrado');
-
     if (shipment.active === false || /entreg|delivered|cerrad|closed/.test(status)) return 'delivered';
     if (/esperando liberacion|awaiting release|pendiente de liberacion/.test(status)) return 'awaitingRelease';
     if (/liberad|released|disponible para entrega|available for delivery/.test(status)) return 'released';
     if (/destino|destination|arribo|arrived|descargad|discharged/.test(status)) return 'atDestination';
     if (/transit|transito|salio del puerto|salida del puerto|cargado en el buque|loaded on vessel|en navegacion|navegando|transbordo|transshipment|zarpo|zarpado|booking confirmado|cargado/.test(status)) return 'inTransit';
-    return shipment.active === false ? 'delivered' : 'activeOther';
+    return 'activeOther';
   }
 
   function calculateOperationalStats(rows = []) {
-    const result = {
-      total: rows.length,
-      active: 0,
-      inTransit: 0,
-      atDestination: 0,
-      awaitingRelease: 0,
-      released: 0,
-      delivered: 0,
-      activeOther: 0
-    };
-
+    const result = { total: rows.length, active: 0, inTransit: 0, atDestination: 0, awaitingRelease: 0, released: 0, delivered: 0, activeOther: 0 };
     rows.forEach(shipment => {
       const group = classifyShipment(shipment);
       if (shipment.active !== false && group !== 'delivered') result.active += 1;
       result[group] += 1;
     });
-
     return result;
   }
 
@@ -66,9 +72,11 @@
   }
 
   function renderUnifiedDashboard(apiDashboard = {}) {
-    removeDistributionSection();
+    if (!ensureDashboardStructure()) return null;
 
-    const rows = Array.isArray(window.shipments) ? window.shipments : (typeof shipments !== 'undefined' && Array.isArray(shipments) ? shipments : []);
+    const rows = Array.isArray(window.shipments)
+      ? window.shipments
+      : (typeof shipments !== 'undefined' && Array.isArray(shipments) ? shipments : []);
     const stats = calculateOperationalStats(rows);
     const apiStats = apiDashboard.stats || {};
     const target = byId('stats');
@@ -98,6 +106,8 @@
     renderUnifiedDashboard(window.__lastDashboardPayload);
   };
 
+  ensureDashboardStructure();
+
   const installRefresh = () => {
     if (typeof window.loadAll !== 'function' || window.__dashboardLoadAllWrapped) return false;
     window.__dashboardLoadAllWrapped = true;
@@ -117,9 +127,8 @@
     setTimeout(() => clearInterval(timer), 10000);
   }
 
-  removeDistributionSection();
-
   queueMicrotask(() => {
+    ensureDashboardStructure();
     if (typeof window.loadAll === 'function') window.loadAll();
     else renderUnifiedDashboard({});
   });
