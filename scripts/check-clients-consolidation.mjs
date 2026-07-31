@@ -68,7 +68,7 @@ for (const forbiddenLoader of [
 }
 
 if (!loader.includes('decodeURIComponent(')) errors.push('El loader no contiene decodeURIComponent() válido.');
-if (loader.includes('deURIComponent(')) errors.push('El loader contiene el error tipográfico deURIComponent().');
+if (/\bdeURIComponent\s*\(/.test(loader)) errors.push('El loader contiene el error tipográfico deURIComponent().');
 
 if (!operations.includes("typeof fillClientSelects === 'function'")) errors.push('erp-core.js no utiliza fillClientSelects() como fuente compartida');
 if (!operations.includes("window.addEventListener('export-mca:clients-changed', loadOperations)")) errors.push('erp-core.js no actualiza Expedientes mediante el evento explícito de Clientes');
