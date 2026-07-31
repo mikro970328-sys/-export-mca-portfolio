@@ -3,12 +3,14 @@ import { spawnSync } from 'node:child_process';
 
 const files = {
   clients: 'admin/clients-module.js',
-  loader: 'admin/erp.js'
+  loader: 'admin/erp.js',
+  extraFieldsLegacy: 'admin/client-extra-fields.js',
+  actionsMenuLegacy: 'admin/client-actions-menu.js'
 };
 
 const errors = [];
 
-for (const file of Object.values(files)) {
+for (const file of [files.clients, files.loader]) {
   if (!fs.existsSync(file)) {
     errors.push(`Falta el archivo requerido: ${file}`);
     continue;
@@ -17,6 +19,12 @@ for (const file of Object.values(files)) {
   const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
   if (result.status !== 0) {
     errors.push(`Error de sintaxis en ${file}:\n${result.stderr || result.stdout}`);
+  }
+}
+
+for (const legacyFile of [files.extraFieldsLegacy, files.actionsMenuLegacy]) {
+  if (!fs.existsSync(legacyFile)) {
+    errors.push(`El archivo legacy debe conservarse para rollback durante esta fase: ${legacyFile}`);
   }
 }
 
@@ -34,12 +42,14 @@ const requiredClientFragments = [
   'clientImporter',
   'clientPhone',
   'clientEmail',
-  "data-client-action=\"edit\"",
-  "data-client-action=\"welcome\"",
-  "data-client-action=\"history\"",
-  "data-client-action=\"delete\"",
-  "mipyme_name",
-  "importer_name"
+  'data-client-menu-trigger',
+  'client-actions-popover',
+  "['edit', 'Editar'",
+  "['welcome', welcomeLabel",
+  "['history', 'Historial'",
+  "['delete', 'Eliminar'",
+  'mipyme_name',
+  'importer_name'
 ];
 
 for (const fragment of requiredClientFragments) {
@@ -71,8 +81,8 @@ if (loader.includes("loadScript('/admin/client-extra-fields.js'")) {
   errors.push('El loader todavía activa client-extra-fields.js');
 }
 
-if (!loader.includes("loadScript('/admin/client-actions-menu.js'")) {
-  errors.push('El menú de acciones legacy debe permanecer activo durante el primer bloque reversible');
+if (loader.includes("loadScript('/admin/client-actions-menu.js'")) {
+  errors.push('El loader todavía activa client-actions-menu.js');
 }
 
 if (errors.length) {
@@ -84,7 +94,7 @@ if (errors.length) {
 console.log('Validación de Clientes superada.');
 console.log('- Sintaxis válida.');
 console.log('- Seis campos integrados.');
-console.log('- Acciones con claves estables.');
+console.log('- Menú y acciones integrados con claves estables.');
 console.log('- Sin MutationObserver ni reemplazo de botones en el módulo nuevo.');
-console.log('- client-extra-fields.js permanece en el repositorio, pero no se carga.');
-console.log('- client-actions-menu.js permanece temporalmente activo para rollback progresivo.');
+console.log('- client-extra-fields.js permanece guardado, pero inactivo.');
+console.log('- client-actions-menu.js permanece guardado, pero inactivo.');
