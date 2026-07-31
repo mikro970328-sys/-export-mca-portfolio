@@ -1,0 +1,43 @@
+name: Fix admin initial show
+
+on:
+  push:
+    branches:
+      - fix/global-initial-render
+    paths:
+      - .github/workflows/fix-admin-initial-show.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/global-initial-render
+      - name: Remove legacy automatic reveal
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('admin/index.html')
+          text = path.read_text()
+          old = "$('changeOwnPassword').onclick=changeOwnPassword;if(token&&currentUser)show();"
+          new = "$('changeOwnPassword').onclick=changeOwnPassword;"
+          if old not in text:
+              raise SystemExit('Expected legacy auto-show sequence was not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Verify boot ownership
+        run: |
+          grep -F "if(token&&currentUser)show();" admin/index.html && exit 1 || true
+          grep -F "<script src=\"/admin/erp.js\"></script>" admin/index.html
+      - name: Commit corrected boot order
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin/index.html
+          git commit -m "Stop legacy script from revealing admin before module boot"
+          git push origin HEAD:fix/global-initial-render
