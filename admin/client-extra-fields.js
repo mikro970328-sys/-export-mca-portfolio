@@ -19,15 +19,47 @@
     return data;
   }
 
+  function relabelCompanyField() {
+    const company = $('clientCompany');
+    if (!company) return;
+
+    const label = company.previousElementSibling;
+    if (label?.tagName === 'LABEL') label.textContent = 'Importadora por la que importa';
+    company.placeholder = 'Ejemplo: Quimimport, Consumimport...';
+  }
+
+  function relabelClientTable() {
+    const headers = document.querySelectorAll('#clients thead th');
+    if (headers[1]) headers[1].textContent = 'Importadora';
+  }
+
+  function installRenderHook() {
+    if (window.__clientFieldRenderHookInstalled || typeof window.renderClients !== 'function') return;
+
+    const originalRenderClients = window.renderClients;
+    window.renderClients = function (...args) {
+      const result = originalRenderClients.apply(this, args);
+      relabelClientTable();
+      return result;
+    };
+
+    window.__clientFieldRenderHookInstalled = true;
+  }
+
   function installFields() {
     const company = $('clientCompany');
-    if (!company || $('clientMipyme')) return;
-    company.insertAdjacentHTML('afterend', `
-      <label>Nombre de la MIPYME</label>
-      <input id="clientMipyme" placeholder="Opcional, si el cliente tiene MIPYME">
-      <label>Importadora por la que importa</label>
-      <input id="clientImporter" placeholder="Ejemplo: Quimimport, Consumimport...">
-    `);
+    if (!company) return;
+
+    relabelCompanyField();
+
+    if (!$('clientMipyme')) {
+      company.insertAdjacentHTML('afterend', `
+        <label>Nombre de la MIPYME</label>
+        <input id="clientMipyme" placeholder="Opcional, si el cliente tiene MIPYME">
+        <label>Identificador interno</label>
+        <input id="clientImporter" placeholder="Apodo, código o referencia interna del cliente">
+      `);
+    }
   }
 
   function overrideSave() {
@@ -75,11 +107,11 @@
 
     const name = prompt('Nombre', client.name || '');
     if (name === null) return;
-    const company = prompt('Empresa', client.company || '');
+    const company = prompt('Importadora por la que importa', client.company || '');
     if (company === null) return;
     const mipyme_name = prompt('Nombre de la MIPYME', client.mipyme_name || '');
     if (mipyme_name === null) return;
-    const importer_name = prompt('Importadora por la que importa', client.importer_name || '');
+    const importer_name = prompt('Identificador interno', client.importer_name || '');
     if (importer_name === null) return;
     const phone = prompt('WhatsApp', client.phone || '');
     if (phone === null) return;
@@ -93,8 +125,14 @@
     if (typeof window.loadAll === 'function') await window.loadAll();
   };
 
+  installRenderHook();
   installFields();
   overrideSave();
-  const observer = new MutationObserver(() => { installFields(); overrideSave(); });
+  relabelClientTable();
+
+  const observer = new MutationObserver(() => {
+    installFields();
+    overrideSave();
+  });
   observer.observe(document.body, { childList: true, subtree: true });
 })();
