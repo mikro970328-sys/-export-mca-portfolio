@@ -5,13 +5,14 @@ const files = {
   clients: 'admin/clients-module.js',
   loader: 'admin/erp.js',
   operations: 'admin/erp-core.js',
+  shipmentDetails: 'admin/shipment-row-details.js',
   extraFieldsLegacy: 'admin/client-extra-fields.js',
   actionsMenuLegacy: 'admin/client-actions-menu.js'
 };
 
 const errors = [];
 
-for (const file of [files.clients, files.loader, files.operations]) {
+for (const file of [files.clients, files.loader, files.operations, files.shipmentDetails]) {
   if (!fs.existsSync(file)) {
     errors.push(`Falta el archivo requerido: ${file}`);
     continue;
@@ -37,6 +38,9 @@ const loader = fs.existsSync(files.loader)
   : '';
 const operations = fs.existsSync(files.operations)
   ? fs.readFileSync(files.operations, 'utf8')
+  : '';
+const shipmentDetails = fs.existsSync(files.shipmentDetails)
+  ? fs.readFileSync(files.shipmentDetails, 'utf8')
   : '';
 
 const requiredClientFragments = [
@@ -110,6 +114,34 @@ for (const fragment of forbiddenOperationsFragments) {
   }
 }
 
+const requiredShipmentDetailFragments = [
+  'Array.isArray(shipments)',
+  'Array.isArray(clients)',
+  'clientsById',
+  'byNumber'
+];
+
+for (const fragment of requiredShipmentDetailFragments) {
+  if (!shipmentDetails.includes(fragment)) {
+    errors.push(`Falta reutilización de datos en ${files.shipmentDetails}: ${fragment}`);
+  }
+}
+
+const forbiddenShipmentDetailFragments = [
+  "request('/api/clients')",
+  'request("/api/clients")',
+  "request('/api/shipments')",
+  'request("/api/shipments")',
+  "fetch('/api/clients'",
+  "fetch('/api/shipments'"
+];
+
+for (const fragment of forbiddenShipmentDetailFragments) {
+  if (shipmentDetails.includes(fragment)) {
+    errors.push(`Consulta duplicada en ${files.shipmentDetails}: ${fragment}`);
+  }
+}
+
 if (errors.length) {
   console.error('Validación de Clientes fallida:');
   for (const error of errors) console.error(`- ${error}`);
@@ -117,10 +149,11 @@ if (errors.length) {
 }
 
 console.log('Validación de Clientes superada.');
-console.log('- Sintaxis válida en Clientes, loader y Expedientes.');
+console.log('- Sintaxis válida en Clientes, loader, Expedientes y detalles de tracking.');
 console.log('- Seis campos integrados.');
 console.log('- Menú y acciones integrados con claves estables.');
 console.log('- Sin MutationObserver ni reemplazo de botones en el módulo nuevo.');
 console.log('- Expedientes usa fillClientSelects() y no envuelve loadAll.');
+console.log('- Los detalles del tracking reutilizan clients y shipments ya cargados.');
 console.log('- client-extra-fields.js permanece guardado, pero inactivo.');
 console.log('- client-actions-menu.js permanece guardado, pero inactivo.');
