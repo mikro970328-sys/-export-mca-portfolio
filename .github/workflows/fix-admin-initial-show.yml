@@ -1,4 +1,4 @@
-name: Fix admin initial show
+name: Centralize admin module loading
 
 on:
   push:
@@ -11,33 +11,55 @@ permissions:
   contents: write
 
 jobs:
-  fix:
+  centralize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: fix/global-initial-render
-      - name: Remove legacy automatic reveal
+
+      - name: Move remaining scripts under the central loader
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          path = Path('admin/index.html')
-          text = path.read_text()
-          old = "$('changeOwnPassword').onclick=changeOwnPassword;if(token&&currentUser)show();"
-          new = "$('changeOwnPassword').onclick=changeOwnPassword;"
-          if old not in text:
-              raise SystemExit('Expected legacy auto-show sequence was not found')
-          path.write_text(text.replace(old, new, 1))
+          index_path = Path('admin/index.html')
+          index = index_path.read_text()
+          old_tail = '<script src="/admin/erp.js"></script><script src="/admin/workers-module.js"></script><script src="/admin/notifications.js"></script></body></html>'
+          new_tail = '<script src="/admin/erp.js"></script></body></html>'
+          if old_tail not in index:
+              raise SystemExit('Expected direct module script tail was not found')
+          index_path.write_text(index.replace(old_tail, new_tail, 1))
+
+          loader_path = Path('admin/erp.js')
+          loader = loader_path.read_text()
+          old = """      const independentModules = [
+        loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core'),
+        loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state')
+      ];"""
+          new = """      const independentModules = [
+        loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core'),
+        loadScript('/admin/dashboard-operational-state.js?v=20260730-2', 'data-dashboard-operational-state'),
+        loadScript('/admin/notifications.js?v=20260731-1', 'data-notifications-module')
+      ];"""
+          if old not in loader:
+              raise SystemExit('Expected independentModules block was not found')
+          loader_path.write_text(loader.replace(old, new, 1))
           PY
-      - name: Verify boot ownership
+
+      - name: Verify one loader owns module startup
         run: |
-          grep -F "if(token&&currentUser)show();" admin/index.html && exit 1 || true
-          grep -F "<script src=\"/admin/erp.js\"></script>" admin/index.html
-      - name: Commit corrected boot order
+          grep -F '<script src="/admin/erp.js"></script></body></html>' admin/index.html
+          grep -F '<script src="/admin/workers-module.js"></script>' admin/index.html && exit 1 || true
+          grep -F '<script src="/admin/notifications.js"></script>' admin/index.html && exit 1 || true
+          grep -F "loadScript('/admin/notifications.js?v=20260731-1', 'data-notifications-module')" admin/erp.js
+          node --check admin/erp.js
+
+      - name: Remove temporary workflow and commit
         run: |
+          rm .github/workflows/fix-admin-initial-show.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add admin/index.html
-          git commit -m "Stop legacy script from revealing admin before module boot"
+          git add admin/index.html admin/erp.js .github/workflows/fix-admin-initial-show.yml
+          git commit -m "Centralize admin module startup"
           git push origin HEAD:fix/global-initial-render
