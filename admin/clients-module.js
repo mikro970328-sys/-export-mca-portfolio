@@ -56,9 +56,8 @@
       </div>`;
   }
 
-  function clientPayload(prefix = 'client') {
-    const suffix = prefix === 'client' ? '' : 'Edit';
-    const id = name => prefix === 'client'
+  function clientPayload(mode = 'create') {
+    const id = name => mode === 'create'
       ? `client${name}`
       : `clientEdit${name}`;
 
@@ -137,7 +136,7 @@
     try {
       const result = await api('/api/clients', {
         method: 'POST',
-        body: JSON.stringify(clientPayload())
+        body: JSON.stringify(clientPayload('create'))
       });
 
       note('clientMsg', createMessage(result.welcome), true);
@@ -229,7 +228,7 @@
         button.disabled = false;
         button.textContent = originalText;
       }
-    }, { once: true });
+    });
   }
 
   async function handleClientAction(event) {
