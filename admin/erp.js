@@ -33,7 +33,7 @@
       if (!part) return null;
       const normalized = part.replace(/-/g, '+').replace(/_/g, '/');
       const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-      return JSON.parse(decodeURIComponent(escape(atob(padded))));
+      return JSON.parse(deURIComponent(escape(atob(padded))));
     } catch {
       return null;
     }
@@ -120,7 +120,9 @@
         loadScript('/admin/workers-actions-menu.js', 'data-workers-actions-menu');
       });
 
-      loadScript('/admin/clients-module.js?v=20260730-2', 'data-clients-module');
+      loadScript('/admin/clients-module.js?v=20260730-2', 'data-clients-module', () => {
+        loadScript('/admin/client-information.js?v=20260731-1', 'data-client-information');
+      });
 
       loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking', () => {
         loadScript('/admin/section-state.js?v=20260730-sessionfix1', 'data-section-state');
