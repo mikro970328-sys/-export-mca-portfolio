@@ -157,14 +157,12 @@
     const section = byId('newOperationsSection');
     if (!section) return;
     section.innerHTML = formHtml();
-    const fillClients = () => { const select = byId('erpClient'); if (select) select.innerHTML = '<option value="">Seleccionar</option>' + clients.map(c => `<option value="${c.id}">${c.name}</option>`).join(''); };
-    fillClients();
+    if (typeof fillClientSelects === 'function') fillClientSelects();
     byId('saveErpOperation').onclick = saveOperation;
     byId('reloadOperations').onclick = loadOperations;
+    window.addEventListener('export-mca:clients-changed', loadOperations);
     loadOperations();
     installShipmentDelete();
-    const oldLoadAll = window.loadAll;
-    if (typeof oldLoadAll === 'function') window.loadAll = async function () { await oldLoadAll(); fillClients(); await loadOperations(); };
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
