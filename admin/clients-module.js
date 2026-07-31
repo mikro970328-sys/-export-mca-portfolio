@@ -122,6 +122,10 @@
       : null;
   }
 
+  function notifyClientsChanged() {
+    window.dispatchEvent(new CustomEvent('export-mca:clients-changed'));
+  }
+
   function closeClientMenu() {
     menuPopover?.classList.add('hidden');
     if (menuPopover) menuPopover.innerHTML = '';
@@ -287,6 +291,7 @@
         if (field) field.value = '';
       });
       await loadAll();
+      notifyClientsChanged();
     } catch (error) {
       note('clientMsg', error.message);
     } finally {
@@ -362,6 +367,7 @@
         });
         closeModal();
         await loadAll();
+        notifyClientsChanged();
       } catch (error) {
         showEditorMessage(error.message);
         button.disabled = false;
