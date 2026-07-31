@@ -5,6 +5,7 @@ on:
     paths:
       - 'admin/clients-module.js'
       - 'admin/erp.js'
+      - 'admin/erp-core.js'
       - 'scripts/check-clients-consolidation.mjs'
       - '.github/workflows/clients-consolidation-check.yml'
   workflow_dispatch:
