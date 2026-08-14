@@ -150,7 +150,7 @@ async function logWhatsAppFailure(shipment, event, payload, error) {
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 7 });
+  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 8 });
   if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
 
   try {
@@ -164,6 +164,20 @@ export default async function handler(req, res) {
     if (eventName && !eventName.includes('SHIPMENT_')) return ok(res, { received: true, ignored: eventName });
 
     const event = extract(payload);
+
+    // ShipsGo can emit a shipment-level webhook immediately after a tracking is created or linked.
+    // If it contains no active movement with a real timestamp, it is synchronization metadata,
+    // not a new logistics event and must never generate a customer notification.
+    if (!event.movement?.timestamp) {
+      await logWebhookEvent(event, payload, false, 'Webhook de sincronización sin movimiento activo');
+      return ok(res, {
+        received: true,
+        tracking_updated: false,
+        notified: false,
+        reason: 'no_active_movement'
+      });
+    }
+
     const rows = await supabase('shipments', {
       query: `?select=*,clients(id,name,phone,active)&container_number=eq.${encodeURIComponent(event.container)}&active=eq.true&limit=1`
     });
