@@ -3,7 +3,6 @@
   window.__containersModuleInstalled = true;
 
   const byId = id => document.getElementById(id);
-  const token = () => localStorage.getItem('export_mca_token') || '';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   const norm = value => String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   const EVENTS = [
@@ -18,14 +17,14 @@
   let activeFilter = 'active';
   let menuShipmentId = null;
   let menuTrigger = null;
-  let editorPromise = null;
 
   async function request(path, options = {}) {
+    const token = localStorage.getItem('export_mca_token') || '';
     const response = await fetch(path, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token()}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.headers || {})
       }
     });
@@ -44,91 +43,31 @@
       .container-actions-popover{position:fixed;z-index:5100;width:min(300px,calc(100vw - 24px));background:#fff;border:1px solid #dfe5ee;border-radius:14px;box-shadow:0 18px 48px rgba(6,32,74,.22);padding:8px}
       .container-actions-popover.hidden{display:none!important}.container-actions-popover button{width:100%;display:flex;align-items:center;gap:11px;padding:12px 13px;border:0;border-radius:9px;background:#fff;color:#152238;text-align:left;font-size:14px;font-weight:700}.container-actions-popover button:hover{background:#f4f7fb}.container-actions-popover button.danger{color:#b42318}.container-actions-popover button.orange{color:#d66a00}.container-actions-popover button.success{color:#117a37}.container-actions-separator{height:1px;background:#e8edf4;margin:6px 4px}
       .container-mode{display:block;margin-top:5px;font-size:11px;color:#667085}.container-mode.manual{color:#9a6700}.container-mode.failed{color:#b42318}
+      .container-unassigned-row{background:#fffaf0}.container-client-unassigned{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff0c7;color:#8a5700;font-size:11px;font-weight:900}.container-sale-note{display:block;margin-top:4px;color:#9a6700;font-size:10px;font-weight:700}
       .container-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}.container-detail-row{padding:11px 0;border-bottom:1px solid #e6ebf2}.container-detail-label{font-size:11px;font-weight:800;text-transform:uppercase;color:#667085;margin-bottom:4px}.container-detail-value{font-size:15px;color:#152238;word-break:break-word}
-      .manual-track-overlay{position:fixed;inset:0;background:rgba(3,14,31,.58);display:flex;align-items:flex-end;justify-content:center;padding:0;z-index:5200}.manual-track-panel{width:100%;max-width:620px;max-height:92vh;overflow:auto;background:#fff;border-radius:22px 22px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -18px 48px rgba(6,32,74,.25)}
-      .manual-track-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}.manual-track-head h3{margin:0;color:#06204a;font-size:21px}.manual-track-close{background:#fff!important;color:#06204a!important;border:1px solid #dfe5ee!important;padding:8px 11px!important}
-      .manual-track-current-box{padding:13px;border:1px solid #b8c9e4;background:#f3f7fd;border-radius:12px;margin-bottom:16px}.manual-track-current-box small{display:block;color:#667085;margin-bottom:4px}.manual-track-current-box b{color:#06204a}
-      .manual-track-list{display:grid;gap:9px;margin:14px 0 18px}.manual-track-step{position:relative;display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;padding:11px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer;transition:border-color .12s,background .12s}.manual-track-step:hover{border-color:#9fb3cf}.manual-track-step.current{background:#edf3ff;border-color:#9db7df}.manual-track-step.selected{border:2px solid #f58220;background:#fff8f2}.manual-track-step-index{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#edf3ff;color:#06204a;font-size:12px;font-weight:900}.manual-track-step.current .manual-track-step-index{background:#06204a;color:#fff}.manual-track-step.selected .manual-track-step-index{background:#f58220;color:#fff}.manual-track-step-title{font-weight:800}.manual-track-step-note{font-size:11px;color:#667085;margin-top:2px}.manual-track-step.current .manual-track-step-note{color:#174ea6;font-weight:700}
-      .manual-track-field label{display:block;margin:12px 0 6px;font-size:13px;font-weight:800}.manual-track-notify{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;margin-top:16px;padding:13px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer}.manual-track-notify input{width:18px;height:18px;margin:2px 0 0}.manual-track-notify b{display:block;color:#06204a}.manual-track-notify span{display:block;color:#667085;font-size:11px;margin-top:3px;line-height:1.4}.manual-track-preview{margin-top:14px;padding:12px;border-left:4px solid #06204a;background:#f7f9fc;border-radius:8px;font-size:13px;line-height:1.45}.manual-track-preview.hidden{display:none}.manual-track-actions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:18px}.manual-track-confirm{background:#f58220!important;padding:13px!important}.manual-track-cancel{background:#fff!important;color:#06204a!important;border:1px solid #cfd7e3!important}
-      @media(max-width:700px){.container-details-grid{grid-template-columns:1fr}.container-actions-popover{left:12px!important;right:12px!important;bottom:12px!important;top:auto!important;width:auto!important}.manual-track-overlay{align-items:flex-end}.container-actions-cell{position:sticky;right:0;background:#fff;z-index:2}}
-      @media(min-width:700px){.manual-track-overlay{align-items:center;padding:20px}.manual-track-panel{border-radius:18px;padding:24px}.manual-track-actions{grid-template-columns:1fr 1fr}}
+      .manual-track-overlay{position:fixed;inset:0;background:rgba(3,14,31,.58);display:flex;align-items:center;justify-content:center;padding:20px;z-index:5200}.manual-track-panel{width:100%;max-width:620px;max-height:92vh;overflow:auto;background:#fff;border-radius:18px;padding:24px;box-shadow:0 18px 48px rgba(6,32,74,.25)}.manual-track-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}.manual-track-head h3{margin:0;color:#06204a;font-size:21px}.manual-track-close{background:#fff!important;color:#06204a!important;border:1px solid #dfe5ee!important;padding:8px 11px!important}.manual-track-current-box{padding:13px;border:1px solid #b8c9e4;background:#f3f7fd;border-radius:12px;margin-bottom:16px}.manual-track-current-box small{display:block;color:#667085;margin-bottom:4px}.manual-track-current-box b{color:#06204a}.manual-track-list{display:grid;gap:9px;margin:14px 0 18px}.manual-track-step{position:relative;display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;padding:11px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer}.manual-track-step.current{background:#f1f8f3;border-color:#b8dfc1}.manual-track-step.selected{border:2px solid #f58220;background:#fff8f2}.manual-track-step-index{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#edf3ff;color:#06204a;font-size:12px;font-weight:900}.manual-track-step-title{font-weight:800}.manual-track-step-note{font-size:11px;color:#667085;margin-top:2px}.manual-track-field label{display:block;margin:12px 0 6px;font-size:13px;font-weight:800}.manual-track-notify{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;margin-top:16px;padding:13px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer}.manual-track-notify.disabled{opacity:.6;cursor:not-allowed}.manual-track-notify input{width:18px;height:18px;margin:2px 0 0}.manual-track-notify b{display:block;color:#06204a}.manual-track-notify span{display:block;color:#667085;font-size:11px;margin-top:3px;line-height:1.4}.manual-track-preview{margin-top:14px;padding:12px;border-left:4px solid #06204a;background:#f7f9fc;border-radius:8px;font-size:13px;line-height:1.45}.manual-track-preview.hidden{display:none}.manual-track-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:18px}.manual-track-confirm{background:#f58220!important;padding:13px!important}.manual-track-cancel{background:#fff!important;color:#06204a!important;border:1px solid #cfd7e3!important}
+      @media(max-width:760px){.container-details-grid{grid-template-columns:1fr}.container-actions-popover{left:12px!important;right:12px!important;bottom:12px!important;top:auto!important;width:auto!important}.manual-track-overlay{align-items:flex-end;padding:0}.manual-track-panel{border-radius:22px 22px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom))}.manual-track-actions{grid-template-columns:1fr}.container-actions-cell{position:sticky;right:0;background:#fff;z-index:2}}
     `;
     document.head.appendChild(style);
   }
 
-  function registerHtml() {
-    return `<section class="card"><h2>Registrar contenedor</h2>
-      <label>Cliente *</label><select id="shipmentClient"><option value="">Seleccionar cliente</option></select>
-      <label>Número de contenedor *</label><input id="shipmentContainer" placeholder="ABCD1234567" maxlength="11">
-      <label>Booking</label><input id="shipmentBooking">
-      <label>B/L</label><input id="shipmentBol">
-      <label>Naviera</label><input id="shipmentCarrier" placeholder="Crowley">
-      <label>Producto</label><input id="shipmentProduct">
-      <div style="margin-top:14px"><button id="saveShipment" class="orange" type="button">Guardar contenedor</button></div>
-      <div id="shipmentMsg" class="msg" role="status" aria-live="polite"></div>
-    </section>`;
+  function rows() {
+    return Array.isArray(window.shipments) ? window.shipments : (typeof shipments !== 'undefined' && Array.isArray(shipments) ? shipments : []);
   }
 
-  function trackingHtml() {
-    return `<section class="card"><h2>Tracking</h2>
-      <input id="shipmentSearch" class="search" placeholder="Buscar cliente, contenedor, booking, B/L o producto">
-      <div class="tabs" style="margin-top:12px">
-        <button class="tab active" type="button" data-container-filter="active">Activos</button>
-        <button class="tab" type="button" data-container-filter="delivered">Entregados</button>
-        <button class="tab" type="button" data-container-filter="all">Todos</button>
-      </div>
-      <div id="shipments"></div>
-    </section>`;
+  function clientRows() {
+    return Array.isArray(window.clients) ? window.clients : (typeof clients !== 'undefined' && Array.isArray(clients) ? clients : []);
   }
 
-  function ensureSections() {
-    const trackingSection = byId('containersSection');
-    if (!trackingSection) return false;
-    const main = trackingSection.parentElement;
-    let registerSection = byId('registerContainerSection');
-    if (!registerSection) {
-      registerSection = document.createElement('section');
-      registerSection.id = 'registerContainerSection';
-      registerSection.className = 'app-section hidden';
-      main.insertBefore(registerSection, trackingSection);
-    }
-    registerSection.innerHTML = registerHtml();
-    trackingSection.innerHTML = trackingHtml();
-
-    const trackingNav = document.querySelector('[data-section="containersSection"]');
-    if (trackingNav) {
-      trackingNav.textContent = 'Tracking';
-      let registerNav = document.querySelector('[data-section="registerContainerSection"]');
-      if (!registerNav) {
-        registerNav = document.createElement('button');
-        registerNav.type = 'button';
-        registerNav.dataset.section = 'registerContainerSection';
-        registerNav.textContent = 'Registrar contenedor';
-        trackingNav.parentElement.insertBefore(registerNav, trackingNav);
-      }
-      if (registerNav.dataset.containersModuleBound !== '1') {
-        registerNav.dataset.containersModuleBound = '1';
-        registerNav.addEventListener('click', () => window.showSection?.('registerContainerSection'));
-      }
-    }
-
-    try {
-      titles.registerContainerSection = 'Registrar contenedor';
-      titles.containersSection = 'Tracking';
-    } catch {}
-    return true;
+  function clientOptions(selected = '') {
+    return `<option value="">Sin cliente / Disponible para venta</option>${clientRows().map(client => `<option value="${esc(client.id)}" ${String(client.id) === String(selected) ? 'selected' : ''}>${esc(client.name)}${client.company ? ' · ' + esc(client.company) : ''}</option>`).join('')}`;
   }
 
-  function clientOptions() {
-    const rows = typeof clients !== 'undefined' && Array.isArray(clients) ? clients : [];
-    return '<option value="">Seleccionar cliente</option>' + rows.map(client => `<option value="${esc(client.id)}">${esc(client.name)}${client.company ? ' · ' + esc(client.company) : ''}</option>`).join('');
-  }
-
-  function fillShipmentClientSelect() {
+  function syncClientSelect() {
     const select = byId('shipmentClient');
     if (!select) return;
     const selected = select.value;
-    select.innerHTML = clientOptions();
+    select.innerHTML = clientOptions(selected);
     if ([...select.options].some(option => option.value === selected)) select.value = selected;
   }
 
@@ -139,48 +78,18 @@
     target.className = `msg ${ok ? 'ok' : 'bad'}`;
   }
 
-  async function activateManual(shipment) {
-    if (!confirm(`ShipsGo no pudo activar el tracking de ${shipment.container_number}.\n\n¿Deseas continuar este contenedor en modo manual?`)) return;
-    await request('/api/tracking-mode', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, action: 'enable_manual' }) });
-    alert('Seguimiento manual activado. Tú controlarás las actualizaciones de este contenedor.');
+  function formatDate(value) {
+    if (!value) return '—';
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString('es-US', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
-  async function saveShipmentRecord() {
-    const button = byId('saveShipment');
-    if (!button || button.disabled) return;
-    const clientId = byId('shipmentClient')?.value || '';
-    const containerNumber = norm(byId('shipmentContainer')?.value || '');
-    if (!clientId) return note('Selecciona un cliente.');
-    if (!/^[A-Z]{4}\d{7}$/.test(containerNumber)) return note('El contenedor debe tener 4 letras y 7 números.');
-
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = 'Guardando...';
-    try {
-      const result = await request('/api/shipments', {
-        method: 'POST',
-        body: JSON.stringify({
-          client_id: clientId,
-          container_number: containerNumber,
-          booking_number: byId('shipmentBooking')?.value || '',
-          bol_number: byId('shipmentBol')?.value || '',
-          carrier: byId('shipmentCarrier')?.value || '',
-          product: byId('shipmentProduct')?.value || ''
-        })
-      });
-      note('Contenedor registrado correctamente.', true);
-      ['shipmentContainer','shipmentBooking','shipmentBol','shipmentCarrier','shipmentProduct'].forEach(id => { if (byId(id)) byId(id).value = ''; });
-      if (typeof window.loadAll === 'function') await window.loadAll();
-      if (result.shipment?.shipsgo_status === 'failed') {
-        await activateManual(result.shipment);
-        if (typeof window.loadAll === 'function') await window.loadAll();
-      }
-    } catch (error) {
-      note(error.message);
-    } finally {
-      button.disabled = false;
-      button.textContent = original;
-    }
+  function formatQuantity(shipment) {
+    if (shipment.quantity === null || shipment.quantity === undefined || shipment.quantity === '') return '—';
+    const number = Number(shipment.quantity);
+    const value = Number.isFinite(number) ? new Intl.NumberFormat('es-US', { maximumFractionDigits: 3 }).format(number) : shipment.quantity;
+    return `${value}${shipment.quantity_unit ? ' ' + shipment.quantity_unit : ''}`;
   }
 
   function modeLabel(shipment) {
@@ -191,35 +100,118 @@
   }
 
   function searchable(shipment) {
-    return [shipment.container_number, shipment.booking_number, shipment.bol_number, shipment.carrier, shipment.product, shipment.operational_status, shipment.last_status, shipment.clients?.name, shipment.clients?.company, shipment.clients?.phone].filter(Boolean).join(' ').toLowerCase();
+    return [
+      shipment.container_number,
+      shipment.booking_number,
+      shipment.bol_number,
+      shipment.carrier,
+      shipment.product,
+      shipment.quantity,
+      shipment.quantity_unit,
+      shipment.departure_date,
+      shipment.operational_status,
+      shipment.last_status,
+      shipment.clients?.name,
+      shipment.clients?.company,
+      shipment.clients?.phone,
+      shipment.client_id ? '' : 'sin cliente disponible venta'
+    ].filter(Boolean).join(' ').toLowerCase();
   }
 
-  function filteredShipments() {
-    const rows = typeof shipments !== 'undefined' && Array.isArray(shipments) ? shipments : [];
-    const q = String(byId('shipmentSearch')?.value || '').toLowerCase().trim();
-    let list = activeFilter === 'active' ? rows.filter(row => row.active !== false) : activeFilter === 'delivered' ? rows.filter(row => row.active === false) : [...rows];
-    if (q) list = list.filter(row => searchable(row).includes(q));
+  function filteredRows() {
+    const query = String(byId('shipmentSearch')?.value || '').trim().toLowerCase();
+    let list = activeFilter === 'active'
+      ? rows().filter(item => item.active !== false)
+      : activeFilter === 'delivered'
+        ? rows().filter(item => item.active === false)
+        : [...rows()];
+    if (query) list = list.filter(item => searchable(item).includes(query));
     return list;
   }
 
-  function renderShipmentTable() {
+  function render() {
     const target = byId('shipments');
     if (!target) return;
     closeActionMenu();
-    const list = filteredShipments();
+    const list = filteredRows();
     if (!list.length) {
       target.innerHTML = '<div class="empty-state">No hay resultados.</div>';
       return;
     }
-    target.innerHTML = `<table><thead><tr><th>Contenedor</th><th>Cliente</th><th>Booking/B-L</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${list.map(shipment => {
+
+    target.innerHTML = `<table><thead><tr><th>Contenedor</th><th>Cliente</th><th>Producto</th><th>Cantidad</th><th>Fecha de salida</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${list.map(shipment => {
       const mode = modeLabel(shipment);
-      return `<tr data-shipment-row="${esc(shipment.id)}"><td><b>${esc(shipment.container_number)}</b><br><span class="muted">${esc(shipment.carrier || '')}</span></td><td>${esc(shipment.clients?.name || '-')}</td><td>${esc(shipment.booking_number || '-')}<br>${esc(shipment.bol_number || '-')}</td><td><span class="pill ${shipment.active === false ? 'done' : ''}">${esc(shipment.operational_status || shipment.last_status || 'Registrado')}</span><span class="container-mode ${mode[1]}">${esc(mode[0])}</span></td><td class="container-actions-cell"><button type="button" class="container-actions-trigger" data-container-menu="${esc(shipment.id)}" aria-label="Acciones" title="Acciones">⋯</button></td></tr>`;
+      const unassigned = !shipment.client_id;
+      const client = unassigned
+        ? '<span class="container-client-unassigned">SIN CLIENTE</span><span class="container-sale-note">Disponible para venta</span>'
+        : esc(shipment.clients?.name || 'Cliente no disponible');
+      return `<tr class="${unassigned ? 'container-unassigned-row' : ''}" data-shipment-row="${esc(shipment.id)}">
+        <td><b>${esc(shipment.container_number)}</b><br><span class="muted">${esc(shipment.carrier || '')}</span></td>
+        <td>${client}</td>
+        <td>${esc(shipment.product || '—')}</td>
+        <td>${esc(formatQuantity(shipment))}</td>
+        <td>${esc(formatDate(shipment.departure_date))}</td>
+        <td><span class="pill ${shipment.active === false ? 'done' : ''}">${esc(shipment.operational_status || shipment.last_status || 'Registrado')}</span><span class="container-mode ${mode[1]}">${esc(mode[0])}</span></td>
+        <td class="container-actions-cell"><button type="button" class="container-actions-trigger" data-container-menu="${esc(shipment.id)}" aria-label="Acciones" title="Acciones">⋯</button></td>
+      </tr>`;
     }).join('')}</tbody></table>`;
   }
 
+  async function saveShipmentRecord() {
+    const button = byId('saveShipment');
+    if (!button || button.disabled) return;
+    const containerNumber = norm(byId('shipmentContainer')?.value || '');
+    if (!/^[A-Z]{4}\d{7}$/.test(containerNumber)) return note('El contenedor debe tener 4 letras y 7 números.');
+
+    const quantityText = String(byId('shipmentQuantity')?.value || '').trim();
+    if (quantityText && (!Number.isFinite(Number(quantityText)) || Number(quantityText) < 0)) return note('La cantidad no es válida.');
+
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Guardando...';
+    try {
+      const result = await request('/api/shipments', {
+        method: 'POST',
+        body: JSON.stringify({
+          client_id: byId('shipmentClient')?.value || null,
+          container_number: containerNumber,
+          booking_number: byId('shipmentBooking')?.value || '',
+          bol_number: byId('shipmentBol')?.value || '',
+          carrier: byId('shipmentCarrier')?.value || '',
+          product: byId('shipmentProduct')?.value || '',
+          quantity: quantityText || null,
+          quantity_unit: byId('shipmentQuantityUnit')?.value || '',
+          departure_date: byId('shipmentDepartureDate')?.value || null
+        })
+      });
+
+      note(result.shipment?.client_id ? 'Contenedor registrado correctamente.' : 'Contenedor registrado sin cliente y marcado como disponible para venta.', true);
+      ['shipmentContainer','shipmentBooking','shipmentBol','shipmentCarrier','shipmentProduct','shipmentQuantity','shipmentQuantityUnit','shipmentDepartureDate'].forEach(id => {
+        if (byId(id)) byId(id).value = '';
+      });
+      if (byId('shipmentClient')) byId('shipmentClient').value = '';
+      if (typeof window.loadAll === 'function') await window.loadAll();
+
+      if (result.shipment?.shipsgo_status === 'failed') {
+        const accepted = confirm(`ShipsGo no pudo activar el tracking de ${result.shipment.container_number}.\n\n¿Deseas continuar este contenedor en modo manual?`);
+        if (accepted) {
+          await request('/api/tracking-mode', {
+            method: 'PATCH',
+            body: JSON.stringify({ id: result.shipment.id, action: 'enable_manual' })
+          });
+          if (typeof window.loadAll === 'function') await window.loadAll();
+        }
+      }
+    } catch (error) {
+      note(error.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
+    }
+  }
+
   function findShipment(id) {
-    const rows = typeof shipments !== 'undefined' && Array.isArray(shipments) ? shipments : [];
-    return rows.find(row => String(row.id) === String(id));
+    return rows().find(item => String(item.id) === String(id));
   }
 
   function actionList(shipment) {
@@ -227,34 +219,39 @@
     const delivered = shipment.active === false || status.includes('entregado');
     const released = status.includes('liberad');
     const actions = [['info', 'Información', ''], ['edit', 'Editar', ''], ['history', 'Historial', '']];
+    if (!shipment.client_id) actions.push(['assign_client', 'Asignar cliente', 'orange']);
+
     if (shipment.shipsgo_status === 'manual') {
       actions.push(['manual_update', 'Actualizar / corregir estado', '']);
-      actions.push([shipment.shipsgo_tracking_id ? 'resume_auto' : 'reconnect', shipment.shipsgo_tracking_id ? 'Volver a automático' : 'Reconectar ShipsGo', '']);
+      actions.push([
+        shipment.shipsgo_tracking_id ? 'resume_auto' : 'reconnect',
+        shipment.shipsgo_tracking_id ? 'Volver a automático' : 'Reconectar ShipsGo',
+        ''
+      ]);
     } else {
       if (!delivered) actions.push(['enable_manual', 'Cambiar a manual', '']);
       if (shipment.shipsgo_status === 'failed') actions.push(['reconnect', 'Reconectar ShipsGo', '']);
       if (!released && !delivered) actions.push(['release', 'Liberar', 'orange']);
       if (!delivered) actions.push(['deliver', 'Entregado', 'success']);
     }
-    if (delivered && shipment.shipsgo_status !== 'manual') actions.push(['reactivate', 'Reactivar', 'success']);
+    if (delivered) actions.push(['reactivate', 'Reactivar', 'success']);
     actions.push(['delete', 'Eliminar', 'danger']);
     return actions;
   }
 
   function ensureMenu() {
     let menu = byId('containerActionsPopover');
-    if (!menu) {
-      menu = document.createElement('div');
-      menu.id = 'containerActionsPopover';
-      menu.className = 'container-actions-popover hidden';
-      menu.setAttribute('role', 'menu');
-      document.body.appendChild(menu);
-      document.addEventListener('click', event => {
-        if (!menu.classList.contains('hidden') && !menu.contains(event.target) && !menuTrigger?.contains(event.target)) closeActionMenu();
-      });
-      window.addEventListener('resize', closeActionMenu);
-      window.addEventListener('scroll', closeActionMenu, true);
-    }
+    if (menu) return menu;
+    menu = document.createElement('div');
+    menu.id = 'containerActionsPopover';
+    menu.className = 'container-actions-popover hidden';
+    menu.setAttribute('role', 'menu');
+    document.body.appendChild(menu);
+    document.addEventListener('click', event => {
+      if (!menu.classList.contains('hidden') && !menu.contains(event.target) && !menuTrigger?.contains(event.target)) closeActionMenu();
+    });
+    window.addEventListener('resize', closeActionMenu);
+    window.addEventListener('scroll', closeActionMenu, true);
     return menu;
   }
 
@@ -267,7 +264,7 @@
   }
 
   function positionMenu(menu, trigger) {
-    if (window.matchMedia('(max-width:700px)').matches) return;
+    if (window.matchMedia('(max-width:760px)').matches) return;
     const rect = trigger.getBoundingClientRect();
     const width = Math.min(300, window.innerWidth - 24);
     const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
@@ -289,12 +286,13 @@
     menuShipmentId = shipment.id;
     menuTrigger = trigger;
     const actions = actionList(shipment);
-    menu.innerHTML = actions.map(([key, label, cls], index) => `${key === 'delete' && index ? '<div class="container-actions-separator"></div>' : ''}<button type="button" class="${cls}" data-container-action="${key}">${esc(label)}</button>`).join('');
+    menu.innerHTML = actions.map(([key, label, className], index) => `${key === 'delete' && index ? '<div class="container-actions-separator"></div>' : ''}<button type="button" class="${className}" data-container-action="${key}">${esc(label)}</button>`).join('');
     menu.querySelectorAll('[data-container-action]').forEach(button => button.addEventListener('click', async event => {
       event.stopPropagation();
       const action = button.dataset.containerAction;
       closeActionMenu();
-      try { await executeAction(shipment, action); } catch (error) { alert(error.message); }
+      try { await executeAction(shipment, action); }
+      catch (error) { alert(error.message); }
     }));
     menu.classList.remove('hidden');
     positionMenu(menu, trigger);
@@ -307,14 +305,31 @@
   function openDetails(shipment) {
     const mode = modeLabel(shipment)[0];
     const client = shipment.clients || {};
-    const html = `<div class="container-details-grid"><section><h3 style="margin:0 0 8px;color:#06204a">Cliente</h3>${detailRow('Nombre', client.name)}${detailRow('Empresa', client.company)}${detailRow('WhatsApp', client.phone)}</section><section><h3 style="margin:0 0 8px;color:#06204a">Contenedor</h3>${detailRow('Número de contenedor', shipment.container_number)}${detailRow('Producto', shipment.product)}${detailRow('Booking', shipment.booking_number)}${detailRow('B/L', shipment.bol_number)}${detailRow('Naviera', shipment.carrier)}${detailRow('Estado operativo', shipment.operational_status || shipment.last_status)}${detailRow('Ubicación', shipment.last_location)}${detailRow('Modo de tracking', mode)}</section></div>`;
-    if (typeof window.openModal === 'function') window.openModal(`Detalles · ${shipment.container_number}`, html);
+    const html = `<div class="container-details-grid">
+      <section><h3 style="margin:0 0 8px;color:#06204a">Cliente</h3>${detailRow('Nombre', shipment.client_id ? client.name : 'SIN CLIENTE · Disponible para venta')}${detailRow('Empresa', client.company)}${detailRow('WhatsApp', client.phone)}</section>
+      <section><h3 style="margin:0 0 8px;color:#06204a">Contenedor</h3>${detailRow('Número de contenedor', shipment.container_number)}${detailRow('Producto', shipment.product)}${detailRow('Cantidad', formatQuantity(shipment))}${detailRow('Fecha de salida', formatDate(shipment.departure_date))}${detailRow('Booking', shipment.booking_number)}${detailRow('B/L', shipment.bol_number)}${detailRow('Naviera', shipment.carrier)}${detailRow('Estado operativo', shipment.operational_status || shipment.last_status)}${detailRow('Ubicación', shipment.last_location)}${detailRow('Modo de tracking', mode)}</section>
+    </div>`;
+    window.openModal?.(`Detalles · ${shipment.container_number}`, html);
   }
 
   async function openHistory(shipment) {
     const result = await request('/api/history?shipment_id=' + encodeURIComponent(shipment.id));
-    const events = [...(result.events || []), ...(result.notifications || []).map(n => ({ title: 'WhatsApp · ' + (n.event_type || n.event_status || 'Notificación'), details: n.error_message || n.status || n.delivery_status || '', created_at: n.created_at })), ...(result.audit_events || []).map(a => ({ title: a.title || a.action || 'Cambio administrativo', details: typeof a.details === 'string' ? a.details : JSON.stringify(a.details || {}), created_at: a.created_at }))].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-    const html = events.length ? `<div class="timeline">${events.map(event => `<div class="event"><b>${esc(event.title || 'Evento')}</b><div>${esc(event.details || '')}</div><div class="muted">${event.created_at ? new Date(event.created_at).toLocaleString('es-US') : '-'}</div></div>`).join('')}</div>` : '<div class="empty-state">No hay historial disponible.</div>';
+    const events = [
+      ...(result.events || []),
+      ...(result.notifications || []).map(item => ({
+        title: 'WhatsApp · ' + (item.event_type || item.event_status || 'Notificación'),
+        details: item.error_message || item.status || item.delivery_status || '',
+        created_at: item.created_at
+      })),
+      ...(result.audit_events || []).map(item => ({
+        title: item.title || item.action || 'Cambio administrativo',
+        details: typeof item.details === 'string' ? item.details : JSON.stringify(item.details || {}),
+        created_at: item.created_at
+      }))
+    ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    const html = events.length
+      ? `<div class="timeline">${events.map(item => `<div class="event"><b>${esc(item.title || 'Evento')}</b><div>${esc(item.details || '')}</div><div class="muted">${item.created_at ? new Date(item.created_at).toLocaleString('es-US') : '—'}</div></div>`).join('')}</div>`
+      : '<div class="empty-state">No hay historial disponible.</div>';
     window.openModal?.(`Historial · ${shipment.container_number}`, html);
   }
 
@@ -330,10 +345,10 @@
   function showManualResult(result) {
     const correction = result.correction_type === 'rollback' ? 'Corrección guardada. ' : '';
     if (result.notification_status === 'not_requested') return alert(`${correction}Estado actualizado. No se envió WhatsApp al cliente.`);
-    if (result.notification_status === 'unavailable_recipient') return alert(`${correction}Estado actualizado, pero no se pudo enviar WhatsApp:\n${result.notification_error || 'El cliente no tiene un WhatsApp activo.'}`);
+    if (result.notification_status === 'unavailable_recipient') return alert(`${correction}Estado actualizado. No hay un cliente con WhatsApp disponible.`);
     if (result.notification_status === 'failed') return alert(`${correction}Estado actualizado, pero falló el WhatsApp:\n${result.notification_error || 'Error desconocido'}`);
     if (result.notification_status === 'pending_template') return alert(`${correction}Estado actualizado. Falta configurar ${result.missing_variable} en Vercel para enviar el WhatsApp.`);
-    if (result.notification_status === 'already_notified') return alert(`${correction}Estado actualizado. El cliente ya había recibido esta etapa y no se envió un WhatsApp duplicado.`);
+    if (result.notification_status === 'already_notified') return alert(`${correction}Estado actualizado. El cliente ya había recibido esta etapa y no se envió un duplicado.`);
     alert(`${correction}Estado actualizado y WhatsApp enviado.\nEstado: ${result.notification_status || 'queued'}`);
   }
 
@@ -343,6 +358,7 @@
     const currentLabel = currentIndex >= 0 ? EVENTS[currentIndex].label : (shipment.last_status || shipment.operational_status || 'Registrado');
     const defaultIndex = currentIndex >= 0 ? currentIndex : 0;
     const defaultEvent = EVENTS[defaultIndex];
+    const hasRecipient = Boolean(shipment.client_id && shipment.clients?.active && shipment.clients?.phone);
     const overlay = document.createElement('div');
     overlay.className = 'manual-track-overlay';
     overlay.innerHTML = `<div class="manual-track-panel" role="dialog" aria-modal="true" aria-label="Actualizar o corregir tracking manual">
@@ -351,14 +367,10 @@
       <div class="manual-track-list">${EVENTS.map((event, index) => {
         const isCurrent = index === currentIndex;
         const note = isCurrent ? 'Estado actual' : currentIndex >= 0 && index < currentIndex ? 'Etapa anterior · disponible para corrección' : 'Disponible para selección';
-        return `<label class="manual-track-step ${isCurrent ? 'current selected' : ''}" data-manual-event-index="${index}">
-          <div class="manual-track-step-index">${isCurrent ? '●' : index + 1}</div>
-          <div><div class="manual-track-step-title">${esc(event.label)}</div><div class="manual-track-step-note">${esc(note)}</div></div>
-          <input style="position:absolute;opacity:0;pointer-events:none" type="radio" name="manualTrackingEvent" value="${event.key}" ${index === defaultIndex ? 'checked' : ''}>
-        </label>`;
+        return `<label class="manual-track-step ${isCurrent ? 'current selected' : ''}" data-manual-event-index="${index}"><div class="manual-track-step-index">${isCurrent ? '●' : index + 1}</div><div><div class="manual-track-step-title">${esc(event.label)}</div><div class="manual-track-step-note">${esc(note)}</div></div><input style="position:absolute;opacity:0;pointer-events:none" type="radio" name="manualTrackingEvent" value="${event.key}" ${index === defaultIndex ? 'checked' : ''}></label>`;
       }).join('')}</div>
       <div class="manual-track-field"><label for="manualTrackingLocation">Puerto o ubicación</label><input id="manualTrackingLocation" placeholder="Opcional" value="${esc(shipment.last_location || '')}"></div>
-      <label class="manual-track-notify" for="manualTrackingNotify"><input id="manualTrackingNotify" type="checkbox"><div><b>Enviar WhatsApp al cliente</b><span>Opcional. El cambio de estado se guarda aunque no envíes WhatsApp.</span></div></label>
+      <label class="manual-track-notify ${hasRecipient ? '' : 'disabled'}" for="manualTrackingNotify"><input id="manualTrackingNotify" type="checkbox" ${hasRecipient ? '' : 'disabled'}><div><b>Enviar WhatsApp al cliente</b><span>${hasRecipient ? 'Opcional. El cambio de estado se guarda aunque no envíes WhatsApp.' : 'Asigna un cliente con WhatsApp para habilitar esta opción.'}</span></div></label>
       <div id="manualTrackingWhatsappPreview" class="manual-track-preview hidden"><b>Vista previa del WhatsApp</b><br>Contenedor: ${esc(shipment.container_number)}<br>Estado: <span id="manualTrackingPreviewStatus">${esc(defaultEvent.label)}</span></div>
       <div class="manual-track-actions"><button type="button" class="manual-track-confirm">Guardar estado</button><button type="button" class="manual-track-cancel">Cancelar</button></div>
     </div>`;
@@ -375,7 +387,6 @@
       const previewStatus = overlay.querySelector('#manualTrackingPreviewStatus');
       if (previewStatus && EVENTS[index]) previewStatus.textContent = EVENTS[index].label;
     };
-
     overlay.querySelectorAll('.manual-track-step').forEach(step => step.addEventListener('click', () => {
       const radio = step.querySelector('input[type="radio"]');
       if (!radio) return;
@@ -387,34 +398,22 @@
     const preview = overlay.querySelector('#manualTrackingWhatsappPreview');
     const confirmButton = overlay.querySelector('.manual-track-confirm');
     const syncNotificationUi = () => {
-      const notify = Boolean(notifyCheckbox.checked);
-      preview.classList.toggle('hidden', !notify);
-      const index = selectedIndex();
-      const isRollback = currentIndex >= 0 && index >= 0 && index < currentIndex;
-      confirmButton.textContent = notify
-        ? (isRollback ? 'Corregir y enviar WhatsApp' : 'Guardar y enviar WhatsApp')
-        : (isRollback ? 'Guardar corrección' : 'Guardar estado');
+      const notify = Boolean(notifyCheckbox?.checked);
+      preview?.classList.toggle('hidden', !notify);
+      confirmButton.textContent = notify ? 'Guardar y enviar WhatsApp' : 'Guardar estado';
     };
-    notifyCheckbox.addEventListener('change', syncNotificationUi);
-    overlay.querySelectorAll('.manual-track-step').forEach(step => step.addEventListener('click', syncNotificationUi));
-    syncSelectionUi();
+    notifyCheckbox?.addEventListener('change', syncNotificationUi);
     syncNotificationUi();
 
     confirmButton.onclick = async () => {
-      const index = selectedIndex();
-      const selected = EVENTS[index];
+      const selectedKey = overlay.querySelector('input[name="manualTrackingEvent"]:checked')?.value;
+      const selected = EVENTS.find(event => event.key === selectedKey);
       if (!selected) return alert('Selecciona un evento.');
-      const notifyWhatsApp = Boolean(notifyCheckbox.checked);
-      const isRollback = currentIndex >= 0 && index < currentIndex;
-      const isSame = currentIndex >= 0 && index === currentIndex;
-      const actionText = isRollback
-        ? `Vas a corregir el estado de “${currentLabel}” a “${selected.label}”. Los hitos posteriores quedarán revertidos en el ERP.`
-        : isSame
-          ? `Vas a guardar nuevamente “${selected.label}”. Esto permite corregir la ubicación u otros datos de esta etapa.`
-          : `Vas a actualizar el estado a “${selected.label}”.`;
-      const messageText = notifyWhatsApp ? '\n\nTambién se intentará enviar el WhatsApp correspondiente.' : '\n\nNo se enviará WhatsApp.';
-      if (!confirm(`${actionText}${messageText}`)) return;
-
+      const notifyWhatsApp = Boolean(notifyCheckbox?.checked);
+      const newIndex = EVENTS.findIndex(event => event.key === selected.key);
+      const rollback = currentIndex >= 0 && newIndex < currentIndex;
+      const accepted = confirm(`${rollback ? `Vas a corregir el estado de “${currentLabel}” a “${selected.label}”.` : `¿Confirmar “${selected.label}” para ${shipment.container_number}?`}\n\n${notifyWhatsApp ? 'También se enviará WhatsApp al cliente.' : 'No se enviará WhatsApp.'}`);
+      if (!accepted) return;
       try {
         confirmButton.disabled = true;
         confirmButton.textContent = notifyWhatsApp ? 'Guardando y enviando...' : 'Guardando...';
@@ -439,79 +438,9 @@
     };
   }
 
-  function ensureShipmentEditor() {
-    const isModernEditor = () => typeof window.editShipment === 'function' && !/prompt\(['\"]Contenedor/.test(String(window.editShipment));
-    if (isModernEditor()) {
-      try { window.editShipment.__containersOwner = true; } catch {}
-      return Promise.resolve();
-    }
-    if (editorPromise) return editorPromise;
-    editorPromise = new Promise((resolve, reject) => {
-      let settled = false;
-      const finish = () => {
-        if (settled || !isModernEditor()) return false;
-        settled = true;
-        try { window.editShipment.__containersOwner = true; } catch {}
-        resolve();
-        return true;
-      };
-      const fail = () => {
-        if (settled) return;
-        settled = true;
-        reject(new Error('No se pudo cargar el editor de contenedores.'));
-      };
-      let existing = document.querySelector('script[data-shipment-editor]');
-      if (!existing) {
-        existing = document.createElement('script');
-        existing.src = '/admin/shipment-editor.js?v=20260814-containers-owner1';
-        existing.dataset.shipmentEditor = 'containers-module';
-        document.head.appendChild(existing);
-      }
-      existing.addEventListener('load', finish, { once: true });
-      existing.addEventListener('error', fail, { once: true });
-      if (finish()) return;
-      const started = Date.now();
-      const timer = setInterval(() => {
-        if (finish()) return clearInterval(timer);
-        if (Date.now() - started > 3000) { clearInterval(timer); fail(); }
-      }, 50);
-    });
-    return editorPromise;
-  }
-
-  async function executeAction(shipment, action) {
-    if (action === 'info') return openDetails(shipment);
-    if (action === 'history') return openHistory(shipment);
-    if (action === 'edit') { await ensureShipmentEditor(); return window.editShipment(shipment.id); }
-    if (action === 'manual_update') return openManualWorkflow(shipment);
-    if (action === 'enable_manual') {
-      if (!confirm(`¿Cambiar ${shipment.container_number} a seguimiento manual?\n\nShipsGo dejará de controlar los eventos. En cada actualización podrás decidir si deseas enviar WhatsApp al cliente.`)) return;
-      await request('/api/tracking-mode', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, action: 'enable_manual' }) });
-      alert('Seguimiento manual activado.');
-      return window.loadAll?.();
-    }
-    if (action === 'resume_auto') {
-      if (!confirm(`¿Volver ${shipment.container_number} al seguimiento automático?`)) return;
-      await request('/api/tracking-mode', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, action: 'enable_auto' }) });
-      alert('Seguimiento automático reanudado.');
-      return window.loadAll?.();
-    }
-    if (action === 'reconnect') {
-      if (!confirm(`¿Reintentar ShipsGo para ${shipment.container_number}?`)) return;
-      await request('/api/shipments', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, action: 'retry_shipsgo' }) });
-      alert('ShipsGo quedó conectado y el seguimiento automático está activo.');
-      return window.loadAll?.();
-    }
-    if (['release','deliver','reactivate'].includes(action)) {
-      const labels = { release: 'liberar', deliver: 'marcar como entregado', reactivate: 'reactivar' };
-      if (!confirm(`¿Confirmar ${labels[action]} el contenedor ${shipment.container_number}?`)) return;
-      const result = await request('/api/shipments', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, action }) });
-      if (result.notification_status) alert('Estado actualizado. Notificación: ' + result.notification_status);
-      await window.loadAll?.();
-      if (typeof window.loadNotifications === 'function') await window.loadNotifications();
-      return;
-    }
-    if (action === 'delete') return deleteShipmentRecord(shipment);
+  function openEditor(shipment, focus = null) {
+    if (!window.ShipmentEditor?.open) throw new Error('El editor de contenedores no está disponible.');
+    window.ShipmentEditor.open(shipment.id, { focus });
   }
 
   async function deleteShipmentRecord(shipment) {
@@ -519,16 +448,58 @@
     if (confirmation !== 'ELIMINAR') return;
     await request('/api/shipments?id=' + encodeURIComponent(shipment.id), { method: 'DELETE' });
     alert(`Contenedor ${shipment.container_number} eliminado.`);
-    await window.loadAll?.();
+    if (typeof window.loadAll === 'function') await window.loadAll();
     if (typeof window.loadNotifications === 'function') await window.loadNotifications();
   }
 
-  function bindTrackingEvents() {
-    byId('shipmentSearch')?.addEventListener('input', renderShipmentTable);
+  async function executeAction(shipment, action) {
+    if (action === 'info') return openDetails(shipment);
+    if (action === 'history') return openHistory(shipment);
+    if (action === 'edit') return openEditor(shipment);
+    if (action === 'assign_client') return openEditor(shipment, 'client');
+    if (action === 'manual_update') return openManualWorkflow(shipment);
+
+    if (action === 'enable_manual') {
+      if (!confirm(`¿Cambiar ${shipment.container_number} a seguimiento manual?\n\nShipsGo dejará de controlar los eventos hasta que vuelvas a automático.`)) return;
+      await request('/api/tracking-mode', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, action: 'enable_manual' }) });
+      alert('Seguimiento manual activado.');
+      return window.loadAll?.();
+    }
+
+    if (action === 'resume_auto') {
+      if (!confirm(`¿Volver ${shipment.container_number} al seguimiento automático?`)) return;
+      await request('/api/tracking-mode', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, action: 'enable_auto' }) });
+      alert('Seguimiento automático reanudado.');
+      return window.loadAll?.();
+    }
+
+    if (action === 'reconnect') {
+      if (!confirm(`¿Reintentar ShipsGo para ${shipment.container_number}?`)) return;
+      await request('/api/shipments', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, action: 'retry_shipsgo' }) });
+      alert('ShipsGo quedó conectado y el seguimiento automático está activo.');
+      return window.loadAll?.();
+    }
+
+    if (['release', 'deliver', 'reactivate'].includes(action)) {
+      const labels = { release: 'liberar', deliver: 'marcar como entregado', reactivate: 'reactivar' };
+      if (!confirm(`¿Confirmar ${labels[action]} el contenedor ${shipment.container_number}?`)) return;
+      const result = await request('/api/shipments', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, action }) });
+      if (result.notification_status && result.notification_status !== 'not_requested') alert('Estado actualizado. Notificación: ' + result.notification_status);
+      if (typeof window.loadAll === 'function') await window.loadAll();
+      if (typeof window.loadNotifications === 'function') await window.loadNotifications();
+      return;
+    }
+
+    if (action === 'delete') return deleteShipmentRecord(shipment);
+  }
+
+  function bind() {
+    byId('saveShipment')?.addEventListener('click', saveShipmentRecord);
+    byId('shipmentSearch')?.addEventListener('input', render);
     document.querySelectorAll('[data-container-filter]').forEach(button => button.addEventListener('click', () => {
       activeFilter = button.dataset.containerFilter;
       document.querySelectorAll('[data-container-filter]').forEach(item => item.classList.toggle('active', item === button));
-      renderShipmentTable();
+      render();
     }));
     byId('shipments')?.addEventListener('click', event => {
       const trigger = event.target.closest('[data-container-menu]');
@@ -545,26 +516,22 @@
     });
   }
 
-  function exposeOwnership() {
-    window.renderShipments = renderShipmentTable;
-    try { renderShipments = renderShipmentTable; } catch {}
-    window.deleteShipment = async id => {
-      const shipment = findShipment(id);
-      if (shipment) return deleteShipmentRecord(shipment);
-    };
-    window.__containersModule = { render: renderShipmentTable, openManualWorkflow, openDetails, owner: 'containers-module.js' };
+  function syncData() {
+    syncClientSelect();
+    render();
   }
 
   function mount() {
-    if (!ensureSections()) return;
+    if (!byId('registerContainerSection') || !byId('containersSection') || !byId('shipments') || !byId('saveShipment')) {
+      console.error('CONTAINERS_STATIC_STRUCTURE_MISSING');
+      return;
+    }
     installStyles();
-    exposeOwnership();
-    fillShipmentClientSelect();
-    byId('saveShipment')?.addEventListener('click', saveShipmentRecord);
-    bindTrackingEvents();
-    window.addEventListener('export-mca:clients-changed', fillShipmentClientSelect);
-    renderShipmentTable();
-    ensureShipmentEditor().catch(error => console.warn('SHIPMENT_EDITOR_LOAD_FAILED', error.message));
+    bind();
+    syncData();
+    window.addEventListener('export-mca:data-loaded', syncData);
+    window.addEventListener('export-mca:clients-changed', syncClientSelect);
+    window.ContainersModule = Object.freeze({ render, syncClients: syncClientSelect, openManualWorkflow, openDetails, owner: 'containers-module.js' });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
