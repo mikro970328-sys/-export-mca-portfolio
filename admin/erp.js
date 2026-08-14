@@ -129,18 +129,12 @@
     const alertChain = loadScript('/admin/operational-alert-center.js?v=20260730-2', 'data-operational-alert-center')
       .then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
 
-    const trackingChain = loadScript('/admin/tracking-fallback.js', 'data-tracking-fallback')
-      .then(() => loadScript('/admin/manual-tracking-switch.js', 'data-manual-tracking-switch'))
-      .then(() => loadScript('/admin/shipment-actions-menu.js', 'data-shipment-actions-menu'))
-      .then(() => loadScript('/admin/shipment-row-details.js', 'data-shipment-row-details'));
-
     await Promise.all([
       ...independentModules,
       clientsModule,
       loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control'),
       loadScript('/admin/module-export-controls.js', 'data-module-export-controls'),
-      alertChain,
-      trackingChain
+      alertChain
     ]);
 
     window.dispatchEvent(new CustomEvent('export-mca:modules-ready'));
@@ -157,7 +151,7 @@
     bootPromise = (async () => {
       await loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core');
       await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
-      await loadScript('/admin/separate-container-tracking.js', 'data-separate-container-tracking');
+      await loadScript('/admin/containers-module.js?v=20260814-owner1', 'data-containers-module');
       await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');
 
       if (typeof window.loadAll !== 'function') {
