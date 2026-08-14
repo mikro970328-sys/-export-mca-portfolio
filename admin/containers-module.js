@@ -45,7 +45,11 @@
       .container-actions-popover.hidden{display:none!important}.container-actions-popover button{width:100%;display:flex;align-items:center;gap:11px;padding:12px 13px;border:0;border-radius:9px;background:#fff;color:#152238;text-align:left;font-size:14px;font-weight:700}.container-actions-popover button:hover{background:#f4f7fb}.container-actions-popover button.danger{color:#b42318}.container-actions-popover button.orange{color:#d66a00}.container-actions-popover button.success{color:#117a37}.container-actions-separator{height:1px;background:#e8edf4;margin:6px 4px}
       .container-mode{display:block;margin-top:5px;font-size:11px;color:#667085}.container-mode.manual{color:#9a6700}.container-mode.failed{color:#b42318}
       .container-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}.container-detail-row{padding:11px 0;border-bottom:1px solid #e6ebf2}.container-detail-label{font-size:11px;font-weight:800;text-transform:uppercase;color:#667085;margin-bottom:4px}.container-detail-value{font-size:15px;color:#152238;word-break:break-word}
-      .manual-track-overlay{position:fixed;inset:0;background:rgba(3,14,31,.58);display:flex;align-items:flex-end;justify-content:center;padding:0;z-index:5200}.manual-track-panel{width:100%;max-width:620px;max-height:92vh;overflow:auto;background:#fff;border-radius:22px 22px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -18px 48px rgba(6,32,74,.25)}.manual-track-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}.manual-track-head h3{margin:0;color:#06204a;font-size:21px}.manual-track-close{background:#fff!important;color:#06204a!important;border:1px solid #dfe5ee!important;padding:8px 11px!important}.manual-track-next{padding:13px;border:1px solid #b8c9e4;background:#f3f7fd;border-radius:12px;margin-bottom:16px}.manual-track-next small{display:block;color:#667085;margin-bottom:4px}.manual-track-next b{color:#06204a}.manual-track-list{display:grid;gap:9px;margin:14px 0 18px}.manual-track-step{position:relative;display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;padding:11px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer}.manual-track-step.done{background:#f1f8f3;border-color:#b8dfc1;color:#477253;cursor:default}.manual-track-step.recommended{border:2px solid #f58220;background:#fff8f2}.manual-track-step-index{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#edf3ff;color:#06204a;font-size:12px;font-weight:900}.manual-track-step.done .manual-track-step-index{background:#dff2e4;color:#117a37}.manual-track-step-title{font-weight:800}.manual-track-step-note{font-size:11px;color:#667085;margin-top:2px}.manual-track-field label{display:block;margin:12px 0 6px;font-size:13px;font-weight:800}.manual-track-notify{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;margin-top:16px;padding:13px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer}.manual-track-notify input{width:18px;height:18px;margin:2px 0 0}.manual-track-notify b{display:block;color:#06204a}.manual-track-notify span{display:block;color:#667085;font-size:11px;margin-top:3px;line-height:1.4}.manual-track-preview{margin-top:14px;padding:12px;border-left:4px solid #06204a;background:#f7f9fc;border-radius:8px;font-size:13px;line-height:1.45}.manual-track-preview.hidden{display:none}.manual-track-actions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:18px}.manual-track-confirm{background:#f58220!important;padding:13px!important}.manual-track-cancel{background:#fff!important;color:#06204a!important;border:1px solid #cfd7e3!important}
+      .manual-track-overlay{position:fixed;inset:0;background:rgba(3,14,31,.58);display:flex;align-items:flex-end;justify-content:center;padding:0;z-index:5200}.manual-track-panel{width:100%;max-width:620px;max-height:92vh;overflow:auto;background:#fff;border-radius:22px 22px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -18px 48px rgba(6,32,74,.25)}
+      .manual-track-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}.manual-track-head h3{margin:0;color:#06204a;font-size:21px}.manual-track-close{background:#fff!important;color:#06204a!important;border:1px solid #dfe5ee!important;padding:8px 11px!important}
+      .manual-track-current-box{padding:13px;border:1px solid #b8c9e4;background:#f3f7fd;border-radius:12px;margin-bottom:16px}.manual-track-current-box small{display:block;color:#667085;margin-bottom:4px}.manual-track-current-box b{color:#06204a}
+      .manual-track-list{display:grid;gap:9px;margin:14px 0 18px}.manual-track-step{position:relative;display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;padding:11px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer;transition:border-color .12s,background .12s}.manual-track-step:hover{border-color:#9fb3cf}.manual-track-step.current{background:#edf3ff;border-color:#9db7df}.manual-track-step.selected{border:2px solid #f58220;background:#fff8f2}.manual-track-step-index{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#edf3ff;color:#06204a;font-size:12px;font-weight:900}.manual-track-step.current .manual-track-step-index{background:#06204a;color:#fff}.manual-track-step.selected .manual-track-step-index{background:#f58220;color:#fff}.manual-track-step-title{font-weight:800}.manual-track-step-note{font-size:11px;color:#667085;margin-top:2px}.manual-track-step.current .manual-track-step-note{color:#174ea6;font-weight:700}
+      .manual-track-field label{display:block;margin:12px 0 6px;font-size:13px;font-weight:800}.manual-track-notify{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;margin-top:16px;padding:13px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer}.manual-track-notify input{width:18px;height:18px;margin:2px 0 0}.manual-track-notify b{display:block;color:#06204a}.manual-track-notify span{display:block;color:#667085;font-size:11px;margin-top:3px;line-height:1.4}.manual-track-preview{margin-top:14px;padding:12px;border-left:4px solid #06204a;background:#f7f9fc;border-radius:8px;font-size:13px;line-height:1.45}.manual-track-preview.hidden{display:none}.manual-track-actions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:18px}.manual-track-confirm{background:#f58220!important;padding:13px!important}.manual-track-cancel{background:#fff!important;color:#06204a!important;border:1px solid #cfd7e3!important}
       @media(max-width:700px){.container-details-grid{grid-template-columns:1fr}.container-actions-popover{left:12px!important;right:12px!important;bottom:12px!important;top:auto!important;width:auto!important}.manual-track-overlay{align-items:flex-end}.container-actions-cell{position:sticky;right:0;background:#fff;z-index:2}}
       @media(min-width:700px){.manual-track-overlay{align-items:center;padding:20px}.manual-track-panel{border-radius:18px;padding:24px}.manual-track-actions{grid-template-columns:1fr 1fr}}
     `;
@@ -136,8 +140,7 @@
   }
 
   async function activateManual(shipment) {
-    const accepted = confirm(`ShipsGo no pudo activar el tracking de ${shipment.container_number}.\n\n¿Deseas continuar este contenedor en modo manual?`);
-    if (!accepted) return;
+    if (!confirm(`ShipsGo no pudo activar el tracking de ${shipment.container_number}.\n\n¿Deseas continuar este contenedor en modo manual?`)) return;
     await request('/api/tracking-mode', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, action: 'enable_manual' }) });
     alert('Seguimiento manual activado. Tú controlarás las actualizaciones de este contenedor.');
   }
@@ -225,7 +228,7 @@
     const released = status.includes('liberad');
     const actions = [['info', 'Información', ''], ['edit', 'Editar', ''], ['history', 'Historial', '']];
     if (shipment.shipsgo_status === 'manual') {
-      if (!delivered) actions.push(['manual_update', 'Actualizar estado', '']);
+      actions.push(['manual_update', 'Actualizar / corregir estado', '']);
       actions.push([shipment.shipsgo_tracking_id ? 'resume_auto' : 'reconnect', shipment.shipsgo_tracking_id ? 'Volver a automático' : 'Reconectar ShipsGo', '']);
     } else {
       if (!delivered) actions.push(['enable_manual', 'Cambiar a manual', '']);
@@ -233,7 +236,7 @@
       if (!released && !delivered) actions.push(['release', 'Liberar', 'orange']);
       if (!delivered) actions.push(['deliver', 'Entregado', 'success']);
     }
-    if (delivered) actions.push(['reactivate', 'Reactivar', 'success']);
+    if (delivered && shipment.shipsgo_status !== 'manual') actions.push(['reactivate', 'Reactivar', 'success']);
     actions.push(['delete', 'Eliminar', 'danger']);
     return actions;
   }
@@ -320,64 +323,110 @@
     return EVENTS.findIndex(event => event.label.toLowerCase() === status);
   }
 
-  function closeManualWorkflow() { document.querySelector('.manual-track-overlay')?.remove(); }
+  function closeManualWorkflow() {
+    document.querySelector('.manual-track-overlay')?.remove();
+  }
 
   function showManualResult(result) {
-    if (result.notification_status === 'not_requested') return alert('Evento actualizado. No se envió WhatsApp al cliente.');
-    if (result.notification_status === 'unavailable_recipient') return alert(`Evento actualizado, pero no se pudo enviar WhatsApp:\n${result.notification_error || 'El cliente no tiene un WhatsApp activo.'}`);
-    if (result.notification_status === 'failed') return alert(`Evento actualizado, pero falló el WhatsApp:\n${result.notification_error || 'Error desconocido'}`);
-    if (result.notification_status === 'pending_template') return alert(`Evento actualizado. Falta configurar ${result.missing_variable} en Vercel para enviar el WhatsApp.`);
-    if (result.notification_status === 'already_notified') return alert('Evento actualizado. El cliente ya había recibido esta notificación y no se envió un duplicado.');
-    alert(`Evento actualizado y WhatsApp enviado.\nEstado: ${result.notification_status || 'queued'}`);
+    const correction = result.correction_type === 'rollback' ? 'Corrección guardada. ' : '';
+    if (result.notification_status === 'not_requested') return alert(`${correction}Estado actualizado. No se envió WhatsApp al cliente.`);
+    if (result.notification_status === 'unavailable_recipient') return alert(`${correction}Estado actualizado, pero no se pudo enviar WhatsApp:\n${result.notification_error || 'El cliente no tiene un WhatsApp activo.'}`);
+    if (result.notification_status === 'failed') return alert(`${correction}Estado actualizado, pero falló el WhatsApp:\n${result.notification_error || 'Error desconocido'}`);
+    if (result.notification_status === 'pending_template') return alert(`${correction}Estado actualizado. Falta configurar ${result.missing_variable} en Vercel para enviar el WhatsApp.`);
+    if (result.notification_status === 'already_notified') return alert(`${correction}Estado actualizado. El cliente ya había recibido esta etapa y no se envió un WhatsApp duplicado.`);
+    alert(`${correction}Estado actualizado y WhatsApp enviado.\nEstado: ${result.notification_status || 'queued'}`);
   }
 
   function openManualWorkflow(shipment) {
     closeManualWorkflow();
-    const completedIndex = currentEventIndex(shipment);
-    const nextIndex = Math.min(completedIndex + 1, EVENTS.length - 1);
-    const selectable = EVENTS.map((event, index) => ({ ...event, index })).filter(item => item.index > completedIndex);
-    const defaultEvent = selectable[0] || null;
+    const currentIndex = currentEventIndex(shipment);
+    const currentLabel = currentIndex >= 0 ? EVENTS[currentIndex].label : (shipment.last_status || shipment.operational_status || 'Registrado');
+    const defaultIndex = currentIndex >= 0 ? currentIndex : 0;
+    const defaultEvent = EVENTS[defaultIndex];
     const overlay = document.createElement('div');
     overlay.className = 'manual-track-overlay';
-    overlay.innerHTML = `<div class="manual-track-panel" role="dialog" aria-modal="true" aria-label="Actualizar tracking manual"><div class="manual-track-head"><div><h3>Tracking manual</h3><div class="muted">${esc(shipment.container_number)}</div></div><button type="button" class="manual-track-close">Cerrar</button></div>${defaultEvent ? `<div class="manual-track-next"><small>Próximo evento recomendado</small><b>${esc(defaultEvent.label)}</b></div>` : '<div class="manual-track-next"><b>Proceso completado</b></div>'}<div class="manual-track-list">${EVENTS.map((event, index) => { const done = index <= completedIndex; const recommended = index === nextIndex && !done; return `<label class="manual-track-step ${done ? 'done' : ''} ${recommended ? 'recommended' : ''}"><div class="manual-track-step-index">${done ? '✓' : index + 1}</div><div><div class="manual-track-step-title">${esc(event.label)}</div><div class="manual-track-step-note">${done ? 'Completado' : recommended ? 'Siguiente paso' : 'Disponible para selección manual'}</div></div>${done ? '' : `<input style="position:absolute;opacity:0;pointer-events:none" type="radio" name="manualTrackingEvent" value="${event.key}" ${defaultEvent?.key === event.key ? 'checked' : ''}>`}</label>`; }).join('')}</div>${defaultEvent ? `<div class="manual-track-field"><label for="manualTrackingLocation">Puerto o ubicación</label><input id="manualTrackingLocation" placeholder="Opcional" value="${esc(shipment.last_location || '')}"></div><label class="manual-track-notify" for="manualTrackingNotify"><input id="manualTrackingNotify" type="checkbox"><div><b>Enviar WhatsApp al cliente</b><span>Opcional. Si lo marcas, se utilizará la plantilla aprobada correspondiente a este evento.</span></div></label><div id="manualTrackingWhatsappPreview" class="manual-track-preview hidden"><b>Vista previa del WhatsApp</b><br>Contenedor: ${esc(shipment.container_number)}<br>Estado: <span id="manualTrackingPreviewStatus">${esc(defaultEvent.label)}</span></div><div class="manual-track-actions"><button type="button" class="manual-track-confirm">Confirmar actualización</button><button type="button" class="manual-track-cancel">Cancelar</button></div>` : ''}</div>`;
+    overlay.innerHTML = `<div class="manual-track-panel" role="dialog" aria-modal="true" aria-label="Actualizar o corregir tracking manual">
+      <div class="manual-track-head"><div><h3>Actualizar / corregir tracking</h3><div class="muted">${esc(shipment.container_number)}</div></div><button type="button" class="manual-track-close">Cerrar</button></div>
+      <div class="manual-track-current-box"><small>Estado actual en el ERP</small><b>${esc(currentLabel)}</b><div class="muted" style="margin-top:5px">Puedes seleccionar cualquier etapa, incluso una anterior, para corregir un error.</div></div>
+      <div class="manual-track-list">${EVENTS.map((event, index) => {
+        const isCurrent = index === currentIndex;
+        const note = isCurrent ? 'Estado actual' : currentIndex >= 0 && index < currentIndex ? 'Etapa anterior · disponible para corrección' : 'Disponible para selección';
+        return `<label class="manual-track-step ${isCurrent ? 'current selected' : ''}" data-manual-event-index="${index}">
+          <div class="manual-track-step-index">${isCurrent ? '●' : index + 1}</div>
+          <div><div class="manual-track-step-title">${esc(event.label)}</div><div class="manual-track-step-note">${esc(note)}</div></div>
+          <input style="position:absolute;opacity:0;pointer-events:none" type="radio" name="manualTrackingEvent" value="${event.key}" ${index === defaultIndex ? 'checked' : ''}>
+        </label>`;
+      }).join('')}</div>
+      <div class="manual-track-field"><label for="manualTrackingLocation">Puerto o ubicación</label><input id="manualTrackingLocation" placeholder="Opcional" value="${esc(shipment.last_location || '')}"></div>
+      <label class="manual-track-notify" for="manualTrackingNotify"><input id="manualTrackingNotify" type="checkbox"><div><b>Enviar WhatsApp al cliente</b><span>Opcional. El cambio de estado se guarda aunque no envíes WhatsApp.</span></div></label>
+      <div id="manualTrackingWhatsappPreview" class="manual-track-preview hidden"><b>Vista previa del WhatsApp</b><br>Contenedor: ${esc(shipment.container_number)}<br>Estado: <span id="manualTrackingPreviewStatus">${esc(defaultEvent.label)}</span></div>
+      <div class="manual-track-actions"><button type="button" class="manual-track-confirm">Guardar estado</button><button type="button" class="manual-track-cancel">Cancelar</button></div>
+    </div>`;
+
     document.body.appendChild(overlay);
     overlay.querySelector('.manual-track-close').onclick = closeManualWorkflow;
-    overlay.querySelector('.manual-track-cancel')?.addEventListener('click', closeManualWorkflow);
+    overlay.querySelector('.manual-track-cancel').onclick = closeManualWorkflow;
     overlay.addEventListener('click', event => { if (event.target === overlay) closeManualWorkflow(); });
 
-    overlay.querySelectorAll('.manual-track-step:not(.done)').forEach(step => step.addEventListener('click', () => {
+    const selectedIndex = () => EVENTS.findIndex(event => event.key === overlay.querySelector('input[name="manualTrackingEvent"]:checked')?.value);
+    const syncSelectionUi = () => {
+      const index = selectedIndex();
+      overlay.querySelectorAll('.manual-track-step').forEach(step => step.classList.toggle('selected', Number(step.dataset.manualEventIndex) === index));
+      const previewStatus = overlay.querySelector('#manualTrackingPreviewStatus');
+      if (previewStatus && EVENTS[index]) previewStatus.textContent = EVENTS[index].label;
+    };
+
+    overlay.querySelectorAll('.manual-track-step').forEach(step => step.addEventListener('click', () => {
       const radio = step.querySelector('input[type="radio"]');
       if (!radio) return;
       radio.checked = true;
-      overlay.querySelectorAll('.manual-track-step').forEach(item => item.classList.remove('recommended'));
-      step.classList.add('recommended');
-      const selected = EVENTS.find(event => event.key === radio.value);
-      const previewStatus = overlay.querySelector('#manualTrackingPreviewStatus');
-      if (previewStatus && selected) previewStatus.textContent = selected.label;
+      syncSelectionUi();
     }));
 
     const notifyCheckbox = overlay.querySelector('#manualTrackingNotify');
     const preview = overlay.querySelector('#manualTrackingWhatsappPreview');
     const confirmButton = overlay.querySelector('.manual-track-confirm');
     const syncNotificationUi = () => {
-      const notify = Boolean(notifyCheckbox?.checked);
-      preview?.classList.toggle('hidden', !notify);
-      if (confirmButton) confirmButton.textContent = notify ? 'Confirmar y enviar WhatsApp' : 'Confirmar actualización';
+      const notify = Boolean(notifyCheckbox.checked);
+      preview.classList.toggle('hidden', !notify);
+      const index = selectedIndex();
+      const isRollback = currentIndex >= 0 && index >= 0 && index < currentIndex;
+      confirmButton.textContent = notify
+        ? (isRollback ? 'Corregir y enviar WhatsApp' : 'Guardar y enviar WhatsApp')
+        : (isRollback ? 'Guardar corrección' : 'Guardar estado');
     };
-    notifyCheckbox?.addEventListener('change', syncNotificationUi);
+    notifyCheckbox.addEventListener('change', syncNotificationUi);
+    overlay.querySelectorAll('.manual-track-step').forEach(step => step.addEventListener('click', syncNotificationUi));
+    syncSelectionUi();
     syncNotificationUi();
 
-    if (confirmButton) confirmButton.onclick = async () => {
-      const selectedKey = overlay.querySelector('input[name="manualTrackingEvent"]:checked')?.value;
-      const selected = EVENTS.find(event => event.key === selectedKey);
+    confirmButton.onclick = async () => {
+      const index = selectedIndex();
+      const selected = EVENTS[index];
       if (!selected) return alert('Selecciona un evento.');
-      const notifyWhatsApp = Boolean(notifyCheckbox?.checked);
-      const accepted = confirm(`¿Confirmar “${selected.label}” para ${shipment.container_number}?\n\n${notifyWhatsApp ? 'El estado se actualizará y se enviará el WhatsApp al cliente.' : 'El estado se actualizará sin enviar WhatsApp al cliente.'}`);
-      if (!accepted) return;
+      const notifyWhatsApp = Boolean(notifyCheckbox.checked);
+      const isRollback = currentIndex >= 0 && index < currentIndex;
+      const isSame = currentIndex >= 0 && index === currentIndex;
+      const actionText = isRollback
+        ? `Vas a corregir el estado de “${currentLabel}” a “${selected.label}”. Los hitos posteriores quedarán revertidos en el ERP.`
+        : isSame
+          ? `Vas a guardar nuevamente “${selected.label}”. Esto permite corregir la ubicación u otros datos de esta etapa.`
+          : `Vas a actualizar el estado a “${selected.label}”.`;
+      const messageText = notifyWhatsApp ? '\n\nTambién se intentará enviar el WhatsApp correspondiente.' : '\n\nNo se enviará WhatsApp.';
+      if (!confirm(`${actionText}${messageText}`)) return;
+
       try {
         confirmButton.disabled = true;
-        confirmButton.textContent = notifyWhatsApp ? 'Actualizando y enviando...' : 'Actualizando...';
-        const result = await request('/api/manual-tracking-event', { method: 'PATCH', body: JSON.stringify({ id: shipment.id, event: selected.key, location: String(overlay.querySelector('#manualTrackingLocation')?.value || '').trim(), notify_whatsapp: notifyWhatsApp }) });
+        confirmButton.textContent = notifyWhatsApp ? 'Guardando y enviando...' : 'Guardando...';
+        const result = await request('/api/manual-tracking-event', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            id: shipment.id,
+            event: selected.key,
+            location: String(overlay.querySelector('#manualTrackingLocation')?.value || '').trim(),
+            notify_whatsapp: notifyWhatsApp
+          })
+        });
         closeManualWorkflow();
         showManualResult(result);
         if (typeof window.loadAll === 'function') await window.loadAll();
