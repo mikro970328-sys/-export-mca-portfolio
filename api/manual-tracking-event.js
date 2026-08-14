@@ -162,6 +162,7 @@ export default async function handler(req, res) {
     const eventKey = String(body.event || '').trim().toLowerCase();
     const event = EVENTS[eventKey];
     const location = String(body.location || '').trim() || null;
+    const notifyWhatsApp = body.notify_whatsapp === true;
 
     if (!id) return fail(res, 400, 'Falta el identificador del contenedor');
     if (!event) return fail(res, 400, 'Evento manual no válido');
@@ -173,9 +174,6 @@ export default async function handler(req, res) {
     if (!shipment) return fail(res, 404, 'Contenedor no encontrado');
     if (shipment.shipsgo_status !== 'manual') {
       return fail(res, 409, 'El contenedor debe estar en modo manual para confirmar este evento');
-    }
-    if (!shipment.clients?.active || !shipment.clients?.phone) {
-      return fail(res, 400, 'El cliente no tiene un WhatsApp activo');
     }
     if (shipment.last_status === event.status) {
       return fail(res, 409, `El evento “${event.status}” ya fue confirmado`);
@@ -209,6 +207,38 @@ export default async function handler(req, res) {
       body: patch
     });
 
+    if (!notifyWhatsApp) {
+      await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp no solicitado`);
+      await writeAudit(shipment, event, admin, { notification_status: 'not_requested', notified: false, location });
+      return ok(res, {
+        updated: true,
+        event: eventKey,
+        status: event.status,
+        notification_status: 'not_requested',
+        notified: false
+      });
+    }
+
+    if (!shipment.clients?.active || !shipment.clients?.phone) {
+      const recipientError = 'El cliente no tiene un WhatsApp activo';
+      await logNotification(shipment, event, {
+        status: 'failed',
+        templateSid: process.env[event.templateEnv] || null,
+        location,
+        error: recipientError
+      });
+      await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp no enviado: ${recipientError}`);
+      await writeAudit(shipment, event, admin, { notification_status: 'unavailable_recipient', notified: false, error: recipientError, location });
+      return ok(res, {
+        updated: true,
+        event: eventKey,
+        status: event.status,
+        notification_status: 'unavailable_recipient',
+        notification_error: recipientError,
+        notified: false
+      });
+    }
+
     const templateSid = process.env[event.templateEnv];
     if (!templateSid) {
       await logNotification(shipment, event, {
@@ -218,20 +248,21 @@ export default async function handler(req, res) {
         error: `Falta ${event.templateEnv} en Vercel`
       });
       await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp pendiente: falta ${event.templateEnv}`);
-      await writeAudit(shipment, event, admin, { notification_status: 'pending_template', location });
+      await writeAudit(shipment, event, admin, { notification_status: 'pending_template', notified: false, location });
       return ok(res, {
         updated: true,
         event: eventKey,
         status: event.status,
         notification_status: 'pending_template',
-        missing_variable: event.templateEnv
+        missing_variable: event.templateEnv,
+        notified: false
       });
     }
 
     const claimed = await claimNotification(shipment.id, event.status, 'manual');
     if (!claimed) {
       await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp no reenviado: esta etapa ya había sido notificada`);
-      await writeAudit(shipment, event, admin, { notification_status: 'already_notified', location });
+      await writeAudit(shipment, event, admin, { notification_status: 'already_notified', notified: false, location });
       return ok(res, {
         updated: true,
         event: eventKey,
@@ -255,12 +286,13 @@ export default async function handler(req, res) {
         location
       });
       await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp: ${sent.sid}`);
-      await writeAudit(shipment, event, admin, { notification_status: sent.status || 'queued', sid: sent.sid, location });
+      await writeAudit(shipment, event, admin, { notification_status: sent.status || 'queued', notified: true, sid: sent.sid, location });
       return ok(res, {
         updated: true,
         event: eventKey,
         status: event.status,
         notification_status: sent.status || 'queued',
+        notified: true,
         sid: sent.sid
       });
     } catch (error) {
@@ -272,13 +304,14 @@ export default async function handler(req, res) {
         error: error.message
       });
       await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · Falló WhatsApp: ${error.message}`);
-      await writeAudit(shipment, event, admin, { notification_status: 'failed', error: error.message, location });
+      await writeAudit(shipment, event, admin, { notification_status: 'failed', notified: false, error: error.message, location });
       return ok(res, {
         updated: true,
         event: eventKey,
         status: event.status,
         notification_status: 'failed',
-        notification_error: error.message
+        notification_error: error.message,
+        notified: false
       });
     }
   } catch (error) {

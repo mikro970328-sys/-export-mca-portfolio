@@ -59,7 +59,12 @@
       .manual-track-step-note{font-size:11px;color:#667085;margin-top:2px}
       .manual-track-field label{display:block;margin:12px 0 6px;font-size:13px;font-weight:800}
       .manual-track-field input{width:100%}
+      .manual-track-notify{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;margin-top:16px;padding:13px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer}
+      .manual-track-notify input{width:18px;height:18px;margin:2px 0 0}
+      .manual-track-notify b{display:block;color:#06204a}
+      .manual-track-notify span{display:block;color:#667085;font-size:11px;margin-top:3px;line-height:1.4}
       .manual-track-preview{margin-top:14px;padding:12px;border-left:4px solid #06204a;background:#f7f9fc;border-radius:8px;font-size:13px;line-height:1.45}
+      .manual-track-preview.hidden{display:none}
       .manual-track-actions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:18px}
       .manual-track-confirm{background:#f58220!important;padding:13px!important}
       .manual-track-cancel{background:#fff!important;color:#06204a!important;border:1px solid #cfd7e3!important}
@@ -73,7 +78,11 @@
   }
 
   function showResult(result) {
-    if (result.notification_status === 'failed') {
+    if (result.notification_status === 'not_requested') {
+      alert('Evento actualizado. No se envió WhatsApp al cliente.');
+    } else if (result.notification_status === 'unavailable_recipient') {
+      alert(`Evento actualizado, pero no se pudo enviar WhatsApp:\n${result.notification_error || 'El cliente no tiene un WhatsApp activo.'}`);
+    } else if (result.notification_status === 'failed') {
       alert(`Evento actualizado, pero falló el WhatsApp:\n${result.notification_error || 'Error desconocido'}`);
     } else if (result.notification_status === 'pending_template') {
       alert(`Evento actualizado. Falta configurar ${result.missing_variable} en Vercel para enviar el WhatsApp.`);
@@ -121,13 +130,20 @@
             <label for="manualTrackingLocation">Puerto o ubicación</label>
             <input id="manualTrackingLocation" placeholder="Opcional" value="${String(shipment.last_location || '').replace(/"/g, '&quot;')}">
           </div>
-          <div class="manual-track-preview">
+          <label class="manual-track-notify" for="manualTrackingNotify">
+            <input id="manualTrackingNotify" type="checkbox">
+            <div>
+              <b>Enviar WhatsApp al cliente</b>
+              <span>Opcional. Si lo marcas, se utilizará la plantilla aprobada correspondiente a este evento.</span>
+            </div>
+          </label>
+          <div id="manualTrackingWhatsappPreview" class="manual-track-preview hidden">
             <b>Vista previa del WhatsApp</b><br>
             Contenedor: ${shipment.container_number}<br>
             Estado: <span id="manualTrackingPreviewStatus">${defaultEvent.label}</span>
           </div>
           <div class="manual-track-actions">
-            <button type="button" class="manual-track-confirm">Confirmar y enviar WhatsApp</button>
+            <button type="button" class="manual-track-confirm">Confirmar actualización</button>
             <button type="button" class="manual-track-cancel">Cancelar</button>
           </div>` : ''}
       </div>`;
@@ -150,26 +166,40 @@
       });
     });
 
+    const notifyCheckbox = overlay.querySelector('#manualTrackingNotify');
+    const preview = overlay.querySelector('#manualTrackingWhatsappPreview');
     const confirmButton = overlay.querySelector('.manual-track-confirm');
+
+    const syncNotificationUi = () => {
+      const notify = Boolean(notifyCheckbox?.checked);
+      preview?.classList.toggle('hidden', !notify);
+      if (confirmButton) confirmButton.textContent = notify ? 'Confirmar y enviar WhatsApp' : 'Confirmar actualización';
+    };
+    notifyCheckbox?.addEventListener('change', syncNotificationUi);
+    syncNotificationUi();
+
     if (confirmButton) {
       confirmButton.onclick = async () => {
         const selectedKey = overlay.querySelector('input[name="manualTrackingEvent"]:checked')?.value;
         const selected = EVENTS.find(event => event.key === selectedKey);
         if (!selected) return alert('Selecciona un evento.');
 
+        const notifyWhatsApp = Boolean(notifyCheckbox?.checked);
         const accepted = confirm(
           `¿Confirmar “${selected.label}” para ${shipment.container_number}?\n\n` +
-          'El estado se actualizará y se enviará el WhatsApp al cliente.'
+          (notifyWhatsApp
+            ? 'El estado se actualizará y se enviará el WhatsApp al cliente.'
+            : 'El estado se actualizará sin enviar WhatsApp al cliente.')
         );
         if (!accepted) return;
 
         try {
           confirmButton.disabled = true;
-          confirmButton.textContent = 'Procesando...';
+          confirmButton.textContent = notifyWhatsApp ? 'Actualizando y enviando...' : 'Actualizando...';
           const location = String(overlay.querySelector('#manualTrackingLocation')?.value || '').trim();
           const result = await request('/api/manual-tracking-event', {
             method: 'PATCH',
-            body: JSON.stringify({ id: shipment.id, event: selected.key, location })
+            body: JSON.stringify({ id: shipment.id, event: selected.key, location, notify_whatsapp: notifyWhatsApp })
           });
           closeModal();
           showResult(result);
@@ -178,7 +208,7 @@
         } catch (error) {
           alert(error.message);
           confirmButton.disabled = false;
-          confirmButton.textContent = 'Confirmar y enviar WhatsApp';
+          syncNotificationUi();
         }
       };
     }
@@ -245,7 +275,7 @@
         button.onclick = async () => {
           const accepted = confirm(
             `¿Cambiar ${shipment.container_number} a seguimiento manual?\n\n` +
-            'ShipsGo dejará de controlar los eventos. Tú confirmarás cada paso y el cliente seguirá recibiendo sus WhatsApp.'
+            'ShipsGo dejará de controlar los eventos. En cada actualización podrás decidir si deseas enviar WhatsApp al cliente.'
           );
           if (!accepted) return;
 
