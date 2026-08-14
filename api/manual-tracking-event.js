@@ -1,49 +1,20 @@
 import { fail, ok, readJson, requireAdmin, sendWhatsApp, supabase } from './_lib.js';
 
 const EVENTS = {
-  load: {
-    order: 1,
-    status: 'Cargado en el buque',
-    eventType: 'LOAD',
-    templateEnv: 'TWILIO_CONTENT_SID',
-    templateType: 'tracking'
-  },
-  departed: {
-    order: 2,
-    status: 'Salió del puerto',
-    eventType: 'DEPA',
-    templateEnv: 'TWILIO_CONTENT_SID',
-    templateType: 'tracking'
-  },
-  arrived: {
-    order: 3,
-    status: 'Llegó al puerto',
-    eventType: 'ARRV',
-    templateEnv: 'TWILIO_CONTENT_SID',
-    templateType: 'tracking'
-  },
-  discharged: {
-    order: 4,
-    status: 'Descargado del buque',
-    eventType: 'DISC',
-    templateEnv: 'TWILIO_CONTENT_SID',
-    templateType: 'tracking'
-  },
-  released: {
-    order: 5,
-    status: 'Liberado',
-    eventType: 'RELEASE',
-    templateEnv: 'TWILIO_RELEASE_CONTENT_SID',
-    templateType: 'release'
-  },
-  delivered: {
-    order: 6,
-    status: 'Entregado',
-    eventType: 'DELIVERED',
-    templateEnv: 'TWILIO_DELIVERED_CONTENT_SID',
-    templateType: 'delivered'
-  }
+  load: { order: 1, status: 'Cargado en el buque', eventType: 'LOAD', templateEnv: 'TWILIO_CONTENT_SID', templateType: 'tracking' },
+  departed: { order: 2, status: 'Salió del puerto', eventType: 'DEPA', templateEnv: 'TWILIO_CONTENT_SID', templateType: 'tracking' },
+  arrived: { order: 3, status: 'Llegó al puerto', eventType: 'ARRV', templateEnv: 'TWILIO_CONTENT_SID', templateType: 'tracking' },
+  discharged: { order: 4, status: 'Descargado del buque', eventType: 'DISC', templateEnv: 'TWILIO_CONTENT_SID', templateType: 'tracking' },
+  released: { order: 5, status: 'Liberado', eventType: 'RELEASE', templateEnv: 'TWILIO_RELEASE_CONTENT_SID', templateType: 'release' },
+  delivered: { order: 6, status: 'Entregado', eventType: 'DELIVERED', templateEnv: 'TWILIO_DELIVERED_CONTENT_SID', templateType: 'delivered' }
 };
+
+const EVENT_LIST = Object.entries(EVENTS).map(([key, value]) => ({ key, ...value }));
+
+function eventForStatus(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+  return EVENT_LIST.find(event => event.status.toLowerCase() === normalized) || null;
+}
 
 async function claimNotification(shipmentId, eventStatus, source) {
   try {
@@ -69,15 +40,20 @@ async function releaseClaim(shipmentId, eventStatus) {
   }
 }
 
-async function writeHistory(shipment, event, admin, details) {
+async function writeHistory(shipment, event, admin, details, correctionType) {
   try {
+    const title = correctionType === 'rollback'
+      ? `Corrección manual · ${event.status}`
+      : correctionType === 'same'
+        ? `Tracking manual actualizado · ${event.status}`
+        : `Tracking manual · ${event.status}`;
     await supabase('shipment_history', {
       method: 'POST',
       body: [{
         shipment_id: shipment.id,
         client_id: shipment.client_id,
-        event_type: `manual_${event.eventType.toLowerCase()}`,
-        title: `Tracking manual · ${event.status}`,
+        event_type: correctionType === 'rollback' ? `manual_correction_${event.eventType.toLowerCase()}` : `manual_${event.eventType.toLowerCase()}`,
+        title,
         details,
         source: 'admin'
       }]
@@ -87,17 +63,17 @@ async function writeHistory(shipment, event, admin, details) {
   }
 }
 
-async function writeAudit(shipment, event, admin, details = {}) {
+async function writeAudit(shipment, event, admin, details = {}, correctionType = 'forward') {
   try {
     await supabase('audit_log', {
       method: 'POST',
       body: [{
         actor_admin_id: admin.admin_id || null,
         actor_username: admin.username || null,
-        action: 'manual_tracking_event_confirmed',
+        action: correctionType === 'rollback' ? 'manual_tracking_event_corrected' : 'manual_tracking_event_confirmed',
         entity_type: 'shipment',
         entity_id: shipment.id,
-        details: { event: event.eventType, status: event.status, ...details }
+        details: { event: event.eventType, status: event.status, correction_type: correctionType, ...details }
       }]
     });
   } catch (error) {
@@ -128,7 +104,8 @@ async function logNotification(shipment, event, data = {}) {
           status: event.status,
           location: data.location || null,
           manual_tracking: true,
-          event_code: event.eventType
+          event_code: event.eventType,
+          correction_type: data.correctionType || 'forward'
         },
         error_message: data.error || null,
         sent_at: data.sentAt || null,
@@ -142,13 +119,44 @@ async function logNotification(shipment, event, data = {}) {
 }
 
 function variablesFor(event, shipment) {
-  if (event.templateType === 'tracking') {
-    return { '1': shipment.container_number, '2': event.status };
-  }
-  return {
-    '1': shipment.clients?.name || 'Cliente',
-    '2': shipment.container_number
+  if (event.templateType === 'tracking') return { '1': shipment.container_number, '2': event.status };
+  return { '1': shipment.clients?.name || 'Cliente', '2': shipment.container_number };
+}
+
+function correctionPatch(shipment, eventKey, event, location, admin, now) {
+  const patch = {
+    operational_status: event.status,
+    last_status: event.status,
+    last_location: location,
+    last_event_at: now,
+    updated_at: now,
+    active: eventKey !== 'delivered'
   };
+
+  if (event.order < EVENTS.discharged.order) patch.discharged_at = null;
+  else if (eventKey === 'discharged') patch.discharged_at = shipment.discharged_at || now;
+
+  if (event.order < EVENTS.released.order) {
+    patch.released_at = null;
+    patch.release_method = null;
+    patch.released_by_admin_id = null;
+    patch.released_by_username = null;
+    patch.release_notification_status = 'pending';
+    patch.release_notification_error = null;
+  } else if (eventKey === 'released') {
+    patch.released_at = shipment.released_at || now;
+    patch.release_method = 'manual_tracking';
+    patch.released_by_admin_id = admin.admin_id || null;
+    patch.released_by_username = admin.username || null;
+  }
+
+  if (event.order < EVENTS.delivered.order) patch.delivered_at = null;
+  else if (eventKey === 'delivered') {
+    patch.active = false;
+    patch.delivered_at = shipment.delivered_at || now;
+  }
+
+  return patch;
 }
 
 export default async function handler(req, res) {
@@ -172,34 +180,14 @@ export default async function handler(req, res) {
     });
     const shipment = rows?.[0];
     if (!shipment) return fail(res, 404, 'Contenedor no encontrado');
-    if (shipment.shipsgo_status !== 'manual') {
-      return fail(res, 409, 'El contenedor debe estar en modo manual para confirmar este evento');
-    }
-    if (shipment.last_status === event.status) {
-      return fail(res, 409, `El evento “${event.status}” ya fue confirmado`);
-    }
+    if (shipment.shipsgo_status !== 'manual') return fail(res, 409, 'El contenedor debe estar en modo manual para confirmar este evento');
 
+    const previousStatus = shipment.last_status || shipment.operational_status || 'Registrado';
+    const previousEvent = eventForStatus(previousStatus);
+    const previousOrder = previousEvent?.order || 0;
+    const correctionType = previousOrder > event.order ? 'rollback' : previousOrder === event.order ? 'same' : 'forward';
     const now = new Date().toISOString();
-    const patch = {
-      operational_status: event.status,
-      last_status: event.status,
-      last_location: location,
-      last_event_at: now,
-      updated_at: now
-    };
-    if (eventKey === 'discharged') {
-      patch.discharged_at = shipment.discharged_at || now;
-    }
-    if (eventKey === 'released') {
-      patch.released_at = shipment.released_at || now;
-      patch.release_method = 'manual_tracking';
-      patch.released_by_admin_id = admin.admin_id || null;
-      patch.released_by_username = admin.username || null;
-    }
-    if (eventKey === 'delivered') {
-      patch.active = false;
-      patch.delivered_at = shipment.delivered_at || now;
-    }
+    const patch = correctionPatch(shipment, eventKey, event, location, admin, now);
 
     await supabase('shipments', {
       method: 'PATCH',
@@ -207,112 +195,49 @@ export default async function handler(req, res) {
       body: patch
     });
 
+    const correctionDetail = `Estado anterior: ${previousStatus} · Estado nuevo: ${event.status}`;
+
     if (!notifyWhatsApp) {
-      await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp no solicitado`);
-      await writeAudit(shipment, event, admin, { notification_status: 'not_requested', notified: false, location });
-      return ok(res, {
-        updated: true,
-        event: eventKey,
-        status: event.status,
-        notification_status: 'not_requested',
-        notified: false
-      });
+      await writeHistory(shipment, event, admin, `${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · WhatsApp no solicitado`, correctionType);
+      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: 'not_requested', notified: false, location }, correctionType);
+      return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: 'not_requested', notified: false });
     }
 
     if (!shipment.clients?.active || !shipment.clients?.phone) {
       const recipientError = 'El cliente no tiene un WhatsApp activo';
-      await logNotification(shipment, event, {
-        status: 'failed',
-        templateSid: process.env[event.templateEnv] || null,
-        location,
-        error: recipientError
-      });
-      await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp no enviado: ${recipientError}`);
-      await writeAudit(shipment, event, admin, { notification_status: 'unavailable_recipient', notified: false, error: recipientError, location });
-      return ok(res, {
-        updated: true,
-        event: eventKey,
-        status: event.status,
-        notification_status: 'unavailable_recipient',
-        notification_error: recipientError,
-        notified: false
-      });
+      await logNotification(shipment, event, { status: 'failed', templateSid: process.env[event.templateEnv] || null, location, error: recipientError, correctionType });
+      await writeHistory(shipment, event, admin, `${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · WhatsApp no enviado: ${recipientError}`, correctionType);
+      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: 'unavailable_recipient', notified: false, error: recipientError, location }, correctionType);
+      return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: 'unavailable_recipient', notification_error: recipientError, notified: false });
     }
 
     const templateSid = process.env[event.templateEnv];
     if (!templateSid) {
-      await logNotification(shipment, event, {
-        status: 'pending',
-        templateSid: null,
-        location,
-        error: `Falta ${event.templateEnv} en Vercel`
-      });
-      await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp pendiente: falta ${event.templateEnv}`);
-      await writeAudit(shipment, event, admin, { notification_status: 'pending_template', notified: false, location });
-      return ok(res, {
-        updated: true,
-        event: eventKey,
-        status: event.status,
-        notification_status: 'pending_template',
-        missing_variable: event.templateEnv,
-        notified: false
-      });
+      await logNotification(shipment, event, { status: 'pending', templateSid: null, location, error: `Falta ${event.templateEnv} en Vercel`, correctionType });
+      await writeHistory(shipment, event, admin, `${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · WhatsApp pendiente: falta ${event.templateEnv}`, correctionType);
+      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: 'pending_template', notified: false, location }, correctionType);
+      return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: 'pending_template', missing_variable: event.templateEnv, notified: false });
     }
 
     const claimed = await claimNotification(shipment.id, event.status, 'manual');
     if (!claimed) {
-      await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp no reenviado: esta etapa ya había sido notificada`);
-      await writeAudit(shipment, event, admin, { notification_status: 'already_notified', notified: false, location });
-      return ok(res, {
-        updated: true,
-        event: eventKey,
-        status: event.status,
-        notification_status: 'already_notified',
-        notified: false
-      });
+      await writeHistory(shipment, event, admin, `${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · WhatsApp no reenviado: esta etapa ya había sido notificada`, correctionType);
+      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: 'already_notified', notified: false, location }, correctionType);
+      return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: 'already_notified', notified: false });
     }
 
     try {
-      const sent = await sendWhatsApp({
-        to: shipment.clients.phone,
-        contentSid: templateSid,
-        variables: variablesFor(event, shipment)
-      });
-      await logNotification(shipment, event, {
-        status: sent.status || 'queued',
-        sid: sent.sid,
-        templateSid,
-        sentAt: now,
-        location
-      });
-      await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · WhatsApp: ${sent.sid}`);
-      await writeAudit(shipment, event, admin, { notification_status: sent.status || 'queued', notified: true, sid: sent.sid, location });
-      return ok(res, {
-        updated: true,
-        event: eventKey,
-        status: event.status,
-        notification_status: sent.status || 'queued',
-        notified: true,
-        sid: sent.sid
-      });
+      const sent = await sendWhatsApp({ to: shipment.clients.phone, contentSid: templateSid, variables: variablesFor(event, shipment) });
+      await logNotification(shipment, event, { status: sent.status || 'queued', sid: sent.sid, templateSid, sentAt: now, location, correctionType });
+      await writeHistory(shipment, event, admin, `${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · WhatsApp: ${sent.sid}`, correctionType);
+      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: sent.status || 'queued', notified: true, sid: sent.sid, location }, correctionType);
+      return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: sent.status || 'queued', notified: true, sid: sent.sid });
     } catch (error) {
       await releaseClaim(shipment.id, event.status);
-      await logNotification(shipment, event, {
-        status: 'failed',
-        templateSid,
-        location,
-        error: error.message
-      });
-      await writeHistory(shipment, event, admin, `Confirmado por ${admin.username || 'administrador'} · Falló WhatsApp: ${error.message}`);
-      await writeAudit(shipment, event, admin, { notification_status: 'failed', notified: false, error: error.message, location });
-      return ok(res, {
-        updated: true,
-        event: eventKey,
-        status: event.status,
-        notification_status: 'failed',
-        notification_error: error.message,
-        notified: false
-      });
+      await logNotification(shipment, event, { status: 'failed', templateSid, location, error: error.message, correctionType });
+      await writeHistory(shipment, event, admin, `${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · Falló WhatsApp: ${error.message}`, correctionType);
+      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: 'failed', notified: false, error: error.message, location }, correctionType);
+      return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: 'failed', notification_error: error.message, notified: false });
     }
   } catch (error) {
     console.error('MANUAL_TRACKING_EVENT_ERROR', error);
