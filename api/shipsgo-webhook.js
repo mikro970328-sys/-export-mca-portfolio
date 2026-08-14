@@ -28,15 +28,15 @@ function validSignature(rawBody, signature) {
 function extract(payload) {
   const shipment = payload?.shipment || payload?.data?.shipment || payload?.data || payload?.resource || payload?.object || {};
   const containers = shipment?.containers || [];
-  const movements = containers.flatMap((container) =>
-    (container.movements || []).map((movement) => ({
+  const movements = containers.flatMap(container =>
+    (container.movements || []).map(movement => ({
       ...movement,
       containerNumber: container.number || container.container_number || shipment.container_number
     }))
   );
 
   const movement = movements
-    .filter((item) => String(item.status || '').toUpperCase() === 'ACT' && item.timestamp)
+    .filter(item => String(item.status || '').toUpperCase() === 'ACT' && item.timestamp)
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
 
   const container = normalizeContainer(
@@ -92,7 +92,7 @@ async function writeTrackingHistory(shipment, event, details, source = 'shipsgo'
       method: 'POST',
       body: [{
         shipment_id: shipment.id,
-        client_id: shipment.client_id,
+        client_id: shipment.client_id || null,
         event_type: `shipsgo_${String(event.code || 'event').toLowerCase()}`,
         title: `ShipsGo · ${event.status}`,
         details,
@@ -118,6 +118,7 @@ async function logWebhookEvent(event, payload, processed, errorMessage = null) {
 }
 
 async function logWhatsAppFailure(shipment, event, payload, error) {
+  if (!shipment.client_id || !shipment.clients?.phone) return;
   try {
     await supabase('notifications', {
       method: 'POST',
@@ -150,7 +151,7 @@ async function logWhatsAppFailure(shipment, event, payload, error) {
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 8 });
+  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 9 });
   if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
 
   try {
@@ -164,10 +165,6 @@ export default async function handler(req, res) {
     if (eventName && !eventName.includes('SHIPMENT_')) return ok(res, { received: true, ignored: eventName });
 
     const event = extract(payload);
-
-    // ShipsGo can emit a shipment-level webhook immediately after a tracking is created or linked.
-    // If it contains no active movement with a real timestamp, it is synchronization metadata,
-    // not a new logistics event and must never generate a customer notification.
     if (!event.movement?.timestamp) {
       await logWebhookEvent(event, payload, false, 'Webhook de sincronización sin movimiento activo');
       return ok(res, {
@@ -183,14 +180,13 @@ export default async function handler(req, res) {
     });
     const shipment = rows?.[0];
 
-    if (!shipment?.clients?.active) {
-      await logWebhookEvent(event, payload, false, 'No hay cliente activo asociado');
-      return ok(res, { received: true, notified: false, reason: 'shipment_not_found' });
+    if (!shipment) {
+      await logWebhookEvent(event, payload, false, 'No hay contenedor activo asociado');
+      return ok(res, { received: true, tracking_updated: false, notified: false, reason: 'shipment_not_found' });
     }
 
     const incomingTime = new Date(event.eventTime).getTime();
     const currentTime = shipment.last_event_at ? new Date(shipment.last_event_at).getTime() : 0;
-
     if (Number.isFinite(currentTime) && currentTime > 0 && Number.isFinite(incomingTime) && incomingTime <= currentTime) {
       await logWebhookEvent(event, payload, false, 'Evento anterior o igual al último evento confirmado');
       await writeTrackingHistory(
@@ -237,6 +233,19 @@ export default async function handler(req, res) {
     });
     await writeTrackingHistory(shipment, event, `${event.location} · ${event.eventTime}`, 'shipsgo');
     const resolvedAlerts = await resolveTrackingAlerts(shipment.id);
+
+    // An unassigned container must continue receiving ShipsGo movements. Customer
+    // messaging is simply skipped until a real active client is assigned.
+    if (!shipment.client_id || !shipment.clients?.active || !shipment.clients?.phone) {
+      await logWebhookEvent(event, payload, true, 'Tracking actualizado sin cliente activo; WhatsApp omitido');
+      return ok(res, {
+        received: true,
+        tracking_updated: true,
+        resolved_alerts: resolvedAlerts,
+        notified: false,
+        reason: 'no_active_client'
+      });
+    }
 
     const claimed = await claimNotification(shipment.id, event.status);
     if (!claimed) {
@@ -293,7 +302,6 @@ export default async function handler(req, res) {
     }
 
     await logWebhookEvent(event, payload, true, twilio ? null : 'Tracking actualizado; notificación WhatsApp fallida');
-
     return ok(res, {
       received: true,
       tracking_updated: true,
