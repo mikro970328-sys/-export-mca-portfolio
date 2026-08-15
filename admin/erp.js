@@ -132,7 +132,6 @@
     await Promise.all([
       ...independentModules,
       clientsModule,
-      loadScript('/admin/responsive-columns-control.js', 'data-responsive-columns-control'),
       loadScript('/admin/module-export-controls.js', 'data-module-export-controls'),
       alertChain
     ]);
