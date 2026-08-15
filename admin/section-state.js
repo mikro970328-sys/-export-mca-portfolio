@@ -3,7 +3,6 @@
   window.__sectionStateInstalled = true;
 
   const STORAGE_KEY = 'export_mca_current_section';
-  const DYNAMIC_SECTION_KEY = 'export_mca_dynamic_section';
   const originalShowSection = window.showSection;
   if (typeof originalShowSection !== 'function') return;
 
@@ -38,16 +37,11 @@
 
   window.showSection = function (id) {
     originalShowSection(id);
-    if (canOpen(id)) {
-      localStorage.setItem(STORAGE_KEY, id);
-      if (id === 'registerContainerSection') localStorage.setItem(DYNAMIC_SECTION_KEY, id);
-      else localStorage.removeItem(DYNAMIC_SECTION_KEY);
-    }
+    if (canOpen(id)) localStorage.setItem(STORAGE_KEY, id);
   };
 
   function restoreSection() {
-    const saved = localStorage.getItem(DYNAMIC_SECTION_KEY) || localStorage.getItem(STORAGE_KEY);
-
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved || saved === 'dashboardSection') {
       revealApp();
       return;
@@ -59,7 +53,6 @@
       return;
     }
 
-    localStorage.removeItem(DYNAMIC_SECTION_KEY);
     localStorage.removeItem(STORAGE_KEY);
     originalShowSection('dashboardSection');
     requestAnimationFrame(revealApp);
