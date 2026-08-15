@@ -149,9 +149,10 @@
     removeLegacyAdminControls();
 
     bootPromise = (async () => {
-      await loadScript('/admin/erp-core.js?v=20260730-sessionfix1', 'data-erp-core');
+      await loadScript('/admin/erp-core.js?v=20260814-operations-only1', 'data-erp-core');
       await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
-      await loadScript('/admin/containers-module.js?v=20260814-owner1', 'data-containers-module');
+      await loadScript('/admin/containers-module.js?v=20260814-owner2', 'data-containers-module');
+      await loadScript('/admin/shipment-editor.js?v=20260814-owner2', 'data-shipment-editor');
       await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');
 
       if (typeof window.loadAll !== 'function') {
