@@ -30,16 +30,14 @@
   }
 
   function install() {
-    const globalButton = document.getElementById('exportCsv');
-    if (globalButton) globalButton.remove();
-
+    // Tracking is intentionally excluded. The global Exportar CSV control already
+    // exports shipments and Contenedores/Tracking keeps a single frontend owner.
     addToHeading('clientsSection', 'Clientes registrados', 'clients', 'Exportar clientes');
-    addToHeading('containersSection', 'Tracking', 'shipments', 'Exportar tracking');
     addToHeading('newOperationsSection', 'Expedientes', 'operations', 'Exportar expedientes');
     addToHeading('notificationsSection', 'Centro de notificaciones', 'notifications', 'Exportar historial');
   }
 
   install();
-  const observer = new MutationObserver(install);
-  observer.observe(document.body, { childList: true, subtree: true });
+  window.addEventListener('export-mca:modules-ready', install);
+  window.addEventListener('export-mca:data-loaded', install);
 })();
