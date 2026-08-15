@@ -139,7 +139,7 @@
       return;
     }
 
-    target.innerHTML = `<table><thead><tr><th>Contenedor</th><th>Cliente</th><th>Producto</th><th>Cantidad</th><th>Fecha de salida</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${list.map(shipment => {
+    target.innerHTML = `<table><thead><tr><th>Contenedor</th><th>Cliente</th><th>Producto</th><th>Cantidad</th><th>Fecha de salida</th><th>Booking / B/L</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${list.map(shipment => {
       const mode = modeLabel(shipment);
       const unassigned = !shipment.client_id;
       const client = unassigned
@@ -151,6 +151,7 @@
         <td>${esc(shipment.product || '—')}</td>
         <td>${esc(formatQuantity(shipment))}</td>
         <td>${esc(formatDate(shipment.departure_date))}</td>
+        <td>${esc(shipment.booking_number || '—')}<br><span class="muted">${esc(shipment.bol_number || '—')}</span></td>
         <td><span class="pill ${shipment.active === false ? 'done' : ''}">${esc(shipment.operational_status || shipment.last_status || 'Registrado')}</span><span class="container-mode ${mode[1]}">${esc(mode[0])}</span></td>
         <td class="container-actions-cell"><button type="button" class="container-actions-trigger" data-container-menu="${esc(shipment.id)}" aria-label="Acciones" title="Acciones">⋯</button></td>
       </tr>`;
