@@ -49,9 +49,12 @@
   function renderList() {
     const target = byId('erpOperationsList');
     if (!target) return;
-    if (!operations.length) { target.textContent = 'No hay expedientes registrados.'; return; }
+    if (!operations.length) {
+      target.textContent = 'No hay expedientes registrados.';
+      return;
+    }
     target.innerHTML = `<table><thead><tr><th>Expediente</th><th>Cliente</th><th>Contenedor</th><th>Estado</th><th>Venta</th><th>Pendiente</th><th>Acciones</th></tr></thead><tbody>${operations.map(op => `<tr><td><b>${op.operation_code || '-'}</b><br><span class="muted">${new Date(op.created_at).toLocaleDateString()}</span></td><td>${op.client?.name || '-'}</td><td>${op.container_number || '-'}</td><td><span class="pill">${op.status || '-'}</span></td><td>${money(op.sale_total)}</td><td>${money(Number(op.sale_total || 0) - Number(op.paid_total || 0))}</td><td><button class="alt" data-open-operation="${op.id}">Abrir</button></td></tr>`).join('')}</tbody></table>`;
-    target.querySelectorAll('[data-open-operation]').forEach(btn => btn.onclick = () => openOperation(btn.dataset.openOperation));
+    target.querySelectorAll('[data-open-operation]').forEach(button => button.onclick = () => openOperation(button.dataset.openOperation));
   }
 
   async function loadOperations() {
@@ -69,7 +72,9 @@
     try {
       const result = await api('/api/operations?id=' + encodeURIComponent(id));
       openModal('Expediente · ' + (result.operation?.operation_code || ''), detailHtml(result.operation || {}));
-    } catch (error) { alert(error.message); }
+    } catch (error) {
+      alert(error.message);
+    }
   }
 
   async function saveOperation() {
@@ -90,7 +95,16 @@
       etd: byId('erpEtd').value,
       eta: byId('erpEta').value,
       notes: byId('erpNotes').value,
-      items: itemDescription ? [{ description: itemDescription, quantity: byId('erpItemQuantity').value, unit: byId('erpItemUnit').value, unit_cost: byId('erpItemCost').value, unit_price: byId('erpItemPrice').value, packages: byId('erpItemPackages').value, net_weight_kg: byId('erpItemNet').value, gross_weight_kg: byId('erpItemGross').value }] : []
+      items: itemDescription ? [{
+        description: itemDescription,
+        quantity: byId('erpItemQuantity').value,
+        unit: byId('erpItemUnit').value,
+        unit_cost: byId('erpItemCost').value,
+        unit_price: byId('erpItemPrice').value,
+        packages: byId('erpItemPackages').value,
+        net_weight_kg: byId('erpItemNet').value,
+        gross_weight_kg: byId('erpItemGross').value
+      }] : []
     };
     try {
       const result = await api('/api/operations', { method: 'POST', body: JSON.stringify(payload) });
@@ -98,58 +112,8 @@
       ['erpIncoterm','erpOrigin','erpDestination','erpContainer','erpSeal','erpBooking','erpBol','erpVessel','erpVoyage','erpEtd','erpEta','erpNotes','erpItemDescription','erpItemUnit','erpItemCost','erpItemPrice','erpItemPackages','erpItemNet','erpItemGross'].forEach(id => byId(id).value = '');
       byId('erpItemQuantity').value = '1';
       await loadOperations();
-    } catch (error) { note('erpMsg', error.message); }
-  }
-
-  function installShipmentDelete() {
-    if (window.__shipmentDeleteInstalled) return;
-    window.__shipmentDeleteInstalled = true;
-
-    window.deleteShipment = async function (id, containerNumber) {
-      const confirmation = prompt(`Para eliminar definitivamente ${containerNumber} del ERP, escribe ELIMINAR`);
-      if (confirmation !== 'ELIMINAR') return;
-      try {
-        await api('/api/shipments?id=' + encodeURIComponent(id), { method: 'DELETE' });
-        alert(`Contenedor ${containerNumber} eliminado del ERP.`);
-        await loadAll();
-        if (window.loadNotifications) window.loadNotifications();
-      } catch (error) {
-        alert(error.message);
-      }
-    };
-
-    const addButtons = () => {
-      const target = byId('shipments');
-      if (!target) return;
-      target.querySelectorAll('tbody tr').forEach(row => {
-        const containerNumber = row.querySelector('td b')?.textContent?.trim();
-        const shipment = Array.isArray(shipments) ? shipments.find(item => item.container_number === containerNumber) : null;
-        const actions = row.querySelector('.actions');
-        if (!shipment || !actions) return;
-
-        const deleteButtons = Array.from(actions.querySelectorAll('button')).filter(button =>
-          button.dataset.deleteShipment || button.textContent.trim().toLowerCase() === 'eliminar'
-        );
-        deleteButtons.forEach(button => button.remove());
-
-        const button = document.createElement('button');
-        button.className = 'danger';
-        button.textContent = 'Eliminar';
-        button.dataset.deleteShipment = shipment.id;
-        button.onclick = () => window.deleteShipment(shipment.id, shipment.container_number);
-        actions.appendChild(button);
-      });
-    };
-
-    const target = byId('shipments');
-    if (target) {
-      const observer = new MutationObserver(() => {
-        observer.disconnect();
-        addButtons();
-        observer.observe(target, { childList: true, subtree: true });
-      });
-      observer.observe(target, { childList: true, subtree: true });
-      addButtons();
+    } catch (error) {
+      note('erpMsg', error.message);
     }
   }
 
@@ -162,17 +126,8 @@
     byId('reloadOperations').onclick = loadOperations;
     window.addEventListener('export-mca:clients-changed', loadOperations);
     loadOperations();
-    installShipmentDelete();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
-})();
-
-(() => {
-  if (document.querySelector('script[data-shipment-editor]')) return;
-  const script = document.createElement('script');
-  script.src = '/admin/shipment-editor.js?v=20260730-2';
-  script.dataset.shipmentEditor = 'true';
-  script.defer = true;
-  document.head.appendChild(script);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
+  else mount();
 })();
