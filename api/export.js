@@ -47,8 +47,27 @@ export default async function handler(req, res) {
 
     const rows = await supabase('shipments', { query: '?select=*,clients(name,company,phone,email)&order=created_at.desc' });
     return sendCsv(res, 'export-mca-tracking',
-      ['Contenedor','Cliente','Empresa','WhatsApp','Correo','Booking','B/L','Naviera','Producto','Estado','Ubicación','ETA','ShipsGo','Creado','Liberado','Entregado'],
-      (rows || []).map(x => [x.container_number,x.clients?.name,x.clients?.company,x.clients?.phone,x.clients?.email,x.booking_number,x.bol_number,x.carrier,x.product,x.operational_status || x.last_status,x.last_location,x.eta || x.estimated_arrival || x.arrival_estimate,x.shipsgo_status,x.created_at,x.released_at,x.delivered_at])
+      ['Contenedor','Cliente','Empresa','WhatsApp','Correo','Producto','Cantidad','Unidad','Fecha de salida','Booking','B/L','Naviera','Estado','Ubicación','ShipsGo','Creado','Liberado','Entregado'],
+      (rows || []).map(x => [
+        x.container_number,
+        x.clients?.name || (x.client_id ? '' : 'SIN CLIENTE'),
+        x.clients?.company,
+        x.clients?.phone,
+        x.clients?.email,
+        x.product,
+        x.quantity,
+        x.quantity_unit,
+        x.departure_date,
+        x.booking_number,
+        x.bol_number,
+        x.carrier,
+        x.operational_status || x.last_status,
+        x.last_location,
+        x.shipsgo_status,
+        x.created_at,
+        x.released_at,
+        x.delivered_at
+      ])
     );
   } catch (error) {
     return fail(res, 400, error.message);

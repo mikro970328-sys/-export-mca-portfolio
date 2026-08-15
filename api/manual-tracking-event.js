@@ -51,7 +51,7 @@ async function writeHistory(shipment, event, admin, details, correctionType) {
       method: 'POST',
       body: [{
         shipment_id: shipment.id,
-        client_id: shipment.client_id,
+        client_id: shipment.client_id || null,
         event_type: correctionType === 'rollback' ? `manual_correction_${event.eventType.toLowerCase()}` : `manual_${event.eventType.toLowerCase()}`,
         title,
         details,
@@ -82,6 +82,7 @@ async function writeAudit(shipment, event, admin, details = {}, correctionType =
 }
 
 async function logNotification(shipment, event, data = {}) {
+  if (!shipment.client_id) return;
   try {
     await supabase('notifications', {
       method: 'POST',
@@ -203,9 +204,8 @@ export default async function handler(req, res) {
       return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: 'not_requested', notified: false });
     }
 
-    if (!shipment.clients?.active || !shipment.clients?.phone) {
-      const recipientError = 'El cliente no tiene un WhatsApp activo';
-      await logNotification(shipment, event, { status: 'failed', templateSid: process.env[event.templateEnv] || null, location, error: recipientError, correctionType });
+    if (!shipment.client_id || !shipment.clients?.active || !shipment.clients?.phone) {
+      const recipientError = 'El contenedor no tiene un cliente con WhatsApp activo';
       await writeHistory(shipment, event, admin, `${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · WhatsApp no enviado: ${recipientError}`, correctionType);
       await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: 'unavailable_recipient', notified: false, error: recipientError, location }, correctionType);
       return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: 'unavailable_recipient', notification_error: recipientError, notified: false });
