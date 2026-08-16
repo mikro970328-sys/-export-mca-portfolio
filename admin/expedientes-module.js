@@ -50,6 +50,8 @@
       .exp-bl{border:1px solid #dfe5ee;border-radius:14px;padding:14px;margin-top:12px;background:#fbfcfe}
       .exp-bl-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
       .exp-container-list{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 12px}
+      .exp-container-doc{border-top:1px solid #dfe5ee;padding-top:12px;margin-top:12px}
+      .exp-container-doc-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
       .exp-doc-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1.6fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #e6ebf2}
       .exp-doc-actions{display:flex;gap:7px;justify-content:flex-end;flex-wrap:wrap}
       .exp-available{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-top:10px}
@@ -97,21 +99,6 @@
 
   function distinctBols(shipments) {
     return [...new Set(shipments.map(shipment => String(shipment.bol_number || '').trim()).filter(Boolean))];
-  }
-
-  function blGroups(shipments) {
-    const groups = new Map();
-    shipments.forEach(shipment => {
-      const bol = String(shipment.bol_number || '').trim();
-      const key = bol || '__pending__';
-      if (!groups.has(key)) groups.set(key, { bol: bol || null, shipments: [] });
-      groups.get(key).shipments.push(shipment);
-    });
-    return [...groups.values()].sort((a, b) => {
-      if (!a.bol) return 1;
-      if (!b.bol) return -1;
-      return a.bol.localeCompare(b.bol);
-    });
   }
 
   function formatDate(value) {
@@ -175,7 +162,7 @@
       <div class="toolbar">
         <div>
           <h2 class="section-title">Expedientes de exportación</h2>
-          <div class="muted">Cada expediente representa una compra o envío del cliente. Los documentos se organizan por B/L.</div>
+          <div class="muted">Cada expediente representa una compra o envío. Los archivos pueden ser generales, de un B/L o de un contenedor específico.</div>
         </div>
         <button id="newExpediente" class="orange" type="button">Nuevo expediente</button>
       </div>
@@ -334,7 +321,7 @@
   }
 
   function documentBlock(documents, emptyText) {
-    return documents.length ? documents.map(documentRow).join('') : `<div class="muted" style="padding:10px 0">${esc(emptyText)}</div>`;
+    return documents.length ? documents.map(documentRow).join('') : `<div class="muted" style="padding:8px 0">${esc(emptyText)}</div>`;
   }
 
   function assignedContainersHtml(operation) {
@@ -362,39 +349,89 @@
     </div>`).join('')}</div>`;
   }
 
-  function blGroupsHtml(operation, documents) {
-    const groups = blGroups(operationShipments(operation));
-    if (!groups.length) return '<div class="empty-state">Los grupos por B/L aparecerán cuando agregues contenedores al expediente.</div>';
+  function containerDocumentsHtml(shipments, documents) {
+    return shipments.map(shipment => {
+      const ownDocuments = documents.filter(document => String(document.shipment_id || '') === String(shipment.id));
+      return `<div class="exp-container-doc">
+        <div class="exp-container-doc-head">
+          <div>
+            <div class="exp-code">Contenedor</div>
+            <b>${esc(shipment.container_number || '—')}</b>
+            <div class="muted">${esc(shipment.product || 'Sin producto')}</div>
+          </div>
+          <span class="pill">${ownDocuments.length} documento${ownDocuments.length === 1 ? '' : 's'} propio${ownDocuments.length === 1 ? '' : 's'}</span>
+        </div>
+        ${documentBlock(ownDocuments, 'Sin documentos exclusivos de este contenedor.')}
+      </div>`;
+    }).join('');
+  }
 
-    return groups.map(group => {
+  function blGroupsHtml(operation, documents) {
+    const shipments = operationShipments(operation);
+    if (!shipments.length && !documents.some(document => document.bol_number)) {
+      return '<div class="empty-state">La documentación por B/L y contenedor aparecerá cuando agregues contenedores al expediente.</div>';
+    }
+
+    const groups = new Map();
+    shipments.forEach(shipment => {
+      const bol = String(shipment.bol_number || '').trim();
+      const key = bol || '__pending__';
+      if (!groups.has(key)) groups.set(key, { bol: bol || null, shipments: [] });
+      groups.get(key).shipments.push(shipment);
+    });
+
+    documents.forEach(document => {
+      if (document.shipment_id || !document.bol_number) return;
+      const bol = String(document.bol_number).trim();
+      if (bol && !groups.has(bol)) groups.set(bol, { bol, shipments: [] });
+    });
+
+    const ordered = [...groups.values()].sort((a, b) => {
+      if (!a.bol) return 1;
+      if (!b.bol) return -1;
+      return a.bol.localeCompare(b.bol);
+    });
+
+    return ordered.map(group => {
       if (!group.bol) {
         return `<div class="exp-bl">
-          <div class="exp-bl-head"><div><h3 style="margin:0">B/L pendiente</h3><div class="muted">Estos contenedores aún no tienen B/L registrado.</div></div></div>
-          <div class="exp-container-list">${group.shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')}</span>`).join('')}</div>
-          <div class="muted">Cuando registres el B/L en el contenedor, el grupo se organizará automáticamente.</div>
+          <div class="exp-bl-head">
+            <div><h3 style="margin:0">B/L pendiente</h3><div class="muted">Puedes cargar documentos directamente a cada contenedor aunque todavía no tenga B/L.</div></div>
+            <span class="pill">${group.shipments.length} contenedor${group.shipments.length === 1 ? '' : 'es'}</span>
+          </div>
+          ${containerDocumentsHtml(group.shipments, documents)}
         </div>`;
       }
-      const blDocs = documents.filter(document => String(document.bol_number || '') === group.bol);
+
+      const blDocs = documents.filter(document => !document.shipment_id && String(document.bol_number || '') === group.bol);
       return `<div class="exp-bl">
         <div class="exp-bl-head">
           <div><div class="exp-code">B/L</div><h3 style="margin:2px 0 0">${esc(group.bol)}</h3></div>
           <span class="pill">${group.shipments.length} contenedor${group.shipments.length === 1 ? '' : 'es'}</span>
         </div>
-        <div class="exp-container-list">${group.shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')}</span>`).join('')}</div>
-        ${documentBlock(blDocs, 'Todavía no hay documentos cargados para este B/L.')}
+        <div class="exp-container-list">${group.shipments.length ? group.shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')}</span>`).join('') : '<span class="muted">B/L sin contenedor actualmente asociado</span>'}</div>
+        <div><b>Documentos del B/L</b>${documentBlock(blDocs, 'Todavía no hay documentos compartidos para este B/L.')}</div>
+        ${containerDocumentsHtml(group.shipments, documents)}
       </div>`;
     }).join('');
   }
 
   function uploadHtml(operation) {
-    const bols = distinctBols(operationShipments(operation));
-    const scopeOptions = bols.map(bol => `<option value="${esc(bol)}">B/L: ${esc(bol)}</option>`).join('');
+    const shipments = operationShipments(operation);
+    const bols = distinctBols(shipments);
+    const bolOptions = bols.map(bol => `<option value="bol:${esc(bol)}">B/L: ${esc(bol)}</option>`).join('');
+    const shipmentOptions = shipments.map(shipment => `<option value="shipment:${esc(shipment.id)}">Contenedor: ${esc(shipment.container_number || '—')}${shipment.bol_number ? ` · B/L ${esc(shipment.bol_number)}` : ' · B/L pendiente'}</option>`).join('');
     const typeOptions = documentTypes.map(type => `<option value="${esc(type)}">${esc(type)}</option>`).join('');
+
     return `<section class="card" style="box-shadow:none;margin-top:20px">
       <h3 style="margin-top:0">Subir documento</h3>
-      <div class="muted" style="margin-bottom:10px">Nada es obligatorio. Puedes guardarlo como general del expediente o asociarlo a un B/L.</div>
+      <div class="muted" style="margin-bottom:10px">Nada es obligatorio. Elige si el archivo aplica al expediente completo, a un B/L o solamente a un contenedor.</div>
       <div class="grid">
-        <div><label>Aplica a</label><select id="expDocumentScope"><option value="">General del expediente</option>${scopeOptions}</select></div>
+        <div><label>Aplica a</label><select id="expDocumentScope">
+          <option value="general">General del expediente</option>
+          ${bolOptions ? `<optgroup label="Por B/L">${bolOptions}</optgroup>` : ''}
+          ${shipmentOptions ? `<optgroup label="Por contenedor">${shipmentOptions}</optgroup>` : ''}
+        </select></div>
         <div><label>Tipo</label><select id="expDocumentType">${typeOptions}<option value="__other__">Otro documento...</option></select></div>
         <div id="expCustomTypeWrap" class="hidden"><label>Nombre del documento</label><input id="expCustomType" maxlength="80" placeholder="Ej. Homologación Cuba"></div>
         <div><label>Archivo</label><input id="expFile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.txt"></div>
@@ -407,7 +444,7 @@
 
   function expedienteHtml(operation, documents) {
     const client = clientForOperation(operation);
-    const generalDocs = documents.filter(document => !document.bol_number);
+    const generalDocs = documents.filter(document => !document.bol_number && !document.shipment_id);
     const delivered = isDelivered(operation);
     return `<section>
       <div class="toolbar">
@@ -432,13 +469,13 @@
 
     <section class="exp-section">
       <h3>Documentos generales</h3>
-      <div class="muted">Oferta, ficha técnica, permisos u otros documentos que aplican al envío completo.</div>
+      <div class="muted">Oferta, ficha técnica, permisos u otros archivos que aplican a todo el expediente.</div>
       <div style="margin-top:8px">${documentBlock(generalDocs, 'Todavía no hay documentos generales.')}</div>
     </section>
 
     <section class="exp-section">
-      <h3>Documentación por B/L</h3>
-      <div class="muted">Si varios contenedores comparten el mismo B/L, aparecen juntos. Si tienen B/L diferentes, se separan automáticamente.</div>
+      <h3>Documentación por B/L y contenedor</h3>
+      <div class="muted">Los documentos comunes se guardan en el B/L. Los que pertenecen solo a un contenedor quedan dentro de ese contenedor, tenga o no B/L.</div>
       ${blGroupsHtml(operation, documents)}
     </section>
 
@@ -584,10 +621,17 @@
     } catch {}
   }
 
+  function parseDocumentScope(value) {
+    const scope = String(value || 'general');
+    if (scope.startsWith('bol:')) return { bol_number: scope.slice(4), shipment_id: null };
+    if (scope.startsWith('shipment:')) return { bol_number: null, shipment_id: scope.slice(9) };
+    return { bol_number: null, shipment_id: null };
+  }
+
   async function uploadDocument(operation) {
     const typeSelect = byId('expDocumentType');
     const customType = byId('expCustomType');
-    const scope = byId('expDocumentScope')?.value || null;
+    const scope = parseDocumentScope(byId('expDocumentScope')?.value);
     const file = byId('expFile')?.files?.[0];
     const notes = byId('expDocumentNotes')?.value || '';
     const button = byId('uploadExpDocument');
@@ -607,7 +651,8 @@
         body: JSON.stringify({
           action: 'prepare_upload',
           operation_id: operation.id,
-          bol_number: scope,
+          bol_number: scope.bol_number,
+          shipment_id: scope.shipment_id,
           document_type: selectedType,
           file_name: file.name,
           mime_type: file.type,
@@ -637,6 +682,7 @@
           action: 'finalize_upload',
           operation_id: prepared.operation_id,
           bol_number: prepared.bol_number,
+          shipment_id: prepared.shipment_id,
           document_type: prepared.document_type,
           file_name: prepared.file_name,
           mime_type: prepared.mime_type,
