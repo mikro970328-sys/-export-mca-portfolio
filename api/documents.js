@@ -119,8 +119,7 @@ async function createSignedUpload(storagePath) {
   if (!response.ok || !data?.url) {
     throw new Error(`STORAGE_SIGN_UPLOAD_${response.status}:${data?.message || data?.error || 'No se pudo preparar la carga'}`);
   }
-  const signedUrl = String(data.url).startsWith('http') ? data.url : `${root}${data.url}`;
-  return signedUrl;
+  return String(data.url).startsWith('http') ? data.url : `${root}${data.url}`;
 }
 
 async function createSignedDownload(storagePath, fileName) {
@@ -157,6 +156,15 @@ const documentSelect = [
   'storage_bucket', 'storage_path', 'mime_type', 'file_size_bytes',
   'version', 'notes', 'uploaded_by_admin_id', 'uploaded_by_username', 'created_at'
 ].join(',');
+
+async function getDocument(id) {
+  if (!UUID_RE.test(String(id || ''))) throw new Error('Documento inválido');
+  const rows = await supabase('documents', {
+    query: `?select=${documentSelect}&id=eq.${encodeURIComponent(id)}&limit=1`
+  });
+  if (!rows?.[0]) throw new Error('Documento no encontrado');
+  return rows[0];
+}
 
 async function listDocuments(shipmentId) {
   const filter = shipmentId ? `&shipment_id=eq.${encodeURIComponent(shipmentId)}` : '';
@@ -266,6 +274,33 @@ async function discardUpload(body) {
   return true;
 }
 
+async function deleteDocument(admin, documentId) {
+  const document = await getDocument(documentId);
+  if (document.storage_bucket !== BUCKET) throw new Error('Almacenamiento de documento inválido');
+
+  let shipment = null;
+  if (document.shipment_id) shipment = await getShipment(document.shipment_id);
+
+  await deleteStorageObject(document.storage_path);
+
+  const deleted = await supabase('documents', {
+    method: 'DELETE',
+    prefer: 'return=representation',
+    query: `?id=eq.${encodeURIComponent(document.id)}`
+  });
+  if (!deleted?.[0]) throw new Error('No se pudo eliminar el registro del documento');
+
+  await writeAudit(admin, 'document_deleted', 'document', document.id, {
+    shipment_id: document.shipment_id || null,
+    container_number: shipment?.container_number || null,
+    document_type: document.document_type,
+    file_name: document.file_name,
+    version: document.version || 1
+  });
+
+  return document;
+}
+
 export default async function handler(req, res) {
   const admin = requireAdmin(req, res);
   if (!admin) return;
@@ -308,6 +343,12 @@ export default async function handler(req, res) {
       }
 
       return fail(res, 400, 'Acción de documento inválida');
+    }
+
+    if (req.method === 'DELETE') {
+      const body = await readJson(req);
+      const document = await deleteDocument(admin, body.document_id);
+      return ok(res, { deleted: true, document_id: document.id });
     }
 
     return fail(res, 405, 'Método no permitido');
