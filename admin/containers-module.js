@@ -219,7 +219,7 @@
     const status = String(shipment.operational_status || shipment.last_status || '').toLowerCase();
     const delivered = shipment.active === false || status.includes('entregado');
     const released = status.includes('liberad');
-    const actions = [['info', 'Información', ''], ['edit', 'Editar', ''], ['history', 'Historial', '']];
+    const actions = [['info', 'Información', ''], ['edit', 'Editar', ''], ['history', 'Historial', ''], ['expediente', 'Ver expediente', '']];
     if (!shipment.client_id) actions.push(['assign_client', 'Asignar cliente', 'orange']);
 
     if (shipment.shipsgo_status === 'manual') {
@@ -444,6 +444,38 @@
     window.ShipmentEditor.open(shipment.id, { focus });
   }
 
+  async function openExpedienteShortcut(shipment) {
+    if (!window.ExpedientesModule?.open) throw new Error('El módulo de Expedientes no está disponible.');
+
+    if (shipment.operation_id) {
+      return window.ExpedientesModule.open(shipment.operation_id);
+    }
+
+    if (!shipment.client_id) {
+      alert('Este contenedor todavía no tiene cliente. Primero asigna el cliente y luego podrás crear su expediente desde este mismo acceso.');
+      return openEditor(shipment, 'client');
+    }
+
+    const clientName = shipment.clients?.name || 'este cliente';
+    const accepted = confirm(`${shipment.container_number} todavía no tiene expediente.\n\n¿Crear un expediente para ${clientName} y vincular este contenedor automáticamente?`);
+    if (!accepted) return;
+
+    const result = await request('/api/operations', {
+      method: 'POST',
+      body: JSON.stringify({
+        client_id: shipment.client_id,
+        shipment_id: shipment.id,
+        notes: `Creado desde Tracking · ${shipment.container_number}`
+      })
+    });
+    const operationId = result.operation?.id;
+    if (!operationId) throw new Error('No se pudo crear el expediente.');
+
+    if (typeof window.loadAll === 'function') await window.loadAll();
+    if (typeof window.ExpedientesModule.reload === 'function') await window.ExpedientesModule.reload();
+    return window.ExpedientesModule.open(operationId);
+  }
+
   async function deleteShipmentRecord(shipment) {
     const confirmation = prompt(`Para eliminar definitivamente ${shipment.container_number} del ERP y ShipsGo, escribe ELIMINAR`);
     if (confirmation !== 'ELIMINAR') return;
@@ -458,6 +490,7 @@
     if (action === 'history') return openHistory(shipment);
     if (action === 'edit') return openEditor(shipment);
     if (action === 'assign_client') return openEditor(shipment, 'client');
+    if (action === 'expediente') return openExpedienteShortcut(shipment);
     if (action === 'manual_update') return openManualWorkflow(shipment);
 
     if (action === 'enable_manual') {

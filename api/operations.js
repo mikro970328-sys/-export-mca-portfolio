@@ -47,10 +47,15 @@ async function getOperation(id) {
 
 async function getShipment(id) {
   const rows = await supabase('shipments', {
-    query: `?select=id,client_id,operation_id,container_number,bol_number,product,operational_status,last_status&id=eq.${encodeURIComponent(id)}&limit=1`
+    query: `?select=id,client_id,operation_id,container_number,bol_number,product,operational_status,last_status,active&id=eq.${encodeURIComponent(id)}&limit=1`
   });
   if (!rows?.[0]) throw new Error('Contenedor no encontrado');
   return rows[0];
+}
+
+function shipmentIsDelivered(shipment) {
+  const status = `${shipment?.operational_status || ''} ${shipment?.last_status || ''}`.toLowerCase();
+  return shipment?.active === false || status.includes('entregado') || status.includes('delivered');
 }
 
 async function assignShipment(admin, operationId, shipmentId) {
@@ -135,6 +140,83 @@ async function setStatus(admin, operationId, status) {
   return rows?.[0] ? getOperation(operation.id) : null;
 }
 
+async function createOperation(admin, body) {
+  const clientId = required(body.client_id, 'CLIENT');
+  await getClient(clientId);
+
+  const shipmentId = String(body.shipment_id || '').trim() || null;
+  let shipment = null;
+  if (shipmentId) {
+    shipment = await getShipment(shipmentId);
+    if (!shipment.client_id) throw new Error('Asigna un cliente al contenedor antes de crear su expediente');
+    if (String(shipment.client_id) !== String(clientId)) throw new Error('El contenedor pertenece a otro cliente');
+    if (shipment.operation_id) return getOperation(shipment.operation_id);
+  }
+
+  const delivered = shipment ? shipmentIsDelivered(shipment) : false;
+  const now = new Date().toISOString();
+  const created = await supabase('operations', {
+    method: 'POST',
+    prefer: 'return=representation',
+    body: {
+      client_id: clientId,
+      status: delivered ? 'delivered' : 'draft',
+      notes: nullable(body.notes),
+      created_by: null,
+      closed_at: delivered ? now : null
+    }
+  });
+  const operation = created?.[0];
+  if (!operation?.id) throw new Error('No se pudo crear el expediente');
+
+  if (shipment) {
+    try {
+      const assigned = await supabase('shipments', {
+        method: 'PATCH',
+        prefer: 'return=representation',
+        query: `?id=eq.${encodeURIComponent(shipment.id)}&operation_id=is.null`,
+        body: { operation_id: operation.id, updated_at: now }
+      });
+      if (!assigned?.[0]) {
+        const latest = await getShipment(shipment.id);
+        if (latest.operation_id) {
+          await supabase('operations', { method: 'DELETE', query: `?id=eq.${encodeURIComponent(operation.id)}` });
+          return getOperation(latest.operation_id);
+        }
+        throw new Error('No se pudo vincular el contenedor al expediente');
+      }
+    } catch (error) {
+      try {
+        await supabase('shipments', {
+          method: 'PATCH',
+          query: `?id=eq.${encodeURIComponent(shipment.id)}&operation_id=eq.${encodeURIComponent(operation.id)}`,
+          body: { operation_id: null, updated_at: new Date().toISOString() }
+        });
+      } catch {}
+      try {
+        await supabase('operations', { method: 'DELETE', query: `?id=eq.${encodeURIComponent(operation.id)}` });
+      } catch {}
+      throw error;
+    }
+
+    await writeAudit(admin, 'shipment_assigned_to_expediente', 'operation', operation.id, {
+      shipment_id: shipment.id,
+      container_number: shipment.container_number,
+      client_id: clientId,
+      source: 'tracking_shortcut'
+    });
+  }
+
+  await writeAudit(admin, 'expediente_created', 'operation', operation.id, {
+    operation_code: operation.operation_code,
+    client_id: clientId,
+    initial_shipment_id: shipment?.id || null,
+    source: shipment ? 'tracking_shortcut' : 'expedientes'
+  });
+
+  return getOperation(operation.id);
+}
+
 export default async function handler(req, res) {
   const admin = requireAdmin(req, res);
   if (!admin) return;
@@ -152,28 +234,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = await readJson(req);
-      const clientId = required(body.client_id, 'CLIENT');
-      await getClient(clientId);
-
-      const created = await supabase('operations', {
-        method: 'POST',
-        prefer: 'return=representation',
-        body: {
-          client_id: clientId,
-          status: 'draft',
-          notes: nullable(body.notes),
-          created_by: null
-        }
-      });
-      const operation = created?.[0];
-      if (!operation?.id) throw new Error('No se pudo crear el expediente');
-
-      await writeAudit(admin, 'expediente_created', 'operation', operation.id, {
-        operation_code: operation.operation_code,
-        client_id: clientId
-      });
-
-      return ok(res, { operation: await getOperation(operation.id) });
+      return ok(res, { operation: await createOperation(admin, body) });
     }
 
     if (req.method === 'PATCH') {
