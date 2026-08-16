@@ -148,7 +148,12 @@
     removeLegacyAdminControls();
 
     bootPromise = (async () => {
-      await loadScript('/admin/erp-core.js?v=20260814-operations-only1', 'data-erp-core');
+      await loadScript('/admin/operations-module.js?v=20260816-owner1', 'data-operations-module');
+      if (typeof window.OperationsModule?.init !== 'function') {
+        throw new Error('El módulo de Expedientes no está disponible.');
+      }
+      await window.OperationsModule.init();
+
       await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
       await loadScript('/admin/containers-module.js?v=20260814-owner2', 'data-containers-module');
       await loadScript('/admin/shipment-editor.js?v=20260814-owner2', 'data-shipment-editor');

@@ -1,7 +1,23 @@
 (() => {
+  'use strict';
+
+  const state = {
+    initialized: false,
+    operations: []
+  };
+
   const byId = id => document.getElementById(id);
-  const money = value => new Intl.NumberFormat('es-US', { style: 'currency', currency: 'USD' }).format(Number(value || 0));
-  let operations = [];
+  const money = value => new Intl.NumberFormat('es-US', {
+    style: 'currency',
+    currency: 'USD'
+  }).format(Number(value || 0));
+
+  function requireDependency(name, value) {
+    if (typeof value !== 'function') {
+      throw new Error(`OPERATIONS_DEPENDENCY_MISSING:${name}`);
+    }
+    return value;
+  }
 
   function formHtml() {
     return `<section class="card"><div class="toolbar"><div><h2 class="section-title">Nuevo expediente de exportación</h2><div class="muted">Crea una operación completa con logística, mercancía y control financiero.</div></div><button id="reloadOperations" class="alt">Actualizar expedientes</button></div>
@@ -38,37 +54,53 @@
     <section class="card"><h2 class="section-title">Expedientes</h2><div id="erpOperationsList">Cargando...</div></section>`;
   }
 
-  function detailHtml(op) {
-    const sale = Number(op.sale_total || 0), cost = Number(op.cost_total || 0), expenses = Number(op.expense_total || 0), paid = Number(op.paid_total || 0);
+  function detailHtml(operation) {
+    const sale = Number(operation.sale_total || 0);
+    const cost = Number(operation.cost_total || 0);
+    const expenses = Number(operation.expense_total || 0);
+    const paid = Number(operation.paid_total || 0);
     const profit = sale - cost - expenses;
-    return `<div class="grid"><div><b>Código</b><div>${op.operation_code || '-'}</div></div><div><b>Estado</b><div>${op.status || '-'}</div></div><div><b>Cliente</b><div>${op.client?.name || '-'}</div></div><div><b>Contenedor</b><div>${op.container_number || '-'}</div></div><div><b>Booking</b><div>${op.booking_number || '-'}</div></div><div><b>B/L</b><div>${op.bol_number || '-'}</div></div><div><b>Ruta</b><div>${op.origin_port || '-'} → ${op.destination_port || '-'}</div></div><div><b>ETD / ETA</b><div>${op.etd || '-'} / ${op.eta || '-'}</div></div></div>
+
+    return `<div class="grid"><div><b>Código</b><div>${operation.operation_code || '-'}</div></div><div><b>Estado</b><div>${operation.status || '-'}</div></div><div><b>Cliente</b><div>${operation.client?.name || '-'}</div></div><div><b>Contenedor</b><div>${operation.container_number || '-'}</div></div><div><b>Booking</b><div>${operation.booking_number || '-'}</div></div><div><b>B/L</b><div>${operation.bol_number || '-'}</div></div><div><b>Ruta</b><div>${operation.origin_port || '-'} → ${operation.destination_port || '-'}</div></div><div><b>ETD / ETA</b><div>${operation.etd || '-'} / ${operation.eta || '-'}</div></div></div>
       <div class="stats" style="grid-template-columns:repeat(4,1fr);margin-top:18px"><div class="stat"><span>Venta</span><b>${money(sale)}</b></div><div class="stat"><span>Costos</span><b>${money(cost + expenses)}</b></div><div class="stat"><span>Utilidad</span><b>${money(profit)}</b></div><div class="stat"><span>Pendiente</span><b>${money(sale - paid)}</b></div></div>
-      <h3>Mercancía</h3>${(op.items || []).length ? `<table><thead><tr><th>Descripción</th><th>Cantidad</th><th>Unidad</th><th>Costo</th><th>Venta</th></tr></thead><tbody>${op.items.map(i => `<tr><td>${i.description}</td><td>${i.quantity}</td><td>${i.unit || '-'}</td><td>${money(Number(i.quantity || 0) * Number(i.unit_cost || 0))}</td><td>${money(Number(i.quantity || 0) * Number(i.unit_price || 0))}</td></tr>`).join('')}</tbody></table>` : '<div class="muted">Sin mercancía registrada.</div>'}`;
+      <h3>Mercancía</h3>${(operation.items || []).length ? `<table><thead><tr><th>Descripción</th><th>Cantidad</th><th>Unidad</th><th>Costo</th><th>Venta</th></tr></thead><tbody>${operation.items.map(item => `<tr><td>${item.description}</td><td>${item.quantity}</td><td>${item.unit || '-'}</td><td>${money(Number(item.quantity || 0) * Number(item.unit_cost || 0))}</td><td>${money(Number(item.quantity || 0) * Number(item.unit_price || 0))}</td></tr>`).join('')}</tbody></table>` : '<div class="muted">Sin mercancía registrada.</div>'}`;
   }
 
   function renderList() {
     const target = byId('erpOperationsList');
     if (!target) return;
-    if (!operations.length) {
+
+    if (!state.operations.length) {
       target.textContent = 'No hay expedientes registrados.';
       return;
     }
-    target.innerHTML = `<table><thead><tr><th>Expediente</th><th>Cliente</th><th>Contenedor</th><th>Estado</th><th>Venta</th><th>Pendiente</th><th>Acciones</th></tr></thead><tbody>${operations.map(op => `<tr><td><b>${op.operation_code || '-'}</b><br><span class="muted">${new Date(op.created_at).toLocaleDateString()}</span></td><td>${op.client?.name || '-'}</td><td>${op.container_number || '-'}</td><td><span class="pill">${op.status || '-'}</span></td><td>${money(op.sale_total)}</td><td>${money(Number(op.sale_total || 0) - Number(op.paid_total || 0))}</td><td><button class="alt" data-open-operation="${op.id}">Abrir</button></td></tr>`).join('')}</tbody></table>`;
-    target.querySelectorAll('[data-open-operation]').forEach(button => button.onclick = () => openOperation(button.dataset.openOperation));
+
+    target.innerHTML = `<table><thead><tr><th>Expediente</th><th>Cliente</th><th>Contenedor</th><th>Estado</th><th>Venta</th><th>Pendiente</th><th>Acciones</th></tr></thead><tbody>${state.operations.map(operation => `<tr><td><b>${operation.operation_code || '-'}</b><br><span class="muted">${new Date(operation.created_at).toLocaleDateString()}</span></td><td>${operation.client?.name || '-'}</td><td>${operation.container_number || '-'}</td><td><span class="pill">${operation.status || '-'}</span></td><td>${money(operation.sale_total)}</td><td>${money(Number(operation.sale_total || 0) - Number(operation.paid_total || 0))}</td><td><button class="alt" data-open-operation="${operation.id}">Abrir</button></td></tr>`).join('')}</tbody></table>`;
+
+    target.querySelectorAll('[data-open-operation]').forEach(button => {
+      button.onclick = () => openOperation(button.dataset.openOperation);
+    });
   }
 
   async function loadOperations() {
+    const api = requireDependency('api', window.api);
+
     try {
       const result = await api('/api/operations');
-      operations = result.operations || [];
+      state.operations = result.operations || [];
       renderList();
+      return state.operations;
     } catch (error) {
       const target = byId('erpOperationsList');
       if (target) target.textContent = error.message;
+      return [];
     }
   }
 
   async function openOperation(id) {
+    const api = requireDependency('api', window.api);
+    const openModal = requireDependency('openModal', window.openModal);
+
     try {
       const result = await api('/api/operations?id=' + encodeURIComponent(id));
       openModal('Expediente · ' + (result.operation?.operation_code || ''), detailHtml(result.operation || {}));
@@ -77,9 +109,10 @@
     }
   }
 
-  async function saveOperation() {
+  function buildPayload() {
     const itemDescription = byId('erpItemDescription').value.trim();
-    const payload = {
+
+    return {
       client_id: byId('erpClient').value,
       status: byId('erpStatus').value,
       incoterm: byId('erpIncoterm').value,
@@ -106,28 +139,84 @@
         gross_weight_kg: byId('erpItemGross').value
       }] : []
     };
+  }
+
+  function resetForm() {
+    [
+      'erpIncoterm', 'erpOrigin', 'erpDestination', 'erpContainer',
+      'erpSeal', 'erpBooking', 'erpBol', 'erpVessel', 'erpVoyage',
+      'erpEtd', 'erpEta', 'erpNotes', 'erpItemDescription', 'erpItemUnit',
+      'erpItemCost', 'erpItemPrice', 'erpItemPackages', 'erpItemNet',
+      'erpItemGross'
+    ].forEach(id => {
+      const element = byId(id);
+      if (element) element.value = '';
+    });
+
+    const quantity = byId('erpItemQuantity');
+    if (quantity) quantity.value = '1';
+  }
+
+  async function saveOperation() {
+    const api = requireDependency('api', window.api);
+    const note = requireDependency('note', window.note);
+
     try {
-      const result = await api('/api/operations', { method: 'POST', body: JSON.stringify(payload) });
+      const result = await api('/api/operations', {
+        method: 'POST',
+        body: JSON.stringify(buildPayload())
+      });
+
       note('erpMsg', `Expediente ${result.operation.operation_code} creado correctamente.`, true);
-      ['erpIncoterm','erpOrigin','erpDestination','erpContainer','erpSeal','erpBooking','erpBol','erpVessel','erpVoyage','erpEtd','erpEta','erpNotes','erpItemDescription','erpItemUnit','erpItemCost','erpItemPrice','erpItemPackages','erpItemNet','erpItemGross'].forEach(id => byId(id).value = '');
-      byId('erpItemQuantity').value = '1';
+      resetForm();
       await loadOperations();
     } catch (error) {
       note('erpMsg', error.message);
     }
   }
 
-  function mount() {
-    const section = byId('newOperationsSection');
-    if (!section) return;
-    section.innerHTML = formHtml();
-    if (typeof fillClientSelects === 'function') fillClientSelects();
-    byId('saveErpOperation').onclick = saveOperation;
-    byId('reloadOperations').onclick = loadOperations;
+  function bindEvents() {
+    const saveButton = byId('saveErpOperation');
+    const reloadButton = byId('reloadOperations');
+
+    if (saveButton) saveButton.onclick = saveOperation;
+    if (reloadButton) reloadButton.onclick = loadOperations;
+
     window.addEventListener('export-mca:clients-changed', loadOperations);
-    loadOperations();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
-  else mount();
+  async function init() {
+    if (state.initialized) return true;
+
+    const section = byId('newOperationsSection');
+    if (!section) throw new Error('OPERATIONS_SECTION_MISSING');
+
+    section.innerHTML = formHtml();
+
+    if (typeof window.fillClientSelects === 'function') {
+      window.fillClientSelects();
+    }
+
+    bindEvents();
+    state.initialized = true;
+    loadOperations();
+    return true;
+  }
+
+  function destroy() {
+    window.removeEventListener('export-mca:clients-changed', loadOperations);
+    state.operations = [];
+    state.initialized = false;
+  }
+
+  window.OperationsModule = Object.freeze({
+    init,
+    destroy,
+    reload: loadOperations,
+    open: openOperation,
+    getState: () => ({
+      initialized: state.initialized,
+      operations: [...state.operations]
+    })
+  });
 })();
