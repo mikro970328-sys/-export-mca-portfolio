@@ -122,7 +122,7 @@ async function createSignedUpload(storagePath) {
   return String(data.url).startsWith('http') ? data.url : `${root}${data.url}`;
 }
 
-async function createSignedDownload(storagePath, fileName) {
+async function createSignedPreview(storagePath) {
   const { root, key } = storageConfig();
   const response = await fetch(`${root}/object/sign/${BUCKET}/${encodeStoragePath(storagePath)}`, {
     method: 'POST',
@@ -131,10 +131,7 @@ async function createSignedDownload(storagePath, fileName) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data?.signedURL) return null;
-  const raw = String(data.signedURL).startsWith('http') ? data.signedURL : `${root}${data.signedURL}`;
-  const url = new URL(raw);
-  url.searchParams.set('download', fileName || 'documento');
-  return url.toString();
+  return String(data.signedURL).startsWith('http') ? data.signedURL : `${root}${data.signedURL}`;
 }
 
 async function deleteStorageObject(storagePath) {
@@ -176,7 +173,7 @@ async function listDocuments(shipmentId) {
 
   return Promise.all(documents.map(async document => ({
     ...document,
-    signed_url: await createSignedDownload(document.storage_path, document.file_name)
+    signed_url: await createSignedPreview(document.storage_path)
   })));
 }
 
@@ -255,7 +252,7 @@ async function finalizeUpload(admin, body) {
 
     return {
       ...document,
-      signed_url: document ? await createSignedDownload(document.storage_path, document.file_name) : null
+      signed_url: document ? await createSignedPreview(document.storage_path) : null
     };
   } catch (error) {
     try { await deleteStorageObject(storagePath); } catch {}
