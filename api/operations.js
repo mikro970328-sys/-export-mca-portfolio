@@ -1,155 +1,131 @@
-import { fail, normalizeContainer, ok, readJson, requireAdmin, sendWhatsApp, supabase, writeAudit } from './_lib.js';
+import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
 
-const listSelect = [
-  '*',
-  'client:clients(id,name,company,phone,email)',
-  'supplier:suppliers(id,name,email,phone)',
-  'importer:importers(id,name,email,phone)',
-  'shipment:shipments(id,container_number,booking_number,bol_number,carrier,operational_status)'
+const OPERATION_SELECT = [
+  'id',
+  'operation_code',
+  'client_id',
+  'status',
+  'notes',
+  'created_at',
+  'updated_at',
+  'closed_at',
+  'client:clients!operations_client_id_fkey(id,name,company,mipyme_name,importer_name,phone,email)',
+  'shipments:shipments!shipments_operation_id_fkey(id,client_id,operation_id,container_number,booking_number,bol_number,carrier,product,quantity,quantity_unit,departure_date,operational_status,last_status,last_location,last_event_at,active)'
 ].join(',');
 
-const detailSelect = [
-  listSelect,
-  'items:operation_items(id,product_id,description,quantity,unit,unit_cost,unit_price,net_weight_kg,gross_weight_kg,volume_m3,packages,product:products(id,name,sku,hs_code))',
-  'invoices(id,invoice_number,issue_date,due_date,currency,subtotal,tax_total,total,paid_amount,status,notes)',
-  'payments(id,invoice_id,client_id,amount,currency,payment_date,method,reference_number,status,notes)',
-  'expenses(id,supplier_id,category,description,amount,currency,expense_date,reference_number,status)',
-  'documents(id,document_type,file_name,storage_bucket,storage_path,mime_type,file_size_bytes,version,notes,created_at)'
-].join(',');
+const ALLOWED_STATUS = new Set([
+  'draft', 'quoted', 'confirmed', 'purchased', 'booked', 'in_transit',
+  'at_destination', 'released', 'delivered', 'closed', 'cancelled'
+]);
 
-function required(value, name) {
-  if (!String(value || '').trim()) throw new Error(`${name}_REQUIRED`);
-  return String(value).trim();
+function required(value, label) {
+  const text = String(value || '').trim();
+  if (!text) throw new Error(`${label}_REQUIRED`);
+  return text;
 }
 
-function cleanNullable(value) {
-  const result = String(value ?? '').trim();
-  return result || null;
+function nullable(value, max = 2000) {
+  const text = String(value ?? '').trim();
+  return text ? text.slice(0, max) : null;
 }
 
-function numeric(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
-}
-
-async function writeShipmentHistory(shipment, eventType, title, details = null, source = 'system') {
-  try {
-    await supabase('shipment_history', {
-      method: 'POST',
-      body: [{
-        shipment_id: shipment.id,
-        client_id: shipment.client_id,
-        event_type: eventType,
-        title,
-        details,
-        source
-      }]
-    });
-  } catch (error) {
-    console.error('SHIPMENT_HISTORY_FAILED', error.message);
-  }
-}
-
-async function createShipmentForOperation(operation, body, admin) {
-  if (!operation?.id || !operation.container_number) return null;
-
-  const containerNumber = normalizeContainer(operation.container_number);
-  const existing = await supabase('shipments', {
-    query: `?select=*&container_number=eq.${encodeURIComponent(containerNumber)}&limit=1`
+async function getClient(id) {
+  const rows = await supabase('clients', {
+    query: `?select=id,name,company&id=eq.${encodeURIComponent(id)}&limit=1`
   });
+  if (!rows?.[0]) throw new Error('Cliente no encontrado');
+  return rows[0];
+}
 
-  let shipment = existing?.[0] || null;
-  if (!shipment) {
-    const created = await supabase('shipments', {
-      method: 'POST',
-      body: [{
-        client_id: operation.client_id,
-        container_number: containerNumber,
-        booking_number: operation.booking_number,
-        bol_number: operation.bol_number,
-        carrier: cleanNullable(body.carrier),
-        product: cleanNullable(body.product) || cleanNullable(body.items?.[0]?.description),
-        active: true,
-        last_status: 'Registrado',
-        operational_status: 'Registrado',
-        last_location: null,
-        last_event_at: null
-      }]
-    });
-    shipment = created?.[0] || null;
+async function getOperation(id) {
+  const rows = await supabase('operations', {
+    query: `?select=${encodeURIComponent(OPERATION_SELECT)}&id=eq.${encodeURIComponent(id)}&limit=1`
+  });
+  if (!rows?.[0]) throw new Error('Expediente no encontrado');
+  return rows[0];
+}
 
-    if (shipment) {
-      await writeShipmentHistory(shipment, 'created', 'Contenedor registrado', containerNumber);
-      await writeAudit(admin, 'create', 'shipment', shipment.id, { container_number: containerNumber, operation_id: operation.id });
-    }
+async function getShipment(id) {
+  const rows = await supabase('shipments', {
+    query: `?select=id,client_id,operation_id,container_number,bol_number,product,operational_status,last_status&id=eq.${encodeURIComponent(id)}&limit=1`
+  });
+  if (!rows?.[0]) throw new Error('Contenedor no encontrado');
+  return rows[0];
+}
+
+async function assignShipment(admin, operationId, shipmentId) {
+  const operation = await getOperation(operationId);
+  const shipment = await getShipment(shipmentId);
+
+  if (String(shipment.client_id || '') !== String(operation.client_id || '')) {
+    throw new Error('El contenedor pertenece a otro cliente');
+  }
+  if (shipment.operation_id && String(shipment.operation_id) !== String(operation.id)) {
+    throw new Error('El contenedor ya pertenece a otro expediente');
   }
 
-  if (!shipment) return null;
-
-  await supabase('operations', {
+  await supabase('shipments', {
     method: 'PATCH',
-    query: `?id=eq.${encodeURIComponent(operation.id)}`,
-    body: { shipment_id: shipment.id, container_number: containerNumber }
+    query: `?id=eq.${encodeURIComponent(shipment.id)}`,
+    body: { operation_id: operation.id, updated_at: new Date().toISOString() }
   });
 
-  const clients = await supabase('clients', {
-    query: `?select=id,name,phone&id=eq.${encodeURIComponent(operation.client_id)}&limit=1`
+  await writeAudit(admin, 'shipment_assigned_to_expediente', 'operation', operation.id, {
+    shipment_id: shipment.id,
+    container_number: shipment.container_number,
+    client_id: operation.client_id
   });
-  const client = clients?.[0];
-  const contentSid = process.env.TWILIO_REGISTERED_CONTENT_SID;
 
-  if (client?.phone && contentSid) {
-    const existingNotifications = await supabase('notifications', {
-      query: `?select=id&shipment_id=eq.${encodeURIComponent(shipment.id)}&event_type=eq.registered&limit=1`
-    });
+  return getOperation(operation.id);
+}
 
-    if (!existingNotifications?.length) {
-      try {
-        const sent = await sendWhatsApp({
-          to: client.phone,
-          contentSid,
-          variables: { '1': client.name, '2': containerNumber }
-        });
+async function unassignShipment(admin, operationId, shipmentId) {
+  const operation = await getOperation(operationId);
+  const shipment = await getShipment(shipmentId);
 
-        await supabase('notifications', {
-          method: 'POST',
-          body: [{
-            shipment_id: shipment.id,
-            client_id: client.id,
-            event_type: 'registered',
-            channel: 'whatsapp',
-            recipient: client.phone,
-            status: sent.status || 'queued',
-            provider_message_id: sent.sid,
-            template_sid: contentSid,
-            payload: { container_number: containerNumber, operation_id: operation.id },
-            sent_at: new Date().toISOString()
-          }]
-        });
-        await writeShipmentHistory(shipment, 'notification_sent', 'WhatsApp de contenedor registrado enviado', sent.sid);
-      } catch (error) {
-        try {
-          await supabase('notifications', {
-            method: 'POST',
-            body: [{
-              shipment_id: shipment.id,
-              client_id: client.id,
-              event_type: 'registered',
-              channel: 'whatsapp',
-              recipient: client.phone,
-              status: 'failed',
-              template_sid: contentSid,
-              payload: { container_number: containerNumber, operation_id: operation.id },
-              error_message: error.message
-            }]
-          });
-        } catch {}
-        await writeShipmentHistory(shipment, 'notification_failed', 'Falló WhatsApp de contenedor registrado', error.message);
-      }
-    }
+  if (String(shipment.operation_id || '') !== String(operation.id)) {
+    throw new Error('Ese contenedor no pertenece a este expediente');
   }
 
-  return shipment;
+  await supabase('shipments', {
+    method: 'PATCH',
+    query: `?id=eq.${encodeURIComponent(shipment.id)}`,
+    body: { operation_id: null, updated_at: new Date().toISOString() }
+  });
+
+  await writeAudit(admin, 'shipment_unassigned_from_expediente', 'operation', operation.id, {
+    shipment_id: shipment.id,
+    container_number: shipment.container_number,
+    client_id: operation.client_id
+  });
+
+  return getOperation(operation.id);
+}
+
+async function setStatus(admin, operationId, status) {
+  const operation = await getOperation(operationId);
+  const next = required(status, 'STATUS').toLowerCase();
+  if (!ALLOWED_STATUS.has(next)) throw new Error('Estado de expediente inválido');
+
+  const closed = next === 'delivered' || next === 'closed';
+  const rows = await supabase('operations', {
+    method: 'PATCH',
+    prefer: 'return=representation',
+    query: `?id=eq.${encodeURIComponent(operation.id)}`,
+    body: {
+      status: next,
+      closed_at: closed ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString()
+    }
+  });
+
+  await writeAudit(admin, 'expediente_status_changed', 'operation', operation.id, {
+    from: operation.status,
+    to: next,
+    operation_code: operation.operation_code
+  });
+
+  return rows?.[0] ? getOperation(operation.id) : null;
 }
 
 export default async function handler(req, res) {
@@ -158,90 +134,73 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const id = cleanNullable(req.query?.id);
-      const select = id ? detailSelect : listSelect;
-      const query = id
-        ? `?select=${encodeURIComponent(select)}&id=eq.${encodeURIComponent(id)}&limit=1`
-        : `?select=${encodeURIComponent(select)}&order=created_at.desc`;
-      const rows = await supabase('operations', { query });
-      return ok(res, id ? { operation: rows?.[0] || null } : { operations: rows || [] });
+      const id = String(req.query?.id || '').trim();
+      if (id) return ok(res, { operation: await getOperation(id) });
+
+      const rows = await supabase('operations', {
+        query: `?select=${encodeURIComponent(OPERATION_SELECT)}&order=created_at.desc`
+      });
+      return ok(res, { operations: rows || [] });
     }
 
     if (req.method === 'POST') {
       const body = await readJson(req);
-      const operation = {
-        client_id: required(body.client_id, 'CLIENT'),
-        supplier_id: cleanNullable(body.supplier_id),
-        importer_id: cleanNullable(body.importer_id),
-        shipment_id: cleanNullable(body.shipment_id),
-        operation_type: cleanNullable(body.operation_type) || 'container',
-        status: cleanNullable(body.status) || 'draft',
-        currency: cleanNullable(body.currency) || 'USD',
-        incoterm: cleanNullable(body.incoterm),
-        origin_port: cleanNullable(body.origin_port),
-        destination_port: cleanNullable(body.destination_port),
-        vessel_name: cleanNullable(body.vessel_name),
-        voyage_number: cleanNullable(body.voyage_number),
-        booking_number: cleanNullable(body.booking_number),
-        bol_number: cleanNullable(body.bol_number),
-        container_number: cleanNullable(body.container_number),
-        seal_number: cleanNullable(body.seal_number),
-        etd: cleanNullable(body.etd),
-        eta: cleanNullable(body.eta),
-        notes: cleanNullable(body.notes),
-        created_by: admin.admin_id
-      };
-      const created = await supabase('operations', { method: 'POST', body: operation, prefer: 'return=representation' });
-      const row = created?.[0];
+      const clientId = required(body.client_id, 'CLIENT');
+      await getClient(clientId);
 
-      if (Array.isArray(body.items) && row?.id) {
-        const items = body.items
-          .filter(item => String(item.description || '').trim())
-          .map(item => ({
-            operation_id: row.id,
-            product_id: cleanNullable(item.product_id),
-            description: required(item.description, 'ITEM_DESCRIPTION'),
-            quantity: numeric(item.quantity, 1),
-            unit: cleanNullable(item.unit),
-            unit_cost: numeric(item.unit_cost),
-            unit_price: numeric(item.unit_price),
-            net_weight_kg: item.net_weight_kg === '' ? null : numeric(item.net_weight_kg),
-            gross_weight_kg: item.gross_weight_kg === '' ? null : numeric(item.gross_weight_kg),
-            volume_m3: item.volume_m3 === '' ? null : numeric(item.volume_m3),
-            packages: item.packages === '' ? null : Math.trunc(numeric(item.packages))
-          }));
-        if (items.length) await supabase('operation_items', { method: 'POST', body: items });
-      }
+      const created = await supabase('operations', {
+        method: 'POST',
+        prefer: 'return=representation',
+        body: {
+          client_id: clientId,
+          status: 'draft',
+          notes: nullable(body.notes),
+          created_by: null
+        }
+      });
+      const operation = created?.[0];
+      if (!operation?.id) throw new Error('No se pudo crear el expediente');
 
-      if (row?.id && row.container_number && !row.shipment_id) {
-        await createShipmentForOperation(row, body, admin);
-      }
+      await writeAudit(admin, 'expediente_created', 'operation', operation.id, {
+        operation_code: operation.operation_code,
+        client_id: clientId
+      });
 
-      await writeAudit(admin, 'create', 'operation', row?.id, { operation_code: row?.operation_code });
-      const full = await supabase('operations', { query: `?select=${encodeURIComponent(detailSelect)}&id=eq.${encodeURIComponent(row.id)}&limit=1` });
-      return ok(res, { operation: full?.[0] || row });
+      return ok(res, { operation: await getOperation(operation.id) });
     }
 
     if (req.method === 'PATCH') {
       const body = await readJson(req);
-      const id = required(body.id, 'ID');
-      const allowed = ['client_id','supplier_id','importer_id','shipment_id','operation_type','status','currency','incoterm','origin_port','destination_port','vessel_name','voyage_number','booking_number','bol_number','container_number','seal_number','etd','eta','notes'];
-      const updates = Object.fromEntries(allowed.filter(k => body[k] !== undefined).map(k => [k, body[k] === '' ? null : body[k]]));
-      const rows = await supabase('operations', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}`, body: updates, prefer: 'return=representation' });
-      await writeAudit(admin, 'update', 'operation', id, updates);
-      return ok(res, { operation: rows?.[0] || null });
-    }
+      const action = required(body.action, 'ACTION');
+      const operationId = required(body.operation_id, 'OPERATION');
 
-    if (req.method === 'DELETE') {
-      const id = required(req.query?.id, 'ID');
-      await supabase('operations', { method: 'DELETE', query: `?id=eq.${encodeURIComponent(id)}` });
-      await writeAudit(admin, 'delete', 'operation', id);
-      return ok(res, { deleted: true });
+      if (action === 'assign_shipment') {
+        return ok(res, { operation: await assignShipment(admin, operationId, required(body.shipment_id, 'SHIPMENT')) });
+      }
+      if (action === 'unassign_shipment') {
+        return ok(res, { operation: await unassignShipment(admin, operationId, required(body.shipment_id, 'SHIPMENT')) });
+      }
+      if (action === 'set_status') {
+        return ok(res, { operation: await setStatus(admin, operationId, body.status) });
+      }
+      if (action === 'update_notes') {
+        const rows = await supabase('operations', {
+          method: 'PATCH',
+          prefer: 'return=representation',
+          query: `?id=eq.${encodeURIComponent(operationId)}`,
+          body: { notes: nullable(body.notes), updated_at: new Date().toISOString() }
+        });
+        if (!rows?.[0]) throw new Error('Expediente no encontrado');
+        await writeAudit(admin, 'expediente_notes_updated', 'operation', operationId);
+        return ok(res, { operation: await getOperation(operationId) });
+      }
+
+      return fail(res, 400, 'Acción de expediente inválida');
     }
 
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
-    console.error('OPERATIONS_API_ERROR', error);
-    return fail(res, 400, 'No se pudo procesar la operación', error.message);
+    console.error('[operations]', error);
+    return fail(res, 400, error.message || 'No se pudo procesar el expediente');
   }
 }
