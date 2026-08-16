@@ -169,8 +169,8 @@ async function createOperation(admin, body) {
   const operation = created?.[0];
   if (!operation?.id) throw new Error('No se pudo crear el expediente');
 
-  try {
-    if (shipment) {
+  if (shipment) {
+    try {
       const assigned = await supabase('shipments', {
         method: 'PATCH',
         prefer: 'return=representation',
@@ -185,24 +185,7 @@ async function createOperation(admin, body) {
         }
         throw new Error('No se pudo vincular el contenedor al expediente');
       }
-      await writeAudit(admin, 'shipment_assigned_to_expediente', 'operation', operation.id, {
-        shipment_id: shipment.id,
-        container_number: shipment.container_number,
-        client_id: clientId,
-        source: 'tracking_shortcut'
-      });
-    }
-
-    await writeAudit(admin, 'expediente_created', 'operation', operation.id, {
-      operation_code: operation.operation_code,
-      client_id: clientId,
-      initial_shipment_id: shipment?.id || null,
-      source: shipment ? 'tracking_shortcut' : 'expedientes'
-    });
-
-    return getOperation(operation.id);
-  } catch (error) {
-    if (shipment) {
+    } catch (error) {
       try {
         await supabase('shipments', {
           method: 'PATCH',
@@ -210,15 +193,28 @@ async function createOperation(admin, body) {
           body: { operation_id: null, updated_at: new Date().toISOString() }
         });
       } catch {}
+      try {
+        await supabase('operations', { method: 'DELETE', query: `?id=eq.${encodeURIComponent(operation.id)}` });
+      } catch {}
+      throw error;
     }
-    try {
-      await supabase('operations', {
-        method: 'DELETE',
-        query: `?id=eq.${encodeURIComponent(operation.id)}`
-      });
-    } catch {}
-    throw error;
+
+    await writeAudit(admin, 'shipment_assigned_to_expediente', 'operation', operation.id, {
+      shipment_id: shipment.id,
+      container_number: shipment.container_number,
+      client_id: clientId,
+      source: 'tracking_shortcut'
+    });
   }
+
+  await writeAudit(admin, 'expediente_created', 'operation', operation.id, {
+    operation_code: operation.operation_code,
+    client_id: clientId,
+    initial_shipment_id: shipment?.id || null,
+    source: shipment ? 'tracking_shortcut' : 'expedientes'
+  });
+
+  return getOperation(operation.id);
 }
 
 export default async function handler(req, res) {
