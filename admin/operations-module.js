@@ -186,7 +186,7 @@
   }
 
   async function init() {
-    if (state.initialized) return;
+    if (state.initialized) return true;
 
     const section = byId('newOperationsSection');
     if (!section) throw new Error('OPERATIONS_SECTION_MISSING');
@@ -199,7 +199,8 @@
 
     bindEvents();
     state.initialized = true;
-    await loadOperations();
+    loadOperations();
+    return true;
   }
 
   function destroy() {
