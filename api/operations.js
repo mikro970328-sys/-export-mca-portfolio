@@ -87,6 +87,13 @@ async function unassignShipment(admin, operationId, shipmentId) {
     throw new Error('Ese contenedor no pertenece a este expediente');
   }
 
+  const linkedDocuments = await supabase('documents', {
+    query: `?select=id&operation_id=eq.${encodeURIComponent(operation.id)}&shipment_id=eq.${encodeURIComponent(shipment.id)}&limit=1`
+  });
+  if (linkedDocuments?.length) {
+    throw new Error('Este contenedor tiene documentos propios en el expediente. Borra o reclasifica esos documentos antes de quitarlo.');
+  }
+
   await supabase('shipments', {
     method: 'PATCH',
     query: `?id=eq.${encodeURIComponent(shipment.id)}`,
