@@ -171,11 +171,20 @@ async function createOperation(admin, body) {
 
   try {
     if (shipment) {
-      await supabase('shipments', {
+      const assigned = await supabase('shipments', {
         method: 'PATCH',
-        query: `?id=eq.${encodeURIComponent(shipment.id)}`,
+        prefer: 'return=representation',
+        query: `?id=eq.${encodeURIComponent(shipment.id)}&operation_id=is.null`,
         body: { operation_id: operation.id, updated_at: now }
       });
+      if (!assigned?.[0]) {
+        const latest = await getShipment(shipment.id);
+        if (latest.operation_id) {
+          await supabase('operations', { method: 'DELETE', query: `?id=eq.${encodeURIComponent(operation.id)}` });
+          return getOperation(latest.operation_id);
+        }
+        throw new Error('No se pudo vincular el contenedor al expediente');
+      }
       await writeAudit(admin, 'shipment_assigned_to_expediente', 'operation', operation.id, {
         shipment_id: shipment.id,
         container_number: shipment.container_number,
