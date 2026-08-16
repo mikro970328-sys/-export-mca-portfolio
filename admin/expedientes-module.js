@@ -54,7 +54,9 @@
   function quantityLabel(shipment) {
     if (shipment?.quantity === null || shipment?.quantity === undefined || shipment?.quantity === '') return '—';
     const numeric = Number(shipment.quantity);
-    const quantity = Number.isFinite(numeric) ? numeric.toLocaleString('es-US', { maximumFractionDigits: 3 }) : String(shipment.quantity);
+    const quantity = Number.isFinite(numeric)
+      ? numeric.toLocaleString('es-US', { maximumFractionDigits: 3 })
+      : String(shipment.quantity);
     return `${quantity}${shipment.quantity_unit ? ` ${shipment.quantity_unit}` : ''}`;
   }
 
@@ -98,12 +100,12 @@
     const target = byId('expedientesList');
     if (!target) return;
 
-    const shipments = (window.shipments || []).filter(matchesSearch);
     if (!Array.isArray(window.shipments)) {
       target.textContent = 'Esperando los contenedores registrados...';
       return;
     }
 
+    const shipments = window.shipments.filter(matchesSearch);
     if (!shipments.length) {
       target.innerHTML = '<div class="empty-state">No hay contenedores que coincidan con la búsqueda.</div>';
       return;
@@ -135,18 +137,21 @@
       const result = await api('/api/documents');
       state.documents = result.documents || [];
       const msg = byId('expedientesMsg');
-      if (msg) msg.textContent = '';
+      if (msg) textMessage(msg, '', '');
       renderList();
       return state.documents;
     } catch (error) {
       const msg = byId('expedientesMsg');
-      if (msg) {
-        msg.textContent = error.message;
-        msg.className = 'msg bad';
-      }
+      if (msg) textMessage(msg, error.message, 'bad');
       renderList();
       return [];
     }
+  }
+
+  function textMessage(element, text, kind = '') {
+    if (!element) return;
+    element.textContent = text;
+    element.className = `msg${kind ? ` ${kind}` : ''}`;
   }
 
   function documentListHtml(documents) {
@@ -155,14 +160,17 @@
     }
 
     return `<table>
-      <thead><tr><th>Tipo</th><th>Archivo</th><th>Versión</th><th>Subido</th><th>Por</th><th>Acción</th></tr></thead>
+      <thead><tr><th>Tipo</th><th>Archivo</th><th>Versión</th><th>Subido</th><th>Por</th><th>Acciones</th></tr></thead>
       <tbody>${documents.map(document => `<tr>
         <td><b>${esc(document.document_type || 'Documento')}</b>${document.notes ? `<br><span class="muted">${esc(document.notes)}</span>` : ''}</td>
         <td>${esc(document.file_name || 'Archivo')}<br><span class="muted">${esc(formatBytes(document.file_size_bytes))}</span></td>
         <td>v${esc(document.version || 1)}</td>
         <td>${esc(formatDate(document.created_at))}</td>
         <td>${esc(document.uploaded_by_username || 'Administrador')}</td>
-        <td>${document.signed_url ? `<button class="alt" type="button" data-open-document="${esc(document.id)}">Abrir</button>` : '<span class="muted">No disponible</span>'}</td>
+        <td><div class="actions">
+          ${document.signed_url ? `<button class="alt" type="button" data-open-document="${esc(document.id)}">Abrir</button>` : ''}
+          <button class="danger" type="button" data-delete-document="${esc(document.id)}">Borrar</button>
+        </div></td>
       </tr>`).join('')}</tbody>
     </table>`;
   }
@@ -184,6 +192,7 @@
     </section>
     <section style="margin-top:24px">
       <div class="toolbar"><div><h3 style="margin:0">Documentos</h3><div class="muted">Sube solamente lo que necesites. Ningún tipo es obligatorio.</div></div></div>
+      <div id="expedienteDocumentsMsg" class="msg"></div>
       <div id="expedienteDocuments">${documentListHtml(documents)}</div>
     </section>
     <section class="card" style="margin-top:20px;box-shadow:none">
@@ -199,12 +208,20 @@
     </section>`;
   }
 
-  function bindDocumentOpeners(documents) {
+  function bindDocumentActions(documents, shipmentId) {
     const byDocumentId = new Map(documents.map(document => [document.id, document]));
+
     document.querySelectorAll('[data-open-document]').forEach(button => {
       button.onclick = () => {
         const item = byDocumentId.get(button.dataset.openDocument);
         if (item?.signed_url) window.open(item.signed_url, '_blank', 'noopener');
+      };
+    });
+
+    document.querySelectorAll('[data-delete-document]').forEach(button => {
+      button.onclick = () => {
+        const item = byDocumentId.get(button.dataset.deleteDocument);
+        if (item) deleteDocument(shipmentId, item, button);
       };
     });
   }
@@ -224,7 +241,7 @@
       if (typeof window.openModal !== 'function') throw new Error('EXPEDIENTES_MODAL_MISSING');
       window.openModal(`Expediente · ${shipment.container_number || ''}`, expedienteHtml(shipment, client, documents));
 
-      bindDocumentOpeners(documents);
+      bindDocumentActions(documents, shipmentId);
 
       const typeSelect = byId('expedienteDocumentType');
       const customWrap = byId('expedienteCustomTypeWrap');
@@ -236,6 +253,28 @@
       if (uploadButton) uploadButton.onclick = () => uploadDocument(shipmentId);
     } catch (error) {
       alert(error.message);
+    }
+  }
+
+  async function deleteDocument(shipmentId, item, button) {
+    const confirmed = window.confirm(`¿Borrar "${item.file_name || item.document_type || 'este documento'}"?\n\nEl archivo será eliminado del expediente.`);
+    if (!confirmed) return;
+
+    button.disabled = true;
+    const status = byId('expedienteDocumentsMsg');
+    textMessage(status, 'Eliminando documento...');
+
+    try {
+      await api('/api/documents', {
+        method: 'DELETE',
+        body: JSON.stringify({ document_id: item.id })
+      });
+      await loadDocumentIndex();
+      await openExpediente(shipmentId);
+      textMessage(byId('expedienteDocumentsMsg'), 'Documento eliminado correctamente.', 'ok');
+    } catch (error) {
+      if (document.body.contains(button)) button.disabled = false;
+      textMessage(byId('expedienteDocumentsMsg'), error.message || 'No se pudo eliminar el documento.', 'bad');
     }
   }
 
@@ -261,16 +300,16 @@
     const file = fileInput?.files?.[0];
 
     if (!selectedType) {
-      if (msg) { msg.textContent = 'Escribe el nombre del documento.'; msg.className = 'msg bad'; }
+      textMessage(msg, 'Escribe el nombre del documento.', 'bad');
       return;
     }
     if (!file) {
-      if (msg) { msg.textContent = 'Selecciona un archivo.'; msg.className = 'msg bad'; }
+      textMessage(msg, 'Selecciona un archivo.', 'bad');
       return;
     }
 
     if (button) button.disabled = true;
-    if (msg) { msg.textContent = 'Subiendo documento...'; msg.className = 'msg'; }
+    textMessage(msg, 'Subiendo documento...');
 
     let prepared = null;
     try {
@@ -320,15 +359,10 @@
 
       await loadDocumentIndex();
       await openExpediente(shipmentId);
-      const success = byId('expedienteUploadMsg');
-      if (success) { success.textContent = 'Documento cargado correctamente.'; success.className = 'msg ok'; }
+      textMessage(byId('expedienteUploadMsg'), 'Documento cargado correctamente.', 'ok');
     } catch (error) {
-      if (prepared?.storage_path && !String(error.message || '').includes('finalize')) {
-        // The API also cleans storage if final database registration fails.
-      }
       if (msg && document.body.contains(msg)) {
-        msg.textContent = error.message;
-        msg.className = 'msg bad';
+        textMessage(msg, error.message, 'bad');
       } else {
         alert(error.message);
       }
