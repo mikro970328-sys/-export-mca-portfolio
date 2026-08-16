@@ -123,6 +123,31 @@ async function getOperation(id) {
   return rows[0];
 }
 
+async function getOperationBols(operationId) {
+  const rows = await supabase('shipments', {
+    query: `?select=bol_number&operation_id=eq.${encodeURIComponent(operationId)}&bol_number=not.is.null&limit=1000`
+  }) || [];
+  return [...new Set(rows.map(row => cleanBol(row.bol_number)).filter(Boolean))];
+}
+
+async function getBolRelation(bolNumber) {
+  const bol = cleanBol(bolNumber);
+  if (!bol) return { bol_number: null, containers: 0, clients: 0, operations: 0, shared: false, shipments: [] };
+  const rows = await supabase('shipments', {
+    query: `?select=id,client_id,operation_id,container_number,bol_number,active&bol_number=eq.${encodeURIComponent(bol)}&limit=1000`
+  }) || [];
+  const clients = new Set(rows.map(row => row.client_id).filter(Boolean).map(String));
+  const operations = new Set(rows.map(row => row.operation_id).filter(Boolean).map(String));
+  return {
+    bol_number: bol,
+    containers: rows.length,
+    clients: clients.size,
+    operations: operations.size,
+    shared: clients.size > 1,
+    shipments: rows
+  };
+}
+
 async function validateBol(operationId, bolNumber) {
   if (!bolNumber) return null;
   const rows = await supabase('shipments', {
@@ -149,9 +174,7 @@ async function validateShipment(operation, shipmentId) {
 async function resolveScope(operation, body) {
   const shipmentId = cleanUuid(body.shipment_id, 'Contenedor');
   const requestedBol = cleanBol(body.bol_number);
-  if (shipmentId && requestedBol) {
-    throw new Error('Selecciona un B/L o un contenedor específico, no ambos');
-  }
+  if (shipmentId && requestedBol) throw new Error('Selecciona un B/L o un contenedor específico, no ambos');
 
   if (shipmentId) {
     const shipment = await validateShipment(operation, shipmentId);
@@ -164,6 +187,15 @@ async function resolveScope(operation, body) {
   }
 
   return { shipment_id: null, bol_number: null, shipment: null };
+}
+
+async function validateSharedScope(scope, requestedShared) {
+  const sharedBl = Boolean(requestedShared);
+  if (!sharedBl) return { shared_bl: false, relation: null };
+  if (!scope.bol_number || scope.shipment_id) throw new Error('Solo se puede compartir un documento asociado a un B/L');
+  const relation = await getBolRelation(scope.bol_number);
+  if (!relation.shared) throw new Error('Ese B/L no está compartido entre clientes');
+  return { shared_bl: true, relation };
 }
 
 async function createSignedUpload(storagePath) {
@@ -196,16 +228,13 @@ async function deleteStorageObject(storagePath) {
   const { root, key } = storageConfig();
   const response = await fetch(`${root}/object/${BUCKET}/${encodeStoragePath(storagePath)}`, {
     method: 'DELETE',
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`
-    }
+    headers: { apikey: key, Authorization: `Bearer ${key}` }
   });
   if (!response.ok && response.status !== 404) throw new Error(`STORAGE_DELETE_${response.status}`);
 }
 
 const DOCUMENT_SELECT = [
-  'id', 'operation_id', 'client_id', 'shipment_id', 'bol_number',
+  'id', 'operation_id', 'client_id', 'shipment_id', 'bol_number', 'shared_bl',
   'document_type', 'file_name', 'storage_bucket', 'storage_path',
   'mime_type', 'file_size_bytes', 'version', 'notes',
   'uploaded_by_admin_id', 'uploaded_by_username', 'created_at'
@@ -220,33 +249,54 @@ async function getDocument(id) {
   return rows[0];
 }
 
-async function listDocuments(operationId) {
-  const filter = operationId ? `&operation_id=eq.${encodeURIComponent(operationId)}` : '';
-  const documents = await supabase('documents', {
-    query: `?select=${DOCUMENT_SELECT}${filter}&order=created_at.desc&limit=1000`
+async function listOwnedDocuments(operationId) {
+  return await supabase('documents', {
+    query: `?select=${DOCUMENT_SELECT}&operation_id=eq.${encodeURIComponent(operationId)}&order=created_at.desc&limit=1000`
   }) || [];
+}
 
-  if (!operationId) return documents;
+async function listSharedDocumentsForOperation(operationId) {
+  const bols = await getOperationBols(operationId);
+  if (!bols.length) return [];
+  const found = [];
+  for (const bol of bols) {
+    const rows = await supabase('documents', {
+      query: `?select=${DOCUMENT_SELECT}&shared_bl=eq.true&shipment_id=is.null&bol_number=eq.${encodeURIComponent(bol)}&order=created_at.desc&limit=1000`
+    }) || [];
+    found.push(...rows);
+  }
+  return found;
+}
 
-  return Promise.all(documents.map(async document => ({
+async function listDocuments(operationId) {
+  if (!operationId) {
+    return await supabase('documents', {
+      query: `?select=${DOCUMENT_SELECT}&order=created_at.desc&limit=1000`
+    }) || [];
+  }
+
+  const [owned, shared] = await Promise.all([
+    listOwnedDocuments(operationId),
+    listSharedDocumentsForOperation(operationId)
+  ]);
+  const unique = new Map();
+  [...owned, ...shared].forEach(document => unique.set(String(document.id), document));
+  return Promise.all([...unique.values()].map(async document => ({
     ...document,
     signed_url: await createSignedPreview(document.storage_path)
   })));
 }
 
 function scopeVersionFilter(scope) {
-  if (scope.shipment_id) {
-    return `&shipment_id=eq.${encodeURIComponent(scope.shipment_id)}&bol_number=is.null`;
-  }
-  if (scope.bol_number) {
-    return `&shipment_id=is.null&bol_number=eq.${encodeURIComponent(scope.bol_number)}`;
-  }
+  if (scope.shipment_id) return `&shipment_id=eq.${encodeURIComponent(scope.shipment_id)}&bol_number=is.null`;
+  if (scope.bol_number) return `&shipment_id=is.null&bol_number=eq.${encodeURIComponent(scope.bol_number)}`;
   return '&shipment_id=is.null&bol_number=is.null';
 }
 
 async function prepareUpload(body) {
   const operation = await getOperation(body.operation_id);
   const scope = await resolveScope(operation, body);
+  const shared = await validateSharedScope(scope, body.shared_bl);
   const documentType = cleanDocumentType(body.document_type);
   const fileName = cleanFileName(body.file_name);
   const mimeType = normalizedMime(fileName, body.mime_type);
@@ -261,6 +311,8 @@ async function prepareUpload(body) {
     operation,
     shipment_id: scope.shipment_id,
     bol_number: scope.bol_number,
+    shared_bl: shared.shared_bl,
+    shared_context: shared.relation,
     document_type: documentType,
     file_name: fileName,
     mime_type: mimeType,
@@ -271,9 +323,18 @@ async function prepareUpload(body) {
   };
 }
 
+async function nextVersion(operation, scope, documentType, sharedBl) {
+  const query = sharedBl
+    ? `?select=version&shared_bl=eq.true&shipment_id=is.null&bol_number=eq.${encodeURIComponent(scope.bol_number)}&document_type=eq.${encodeURIComponent(documentType)}&order=version.desc&limit=1`
+    : `?select=version&operation_id=eq.${encodeURIComponent(operation.id)}&document_type=eq.${encodeURIComponent(documentType)}${scopeVersionFilter(scope)}&order=version.desc&limit=1`;
+  const previous = await supabase('documents', { query }) || [];
+  return Number(previous[0]?.version || 0) + 1;
+}
+
 async function finalizeUpload(admin, body) {
   const operation = await getOperation(body.operation_id);
   const scope = await resolveScope(operation, body);
+  const shared = await validateSharedScope(scope, body.shared_bl);
   const documentType = cleanDocumentType(body.document_type);
   const fileName = cleanFileName(body.file_name);
   const mimeType = normalizedMime(fileName, body.mime_type);
@@ -282,14 +343,9 @@ async function finalizeUpload(admin, body) {
   const storagePath = String(body.storage_path || '').trim();
   const expectedPrefix = `operations/${operation.id}/`;
 
-  if (!storagePath.startsWith(expectedPrefix) || storagePath.includes('..')) {
-    throw new Error('Ruta de documento inválida');
-  }
+  if (!storagePath.startsWith(expectedPrefix) || storagePath.includes('..')) throw new Error('Ruta de documento inválida');
 
-  const previous = await supabase('documents', {
-    query: `?select=version&operation_id=eq.${encodeURIComponent(operation.id)}&document_type=eq.${encodeURIComponent(documentType)}${scopeVersionFilter(scope)}&order=version.desc&limit=1`
-  }) || [];
-  const version = Number(previous[0]?.version || 0) + 1;
+  const version = await nextVersion(operation, scope, documentType, shared.shared_bl);
 
   try {
     const created = await supabase('documents', {
@@ -300,6 +356,7 @@ async function finalizeUpload(admin, body) {
         client_id: operation.client_id,
         shipment_id: scope.shipment_id,
         bol_number: scope.bol_number,
+        shared_bl: shared.shared_bl,
         document_type: documentType,
         file_name: fileName,
         storage_bucket: BUCKET,
@@ -314,13 +371,16 @@ async function finalizeUpload(admin, body) {
     });
 
     const document = created?.[0];
-    await writeAudit(admin, 'document_uploaded', 'document', document?.id || null, {
+    await writeAudit(admin, shared.shared_bl ? 'shared_bl_document_uploaded' : 'document_uploaded', 'document', document?.id || null, {
       operation_id: operation.id,
       operation_code: operation.operation_code,
       client_id: operation.client_id,
       shipment_id: scope.shipment_id,
       container_number: scope.shipment?.container_number || null,
       bol_number: scope.bol_number,
+      shared_bl: shared.shared_bl,
+      shared_clients: shared.relation?.clients || null,
+      shared_containers: shared.relation?.containers || null,
       document_type: documentType,
       file_name: fileName,
       version
@@ -340,9 +400,7 @@ async function discardUpload(body) {
   const operation = await getOperation(body.operation_id);
   const storagePath = String(body.storage_path || '').trim();
   const expectedPrefix = `operations/${operation.id}/`;
-  if (!storagePath.startsWith(expectedPrefix) || storagePath.includes('..')) {
-    throw new Error('Ruta de documento inválida');
-  }
+  if (!storagePath.startsWith(expectedPrefix) || storagePath.includes('..')) throw new Error('Ruta de documento inválida');
   await deleteStorageObject(storagePath);
 }
 
@@ -360,12 +418,13 @@ async function deleteDocument(admin, documentId) {
   });
   if (!deleted?.[0]) throw new Error('No se pudo eliminar el registro del documento');
 
-  await writeAudit(admin, 'document_deleted', 'document', document.id, {
+  await writeAudit(admin, document.shared_bl ? 'shared_bl_document_deleted' : 'document_deleted', 'document', document.id, {
     operation_id: document.operation_id || null,
     operation_code: operation?.operation_code || null,
     client_id: document.client_id || null,
     shipment_id: document.shipment_id || null,
     bol_number: document.bol_number || null,
+    shared_bl: Boolean(document.shared_bl),
     document_type: document.document_type,
     file_name: document.file_name,
     version: document.version || 1
@@ -398,6 +457,8 @@ export default async function handler(req, res) {
             operation_id: prepared.operation.id,
             shipment_id: prepared.shipment_id,
             bol_number: prepared.bol_number,
+            shared_bl: prepared.shared_bl,
+            shared_context: prepared.shared_context,
             document_type: prepared.document_type,
             file_name: prepared.file_name,
             mime_type: prepared.mime_type,
@@ -407,9 +468,7 @@ export default async function handler(req, res) {
         });
       }
 
-      if (action === 'finalize_upload') {
-        return ok(res, { document: await finalizeUpload(admin, body) });
-      }
+      if (action === 'finalize_upload') return ok(res, { document: await finalizeUpload(admin, body) });
 
       if (action === 'discard_upload') {
         await discardUpload(body);
@@ -422,7 +481,7 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') {
       const body = await readJson(req);
       const document = await deleteDocument(admin, body.document_id);
-      return ok(res, { deleted: true, document_id: document.id });
+      return ok(res, { deleted: true, document_id: document.id, shared_bl: Boolean(document.shared_bl) });
     }
 
     return fail(res, 405, 'Método no permitido');
