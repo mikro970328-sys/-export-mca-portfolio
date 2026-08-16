@@ -85,6 +85,13 @@ function cleanBol(value) {
     .slice(0, 120) || null;
 }
 
+function cleanUuid(value, label) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+  if (!UUID_RE.test(text)) throw new Error(`${label} inválido`);
+  return text;
+}
+
 function fileExtension(fileName) {
   const match = String(fileName || '').toLowerCase().match(/\.([a-z0-9]{1,8})$/);
   return match ? match[1] : '';
@@ -123,6 +130,40 @@ async function validateBol(operationId, bolNumber) {
   });
   if (!rows?.[0]) throw new Error('Ese B/L no pertenece al expediente');
   return rows[0].bol_number;
+}
+
+async function validateShipment(operation, shipmentId) {
+  if (!shipmentId) return null;
+  const id = cleanUuid(shipmentId, 'Contenedor');
+  const rows = await supabase('shipments', {
+    query: `?select=id,operation_id,client_id,container_number,bol_number&id=eq.${encodeURIComponent(id)}&operation_id=eq.${encodeURIComponent(operation.id)}&limit=1`
+  });
+  const shipment = rows?.[0];
+  if (!shipment) throw new Error('Ese contenedor no pertenece al expediente');
+  if (shipment.client_id && operation.client_id && shipment.client_id !== operation.client_id) {
+    throw new Error('El contenedor no pertenece al cliente del expediente');
+  }
+  return shipment;
+}
+
+async function resolveScope(operation, body) {
+  const shipmentId = cleanUuid(body.shipment_id, 'Contenedor');
+  const requestedBol = cleanBol(body.bol_number);
+  if (shipmentId && requestedBol) {
+    throw new Error('Selecciona un B/L o un contenedor específico, no ambos');
+  }
+
+  if (shipmentId) {
+    const shipment = await validateShipment(operation, shipmentId);
+    return { shipment_id: shipment.id, bol_number: null, shipment };
+  }
+
+  if (requestedBol) {
+    const bolNumber = await validateBol(operation.id, requestedBol);
+    return { shipment_id: null, bol_number: bolNumber, shipment: null };
+  }
+
+  return { shipment_id: null, bol_number: null, shipment: null };
 }
 
 async function createSignedUpload(storagePath) {
@@ -193,15 +234,24 @@ async function listDocuments(operationId) {
   })));
 }
 
+function scopeVersionFilter(scope) {
+  if (scope.shipment_id) {
+    return `&shipment_id=eq.${encodeURIComponent(scope.shipment_id)}&bol_number=is.null`;
+  }
+  if (scope.bol_number) {
+    return `&shipment_id=is.null&bol_number=eq.${encodeURIComponent(scope.bol_number)}`;
+  }
+  return '&shipment_id=is.null&bol_number=is.null';
+}
+
 async function prepareUpload(body) {
   const operation = await getOperation(body.operation_id);
+  const scope = await resolveScope(operation, body);
   const documentType = cleanDocumentType(body.document_type);
   const fileName = cleanFileName(body.file_name);
   const mimeType = normalizedMime(fileName, body.mime_type);
   const fileSizeBytes = validateSize(body.file_size_bytes);
   const notes = cleanNotes(body.notes);
-  const requestedBol = cleanBol(body.bol_number);
-  const bolNumber = requestedBol ? await validateBol(operation.id, requestedBol) : null;
   const extension = fileExtension(fileName);
   const suffix = extension ? `.${extension}` : '';
   const storagePath = `operations/${operation.id}/${Date.now()}-${crypto.randomUUID()}${suffix}`;
@@ -209,12 +259,13 @@ async function prepareUpload(body) {
 
   return {
     operation,
+    shipment_id: scope.shipment_id,
+    bol_number: scope.bol_number,
     document_type: documentType,
     file_name: fileName,
     mime_type: mimeType,
     file_size_bytes: fileSizeBytes,
     notes,
-    bol_number: bolNumber,
     storage_path: storagePath,
     signed_url: signedUrl
   };
@@ -222,13 +273,12 @@ async function prepareUpload(body) {
 
 async function finalizeUpload(admin, body) {
   const operation = await getOperation(body.operation_id);
+  const scope = await resolveScope(operation, body);
   const documentType = cleanDocumentType(body.document_type);
   const fileName = cleanFileName(body.file_name);
   const mimeType = normalizedMime(fileName, body.mime_type);
   const fileSizeBytes = validateSize(body.file_size_bytes);
   const notes = cleanNotes(body.notes);
-  const requestedBol = cleanBol(body.bol_number);
-  const bolNumber = requestedBol ? await validateBol(operation.id, requestedBol) : null;
   const storagePath = String(body.storage_path || '').trim();
   const expectedPrefix = `operations/${operation.id}/`;
 
@@ -236,11 +286,8 @@ async function finalizeUpload(admin, body) {
     throw new Error('Ruta de documento inválida');
   }
 
-  const bolFilter = bolNumber
-    ? `&bol_number=eq.${encodeURIComponent(bolNumber)}`
-    : '&bol_number=is.null';
   const previous = await supabase('documents', {
-    query: `?select=version&operation_id=eq.${encodeURIComponent(operation.id)}&document_type=eq.${encodeURIComponent(documentType)}${bolFilter}&order=version.desc&limit=1`
+    query: `?select=version&operation_id=eq.${encodeURIComponent(operation.id)}&document_type=eq.${encodeURIComponent(documentType)}${scopeVersionFilter(scope)}&order=version.desc&limit=1`
   }) || [];
   const version = Number(previous[0]?.version || 0) + 1;
 
@@ -251,8 +298,8 @@ async function finalizeUpload(admin, body) {
       body: {
         operation_id: operation.id,
         client_id: operation.client_id,
-        shipment_id: null,
-        bol_number: bolNumber,
+        shipment_id: scope.shipment_id,
+        bol_number: scope.bol_number,
         document_type: documentType,
         file_name: fileName,
         storage_bucket: BUCKET,
@@ -271,7 +318,9 @@ async function finalizeUpload(admin, body) {
       operation_id: operation.id,
       operation_code: operation.operation_code,
       client_id: operation.client_id,
-      bol_number: bolNumber,
+      shipment_id: scope.shipment_id,
+      container_number: scope.shipment?.container_number || null,
+      bol_number: scope.bol_number,
       document_type: documentType,
       file_name: fileName,
       version
@@ -315,6 +364,7 @@ async function deleteDocument(admin, documentId) {
     operation_id: document.operation_id || null,
     operation_code: operation?.operation_code || null,
     client_id: document.client_id || null,
+    shipment_id: document.shipment_id || null,
     bol_number: document.bol_number || null,
     document_type: document.document_type,
     file_name: document.file_name,
@@ -346,6 +396,7 @@ export default async function handler(req, res) {
             signed_url: prepared.signed_url,
             storage_path: prepared.storage_path,
             operation_id: prepared.operation.id,
+            shipment_id: prepared.shipment_id,
             bol_number: prepared.bol_number,
             document_type: prepared.document_type,
             file_name: prepared.file_name,
