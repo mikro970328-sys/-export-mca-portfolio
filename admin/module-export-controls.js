@@ -30,10 +30,8 @@
   }
 
   function install() {
-    // Tracking is intentionally excluded. The global Exportar CSV control already
-    // exports shipments and Contenedores/Tracking keeps a single frontend owner.
+    // Tracking and Expedientes are intentionally excluded. Each owns its own UI.
     addToHeading('clientsSection', 'Clientes registrados', 'clients', 'Exportar clientes');
-    addToHeading('newOperationsSection', 'Expedientes', 'operations', 'Exportar expedientes');
     addToHeading('notificationsSection', 'Centro de notificaciones', 'notifications', 'Exportar historial');
   }
 
