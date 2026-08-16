@@ -46,20 +46,34 @@
       .exp-client{font-size:18px;font-weight:800;color:#06204a;margin-top:3px}
       .exp-stats{display:flex;gap:7px;flex-wrap:wrap;margin:13px 0}
       .exp-client-ready{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #e6ebf2;border-radius:10px;margin-top:8px}
-      .exp-section{margin-top:22px}
-      .exp-bl{border:1px solid #dfe5ee;border-radius:14px;padding:14px;margin-top:12px;background:#fbfcfe}
-      .exp-bl-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
-      .exp-container-list{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 12px}
-      .exp-container-doc{border-top:1px solid #dfe5ee;padding-top:12px;margin-top:12px}
-      .exp-container-doc-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
-      .exp-doc-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1.6fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #e6ebf2}
+      .exp-summary{border:1px solid #e3e8ef;border-radius:14px;padding:14px;background:#f8fafc;margin-top:14px}
+      .exp-summary-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+      .exp-summary-actions{display:flex;gap:8px;flex-wrap:wrap}
+      .exp-container-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+      .exp-section{margin-top:18px}
+      .exp-section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:8px}
+      .exp-folder{border:1px solid #dfe5ee;border-radius:12px;background:#fff;margin-top:10px;overflow:hidden}
+      .exp-folder-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px 14px}
+      .exp-folder-title{font-weight:800;color:#06204a;font-size:15px}
+      .exp-folder-meta{font-size:12px;color:#667085;margin-top:2px}
+      .exp-folder-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+      .exp-folder-body{border-top:1px solid #e7ebf0;padding:12px 14px;background:#fbfcfe}
+      .exp-doc-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,1.4fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid #e6ebf2}
+      .exp-doc-row:first-child{border-top:0}
       .exp-doc-actions{display:flex;gap:7px;justify-content:flex-end;flex-wrap:wrap}
-      .exp-available{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-top:10px}
+      .exp-container-line{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:12px;align-items:center;padding:11px 0;border-top:1px solid #e6ebf2}
+      .exp-container-line:first-child{border-top:0}
+      .exp-container-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+      .exp-container-files{margin:0 0 6px 18px;padding-left:12px;border-left:2px solid #e5eaf0}
+      .exp-manage-table-wrap{overflow:auto;margin-top:12px}
+      .exp-available{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;margin-top:10px}
       .exp-available-item{border:1px solid #e6ebf2;border-radius:10px;padding:10px}
+      .exp-upload-target{padding:10px 12px;border:1px solid #dfe5ee;border-radius:10px;background:#f8fafc;margin-bottom:12px}
+      .exp-backbar{display:flex;justify-content:flex-end;margin-top:14px}
       @media(max-width:700px){
         .exp-cards{grid-template-columns:1fr}
-        .exp-doc-row{grid-template-columns:1fr}
-        .exp-doc-actions{justify-content:flex-start}
+        .exp-folder-head,.exp-doc-row,.exp-container-line{grid-template-columns:1fr}
+        .exp-folder-actions,.exp-doc-actions,.exp-container-actions{justify-content:flex-start}
       }
     `;
     document.head.appendChild(style);
@@ -162,7 +176,7 @@
       <div class="toolbar">
         <div>
           <h2 class="section-title">Expedientes de exportación</h2>
-          <div class="muted">Cada expediente representa una compra o envío. Los archivos pueden ser generales, de un B/L o de un contenedor específico.</div>
+          <div class="muted">Un expediente por compra o envío. Los documentos quedan organizados por B/L y por contenedor.</div>
         </div>
         <button id="newExpediente" class="orange" type="button">Nuevo expediente</button>
       </div>
@@ -229,7 +243,7 @@
       if (clients.length) {
         ready = `<div class="exp-section">
           <h3 style="margin-bottom:4px">Clientes sin envío activo</h3>
-          <div class="muted">El cliente ya existe, pero todavía no tiene un expediente activo.</div>
+          <div class="muted">El cliente existe, pero todavía no tiene un expediente activo.</div>
           ${clients.map(client => `<div class="exp-client-ready">
             <div><b>${esc(client.name || 'Cliente')}</b>${client.company ? `<div class="muted">${esc(client.company)}</div>` : ''}</div>
             <button class="alt" type="button" data-start-client="${esc(client.id)}">Iniciar expediente</button>
@@ -309,68 +323,72 @@
     }
   }
 
-  function documentRow(document) {
+  function documentRow(item) {
     return `<div class="exp-doc-row">
-      <div><b>${esc(document.document_type || 'Documento')}</b>${document.notes ? `<div class="muted">${esc(document.notes)}</div>` : ''}</div>
-      <div>${esc(document.file_name || 'Archivo')}<div class="muted">v${esc(document.version || 1)} · ${esc(formatBytes(document.file_size_bytes))} · ${esc(formatDate(document.created_at))}</div></div>
+      <div><b>${esc(item.document_type || 'Documento')}</b>${item.notes ? `<div class="muted">${esc(item.notes)}</div>` : ''}</div>
+      <div>${esc(item.file_name || 'Archivo')}<div class="muted">v${esc(item.version || 1)} · ${esc(formatBytes(item.file_size_bytes))} · ${esc(formatDate(item.created_at))}</div></div>
       <div class="exp-doc-actions">
-        ${document.signed_url ? `<button class="alt" type="button" data-open-document="${esc(document.id)}">Abrir</button>` : ''}
-        <button class="danger" type="button" data-delete-document="${esc(document.id)}">Borrar</button>
+        ${item.signed_url ? `<button class="alt" type="button" data-open-document="${esc(item.id)}">Abrir</button>` : ''}
+        <button class="danger" type="button" data-delete-document="${esc(item.id)}">Borrar</button>
       </div>
     </div>`;
   }
 
   function documentBlock(documents, emptyText) {
-    return documents.length ? documents.map(documentRow).join('') : `<div class="muted" style="padding:8px 0">${esc(emptyText)}</div>`;
+    return documents.length ? documents.map(documentRow).join('') : `<div class="muted" style="padding:4px 0">${esc(emptyText)}</div>`;
   }
 
-  function assignedContainersHtml(operation) {
-    const shipments = operationShipments(operation);
-    if (!shipments.length) return '<div class="empty-state">Todavía no hay contenedores dentro de este expediente.</div>';
-    return `<table>
-      <thead><tr><th>Contenedor</th><th>Producto</th><th>B/L</th><th>Estado</th><th></th></tr></thead>
-      <tbody>${shipments.map(shipment => `<tr>
-        <td><b>${esc(shipment.container_number || '—')}</b></td>
-        <td>${esc(shipment.product || '—')}</td>
-        <td>${esc(shipment.bol_number || 'Pendiente')}</td>
-        <td>${esc(shipment.operational_status || shipment.last_status || 'Registrado')}</td>
-        <td><button class="alt" type="button" data-unassign-shipment="${esc(shipment.id)}">Quitar</button></td>
-      </tr>`).join('')}</tbody>
-    </table>`;
-  }
-
-  function availableContainersHtml(operation) {
-    const available = availableShipments(operation);
-    if (!available.length) return '<div class="muted">No hay otros contenedores de este cliente pendientes de asignar a un expediente.</div>';
-    return `<div class="exp-available">${available.map(shipment => `<div class="exp-available-item">
-      <b>${esc(shipment.container_number || 'Contenedor')}</b>
-      <div class="muted">${esc(shipment.product || 'Sin producto')} · B/L ${esc(shipment.bol_number || 'pendiente')}</div>
-      <button class="alt" style="margin-top:8px" type="button" data-assign-shipment="${esc(shipment.id)}">Agregar a este expediente</button>
-    </div>`).join('')}</div>`;
-  }
-
-  function containerDocumentsHtml(shipments, documents) {
-    return shipments.map(shipment => {
-      const ownDocuments = documents.filter(document => String(document.shipment_id || '') === String(shipment.id));
-      return `<div class="exp-container-doc">
-        <div class="exp-container-doc-head">
-          <div>
-            <div class="exp-code">Contenedor</div>
-            <b>${esc(shipment.container_number || '—')}</b>
-            <div class="muted">${esc(shipment.product || 'Sin producto')}</div>
-          </div>
-          <span class="pill">${ownDocuments.length} documento${ownDocuments.length === 1 ? '' : 's'} propio${ownDocuments.length === 1 ? '' : 's'}</span>
+  function folderHtml({ id, title, meta, documents, uploadScope, uploadLabel, children = '' }) {
+    return `<div class="exp-folder">
+      <div class="exp-folder-head">
+        <div>
+          <div class="exp-folder-title">${esc(title)}</div>
+          <div class="exp-folder-meta">${esc(meta)}</div>
         </div>
-        ${documentBlock(ownDocuments, 'Sin documentos exclusivos de este contenedor.')}
+        <div class="exp-folder-actions">
+          <span class="pill ${documents.length ? 'done' : ''}">${documents.length} archivo${documents.length === 1 ? '' : 's'}</span>
+          <button class="alt" type="button" data-toggle-folder="${esc(id)}">Ver</button>
+          ${uploadScope ? `<button class="orange" type="button" data-upload-scope="${esc(uploadScope)}" data-upload-label="${esc(uploadLabel || title)}">Subir</button>` : ''}
+        </div>
+      </div>
+      <div id="${esc(id)}" class="exp-folder-body hidden">
+        ${documentBlock(documents, 'Sin archivos cargados.')}
+        ${children}
+      </div>
+    </div>`;
+  }
+
+  function containerRowsHtml(shipments, documents) {
+    if (!shipments.length) return '<div class="muted">No hay contenedores en este grupo.</div>';
+    return shipments.map(shipment => {
+      const ownDocs = documents.filter(item => String(item.shipment_id || '') === String(shipment.id));
+      return `<div>
+        <div class="exp-container-line">
+          <div>
+            <b>${esc(shipment.container_number || '—')}</b>
+            <div class="muted">${esc(shipment.product || 'Sin producto')}${shipment.operational_status ? ` · ${esc(shipment.operational_status)}` : ''}</div>
+          </div>
+          <div class="exp-container-actions">
+            <span class="pill ${ownDocs.length ? 'done' : ''}">${ownDocs.length} archivo${ownDocs.length === 1 ? '' : 's'}</span>
+            <button class="orange" type="button" data-upload-scope="shipment:${esc(shipment.id)}" data-upload-label="Contenedor ${esc(shipment.container_number || '')}">Subir al contenedor</button>
+          </div>
+        </div>
+        ${ownDocs.length ? `<div class="exp-container-files">${ownDocs.map(documentRow).join('')}</div>` : ''}
       </div>`;
     }).join('');
   }
 
-  function blGroupsHtml(operation, documents) {
+  function documentFoldersHtml(operation, documents) {
     const shipments = operationShipments(operation);
-    if (!shipments.length && !documents.some(document => document.bol_number)) {
-      return '<div class="empty-state">La documentación por B/L y contenedor aparecerá cuando agregues contenedores al expediente.</div>';
-    }
+    const generalDocs = documents.filter(item => !item.bol_number && !item.shipment_id);
+    let html = folderHtml({
+      id: 'exp-folder-general',
+      title: 'General del expediente',
+      meta: 'Oferta, ficha técnica, permisos y documentos que aplican a todo el envío.',
+      documents: generalDocs,
+      uploadScope: 'general',
+      uploadLabel: 'General del expediente'
+    });
 
     const groups = new Map();
     shipments.forEach(shipment => {
@@ -379,10 +397,9 @@
       if (!groups.has(key)) groups.set(key, { bol: bol || null, shipments: [] });
       groups.get(key).shipments.push(shipment);
     });
-
-    documents.forEach(document => {
-      if (document.shipment_id || !document.bol_number) return;
-      const bol = String(document.bol_number).trim();
+    documents.forEach(item => {
+      if (item.shipment_id || !item.bol_number) return;
+      const bol = String(item.bol_number).trim();
       if (bol && !groups.has(bol)) groups.set(bol, { bol, shipments: [] });
     });
 
@@ -392,60 +409,40 @@
       return a.bol.localeCompare(b.bol);
     });
 
-    return ordered.map(group => {
-      if (!group.bol) {
-        return `<div class="exp-bl">
-          <div class="exp-bl-head">
-            <div><h3 style="margin:0">B/L pendiente</h3><div class="muted">Puedes cargar documentos directamente a cada contenedor aunque todavía no tenga B/L.</div></div>
-            <span class="pill">${group.shipments.length} contenedor${group.shipments.length === 1 ? '' : 'es'}</span>
-          </div>
-          ${containerDocumentsHtml(group.shipments, documents)}
-        </div>`;
-      }
+    ordered.forEach((group, index) => {
+      const sharedDocs = group.bol
+        ? documents.filter(item => !item.shipment_id && String(item.bol_number || '') === group.bol)
+        : [];
+      const containerDocCount = group.shipments.reduce((sum, shipment) => (
+        sum + documents.filter(item => String(item.shipment_id || '') === String(shipment.id)).length
+      ), 0);
+      const title = group.bol ? `B/L ${group.bol}` : 'Sin B/L';
+      const meta = group.bol
+        ? `${group.shipments.length} contenedor${group.shipments.length === 1 ? '' : 'es'} · ${containerDocCount} archivo${containerDocCount === 1 ? '' : 's'} en contenedores`
+        : `${group.shipments.length} contenedor${group.shipments.length === 1 ? '' : 'es'} pendientes de B/L`;
+      const childTitle = group.shipments.length ? '<div class="exp-code" style="margin:10px 0 2px">Contenedores</div>' : '';
+      html += folderHtml({
+        id: `exp-folder-bl-${index}`,
+        title,
+        meta,
+        documents: sharedDocs,
+        uploadScope: group.bol ? `bol:${group.bol}` : null,
+        uploadLabel: group.bol ? `B/L ${group.bol}` : null,
+        children: `${childTitle}${containerRowsHtml(group.shipments, documents)}`
+      });
+    });
 
-      const blDocs = documents.filter(document => !document.shipment_id && String(document.bol_number || '') === group.bol);
-      return `<div class="exp-bl">
-        <div class="exp-bl-head">
-          <div><div class="exp-code">B/L</div><h3 style="margin:2px 0 0">${esc(group.bol)}</h3></div>
-          <span class="pill">${group.shipments.length} contenedor${group.shipments.length === 1 ? '' : 'es'}</span>
-        </div>
-        <div class="exp-container-list">${group.shipments.length ? group.shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')}</span>`).join('') : '<span class="muted">B/L sin contenedor actualmente asociado</span>'}</div>
-        <div><b>Documentos del B/L</b>${documentBlock(blDocs, 'Todavía no hay documentos compartidos para este B/L.')}</div>
-        ${containerDocumentsHtml(group.shipments, documents)}
-      </div>`;
-    }).join('');
-  }
-
-  function uploadHtml(operation) {
-    const shipments = operationShipments(operation);
-    const bols = distinctBols(shipments);
-    const bolOptions = bols.map(bol => `<option value="bol:${esc(bol)}">B/L: ${esc(bol)}</option>`).join('');
-    const shipmentOptions = shipments.map(shipment => `<option value="shipment:${esc(shipment.id)}">Contenedor: ${esc(shipment.container_number || '—')}${shipment.bol_number ? ` · B/L ${esc(shipment.bol_number)}` : ' · B/L pendiente'}</option>`).join('');
-    const typeOptions = documentTypes.map(type => `<option value="${esc(type)}">${esc(type)}</option>`).join('');
-
-    return `<section class="card" style="box-shadow:none;margin-top:20px">
-      <h3 style="margin-top:0">Subir documento</h3>
-      <div class="muted" style="margin-bottom:10px">Nada es obligatorio. Elige si el archivo aplica al expediente completo, a un B/L o solamente a un contenedor.</div>
-      <div class="grid">
-        <div><label>Aplica a</label><select id="expDocumentScope">
-          <option value="general">General del expediente</option>
-          ${bolOptions ? `<optgroup label="Por B/L">${bolOptions}</optgroup>` : ''}
-          ${shipmentOptions ? `<optgroup label="Por contenedor">${shipmentOptions}</optgroup>` : ''}
-        </select></div>
-        <div><label>Tipo</label><select id="expDocumentType">${typeOptions}<option value="__other__">Otro documento...</option></select></div>
-        <div id="expCustomTypeWrap" class="hidden"><label>Nombre del documento</label><input id="expCustomType" maxlength="80" placeholder="Ej. Homologación Cuba"></div>
-        <div><label>Archivo</label><input id="expFile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.txt"></div>
-        <div><label>Nota opcional</label><input id="expDocumentNotes" maxlength="1000" placeholder="Ej. Factura final, ficha técnica aprobada..."></div>
-      </div>
-      <button id="uploadExpDocument" class="orange" style="margin-top:14px" type="button">Subir documento</button>
-      <div id="expUploadMsg" class="msg"></div>
-    </section>`;
+    if (!ordered.length) {
+      html += '<div class="empty-state" style="margin-top:10px">Cuando asignes contenedores, aquí aparecerán organizados por B/L.</div>';
+    }
+    return html;
   }
 
   function expedienteHtml(operation, documents) {
     const client = clientForOperation(operation);
-    const generalDocs = documents.filter(document => !document.bol_number && !document.shipment_id);
+    const shipments = operationShipments(operation);
     const delivered = isDelivered(operation);
+    const bols = distinctBols(shipments);
     return `<section>
       <div class="toolbar">
         <div>
@@ -453,38 +450,105 @@
           <h2 style="margin:3px 0">${esc(client?.name || 'Cliente')}</h2>
           <div class="muted">${esc(client?.company || '')}</div>
         </div>
-        <div class="actions">
-          <span class="pill ${delivered ? 'done' : ''}">${esc(statusLabel(operation))}</span>
-          <button id="toggleExpDelivered" class="${delivered ? 'alt' : 'orange'}" type="button">${delivered ? 'Reabrir expediente' : 'Marcar entregado'}</button>
+        <span class="pill ${delivered ? 'done' : ''}">${esc(statusLabel(operation))}</span>
+      </div>
+
+      <div class="exp-summary">
+        <div class="exp-summary-top">
+          <div class="exp-stats" style="margin:0">
+            <span class="pill">${shipments.length} contenedor${shipments.length === 1 ? '' : 'es'}</span>
+            <span class="pill">${bols.length} B/L</span>
+            <span class="pill ${documents.length ? 'done' : ''}">${documents.length} documento${documents.length === 1 ? '' : 's'}</span>
+          </div>
+          <div class="exp-summary-actions">
+            <button id="manageExpContainers" class="alt" type="button">Gestionar contenedores</button>
+            <button id="toggleExpDelivered" class="${delivered ? 'alt' : 'orange'}" type="button">${delivered ? 'Reabrir expediente' : 'Marcar entregado'}</button>
+          </div>
+        </div>
+        ${shipments.length ? `<div class="exp-container-chips">${shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')}</span>`).join('')}</div>` : '<div class="muted" style="margin-top:8px">Todavía no hay contenedores asignados.</div>'}
+        ${operation.notes ? `<div class="muted" style="margin-top:8px">${esc(operation.notes)}</div>` : ''}
+      </div>
+    </section>
+
+    <section class="exp-section">
+      <div class="exp-section-title">
+        <div>
+          <h3 style="margin:0">Documentos</h3>
+          <div class="muted">Abre solo la carpeta que necesites. Nada es obligatorio.</div>
         </div>
       </div>
-      ${operation.notes ? `<div class="muted" style="margin-top:10px">${esc(operation.notes)}</div>` : ''}
+      ${documentFoldersHtml(operation, documents)}
     </section>
-
-    <section class="exp-section">
-      <h3>Contenedores de este envío</h3>
-      ${assignedContainersHtml(operation)}
-      <div style="margin-top:14px"><b>Contenedores disponibles del cliente</b>${availableContainersHtml(operation)}</div>
-    </section>
-
-    <section class="exp-section">
-      <h3>Documentos generales</h3>
-      <div class="muted">Oferta, ficha técnica, permisos u otros archivos que aplican a todo el expediente.</div>
-      <div style="margin-top:8px">${documentBlock(generalDocs, 'Todavía no hay documentos generales.')}</div>
-    </section>
-
-    <section class="exp-section">
-      <h3>Documentación por B/L y contenedor</h3>
-      <div class="muted">Los documentos comunes se guardan en el B/L. Los que pertenecen solo a un contenedor quedan dentro de ese contenedor, tenga o no B/L.</div>
-      ${blGroupsHtml(operation, documents)}
-    </section>
-
-    ${uploadHtml(operation)}
     <div id="expDocumentsMsg" class="msg"></div>`;
   }
 
+  function manageContainersHtml(operation) {
+    const assigned = operationShipments(operation);
+    const available = availableShipments(operation);
+    return `<div>
+      <div class="toolbar">
+        <div>
+          <div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div>
+          <h3 style="margin:3px 0">Gestionar contenedores</h3>
+        </div>
+        <button id="backToExpediente" class="alt" type="button">Volver al expediente</button>
+      </div>
+
+      <div class="exp-section">
+        <b>Asignados</b>
+        ${assigned.length ? `<div class="exp-manage-table-wrap"><table>
+          <thead><tr><th>Contenedor</th><th>Producto</th><th>B/L</th><th></th></tr></thead>
+          <tbody>${assigned.map(shipment => `<tr>
+            <td><b>${esc(shipment.container_number || '—')}</b></td>
+            <td>${esc(shipment.product || '—')}</td>
+            <td>${esc(shipment.bol_number || 'Pendiente')}</td>
+            <td><button class="alt" type="button" data-unassign-shipment="${esc(shipment.id)}">Quitar</button></td>
+          </tr>`).join('')}</tbody>
+        </table></div>` : '<div class="muted" style="margin-top:8px">No hay contenedores asignados.</div>'}
+      </div>
+
+      <div class="exp-section">
+        <b>Disponibles de este cliente</b>
+        ${available.length ? `<div class="exp-available">${available.map(shipment => `<div class="exp-available-item">
+          <b>${esc(shipment.container_number || 'Contenedor')}</b>
+          <div class="muted">${esc(shipment.product || 'Sin producto')} · B/L ${esc(shipment.bol_number || 'pendiente')}</div>
+          <button class="orange" style="margin-top:8px" type="button" data-assign-shipment="${esc(shipment.id)}">Agregar</button>
+        </div>`).join('')}</div>` : '<div class="muted" style="margin-top:8px">No hay otros contenedores disponibles de este cliente.</div>'}
+      </div>
+    </div>`;
+  }
+
+  function uploadHtml(target) {
+    const typeOptions = documentTypes.map(type => `<option value="${esc(type)}">${esc(type)}</option>`).join('');
+    return `<div>
+      <div class="toolbar">
+        <div>
+          <h3 style="margin:0">Subir documento</h3>
+          <div class="muted">Nada es obligatorio.</div>
+        </div>
+        <button id="backToExpediente" class="alt" type="button">Volver al expediente</button>
+      </div>
+      <div class="exp-upload-target"><div class="exp-code">Guardar en</div><b>${esc(target.label)}</b></div>
+      <div class="grid">
+        <div><label>Tipo</label><select id="expDocumentType">${typeOptions}<option value="__other__">Otro documento...</option></select></div>
+        <div id="expCustomTypeWrap" class="hidden"><label>Nombre del documento</label><input id="expCustomType" maxlength="80" placeholder="Ej. Homologación Cuba"></div>
+        <div><label>Archivo</label><input id="expFile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.txt"></div>
+        <div><label>Nota opcional</label><input id="expDocumentNotes" maxlength="1000" placeholder="Ej. Factura final, ficha técnica aprobada..."></div>
+      </div>
+      <button id="uploadExpDocument" class="orange" style="margin-top:14px" type="button">Subir documento</button>
+      <div id="expUploadMsg" class="msg"></div>
+    </div>`;
+  }
+
+  function scopeFromValue(value, label) {
+    const scope = String(value || 'general');
+    if (scope.startsWith('bol:')) return { bol_number: scope.slice(4), shipment_id: null, label };
+    if (scope.startsWith('shipment:')) return { bol_number: null, shipment_id: scope.slice(9), label };
+    return { bol_number: null, shipment_id: null, label: label || 'General del expediente' };
+  }
+
   function bindDocumentActions(operation, documents) {
-    const map = new Map(documents.map(document => [String(document.id), document]));
+    const map = new Map(documents.map(item => [String(item.id), item]));
     document.querySelectorAll('[data-open-document]').forEach(button => {
       button.onclick = () => {
         const item = map.get(String(button.dataset.openDocument));
@@ -504,19 +568,22 @@
 
     const statusButton = byId('toggleExpDelivered');
     if (statusButton) statusButton.onclick = () => setOperationStatus(operation, isDelivered(operation) ? 'draft' : 'delivered');
+    const manageButton = byId('manageExpContainers');
+    if (manageButton) manageButton.onclick = () => openManageContainers(operation.id);
 
-    document.querySelectorAll('[data-assign-shipment]').forEach(button => {
-      button.onclick = () => assignShipment(operation, button.dataset.assignShipment, button);
-    });
-    document.querySelectorAll('[data-unassign-shipment]').forEach(button => {
-      button.onclick = () => unassignShipment(operation, button.dataset.unassignShipment, button);
+    document.querySelectorAll('[data-toggle-folder]').forEach(button => {
+      button.onclick = () => {
+        const body = byId(button.dataset.toggleFolder);
+        if (!body) return;
+        const opening = body.classList.contains('hidden');
+        body.classList.toggle('hidden', !opening);
+        button.textContent = opening ? 'Cerrar' : 'Ver';
+      };
     });
 
-    const type = byId('expDocumentType');
-    const custom = byId('expCustomTypeWrap');
-    if (type && custom) type.onchange = () => custom.classList.toggle('hidden', type.value !== '__other__');
-    const uploadButton = byId('uploadExpDocument');
-    if (uploadButton) uploadButton.onclick = () => uploadDocument(operation);
+    document.querySelectorAll('[data-upload-scope]').forEach(button => {
+      button.onclick = () => openUploadModal(operation, scopeFromValue(button.dataset.uploadScope, button.dataset.uploadLabel));
+    });
   }
 
   async function openExpediente(operationId) {
@@ -536,10 +603,33 @@
     }
   }
 
-  async function refreshAndReopen(operationId) {
-    if (typeof window.loadAll === 'function') await window.loadAll();
-    await loadData();
-    await openExpediente(operationId);
+  async function openManageContainers(operationId) {
+    try {
+      const result = await api(`/api/operations?id=${encodeURIComponent(operationId)}`);
+      const operation = result.operation;
+      if (!operation) throw new Error('Expediente no encontrado');
+      window.openModal(`Contenedores · ${operation.operation_code || ''}`, manageContainersHtml(operation));
+      byId('backToExpediente')?.addEventListener('click', () => openExpediente(operation.id), { once: true });
+      document.querySelectorAll('[data-assign-shipment]').forEach(button => {
+        button.onclick = () => assignShipment(operation, button.dataset.assignShipment, button);
+      });
+      document.querySelectorAll('[data-unassign-shipment]').forEach(button => {
+        button.onclick = () => unassignShipment(operation, button.dataset.unassignShipment, button);
+      });
+    } catch (error) {
+      alert(error.message || 'No se pudieron gestionar los contenedores.');
+    }
+  }
+
+  function openUploadModal(operation, target) {
+    if (typeof window.openModal !== 'function') return;
+    window.openModal(`Subir documento · ${operation.operation_code || ''}`, uploadHtml(target));
+    byId('backToExpediente')?.addEventListener('click', () => openExpediente(operation.id), { once: true });
+    const type = byId('expDocumentType');
+    const custom = byId('expCustomTypeWrap');
+    if (type && custom) type.onchange = () => custom.classList.toggle('hidden', type.value !== '__other__');
+    const uploadButton = byId('uploadExpDocument');
+    if (uploadButton) uploadButton.onclick = () => uploadDocument(operation, target);
   }
 
   async function assignShipment(operation, shipmentId, button) {
@@ -550,7 +640,9 @@
         method: 'PATCH',
         body: JSON.stringify({ action: 'assign_shipment', operation_id: operation.id, shipment_id: shipmentId })
       });
-      await refreshAndReopen(operation.id);
+      if (typeof window.loadAll === 'function') await window.loadAll();
+      await loadData();
+      await openManageContainers(operation.id);
     } catch (error) {
       if (button) button.disabled = false;
       alert(error.message || 'No se pudo agregar el contenedor.');
@@ -566,7 +658,9 @@
         method: 'PATCH',
         body: JSON.stringify({ action: 'unassign_shipment', operation_id: operation.id, shipment_id: shipmentId })
       });
-      await refreshAndReopen(operation.id);
+      if (typeof window.loadAll === 'function') await window.loadAll();
+      await loadData();
+      await openManageContainers(operation.id);
     } catch (error) {
       if (button) button.disabled = false;
       alert(error.message || 'No se pudo quitar el contenedor.');
@@ -607,7 +701,7 @@
       textMessage(byId('expDocumentsMsg'), 'Documento eliminado correctamente.', 'ok');
     } catch (error) {
       if (button && document.body.contains(button)) button.disabled = false;
-      textMessage(byId('expDocumentsMsg'), error.message || 'No se pudo eliminar el documento.', 'bad');
+      alert(error.message || 'No se pudo eliminar el documento.');
     }
   }
 
@@ -621,17 +715,9 @@
     } catch {}
   }
 
-  function parseDocumentScope(value) {
-    const scope = String(value || 'general');
-    if (scope.startsWith('bol:')) return { bol_number: scope.slice(4), shipment_id: null };
-    if (scope.startsWith('shipment:')) return { bol_number: null, shipment_id: scope.slice(9) };
-    return { bol_number: null, shipment_id: null };
-  }
-
-  async function uploadDocument(operation) {
+  async function uploadDocument(operation, target) {
     const typeSelect = byId('expDocumentType');
     const customType = byId('expCustomType');
-    const scope = parseDocumentScope(byId('expDocumentScope')?.value);
     const file = byId('expFile')?.files?.[0];
     const notes = byId('expDocumentNotes')?.value || '';
     const button = byId('uploadExpDocument');
@@ -651,8 +737,8 @@
         body: JSON.stringify({
           action: 'prepare_upload',
           operation_id: operation.id,
-          bol_number: scope.bol_number,
-          shipment_id: scope.shipment_id,
+          bol_number: target.bol_number,
+          shipment_id: target.shipment_id,
           document_type: selectedType,
           file_name: file.name,
           mime_type: file.type,
@@ -694,7 +780,6 @@
 
       await loadData();
       await openExpediente(operation.id);
-      textMessage(byId('expUploadMsg'), 'Documento cargado correctamente.', 'ok');
     } catch (error) {
       if (msg && document.body.contains(msg)) textMessage(msg, error.message, 'bad');
       else alert(error.message);
