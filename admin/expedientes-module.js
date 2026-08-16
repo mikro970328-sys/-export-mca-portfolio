@@ -52,19 +52,24 @@
       .exp-container-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
       .exp-section{margin-top:18px}
       .exp-section-title{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:8px}
-      .exp-folder{border:1px solid #dfe5ee;border-radius:12px;background:#fff;margin-top:10px;overflow:hidden}
-      .exp-folder-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px 14px}
-      .exp-folder-title{font-weight:800;color:#06204a;font-size:15px}
-      .exp-folder-meta{font-size:12px;color:#667085;margin-top:2px}
+      .exp-folder{border:1px solid #dfe5ee;border-radius:12px;background:#fff;margin-top:12px;overflow:hidden}
+      .exp-folder-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 16px}
+      .exp-folder-title{display:flex;align-items:center;gap:9px;font-weight:800;color:#06204a;font-size:15px}
+      .exp-folder-arrow{display:inline-flex;width:18px;justify-content:center;font-size:12px;color:#667085;font-weight:900}
+      .exp-folder-meta{font-size:12px;color:#667085;margin:3px 0 0 27px}
       .exp-folder-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
-      .exp-folder-body{border-top:1px solid #e7ebf0;padding:12px 14px;background:#fbfcfe}
+      .exp-folder-body{margin:0 14px 14px 38px;border:1px solid #dfe5ee;border-left:4px solid #cbd5e1;border-radius:10px;padding:12px 14px;background:#f8fafc}
+      .exp-group-label{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:#475467;margin:12px 0 8px}
+      .exp-group-label .arrow{font-size:16px;color:#98a2b3}
       .exp-doc-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,1.4fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid #e6ebf2}
       .exp-doc-row:first-child{border-top:0}
       .exp-doc-actions{display:flex;gap:7px;justify-content:flex-end;flex-wrap:wrap}
-      .exp-container-line{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:12px;align-items:center;padding:11px 0;border-top:1px solid #e6ebf2}
-      .exp-container-line:first-child{border-top:0}
+      .exp-container-card{margin-top:9px;padding:11px 12px;border:1px solid #e1e7ef;border-radius:10px;background:#fff}
+      .exp-container-belongs{font-size:11px;font-weight:800;color:#667085;text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px}
+      .exp-container-line{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:12px;align-items:center}
       .exp-container-actions{display:flex;gap:7px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
-      .exp-container-files{margin:0 0 6px 18px;padding-left:12px;border-left:2px solid #e5eaf0}
+      .exp-container-files{margin:9px 0 0 18px;padding:4px 0 0 12px;border-left:2px solid #d0d5dd}
+      .exp-delivered-note{font-size:12px;color:#667085;margin-top:9px}
       .exp-manage-table-wrap{overflow:auto;margin-top:12px}
       .exp-available{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;margin-top:10px}
       .exp-available-item{border:1px solid #e6ebf2;border-radius:10px;padding:10px}
@@ -74,6 +79,8 @@
         .exp-cards{grid-template-columns:1fr}
         .exp-folder-head,.exp-doc-row,.exp-container-line{grid-template-columns:1fr}
         .exp-folder-actions,.exp-doc-actions,.exp-container-actions{justify-content:flex-start}
+        .exp-folder-body{margin-left:18px}
+        .exp-folder-meta{margin-left:27px}
       }
     `;
     document.head.appendChild(style);
@@ -87,28 +94,56 @@
     return Array.isArray(window.shipments) ? window.shipments : [];
   }
 
-  function operationShipments(operation) {
+  function allOperationShipments(operation) {
     if (Array.isArray(operation?.shipments)) return operation.shipments;
     return allShipments().filter(shipment => String(shipment.operation_id || '') === String(operation?.id || ''));
+  }
+
+  function normalizedTrackingStatus(shipment) {
+    return `${shipment?.operational_status || ''} ${shipment?.last_status || ''}`.trim().toLowerCase();
+  }
+
+  function isShipmentDelivered(shipment) {
+    const status = normalizedTrackingStatus(shipment);
+    return status.includes('entregado') || status.includes('delivered');
+  }
+
+  function isDelivered(operation) {
+    return operation?.status === 'delivered' || operation?.status === 'closed';
+  }
+
+  function operationShipments(operation) {
+    const shipments = allOperationShipments(operation);
+    if (isDelivered(operation)) return shipments;
+    return shipments.filter(shipment => !isShipmentDelivered(shipment));
   }
 
   function operationDocuments(operationId) {
     return state.documents.filter(document => String(document.operation_id || '') === String(operationId));
   }
 
+  function visibleDocuments(operation, documents) {
+    if (isDelivered(operation)) return documents;
+    const visibleShipments = operationShipments(operation);
+    const shipmentIds = new Set(visibleShipments.map(shipment => String(shipment.id)));
+    const bolNumbers = new Set(visibleShipments.map(shipment => String(shipment.bol_number || '').trim()).filter(Boolean));
+    return documents.filter(item => {
+      if (item.shipment_id) return shipmentIds.has(String(item.shipment_id));
+      if (item.bol_number) return bolNumbers.has(String(item.bol_number).trim());
+      return true;
+    });
+  }
+
   function availableShipments(operation) {
     return allShipments().filter(shipment =>
       String(shipment.client_id || '') === String(operation.client_id || '') &&
-      !shipment.operation_id
+      !shipment.operation_id &&
+      !isShipmentDelivered(shipment)
     );
   }
 
   function clientForOperation(operation) {
     return operation?.client || allClients().find(client => String(client.id) === String(operation?.client_id)) || null;
-  }
-
-  function isDelivered(operation) {
-    return operation?.status === 'delivered' || operation?.status === 'closed';
   }
 
   function distinctBols(shipments) {
@@ -128,13 +163,19 @@
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  function normalizedTrackingStatus(shipment) {
-    return `${shipment?.operational_status || ''} ${shipment?.last_status || ''}`.trim().toLowerCase();
+  function containerCountLabel(operation, count) {
+    if (isDelivered(operation)) return `${count} contenedor${count === 1 ? '' : 'es'}`;
+    return `${count} contenedor${count === 1 ? '' : 'es'} activo${count === 1 ? '' : 's'}`;
+  }
+
+  function hiddenDeliveredCount(operation) {
+    if (isDelivered(operation)) return 0;
+    return allOperationShipments(operation).filter(isShipmentDelivered).length;
   }
 
   function statusLabel(operation) {
     if (isDelivered(operation)) return 'Entregado';
-    const shipments = operationShipments(operation);
+    const shipments = allOperationShipments(operation);
     if (shipments.length) {
       const statuses = shipments.map(normalizedTrackingStatus);
       if (statuses.every(status => status.includes('entregado') || status.includes('delivered'))) return 'Listo para archivar';
@@ -204,8 +245,9 @@
   function operationCard(operation) {
     const client = clientForOperation(operation);
     const shipments = operationShipments(operation);
-    const documents = operationDocuments(operation.id);
+    const documents = visibleDocuments(operation, operationDocuments(operation.id));
     const bols = distinctBols(shipments);
+    const hiddenDelivered = hiddenDeliveredCount(operation);
     return `<article class="exp-card">
       <div class="exp-card-head">
         <div>
@@ -216,10 +258,11 @@
         <span class="pill ${isDelivered(operation) ? 'done' : ''}">${esc(statusLabel(operation))}</span>
       </div>
       <div class="exp-stats">
-        <span class="pill">${shipments.length} contenedor${shipments.length === 1 ? '' : 'es'}</span>
+        <span class="pill">${esc(containerCountLabel(operation, shipments.length))}</span>
         <span class="pill">${bols.length} B/L</span>
         <span class="pill ${documents.length ? 'done' : ''}">${documents.length} documento${documents.length === 1 ? '' : 's'}</span>
       </div>
+      ${hiddenDelivered ? `<div class="muted" style="margin-bottom:10px">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} entregado${hiddenDelivered === 1 ? '' : 's'} oculto${hiddenDelivered === 1 ? '' : 's'} de la vista activa.</div>` : ''}
       <button class="alt" type="button" data-open-expediente="${esc(operation.id)}">Abrir expediente</button>
     </article>`;
   }
@@ -342,12 +385,12 @@
     return `<div class="exp-folder">
       <div class="exp-folder-head">
         <div>
-          <div class="exp-folder-title">${esc(title)}</div>
+          <div class="exp-folder-title"><span id="${esc(id)}-arrow" class="exp-folder-arrow">▶</span><span>${esc(title)}</span></div>
           <div class="exp-folder-meta">${esc(meta)}</div>
         </div>
         <div class="exp-folder-actions">
           <span class="pill ${documents.length ? 'done' : ''}">${documents.length} archivo${documents.length === 1 ? '' : 's'}</span>
-          <button class="alt" type="button" data-toggle-folder="${esc(id)}">Ver</button>
+          <button class="alt" type="button" data-toggle-folder="${esc(id)}">Abrir</button>
           ${uploadScope ? `<button class="orange" type="button" data-upload-scope="${esc(uploadScope)}" data-upload-label="${esc(uploadLabel || title)}">Subir</button>` : ''}
         </div>
       </div>
@@ -358,11 +401,12 @@
     </div>`;
   }
 
-  function containerRowsHtml(shipments, documents) {
+  function containerRowsHtml(shipments, documents, groupLabel) {
     if (!shipments.length) return '<div class="muted">No hay contenedores en este grupo.</div>';
     return shipments.map(shipment => {
       const ownDocs = documents.filter(item => String(item.shipment_id || '') === String(shipment.id));
-      return `<div>
+      return `<div class="exp-container-card">
+        <div class="exp-container-belongs">${esc(groupLabel)}</div>
         <div class="exp-container-line">
           <div>
             <b>${esc(shipment.container_number || '—')}</b>
@@ -378,8 +422,9 @@
     }).join('');
   }
 
-  function documentFoldersHtml(operation, documents) {
+  function documentFoldersHtml(operation, allDocuments) {
     const shipments = operationShipments(operation);
+    const documents = visibleDocuments(operation, allDocuments);
     const generalDocs = documents.filter(item => !item.bol_number && !item.shipment_id);
     let html = folderHtml({
       id: 'exp-folder-general',
@@ -420,7 +465,10 @@
       const meta = group.bol
         ? `${group.shipments.length} contenedor${group.shipments.length === 1 ? '' : 'es'} · ${containerDocCount} archivo${containerDocCount === 1 ? '' : 's'} en contenedores`
         : `${group.shipments.length} contenedor${group.shipments.length === 1 ? '' : 'es'} pendientes de B/L`;
-      const childTitle = group.shipments.length ? '<div class="exp-code" style="margin:10px 0 2px">Contenedores</div>' : '';
+      const childTitle = group.shipments.length
+        ? `<div class="exp-group-label"><span class="arrow">↳</span><span>${group.bol ? 'Contenedores dentro de este B/L' : 'Contenedores todavía sin B/L'}</span></div>`
+        : '';
+      const groupLabel = group.bol ? `Pertenece al B/L ${group.bol}` : 'Pendiente de B/L';
       html += folderHtml({
         id: `exp-folder-bl-${index}`,
         title,
@@ -428,21 +476,23 @@
         documents: sharedDocs,
         uploadScope: group.bol ? `bol:${group.bol}` : null,
         uploadLabel: group.bol ? `B/L ${group.bol}` : null,
-        children: `${childTitle}${containerRowsHtml(group.shipments, documents)}`
+        children: `${childTitle}${containerRowsHtml(group.shipments, documents, groupLabel)}`
       });
     });
 
     if (!ordered.length) {
-      html += '<div class="empty-state" style="margin-top:10px">Cuando asignes contenedores, aquí aparecerán organizados por B/L.</div>';
+      html += '<div class="empty-state" style="margin-top:10px">Cuando asignes contenedores activos, aquí aparecerán organizados por B/L.</div>';
     }
     return html;
   }
 
-  function expedienteHtml(operation, documents) {
+  function expedienteHtml(operation, allDocuments) {
     const client = clientForOperation(operation);
     const shipments = operationShipments(operation);
+    const documents = visibleDocuments(operation, allDocuments);
     const delivered = isDelivered(operation);
     const bols = distinctBols(shipments);
+    const hiddenDelivered = hiddenDeliveredCount(operation);
     return `<section>
       <div class="toolbar">
         <div>
@@ -456,7 +506,7 @@
       <div class="exp-summary">
         <div class="exp-summary-top">
           <div class="exp-stats" style="margin:0">
-            <span class="pill">${shipments.length} contenedor${shipments.length === 1 ? '' : 'es'}</span>
+            <span class="pill">${esc(containerCountLabel(operation, shipments.length))}</span>
             <span class="pill">${bols.length} B/L</span>
             <span class="pill ${documents.length ? 'done' : ''}">${documents.length} documento${documents.length === 1 ? '' : 's'}</span>
           </div>
@@ -465,7 +515,8 @@
             <button id="toggleExpDelivered" class="${delivered ? 'alt' : 'orange'}" type="button">${delivered ? 'Reabrir expediente' : 'Marcar entregado'}</button>
           </div>
         </div>
-        ${shipments.length ? `<div class="exp-container-chips">${shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')}</span>`).join('')}</div>` : '<div class="muted" style="margin-top:8px">Todavía no hay contenedores asignados.</div>'}
+        ${shipments.length ? `<div class="exp-container-chips">${shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')}</span>`).join('')}</div>` : '<div class="muted" style="margin-top:8px">No quedan contenedores activos en este expediente.</div>'}
+        ${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} ya entregado${hiddenDelivered === 1 ? '' : 's'} se oculta${hiddenDelivered === 1 ? '' : 'n'} automáticamente de esta vista activa.</div>` : ''}
         ${operation.notes ? `<div class="muted" style="margin-top:8px">${esc(operation.notes)}</div>` : ''}
       </div>
     </section>
@@ -474,10 +525,10 @@
       <div class="exp-section-title">
         <div>
           <h3 style="margin:0">Documentos</h3>
-          <div class="muted">Abre solo la carpeta que necesites. Nada es obligatorio.</div>
+          <div class="muted">Cada B/L funciona como una carpeta. Ábrela para ver claramente qué contenedores están dentro.</div>
         </div>
       </div>
-      ${documentFoldersHtml(operation, documents)}
+      ${documentFoldersHtml(operation, allDocuments)}
     </section>
     <div id="expDocumentsMsg" class="msg"></div>`;
   }
@@ -485,6 +536,7 @@
   function manageContainersHtml(operation) {
     const assigned = operationShipments(operation);
     const available = availableShipments(operation);
+    const hiddenDelivered = hiddenDeliveredCount(operation);
     return `<div>
       <div class="toolbar">
         <div>
@@ -494,8 +546,10 @@
         <button id="backToExpediente" class="alt" type="button">Volver al expediente</button>
       </div>
 
+      ${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} entregado${hiddenDelivered === 1 ? '' : 's'} no aparece${hiddenDelivered === 1 ? '' : 'n'} aquí para no acumular el expediente activo.</div>` : ''}
+
       <div class="exp-section">
-        <b>Asignados</b>
+        <b>Asignados activos</b>
         ${assigned.length ? `<div class="exp-manage-table-wrap"><table>
           <thead><tr><th>Contenedor</th><th>Producto</th><th>B/L</th><th></th></tr></thead>
           <tbody>${assigned.map(shipment => `<tr>
@@ -504,7 +558,7 @@
             <td>${esc(shipment.bol_number || 'Pendiente')}</td>
             <td><button class="alt" type="button" data-unassign-shipment="${esc(shipment.id)}">Quitar</button></td>
           </tr>`).join('')}</tbody>
-        </table></div>` : '<div class="muted" style="margin-top:8px">No hay contenedores asignados.</div>'}
+        </table></div>` : '<div class="muted" style="margin-top:8px">No hay contenedores activos asignados.</div>'}
       </div>
 
       <div class="exp-section">
@@ -513,7 +567,7 @@
           <b>${esc(shipment.container_number || 'Contenedor')}</b>
           <div class="muted">${esc(shipment.product || 'Sin producto')} · B/L ${esc(shipment.bol_number || 'pendiente')}</div>
           <button class="orange" style="margin-top:8px" type="button" data-assign-shipment="${esc(shipment.id)}">Agregar</button>
-        </div>`).join('')}</div>` : '<div class="muted" style="margin-top:8px">No hay otros contenedores disponibles de este cliente.</div>'}
+        </div>`).join('')}</div>` : '<div class="muted" style="margin-top:8px">No hay otros contenedores activos disponibles de este cliente.</div>'}
       </div>
     </div>`;
   }
@@ -577,7 +631,9 @@
         if (!body) return;
         const opening = body.classList.contains('hidden');
         body.classList.toggle('hidden', !opening);
-        button.textContent = opening ? 'Cerrar' : 'Ver';
+        button.textContent = opening ? 'Cerrar' : 'Abrir';
+        const arrow = byId(`${button.dataset.toggleFolder}-arrow`);
+        if (arrow) arrow.textContent = opening ? '▼' : '▶';
       };
     });
 
