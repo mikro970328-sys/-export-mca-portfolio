@@ -31,20 +31,6 @@
     'Fotos del producto / embalaje'
   ];
 
-  const statusLabels = {
-    draft: 'Preparación',
-    quoted: 'Cotización',
-    confirmed: 'Confirmado',
-    purchased: 'Comprado',
-    booked: 'Booked',
-    in_transit: 'En tránsito',
-    at_destination: 'En destino',
-    released: 'Liberado',
-    delivered: 'Entregado',
-    closed: 'Entregado',
-    cancelled: 'Cancelado'
-  };
-
   function installStyles() {
     if (byId('expedientesModuleStyles')) return;
     const style = document.createElement('style');
@@ -141,8 +127,23 @@
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
+  function normalizedTrackingStatus(shipment) {
+    return `${shipment?.operational_status || ''} ${shipment?.last_status || ''}`.trim().toLowerCase();
+  }
+
   function statusLabel(operation) {
-    return statusLabels[operation?.status] || 'Preparación';
+    if (isDelivered(operation)) return 'Entregado';
+    const shipments = operationShipments(operation);
+    if (shipments.length) {
+      const statuses = shipments.map(normalizedTrackingStatus);
+      if (statuses.every(status => status.includes('entregado') || status.includes('delivered'))) return 'Listo para archivar';
+      if (statuses.some(status => status.includes('liberado') || status.includes('released'))) return 'Liberado';
+      if (statuses.some(status => status.includes('arrib') || status.includes('destino') || status.includes('descarg') || status.includes('discharg'))) return 'En destino';
+      if (statuses.some(status => status.includes('tránsito') || status.includes('transit') || status.includes('salid') || status.includes('depart'))) return 'En tránsito';
+      return 'Contenedores asignados';
+    }
+    const hasOffer = operationDocuments(operation.id).some(document => String(document.document_type || '').trim().toLowerCase() === 'oferta');
+    return hasOffer ? 'Cotización' : 'Preparación';
   }
 
   function matchesSearch(operation) {
@@ -294,7 +295,8 @@
   function openNewExpediente(selectedClientId = '') {
     if (typeof window.openModal !== 'function') return;
     window.openModal('Nuevo expediente de exportación', newExpedienteHtml(selectedClientId));
-    byId('createExpediente')?.addEventListener('click', createExpediente, { once: true });
+    const button = byId('createExpediente');
+    if (button) button.onclick = createExpediente;
   }
 
   async function createExpediente() {
@@ -303,6 +305,7 @@
     const button = byId('createExpediente');
     const msg = byId('newExpedienteMsg');
     if (!clientId) return textMessage(msg, 'Selecciona un cliente.', 'bad');
+    if (button?.disabled) return;
     if (button) button.disabled = true;
     textMessage(msg, 'Creando expediente...');
     try {
@@ -462,9 +465,8 @@
   function bindExpedienteActions(operation, documents) {
     bindDocumentActions(operation, documents);
 
-    byId('toggleExpDelivered')?.addEventListener('click', () => {
-      setOperationStatus(operation, isDelivered(operation) ? 'draft' : 'delivered');
-    }, { once: true });
+    const statusButton = byId('toggleExpDelivered');
+    if (statusButton) statusButton.onclick = () => setOperationStatus(operation, isDelivered(operation) ? 'draft' : 'delivered');
 
     document.querySelectorAll('[data-assign-shipment]').forEach(button => {
       button.onclick = () => assignShipment(operation, button.dataset.assignShipment, button);
@@ -476,7 +478,8 @@
     const type = byId('expDocumentType');
     const custom = byId('expCustomTypeWrap');
     if (type && custom) type.onchange = () => custom.classList.toggle('hidden', type.value !== '__other__');
-    byId('uploadExpDocument')?.addEventListener('click', () => uploadDocument(operation), { once: true });
+    const uploadButton = byId('uploadExpDocument');
+    if (uploadButton) uploadButton.onclick = () => uploadDocument(operation);
   }
 
   async function openExpediente(operationId) {
@@ -503,6 +506,7 @@
   }
 
   async function assignShipment(operation, shipmentId, button) {
+    if (button?.disabled) return;
     if (button) button.disabled = true;
     try {
       await api('/api/operations', {
@@ -518,6 +522,7 @@
 
   async function unassignShipment(operation, shipmentId, button) {
     if (!window.confirm('¿Quitar este contenedor del expediente? El contenedor no se borrará del Tracking.')) return;
+    if (button?.disabled) return;
     if (button) button.disabled = true;
     try {
       await api('/api/operations', {
@@ -533,14 +538,15 @@
 
   async function setOperationStatus(operation, status) {
     const button = byId('toggleExpDelivered');
+    if (button?.disabled) return;
     if (button) button.disabled = true;
     try {
       await api('/api/operations', {
         method: 'PATCH',
         body: JSON.stringify({ action: 'set_status', operation_id: operation.id, status })
       });
-      await loadData();
       state.tab = status === 'delivered' ? 'delivered' : 'active';
+      await loadData();
       updateTabs();
       renderList();
       if (typeof window.closeModal === 'function') window.closeModal();
@@ -552,6 +558,7 @@
 
   async function deleteDocument(operation, item, button) {
     if (!window.confirm(`¿Borrar "${item.file_name || item.document_type || 'este documento'}"?\n\nEl archivo será eliminado del expediente.`)) return;
+    if (button?.disabled) return;
     if (button) button.disabled = true;
     try {
       await api('/api/documents', {
@@ -589,6 +596,7 @@
 
     if (!selectedType) return textMessage(msg, 'Escribe el nombre del documento.', 'bad');
     if (!file) return textMessage(msg, 'Selecciona un archivo.', 'bad');
+    if (button?.disabled) return;
 
     if (button) button.disabled = true;
     textMessage(msg, 'Subiendo documento...');
@@ -655,14 +663,14 @@
   }
 
   function bindEvents() {
-    byId('newExpediente')?.addEventListener('click', () => openNewExpediente());
-    byId('reloadExpedientes')?.addEventListener('click', loadData);
-    byId('expTabActive')?.addEventListener('click', () => {
-      state.tab = 'active'; updateTabs(); renderList();
-    });
-    byId('expTabDelivered')?.addEventListener('click', () => {
-      state.tab = 'delivered'; updateTabs(); renderList();
-    });
+    const newButton = byId('newExpediente');
+    if (newButton) newButton.onclick = () => openNewExpediente();
+    const reloadButton = byId('reloadExpedientes');
+    if (reloadButton) reloadButton.onclick = loadData;
+    const activeButton = byId('expTabActive');
+    if (activeButton) activeButton.onclick = () => { state.tab = 'active'; updateTabs(); renderList(); };
+    const deliveredButton = byId('expTabDelivered');
+    if (deliveredButton) deliveredButton.onclick = () => { state.tab = 'delivered'; updateTabs(); renderList(); };
     const search = byId('expedientesSearch');
     if (search) search.oninput = () => { state.search = search.value || ''; renderList(); };
 
