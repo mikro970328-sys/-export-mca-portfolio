@@ -83,18 +83,6 @@ async function syncClientImporters(admin, clientId, names) {
     if (importer) importers.push(importer);
   }
 
-  const nextIds = new Set(importers.map(item => String(item.id)));
-  const activeUsage = await supabase('shipments', {
-    query: `?select=id,container_number,importer_id&client_id=eq.${encodeURIComponent(clientId)}&active=eq.true&importer_id=not.is.null`
-  });
-  const blocked = (activeUsage || []).filter(item => !nextIds.has(String(item.importer_id)));
-  if (blocked.length) {
-    const catalog = await supabase('importers', { query: '?select=id,name' });
-    const namesById = new Map((catalog || []).map(item => [String(item.id), item.name]));
-    const labels = [...new Set(blocked.map(item => namesById.get(String(item.importer_id)) || 'Importadora asignada'))];
-    throw new Error(`No puedes quitar ${labels.join(', ')} del cliente porque tiene contenedores activos usando esa importadora.`);
-  }
-
   await supabase('client_importers', {
     method: 'DELETE',
     query: `?client_id=eq.${encodeURIComponent(clientId)}`
@@ -124,27 +112,22 @@ async function syncClientImporters(admin, clientId, names) {
   return importers;
 }
 
-async function assignShipmentImporter(admin, shipmentId, importerIdValue) {
+async function assignShipmentImporter(admin, shipmentId, { importerIdValue, importerNameValue }) {
   const shipments = await supabase('shipments', {
     query: `?select=id,client_id,importer_id,container_number&id=eq.${encodeURIComponent(shipmentId)}&limit=1`
   });
   const shipment = shipments?.[0];
   if (!shipment) throw new Error('Contenedor no encontrado');
 
-  const importerId = String(importerIdValue || '').trim() || null;
+  const importerId = String(importerIdValue || '').trim();
+  const importerName = cleanName(importerNameValue);
   let importer = null;
-  if (importerId) {
+
+  if (importerName) {
+    importer = await ensureImporter(importerName);
+  } else if (importerId) {
     importer = await getImporter(importerId);
     if (!importer || importer.active === false) throw new Error('Importadora no disponible');
-
-    if (shipment.client_id) {
-      const links = await supabase('client_importers', {
-        query: `?select=client_id,importer_id&client_id=eq.${encodeURIComponent(shipment.client_id)}&importer_id=eq.${encodeURIComponent(importer.id)}&limit=1`
-      });
-      if (!links?.length) {
-        throw new Error(`La importadora ${importer.name} no está registrada para este cliente.`);
-      }
-    }
   }
 
   await supabase('shipments', {
@@ -157,7 +140,8 @@ async function assignShipmentImporter(admin, shipmentId, importerIdValue) {
     container_number: shipment.container_number,
     previous_importer_id: shipment.importer_id || null,
     importer_id: importer?.id || null,
-    importer_name: importer?.name || null
+    importer_name: importer?.name || null,
+    independent_from_client_registration: true
   });
 
   return { shipment_id: shipment.id, importer_id: importer?.id || null, importer };
@@ -181,7 +165,10 @@ export default async function handler(req, res) {
     if (req.method === 'PATCH' && body.action === 'assign_shipment') {
       const shipmentId = String(body.shipment_id || '').trim();
       if (!shipmentId) return fail(res, 400, 'Falta el contenedor');
-      const assignment = await assignShipmentImporter(admin, shipmentId, body.importer_id);
+      const assignment = await assignShipmentImporter(admin, shipmentId, {
+        importerIdValue: body.importer_id,
+        importerNameValue: body.importer_name
+      });
       return ok(res, { assignment, state: await getState() });
     }
 
