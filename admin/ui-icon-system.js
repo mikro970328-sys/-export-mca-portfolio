@@ -22,21 +22,13 @@
   });
 
   const labelIcons = Object.freeze({
-    'Inicio': 'home',
-    'Operaciones': 'operations',
-    'Clientes': 'clients',
-    'Registrar contenedor': 'containerAdd',
-    'Tracking': 'tracking',
-    'Expedientes de exportación': 'files',
-    'Expedientes': 'files',
-    'Publicaciones comerciales': 'publications',
-    'Notificaciones': 'bell',
-    'Centro de alertas': 'bell',
-    'Trabajadores': 'workers',
-    'Administración': 'settings',
-    'Administradores': 'admin',
-    'Cambiar contraseña': 'key',
-    'Cerrar sesión': 'logout'
+    'Inicio': 'home', 'Operaciones': 'operations', 'Clientes': 'clients',
+    'Registrar contenedor': 'containerAdd', 'Tracking': 'tracking',
+    'Expedientes de exportación': 'files', 'Expedientes': 'files',
+    'Publicaciones comerciales': 'publications', 'Notificaciones': 'bell',
+    'Centro de alertas': 'bell', 'Trabajadores': 'workers',
+    'Administración': 'settings', 'Administradores': 'admin',
+    'Cambiar contraseña': 'key', 'Cerrar sesión': 'logout'
   });
 
   function svg(name, className = 'ui-icon-svg') {
@@ -63,70 +55,45 @@
   function replaceControlIcon(control, name) {
     if (!control || !name) return;
     const icon = control.querySelector('.nav-icon');
-    if (icon && icon.dataset.iconName !== name) {
+    if (!icon) return;
+    const hasCorrectSvg = icon.dataset.iconName === name && icon.querySelector('svg.ui-icon-svg');
+    if (!hasCorrectSvg) {
       icon.innerHTML = svg(name);
       icon.dataset.iconName = name;
     }
   }
 
   function hydrateNavigation(root = document) {
-    root.querySelectorAll?.('[data-nav-label]').forEach(control => {
-      replaceControlIcon(control, labelIcons[control.dataset.navLabel]);
-    });
-
+    root.querySelectorAll?.('[data-nav-label]').forEach(control => replaceControlIcon(control, labelIcons[control.dataset.navLabel]));
     root.querySelectorAll?.('.nav-chevron').forEach(chevron => {
-      if (chevron.dataset.iconName === 'chevron') return;
-      chevron.innerHTML = svg('chevron');
-      chevron.dataset.iconName = 'chevron';
+      if (chevron.dataset.iconName === 'chevron' && chevron.querySelector('svg.ui-icon-svg')) return;
+      chevron.innerHTML = svg('chevron'); chevron.dataset.iconName = 'chevron';
     });
   }
 
   function hydrateMenuButtons(root = document) {
     ['sidebarToggle', 'mobileMenuBtn'].forEach(id => {
       const button = root.getElementById?.(id) || document.getElementById(id);
-      if (!button || button.dataset.iconName === 'menu') return;
-      button.innerHTML = svg('menu');
-      button.dataset.iconName = 'menu';
+      if (!button || (button.dataset.iconName === 'menu' && button.querySelector('svg.ui-icon-svg'))) return;
+      button.innerHTML = svg('menu'); button.dataset.iconName = 'menu';
     });
   }
 
   function hydrateBell(root = document) {
     const button = root.getElementById?.('operationalAlertBell') || document.getElementById('operationalAlertBell');
-    if (!button || button.dataset.iconName === 'bell') return;
+    if (!button || (button.dataset.iconName === 'bell' && button.querySelector('svg.ui-icon-svg'))) return;
     [...button.childNodes].forEach(node => {
       if (node.nodeType === Node.TEXT_NODE) node.remove();
       else if (node.nodeType === Node.ELEMENT_NODE && node.id !== 'operationalAlertBadge') node.remove();
     });
-    button.insertAdjacentHTML('afterbegin', svg('bell'));
-    button.dataset.iconName = 'bell';
+    button.insertAdjacentHTML('afterbegin', svg('bell')); button.dataset.iconName = 'bell';
   }
 
-  function hydrate(root = document) {
-    ensureStyles();
-    hydrateNavigation(root);
-    hydrateMenuButtons(root);
-    hydrateBell(root);
-  }
-
+  function hydrate(root = document) { ensureStyles(); hydrateNavigation(root); hydrateMenuButtons(root); hydrateBell(root); }
   let scheduled = false;
-  function scheduleHydrate() {
-    if (scheduled) return;
-    scheduled = true;
-    queueMicrotask(() => {
-      scheduled = false;
-      hydrate(document);
-    });
-  }
-
+  function scheduleHydrate() { if (scheduled) return; scheduled = true; queueMicrotask(() => { scheduled = false; hydrate(document); }); }
   const observer = new MutationObserver(scheduleHydrate);
-
-  function mount() {
-    hydrate(document);
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
-
+  function mount() { hydrate(document); observer.observe(document.body, { childList: true, subtree: true }); }
   window.ExportMcaIcons = Object.freeze({ svg, hydrate, owner: 'ui-icon-system.js' });
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
-  else mount();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true }); else mount();
 })();
