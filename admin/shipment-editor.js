@@ -65,14 +65,16 @@
     return importerState().shipment_importers?.find(item => String(item.shipment_id) === String(shipmentId || ''))?.importer_id || null;
   }
 
-  function importerIdsForClient(clientId) {
-    return new Set((importerState().client_importers || []).filter(link => String(link.client_id) === String(clientId || '')).map(link => String(link.importer_id)));
+  function importerNameForShipment(shipmentId) {
+    const importerId = importerIdForShipment(shipmentId);
+    return importerState().importers?.find(item => String(item.id) === String(importerId || ''))?.name || '';
   }
 
-  function importerOptions(clientId, selected) {
-    const linkedIds = clientId ? importerIdsForClient(clientId) : null;
-    const list = (importerState().importers || []).filter(importer => importer.active !== false && (!linkedIds || linkedIds.has(String(importer.id))));
-    return `<option value="">Sin importadora definida</option>${list.map(importer => `<option value="${esc(importer.id)}" ${String(importer.id) === String(selected || '') ? 'selected' : ''}>${esc(importer.name)}</option>`).join('')}`;
+  function importerSuggestions() {
+    return (importerState().importers || [])
+      .filter(importer => importer.active !== false)
+      .map(importer => `<option value="${esc(importer.name)}"></option>`)
+      .join('');
   }
 
   function statuses(selected) {
@@ -99,11 +101,11 @@
 
   function html(shipment) {
     const status = shipment.operational_status || shipment.last_status || 'Registrado';
-    const importerId = importerIdForShipment(shipment.id);
+    const importerName = importerNameForShipment(shipment.id);
     return `<div id="shipmentEditorMessage"></div>
       <div class="shipment-editor-grid">
         <div><label>Cliente</label><select id="editorClient">${clientOptions(shipment.client_id)}</select><div class="shipment-editor-help">Puede quedar sin cliente hasta que el contenedor sea vendido.</div></div>
-        <div><label>Importadora cubana</label><select id="editorImporter">${importerOptions(shipment.client_id, importerId)}</select><div id="editorImporterHelp" class="shipment-editor-help">La importadora pertenece a este contenedor, no a todo el expediente.</div></div>
+        <div><label>Importadora cubana</label><input id="editorImporter" list="editorImporterOptions" value="${esc(importerName)}" placeholder="Ej. Quimimport, Servoven"><datalist id="editorImporterOptions">${importerSuggestions()}</datalist><div class="shipment-editor-help">Es la importadora concreta de este contenedor. No depende de las importadoras donde esté registrado el cliente.</div></div>
         <div><label>Número de contenedor *</label><input id="editorContainer" value="${esc(shipment.container_number)}" maxlength="11"></div>
         <div><label>Producto</label><input id="editorProduct" value="${esc(shipment.product || '')}"></div>
         <div><label>Cantidad</label><input id="editorQuantity" type="number" min="0" step="0.001" value="${esc(shipment.quantity ?? '')}"></div>
@@ -125,26 +127,6 @@
       <div class="shipment-editor-footer"><button id="shipmentEditorCancel" class="alt" type="button">Cancelar</button><button id="shipmentEditorSave" class="orange" type="button">Guardar cambios</button></div>`;
   }
 
-  function syncImporterSelect() {
-    const select = byId('editorImporter');
-    if (!select) return;
-    const clientId = byId('editorClient')?.value || '';
-    const selected = select.value;
-    select.innerHTML = importerOptions(clientId, selected);
-    if ([...select.options].some(option => option.value === selected)) select.value = selected;
-    else select.value = '';
-    const help = byId('editorImporterHelp');
-    if (!help) return;
-    if (!clientId) {
-      help.textContent = 'Sin cliente, puedes mantener una importadora registrada o dejarla pendiente.';
-      return;
-    }
-    const count = importerIdsForClient(clientId).size;
-    help.textContent = count
-      ? `El cliente está registrado en ${count} importadora${count === 1 ? '' : 's'}.`
-      : 'Este cliente no tiene importadoras registradas. Agrégalas desde Clientes o deja este campo pendiente.';
-  }
-
   function setError(message = '') {
     const target = byId('shipmentEditorMessage');
     if (!target) return;
@@ -158,9 +140,6 @@
     if (rows().some(item => item.id !== current.id && item.active !== false && norm(item.container_number) === container)) return 'Ese número de contenedor ya está registrado en otra operación activa.';
     const quantity = String(byId('editorQuantity')?.value || '').trim();
     if (quantity && (!Number.isFinite(Number(quantity)) || Number(quantity) < 0)) return 'La cantidad no es válida.';
-    const clientId = byId('editorClient')?.value || '';
-    const importerId = byId('editorImporter')?.value || '';
-    if (clientId && importerId && !importerIdsForClient(clientId).has(String(importerId))) return 'La importadora seleccionada no está registrada para ese cliente.';
     return '';
   }
 
@@ -194,7 +173,11 @@
       await request('/api/shipments', { method: 'PATCH', body: JSON.stringify(payload()) });
       const importerResult = await request('/api/importers', {
         method: 'PATCH',
-        body: JSON.stringify({ action: 'assign_shipment', shipment_id: current.id, importer_id: byId('editorImporter')?.value || null })
+        body: JSON.stringify({
+          action: 'assign_shipment',
+          shipment_id: current.id,
+          importer_name: String(byId('editorImporter')?.value || '').trim()
+        })
       });
       if (importerResult.state) window.importerState = importerResult.state;
       if (typeof window.loadAll === 'function') await window.loadAll();
@@ -220,9 +203,7 @@
     window.openModal?.(`Editar contenedor · ${shipment.container_number}`, html(shipment));
     byId('shipmentEditorCancel').onclick = () => window.closeModal?.();
     byId('shipmentEditorSave').onclick = save;
-    byId('editorClient')?.addEventListener('change', syncImporterSelect);
     document.querySelectorAll('#modal input,#modal select').forEach(field => field.addEventListener('input', () => setError('')));
-    syncImporterSelect();
     if (options.focus === 'client') byId('editorClient')?.focus();
     else byId('editorContainer')?.focus();
   }
