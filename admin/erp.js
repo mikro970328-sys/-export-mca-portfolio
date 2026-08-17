@@ -152,7 +152,7 @@
       loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core')
     ];
 
-    const clientsModule = loadScript('/admin/clients-module.js?v=20260731-3', 'data-clients-module');
+    const clientsModule = loadScript('/admin/clients-module.js?v=20260817-importers1', 'data-clients-module');
 
     const alertChain = loadScript('/admin/operational-alert-center.js?v=20260730-2', 'data-operational-alert-center')
       .then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
@@ -183,8 +183,8 @@
       await window.ExpedientesModule.init();
 
       await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
-      await loadScript('/admin/containers-module.js?v=20260814-owner2', 'data-containers-module');
-      await loadScript('/admin/shipment-editor.js?v=20260814-owner2', 'data-shipment-editor');
+      await loadScript('/admin/containers-module.js?v=20260817-importers1', 'data-containers-module');
+      await loadScript('/admin/shipment-editor.js?v=20260817-importers1', 'data-shipment-editor');
       await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');
       await themePromise;
 
