@@ -82,6 +82,7 @@
     byId('mobileOverlay')?.classList.add('show');
     document.body.classList.add('mobile-nav-open');
     byId('mobileMenuBtn')?.setAttribute('aria-expanded', 'true');
+    byId('mobileMenuBtn')?.setAttribute('aria-label', 'Cerrar menú lateral');
     byId('sidebarToggle')?.setAttribute('aria-label', 'Cerrar menú lateral');
   }
 
@@ -90,7 +91,10 @@
     byId('mobileOverlay')?.classList.remove('show');
     document.body.classList.remove('mobile-nav-open');
     byId('mobileMenuBtn')?.setAttribute('aria-expanded', 'false');
-    if (!isDesktop()) byId('sidebarToggle')?.setAttribute('aria-label', 'Cerrar menú lateral');
+    if (!isDesktop()) {
+      byId('mobileMenuBtn')?.setAttribute('aria-label', 'Abrir menú lateral');
+      byId('sidebarToggle')?.setAttribute('aria-label', 'Cerrar menú lateral');
+    }
   }
 
   function toggleShell() {
