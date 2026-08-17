@@ -22,14 +22,12 @@ export async function reconcileOperationLifecycle(operationId, actor = null, con
     query: `?select=id,active,operational_status,last_status,delivered_at&operation_id=eq.${encodeURIComponent(operation.id)}`
   });
   const rows = shipments || [];
-  if (!rows.length) return { operation_id: operation.id, finalized: false, changed: false };
-
-  const finalized = rows.every(shipmentIsDelivered);
+  const finalized = rows.length > 0 && rows.every(shipmentIsDelivered);
   const storedFinalized = operation.status === 'delivered' || operation.status === 'closed';
   if (finalized === storedFinalized) return { operation_id: operation.id, finalized, changed: false };
 
   const now = new Date().toISOString();
-  const nextStatus = finalized ? 'closed' : 'confirmed';
+  const nextStatus = finalized ? 'closed' : rows.length ? 'confirmed' : 'draft';
   await supabase('operations', {
     method: 'PATCH',
     query: `?id=eq.${encodeURIComponent(operation.id)}`,
