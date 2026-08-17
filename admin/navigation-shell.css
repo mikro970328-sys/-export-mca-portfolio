@@ -8,6 +8,13 @@
   transition:width .22s ease,margin-left .22s ease,transform .22s ease;
 }
 
+#sidebarToggle,
+#mobileMenuBtn,
+.sidebar-nav button,
+.sidebar-foot-action{
+  touch-action:manipulation;
+}
+
 .sidebar-head{
   position:relative;
   overflow:hidden;
