@@ -350,16 +350,46 @@
     document.querySelectorAll('[data-open-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.openDocument)); if (item?.signed_url) window.open(item.signed_url,'_blank','noopener'); }; });
     document.querySelectorAll('[data-delete-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.deleteDocument)); if (item) deleteDocument(operation,item,button); }; });
   }
-  function downloadShipmentDocuments(shipmentId) {
+  function filenameFromDisposition(disposition, fallback = 'Documentos_contenedor.zip') {
+    const value = String(disposition || '');
+    const utf = value.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf?.[1]) {
+      try { return decodeURIComponent(utf[1].trim()); } catch {}
+    }
+    const plain = value.match(/filename="?([^";]+)"?/i);
+    return plain?.[1]?.trim() || fallback;
+  }
+  async function downloadShipmentDocuments(shipmentId, button) {
     const id = String(shipmentId || '').trim();
     if (!id) return;
-    const link = document.createElement('a');
-    link.href = `/api/document-bundle?shipment_id=${encodeURIComponent(id)}`;
-    link.download = '';
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    const authToken = localStorage.getItem('export_mca_token') || '';
+    if (!authToken) return alert('Tu sesión no está disponible. Inicia sesión nuevamente.');
+    const previousLabel = button?.textContent || 'Descargar todo';
+    if (button) { button.disabled = true; button.textContent = 'Preparando ZIP...'; }
+    try {
+      const response = await fetch(`/api/document-bundle?shipment_id=${encodeURIComponent(id)}`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'No se pudo preparar la documentación del contenedor.');
+      }
+      const blob = await response.blob();
+      const filename = filenameFromDisposition(response.headers.get('Content-Disposition'));
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      alert(error.message || 'No se pudo descargar la documentación del contenedor.');
+    } finally {
+      if (button && document.body.contains(button)) { button.disabled = false; button.textContent = previousLabel; }
+    }
   }
   function toggleFolder(header) {
     const body=byId(header?.dataset.folderToggle);
@@ -395,7 +425,7 @@
     document.querySelectorAll('[data-download-shipment-docs]').forEach(button => {
       button.onclick=event => {
         event.stopPropagation();
-        downloadShipmentDocuments(button.dataset.downloadShipmentDocs);
+        downloadShipmentDocuments(button.dataset.downloadShipmentDocs, button);
       };
     });
   }
