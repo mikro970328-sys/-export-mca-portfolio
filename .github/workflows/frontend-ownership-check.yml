@@ -11,6 +11,7 @@ on:
       - 'admin/expedientes-module.js'
       - 'admin/dashboard-operational-state.js'
       - 'api/dashboard.js'
+      - 'api/importers.js'
       - 'admin/navigation-shell.js'
       - 'admin/navigation-shell.css'
       - 'admin/section-state.js'
@@ -21,6 +22,7 @@ on:
       - 'admin/client-actions-menu.js'
       - 'admin/mobile-interaction-core.js'
       - 'scripts/check-frontend-ownership.mjs'
+      - 'scripts/check-shipment-importer-independence.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -32,5 +34,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Validate frontend ownership and UX-A/UX-B/UX-C
+      - name: Validate frontend ownership and UX-A/UX-B/UX-C/UX-D
         run: node scripts/check-frontend-ownership.mjs
+      - name: Validate independent shipment importer
+        run: node scripts/check-shipment-importer-independence.mjs
