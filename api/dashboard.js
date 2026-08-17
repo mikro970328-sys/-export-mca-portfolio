@@ -89,7 +89,7 @@ export default async function handler(req, res) {
     const [clients, shipments, operations] = await Promise.all([
       supabase('clients', { query: '?select=id,active' }),
       supabase('shipments', {
-        query: '?select=id,client_id,operation_id,container_number,active,operational_status,last_status,last_event_at,updated_at,created_at,released_at,delivered_at,clients:clients(id,name)'
+        query: '?select=id,client_id,operation_id,container_number,active,operational_status,last_status,last_event_at,updated_at,created_at,released_at,delivered_at,clients(id,name)'
       }),
       supabase('operations', { query: '?select=id,status,updated_at,closed_at' })
     ]);
