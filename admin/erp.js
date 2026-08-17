@@ -186,6 +186,7 @@
       await loadScript('/admin/modal-dismissal.js?v=20260817-uxc2', 'data-modal-dismissal');
       await themePromise;
       await iconSystemPromise;
+      await loadScript('/admin/account-administration.js?v=20260817-e2', 'data-account-administration');
       await navigationStylesPromise;
       await loadScript('/admin/navigation-shell.js?v=20260817-uxa2', 'data-navigation-shell');
       await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
