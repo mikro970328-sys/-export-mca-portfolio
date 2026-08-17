@@ -495,11 +495,6 @@
     try { await api('/api/operations',{ method:'PATCH',body:JSON.stringify({ action:'unassign_shipment',operation_id:operation.id,shipment_id:shipmentId }) }); if (typeof window.loadAll === 'function') await window.loadAll(); await loadData(); await openManageContainers(operation.id); }
     catch (error) { button.disabled=false; alert(error.message || 'No se pudo quitar el contenedor.'); }
   }
-  async function setOperationStatus(operation,status) {
-    const button=byId('toggleExpDelivered'); if (button?.disabled) return; button.disabled=true;
-    try { await api('/api/operations',{ method:'PATCH',body:JSON.stringify({ action:'set_status',operation_id:operation.id,status }) }); state.tab=status === 'delivered' ? 'delivered' : 'active'; await loadData(); updateTabs(); if (typeof window.closeModal === 'function') window.closeModal(); }
-    catch (error) { button.disabled=false; alert(error.message || 'No se pudo actualizar el estado del expediente.'); }
-  }
   async function deleteDocument(operation,item,button) {
     const warning=item.shared_bl ? `¿Borrar "${item.file_name || item.document_type || 'este documento'}"?\n\nEste archivo está compartido por el B/L ${item.bol_number || ''}. Se eliminará de todos los expedientes que lo muestran.` : `¿Borrar "${item.file_name || item.document_type || 'este documento'}"?\n\nEl archivo será eliminado del expediente.`;
     if (!window.confirm(warning)) return; if (button?.disabled) return; button.disabled=true;
