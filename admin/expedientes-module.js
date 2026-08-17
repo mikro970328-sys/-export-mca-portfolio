@@ -259,7 +259,7 @@
   }
 
   function documentRow(item) {
-    return `<div class="exp-doc-row"><div><b>${esc(item.document_type || 'Documento')}</b>${item.shared_bl ? '<span class="exp-doc-shared">COMPARTIDO</span>' : ''}${item.notes ? `<div class="muted">${esc(item.notes)}</div>` : ''}</div><div>${esc(item.file_name || 'Archivo')}<div class="muted">v${esc(item.version || 1)} · ${esc(formatBytes(item.file_size_bytes))} · ${esc(formatDate(item.created_at))}</div></div><div class="exp-doc-actions">${item.signed_url ? `<button class="alt" type="button" data-open-document="${esc(item.id)}">Abrir</button>` : ''}<button class="danger" type="button" data-delete-document="${esc(item.id)}">Borrar</button></div></div>`;
+    return `<div class="exp-doc-row"><div><b>${esc(item.document_type || 'Documento')}</b>${item.shared_bl ? '<span class="exp-doc-shared">COMPARTIDO</span>' : ''}${item.notes ? `<div class="muted">${esc(item.notes)}</div>` : ''}</div><div>${esc(item.file_name || 'Archivo')}<div class="muted">v${esc(item.version || 1)} · ${esc(formatBytes(item.file_size_bytes))} · ${esc(formatDate(item.created_at))}</div></div><div class="exp-doc-actions">${item.signed_url ? `<button class="alt" type="button" data-open-document="${esc(item.id)}">Abrir</button><button class="alt" type="button" data-download-document="${esc(item.id)}">Descargar</button>` : ''}<button class="danger" type="button" data-delete-document="${esc(item.id)}">Borrar</button></div></div>`;
   }
   function documentBlock(documents, emptyText) { return documents.length ? documents.map(documentRow).join('') : `<div class="muted" style="padding:4px 0">${esc(emptyText)}</div>`; }
   function sharedContextHtml(context) {
@@ -271,11 +271,22 @@
     const addAction = uploadScope ? `<div class="exp-folder-body-actions"><button class="orange" type="button" data-upload-scope="${esc(uploadScope)}" data-upload-label="${esc(uploadLabel || title)}">+ Agregar documento</button></div>` : '';
     return `<div class="exp-folder ${sharedContext?.shared ? 'shared' : ''}"><div class="exp-folder-head" data-folder-toggle="${esc(id)}" role="button" tabindex="0" aria-expanded="false" aria-controls="${esc(id)}"><div><div class="exp-folder-title"><span id="${esc(id)}-arrow" class="exp-folder-arrow">▶</span><span>${esc(title)}</span>${sharedContext?.shared ? `<span class="exp-shared-badge">Compartido · ${sharedContext.client_count} clientes</span>` : ''}</div><div class="exp-folder-meta">${esc(meta)}</div></div><div class="exp-folder-actions"><span class="pill ${documents.length ? 'done' : ''}">${documents.length} archivo${documents.length === 1 ? '' : 's'}</span></div></div><div id="${esc(id)}" class="exp-folder-body hidden">${addAction}${sharedContextHtml(sharedContext)}${documentBlock(documents,'No hay documentos cargados todavía.')}${children}</div></div>`;
   }
+  function applicableDocumentsForShipment(shipment, documents) {
+    const shipmentId = String(shipment?.id || '');
+    const shipmentBol = bolKey(shipment?.bol_number);
+    return documents.filter(item => {
+      if (item.shipment_id) return String(item.shipment_id) === shipmentId;
+      if (item.bol_number) return Boolean(shipmentBol) && bolKey(item.bol_number) === shipmentBol;
+      return !item.shipment_id && !item.bol_number;
+    });
+  }
   function containerRowsHtml(shipments, documents, groupLabel) {
     if (!shipments.length) return '<div class="muted">No hay contenedores en este grupo.</div>';
     return shipments.map(shipment => {
       const ownDocs = documents.filter(item => String(item.shipment_id || '') === String(shipment.id));
-      return `<div class="exp-container-card"><div class="exp-container-belongs">${esc(groupLabel)}</div><div class="exp-container-line"><div><b>${esc(shipment.container_number || '—')}</b><div class="muted">${esc(shipment.product || 'Sin producto')}${shipment.operational_status ? ` · ${esc(shipment.operational_status)}` : ''}</div></div><div class="exp-container-actions"><span class="pill ${ownDocs.length ? 'done' : ''}">${ownDocs.length} archivo${ownDocs.length === 1 ? '' : 's'}</span><button class="orange" type="button" data-upload-scope="shipment:${esc(shipment.id)}" data-upload-label="Contenedor ${esc(shipment.container_number || '')}">+ Agregar documento</button></div></div>${ownDocs.length ? `<div class="exp-container-files">${ownDocs.map(documentRow).join('')}</div>` : ''}</div>`;
+      const applicableDocs = applicableDocumentsForShipment(shipment, documents);
+      const downloadAction = applicableDocs.length ? `<button class="alt" type="button" data-download-shipment-docs="${esc(shipment.id)}">Descargar todo (${applicableDocs.length})</button>` : '';
+      return `<div class="exp-container-card"><div class="exp-container-belongs">${esc(groupLabel)}</div><div class="exp-container-line"><div><b>${esc(shipment.container_number || '—')}</b><div class="muted">${esc(shipment.product || 'Sin producto')}${shipment.operational_status ? ` · ${esc(shipment.operational_status)}` : ''}</div></div><div class="exp-container-actions"><span class="pill ${ownDocs.length ? 'done' : ''}">${ownDocs.length} archivo${ownDocs.length === 1 ? '' : 's'}</span>${downloadAction}<button class="orange" type="button" data-upload-scope="shipment:${esc(shipment.id)}" data-upload-label="Contenedor ${esc(shipment.container_number || '')}">+ Agregar documento</button></div></div>${ownDocs.length ? `<div class="exp-container-files">${ownDocs.map(documentRow).join('')}</div>` : ''}</div>`;
     }).join('');
   }
   function documentFoldersHtml(operation, allDocuments) {
@@ -337,7 +348,73 @@
   function bindDocumentActions(operation,documents) {
     const map=new Map(documents.map(item => [String(item.id),item]));
     document.querySelectorAll('[data-open-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.openDocument)); if (item?.signed_url) window.open(item.signed_url,'_blank','noopener'); }; });
+    document.querySelectorAll('[data-download-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.downloadDocument)); if (item?.signed_url) downloadIndividualDocument(item,button); }; });
     document.querySelectorAll('[data-delete-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.deleteDocument)); if (item) deleteDocument(operation,item,button); }; });
+  }
+  async function downloadIndividualDocument(item, button) {
+    const url = String(item?.signed_url || '');
+    if (!url) return;
+    const previousLabel = button?.textContent || 'Descargar';
+    if (button) { button.disabled = true; button.textContent = 'Descargando...'; }
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('No se pudo descargar el archivo.');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = item.file_name || 'documento';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      alert(error.message || 'No se pudo descargar el archivo.');
+    } finally {
+      if (button && document.body.contains(button)) { button.disabled = false; button.textContent = previousLabel; }
+    }
+  }
+  function filenameFromDisposition(disposition, fallback = 'Documentos_contenedor.zip') {
+    const value = String(disposition || '');
+    const utf = value.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf?.[1]) {
+      try { return decodeURIComponent(utf[1].trim()); } catch {}
+    }
+    const plain = value.match(/filename="?([^";]+)"?/i);
+    return plain?.[1]?.trim() || fallback;
+  }
+  async function downloadShipmentDocuments(shipmentId, button) {
+    const id = String(shipmentId || '').trim();
+    if (!id) return;
+    const authToken = localStorage.getItem('export_mca_token') || '';
+    if (!authToken) return alert('Tu sesión no está disponible. Inicia sesión nuevamente.');
+    const previousLabel = button?.textContent || 'Descargar todo';
+    if (button) { button.disabled = true; button.textContent = 'Preparando ZIP...'; }
+    try {
+      const response = await fetch(`/api/document-bundle?shipment_id=${encodeURIComponent(id)}`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'No se pudo preparar la documentación del contenedor.');
+      }
+      const blob = await response.blob();
+      const filename = filenameFromDisposition(response.headers.get('Content-Disposition'));
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      alert(error.message || 'No se pudo descargar la documentación del contenedor.');
+    } finally {
+      if (button && document.body.contains(button)) { button.disabled = false; button.textContent = previousLabel; }
+    }
   }
   function toggleFolder(header) {
     const body=byId(header?.dataset.folderToggle);
@@ -368,6 +445,12 @@
       button.onclick=event => {
         event.stopPropagation();
         openUploadModal(operation,scopeFromValue(button.dataset.uploadScope,button.dataset.uploadLabel));
+      };
+    });
+    document.querySelectorAll('[data-download-shipment-docs]').forEach(button => {
+      button.onclick=event => {
+        event.stopPropagation();
+        downloadShipmentDocuments(button.dataset.downloadShipmentDocs, button);
       };
     });
   }
