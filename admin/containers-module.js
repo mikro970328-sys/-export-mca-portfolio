@@ -46,9 +46,10 @@
       .container-mode{display:block;margin-top:5px;font-size:11px;color:#667085}.container-mode.manual{color:#9a6700}.container-mode.failed{color:#b42318}
       .container-unassigned-row{background:#fffaf0}.container-client-unassigned{display:inline-block;padding:5px 9px;border-radius:999px;background:#fff0c7;color:#8a5700;font-size:11px;font-weight:900}.container-sale-note{display:block;margin-top:4px;color:#9a6700;font-size:10px;font-weight:700}
       .container-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}.container-detail-row{padding:11px 0;border-bottom:1px solid #e6ebf2}.container-detail-label{font-size:11px;font-weight:800;text-transform:uppercase;color:#667085;margin-bottom:4px}.container-detail-value{font-size:15px;color:#152238;word-break:break-word}
+      .container-documents{grid-column:1/-1;margin-top:20px;padding-top:16px;border-top:1px solid #dfe5ee}.container-documents-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px}.container-documents-head h3{margin:0;color:#06204a}.container-documents-list{display:grid;gap:7px}.container-document-row{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid #e1e7ef;border-radius:10px;background:#f8fafc}.container-document-row b{color:#06204a}.container-document-meta{font-size:11px;color:#667085;margin-top:3px}.container-document-scope{font-size:11px;font-weight:800;color:#475467}.container-document-actions{display:flex;gap:7px;justify-content:flex-end}.container-documents-empty{padding:12px;border:1px dashed #cfd7e3;border-radius:10px;color:#667085;background:#fff}.container-documents-footer{display:flex;justify-content:flex-end;margin-top:12px}.container-documents-footer button{min-width:190px}
       .container-importer-help{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}.container-importer-pill{display:inline-flex;padding:5px 8px;border-radius:999px;background:#fff3e8;color:#9b4a00;font-size:11px;font-weight:800}
       .manual-track-overlay{position:fixed;inset:0;background:rgba(3,14,31,.58);display:flex;align-items:center;justify-content:center;padding:20px;z-index:5200}.manual-track-panel{width:100%;max-width:620px;max-height:92vh;overflow:auto;background:#fff;border-radius:18px;padding:24px;box-shadow:0 18px 48px rgba(6,32,74,.25)}.manual-track-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}.manual-track-head h3{margin:0;color:#06204a;font-size:21px}.manual-track-close{background:#fff!important;color:#06204a!important;border:1px solid #dfe5ee!important;padding:8px 11px!important}.manual-track-current-box{padding:13px;border:1px solid #b8c9e4;background:#f3f7fd;border-radius:12px;margin-bottom:16px}.manual-track-current-box small{display:block;color:#667085;margin-bottom:4px}.manual-track-current-box b{color:#06204a}.manual-track-list{display:grid;gap:9px;margin:14px 0 18px}.manual-track-step{position:relative;display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;padding:11px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer}.manual-track-step.current{background:#f1f8f3;border-color:#b8dfc1}.manual-track-step.selected{border:2px solid #f58220;background:#fff8f2}.manual-track-step-index{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#edf3ff;color:#06204a;font-size:12px;font-weight:900}.manual-track-step-title{font-weight:800}.manual-track-step-note{font-size:11px;color:#667085;margin-top:2px}.manual-track-field label{display:block;margin:12px 0 6px;font-size:13px;font-weight:800}.manual-track-notify{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;margin-top:16px;padding:13px;border:1px solid #dfe5ee;border-radius:12px;background:#fff;cursor:pointer}.manual-track-notify.disabled{opacity:.6;cursor:not-allowed}.manual-track-notify input{width:18px;height:18px;margin:2px 0 0}.manual-track-notify b{display:block;color:#06204a}.manual-track-notify span{display:block;color:#667085;font-size:11px;margin-top:3px;line-height:1.4}.manual-track-preview{margin-top:14px;padding:12px;border-left:4px solid #06204a;background:#f7f9fc;border-radius:8px;font-size:13px;line-height:1.45}.manual-track-preview.hidden{display:none}.manual-track-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:18px}.manual-track-confirm{background:#f58220!important;padding:13px!important}.manual-track-cancel{background:#fff!important;color:#06204a!important;border:1px solid #cfd7e3!important}
-      @media(max-width:760px){.container-details-grid{grid-template-columns:1fr}.container-actions-popover{left:12px!important;right:12px!important;bottom:12px!important;top:auto!important;width:auto!important}.manual-track-overlay{align-items:flex-end;padding:0}.manual-track-panel{border-radius:22px 22px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom))}.manual-track-actions{grid-template-columns:1fr}.container-actions-cell{position:sticky;right:0;background:#fff;z-index:2}}
+      @media(max-width:760px){.container-details-grid{grid-template-columns:1fr}.container-document-row{grid-template-columns:1fr}.container-document-actions{justify-content:flex-start}.container-documents-head{align-items:flex-start;flex-direction:column}.container-documents-footer{justify-content:stretch}.container-documents-footer button{width:100%}.container-actions-popover{left:12px!important;right:12px!important;bottom:12px!important;top:auto!important;width:auto!important}.manual-track-overlay{align-items:flex-end;padding:0}.manual-track-panel{border-radius:22px 22px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom))}.manual-track-actions{grid-template-columns:1fr}.container-actions-cell{position:sticky;right:0;background:#fff;z-index:2}}
     `;
     document.head.appendChild(style);
   }
@@ -417,15 +418,62 @@
     return `<div class="container-detail-row"><div class="container-detail-label">${esc(label)}</div><div class="container-detail-value">${esc(value || 'No disponible')}</div></div>`;
   }
 
-  function openDetails(shipment) {
+  function shipmentDocumentScope(item, shipment) {
+    if (String(item.shipment_id || '') === String(shipment.id || '')) return 'Contenedor';
+    if (item.bol_number && norm(item.bol_number) === norm(shipment.bol_number)) return `B/L ${item.bol_number}`;
+    return 'General del expediente';
+  }
+
+  function relevantShipmentDocuments(shipment, source) {
+    if (!shipment.operation_id || !Array.isArray(source)) return [];
+    const bol = norm(shipment.bol_number);
+    const unique = new Map();
+    source.forEach(item => {
+      const ownShipment = String(item.shipment_id || '') === String(shipment.id || '');
+      const sameBol = Boolean(bol && item.bol_number && norm(item.bol_number) === bol);
+      const general = !item.shipment_id && !item.bol_number && String(item.operation_id || '') === String(shipment.operation_id || '');
+      if (ownShipment || sameBol || general) unique.set(String(item.id), item);
+    });
+    return [...unique.values()].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  }
+
+  function shipmentDocumentsHtml(shipment, documents, errorMessage = '') {
+    if (!shipment.operation_id) {
+      return `<section class="container-documents"><div class="container-documents-head"><div><h3>Documentos</h3><div class="muted">Este contenedor todavía no está vinculado a un expediente.</div></div></div><div class="container-documents-empty">Crea o vincula el expediente para guardar Factura comercial, Packing List, B/L, ficha técnica y demás documentos.</div><div class="container-documents-footer"><button id="containerOpenDocuments" class="orange" type="button">Crear expediente y agregar documentos</button></div></section>`;
+    }
+    const rowsHtml = documents.length ? documents.map(item => `<div class="container-document-row"><div><b>${esc(item.document_type || 'Documento')}</b><div class="container-document-meta">${esc(item.file_name || 'Archivo')}${item.created_at ? ` · ${esc(new Date(item.created_at).toLocaleDateString('es-US'))}` : ''}</div></div><div class="container-document-scope">${esc(shipmentDocumentScope(item, shipment))}</div><div class="container-document-actions">${item.signed_url ? `<button class="alt" type="button" data-container-document="${esc(item.id)}">Abrir</button>` : '<span class="muted">Sin vista</span>'}</div></div>`).join('') : `<div class="container-documents-empty">${errorMessage ? esc(errorMessage) : 'Todavía no hay documentos aplicables a este contenedor.'}</div>`;
+    return `<section class="container-documents"><div class="container-documents-head"><div><h3>Documentos</h3><div class="muted">General del expediente + B/L de este contenedor + archivos propios del contenedor.</div></div><span class="pill ${documents.length ? 'done' : ''}">${documents.length} archivo${documents.length === 1 ? '' : 's'}</span></div><div class="container-documents-list">${rowsHtml}</div><div class="container-documents-footer"><button id="containerOpenDocuments" class="orange" type="button">Ver / agregar documentos</button></div></section>`;
+  }
+
+  async function openDetails(shipment) {
     const mode = modeLabel(shipment)[0];
     const client = shipment.clients || {};
     const importer = importerForShipment(shipment);
+    let documents = [];
+    let documentsError = '';
+    if (shipment.operation_id) {
+      try {
+        const result = await request('/api/documents?operation_id=' + encodeURIComponent(shipment.operation_id));
+        documents = relevantShipmentDocuments(shipment, result.documents || []);
+      } catch (error) {
+        documentsError = 'No se pudieron cargar los documentos en este momento.';
+        console.error('[tracking documents]', error);
+      }
+    }
     const html = `<div class="container-details-grid">
       <section><h3 style="margin:0 0 8px;color:#06204a">Cliente</h3>${detailRow('Nombre', shipment.client_id ? client.name : 'SIN CLIENTE · Disponible para venta')}${detailRow('Empresa', client.company)}${detailRow('WhatsApp', client.phone)}${detailRow('Importadora de este contenedor', importer?.name)}</section>
       <section><h3 style="margin:0 0 8px;color:#06204a">Contenedor</h3>${detailRow('Número de contenedor', shipment.container_number)}${detailRow('Producto', shipment.product)}${detailRow('Cantidad', formatQuantity(shipment))}${detailRow('Fecha de salida', formatDate(shipment.departure_date))}${detailRow('Booking', shipment.booking_number)}${detailRow('B/L', shipment.bol_number)}${detailRow('Naviera', shipment.carrier)}${detailRow('Estado operativo', shipment.operational_status || shipment.last_status)}${detailRow('Ubicación', shipment.last_location)}${detailRow('Modo de tracking', mode)}</section>
+      ${shipmentDocumentsHtml(shipment, documents, documentsError)}
     </div>`;
     window.openModal?.(`Detalles · ${shipment.container_number}`, html);
+    const documentMap = new Map(documents.map(item => [String(item.id), item]));
+    document.querySelectorAll('[data-container-document]').forEach(button => {
+      button.onclick = () => {
+        const item = documentMap.get(String(button.dataset.containerDocument));
+        if (item?.signed_url) window.open(item.signed_url, '_blank', 'noopener');
+      };
+    });
+    byId('containerOpenDocuments')?.addEventListener('click', () => openExpedienteShortcut(shipment), { once: true });
   }
 
   async function openHistory(shipment) {
