@@ -53,7 +53,8 @@
       .nav-icon .ui-icon-svg{width:19px;height:19px}
       .nav-group-btn .nav-chevron .ui-icon-svg{width:15px;height:15px}
       .menu-btn>.ui-icon-svg{width:21px;height:21px;margin:auto}
-      .alert-bell>.ui-icon-svg{width:20px;height:20px}
+      .alert-bell{color:var(--navy)!important}
+      .alert-bell>.ui-icon-svg{width:20px;height:20px;color:var(--navy)!important;stroke:var(--navy)!important}
       body.sidebar-collapsed .sidebar-nav .nav-icon .ui-icon-svg{width:21px;height:21px}
     `;
     document.head.appendChild(style);
