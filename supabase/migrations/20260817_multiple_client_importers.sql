@@ -1,11 +1,27 @@
 create table if not exists public.importers (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  normalized_name text not null,
+  legal_name text null,
+  country text not null default 'Cuba',
+  email text null,
+  phone text null,
+  address text null,
+  contact_name text null,
+  notes text null,
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.importers
+  add column if not exists normalized_name text null;
+
+update public.importers
+set normalized_name = upper(btrim(name))
+where normalized_name is null or btrim(normalized_name) = '';
+
+alter table public.importers
+  alter column normalized_name set not null;
 
 create unique index if not exists importers_normalized_name_uidx
   on public.importers(normalized_name);
