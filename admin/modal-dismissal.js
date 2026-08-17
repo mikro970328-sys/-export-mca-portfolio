@@ -20,7 +20,8 @@
       if (!confirmed) return;
     }
     dirty = false;
-    if (typeof window.closeModal === 'function') window.closeModal();
+    const closeExistingModal = window.closeModal;
+    if (typeof closeExistingModal === 'function') closeExistingModal();
   };
 
   closeButton.textContent = '×';
