@@ -57,6 +57,11 @@
   }
   function clientForOperation(operation) { return operation?.client || allClients().find(client => String(client.id) === String(operation?.client_id)) || null; }
   function clientForShipment(shipment) { return shipment?.clients || allClients().find(client => String(client.id) === String(shipment?.client_id)) || null; }
+  function importerForShipment(shipment) {
+    const importerState = window.importerState || { importers: [], shipment_importers: [] };
+    const importerId = importerState.shipment_importers?.find(item => String(item.shipment_id) === String(shipment?.id || ''))?.importer_id || shipment?.importer_id || null;
+    return importerState.importers?.find(item => String(item.id) === String(importerId || '')) || null;
+  }
   function distinctBols(shipments) {
     const map = new Map();
     shipments.forEach(shipment => { const raw = String(shipment.bol_number || '').trim(); if (raw) map.set(bolKey(raw), raw); });
@@ -134,13 +139,13 @@
   }
 
   function sectionHtml() {
-    return `<section class="card"><div class="toolbar"><div><h2 class="section-title">Expedientes de exportación</h2><div class="muted">Busca operaciones activas o finalizadas por cliente, expediente, contenedor, producto o B/L.</div></div><button id="newExpediente" class="orange" type="button">Nuevo expediente</button></div><input id="expedientesSearch" class="search" style="margin-top:14px" placeholder="Buscar por cliente, expediente, contenedor, producto o B/L"><div class="toolbar" style="margin-top:12px;align-items:center"><div class="exp-tabs"><button id="expTabActive" class="alt active" type="button">Activos</button><button id="expTabDelivered" class="alt" type="button">Finalizados</button><button id="expTabAll" class="alt" type="button">Todos</button></div><button id="reloadExpedientes" class="alt" type="button">Actualizar</button></div><div id="expedientesMsg" class="msg"></div><div id="expedientesList"></div></section>`;
+    return `<section class="card"><div class="toolbar"><div><h2 class="section-title">Expedientes de exportación</h2><div class="muted">Busca operaciones activas o finalizadas por cliente, expediente, contenedor, producto, importadora o B/L.</div></div><button id="newExpediente" class="orange" type="button">Nuevo expediente</button></div><input id="expedientesSearch" class="search" style="margin-top:14px" placeholder="Buscar por cliente, expediente, contenedor, producto, importadora o B/L"><div class="toolbar" style="margin-top:12px;align-items:center"><div class="exp-tabs"><button id="expTabActive" class="alt active" type="button">Activos</button><button id="expTabDelivered" class="alt" type="button">Finalizados</button><button id="expTabAll" class="alt" type="button">Todos</button></div><button id="reloadExpedientes" class="alt" type="button">Actualizar</button></div><div id="expedientesMsg" class="msg"></div><div id="expedientesList"></div></section>`;
   }
   function matchesSearch(operation) {
     const search = state.search.trim().toLowerCase();
     if (!search) return true;
     const client = clientForOperation(operation);
-    const values = [operation.operation_code, client?.name, client?.company, client?.mipyme_name, client?.phone, ...allOperationShipments(operation).flatMap(shipment => [shipment.container_number, shipment.bol_number, shipment.booking_number, shipment.product])];
+    const values = [operation.operation_code, client?.name, client?.company, client?.mipyme_name, client?.phone, ...allOperationShipments(operation).flatMap(shipment => [shipment.container_number, shipment.bol_number, shipment.booking_number, shipment.product, importerForShipment(shipment)?.name])];
     return values.some(value => String(value || '').toLowerCase().includes(search));
   }
   function operationRow(operation) {
@@ -172,9 +177,14 @@
   }
   async function loadData() {
     try {
-      const [operationsResult, documentsResult] = await Promise.all([api('/api/operations'), api('/api/documents')]);
+      const [operationsResult, documentsResult, importerResult] = await Promise.all([api('/api/operations'), api('/api/documents'), api('/api/importers')]);
       state.operations = operationsResult.operations || [];
       state.documents = documentsResult.documents || [];
+      window.importerState = {
+        importers: importerResult.importers || [],
+        client_importers: importerResult.client_importers || [],
+        shipment_importers: importerResult.shipment_importers || []
+      };
       textMessage(byId('expedientesMsg'), '');
       renderList();
       return true;
@@ -289,7 +299,8 @@
       const ownDocs = documents.filter(item => String(item.shipment_id || '') === String(shipment.id));
       const applicableDocs = applicableDocumentsForShipment(shipment, documents);
       const downloadAction = applicableDocs.length ? `<button class="alt" type="button" data-download-shipment-docs="${esc(shipment.id)}">Descargar todo (${applicableDocs.length})</button>` : '';
-      return `<div class="exp-container-card"><div class="exp-container-belongs">${esc(groupLabel)}</div><div class="exp-container-line"><div><b>${esc(shipment.container_number || '—')}</b><div class="muted">${esc(shipment.product || 'Sin producto')}${shipment.operational_status ? ` · ${esc(shipment.operational_status)}` : ''}</div></div><div class="exp-container-actions"><span class="pill ${ownDocs.length ? 'done' : ''}">${ownDocs.length} archivo${ownDocs.length === 1 ? '' : 's'}</span>${downloadAction}<button class="orange" type="button" data-upload-scope="shipment:${esc(shipment.id)}" data-upload-label="Contenedor ${esc(shipment.container_number || '')}">+ Agregar documento</button></div></div>${ownDocs.length ? `<div class="exp-container-files">${ownDocs.map(documentRow).join('')}</div>` : ''}</div>`;
+      const importer = importerForShipment(shipment);
+      return `<div class="exp-container-card"><div class="exp-container-belongs">${esc(groupLabel)}</div><div class="exp-container-line"><div><b>${esc(shipment.container_number || '—')}</b><div class="muted">${esc(shipment.product || 'Sin producto')}${shipment.operational_status ? ` · ${esc(shipment.operational_status)}` : ''} · Importadora: ${esc(importer?.name || 'Sin definir')}</div></div><div class="exp-container-actions"><span class="pill ${ownDocs.length ? 'done' : ''}">${ownDocs.length} archivo${ownDocs.length === 1 ? '' : 's'}</span>${downloadAction}<button class="orange" type="button" data-upload-scope="shipment:${esc(shipment.id)}" data-upload-label="Contenedor ${esc(shipment.container_number || '')}">+ Agregar documento</button></div></div>${ownDocs.length ? `<div class="exp-container-files">${ownDocs.map(documentRow).join('')}</div>` : ''}</div>`;
     }).join('');
   }
   function documentFoldersHtml(operation, allDocuments) {
@@ -327,12 +338,12 @@
     const shared = sharedBolsForOperation(operation);
     const hiddenDelivered = hiddenDeliveredCount(operation);
     const delivered = isFinalized(operation);
-    const containerChips = shipments.length ? `<div class="exp-summary-label">Contenedores del expediente</div><div class="exp-container-chips">${shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')} · ${shipment.bol_number ? `B/L ${esc(shipment.bol_number)}` : 'B/L pendiente'}</span>`).join('')}</div>` : '<div class="muted" style="margin-top:10px">No quedan contenedores activos en este expediente.</div>';
+    const containerChips = shipments.length ? `<div class="exp-summary-label">Contenedores del expediente</div><div class="exp-container-chips">${shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')} · ${shipment.bol_number ? `B/L ${esc(shipment.bol_number)}` : 'B/L pendiente'} · ${esc(importerForShipment(shipment)?.name || 'Importadora sin definir')}</span>`).join('')}</div>` : '<div class="muted" style="margin-top:10px">No quedan contenedores activos en este expediente.</div>';
     return `<section><div class="toolbar"><div><div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div><h2 style="margin:3px 0">${esc(client?.name || 'Cliente')}</h2><div class="muted">${esc(client?.company || '')}</div></div><span class="pill ${delivered ? 'done' : ''}">${esc(statusLabel(operation))}</span></div><div class="exp-summary"><div class="exp-summary-top"><div class="exp-stats" style="margin:0"><span class="pill">${shipments.length} contenedor${shipments.length === 1 ? '' : 'es'}${delivered ? '' : ' activos'}</span><span class="pill">${bols.length} B/L</span><span class="pill ${documents.length ? 'done' : ''}">${documents.length} documento${documents.length === 1 ? '' : 's'}</span>${shared.length ? `<span class="exp-shared-badge">${shared.length} B/L compartido${shared.length === 1 ? '' : 's'}</span>` : ''}</div><div class="exp-summary-actions"><button id="manageExpContainers" class="alt" type="button">Gestionar contenedores</button></div></div>${containerChips}${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} ya entregado${hiddenDelivered === 1 ? '' : 's'} se oculta${hiddenDelivered === 1 ? '' : 'n'} automáticamente.</div>` : ''}${operation.notes ? `<div class="muted" style="margin-top:8px">${esc(operation.notes)}</div>` : ''}</div></section><section class="exp-section"><div class="exp-section-title"><div><h3 style="margin:0">Documentos del envío</h3><div class="muted">Abre una carpeta para ver o agregar documentos.</div></div></div>${documentFoldersHtml(operation,rawDocuments)}</section><div id="expDocumentsMsg" class="msg"></div>`;
   }
   function manageContainersHtml(operation) {
     const assigned=operationShipments(operation), available=availableShipments(operation), hiddenDelivered=hiddenDeliveredCount(operation);
-    return `<div><div class="exp-subview-head"><button id="backToExpediente" class="exp-back-button" type="button" aria-label="Volver al expediente" title="Volver al expediente">←</button><div><div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div><h3 style="margin:3px 0">Gestionar contenedores</h3></div></div>${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} entregado${hiddenDelivered === 1 ? '' : 's'} no aparece${hiddenDelivered === 1 ? '' : 'n'} aquí.</div>` : ''}<div class="exp-section"><b>Asignados activos</b>${assigned.length ? `<div class="exp-manage-table-wrap"><table><thead><tr><th>Contenedor</th><th>Producto</th><th>B/L</th><th></th></tr></thead><tbody>${assigned.map(shipment => `<tr><td><b>${esc(shipment.container_number || '—')}</b></td><td>${esc(shipment.product || '—')}</td><td>${esc(shipment.bol_number || 'Pendiente')}${shipment.bol_number && blContext(shipment.bol_number).shared ? '<br><span class="exp-shared-badge">Compartido</span>' : ''}</td><td><button class="alt" type="button" data-unassign-shipment="${esc(shipment.id)}">Quitar</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="muted" style="margin-top:8px">No hay contenedores activos asignados.</div>'}</div><div class="exp-section"><b>Disponibles de este cliente</b>${available.length ? `<div class="exp-available">${available.map(shipment => `<div class="exp-available-item"><b>${esc(shipment.container_number || 'Contenedor')}</b><div class="muted">${esc(shipment.product || 'Sin producto')} · B/L ${esc(shipment.bol_number || 'pendiente')}</div>${shipment.bol_number && blContext(shipment.bol_number).shared ? `<div style="margin-top:6px"><span class="exp-shared-badge">B/L compartido · ${blContext(shipment.bol_number).client_count} clientes</span></div>` : ''}<button class="orange" style="margin-top:8px" type="button" data-assign-shipment="${esc(shipment.id)}">Agregar</button></div>`).join('')}</div>` : '<div class="muted" style="margin-top:8px">No hay otros contenedores activos disponibles de este cliente.</div>'}</div></div>`;
+    return `<div><div class="exp-subview-head"><button id="backToExpediente" class="exp-back-button" type="button" aria-label="Volver al expediente" title="Volver al expediente">←</button><div><div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div><h3 style="margin:3px 0">Gestionar contenedores</h3></div></div>${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} entregado${hiddenDelivered === 1 ? '' : 's'} no aparece${hiddenDelivered === 1 ? '' : 'n'} aquí.</div>` : ''}<div class="exp-section"><b>Asignados activos</b>${assigned.length ? `<div class="exp-manage-table-wrap"><table><thead><tr><th>Contenedor</th><th>Producto</th><th>Importadora</th><th>B/L</th><th></th></tr></thead><tbody>${assigned.map(shipment => `<tr><td><b>${esc(shipment.container_number || '—')}</b></td><td>${esc(shipment.product || '—')}</td><td>${esc(importerForShipment(shipment)?.name || 'Sin definir')}</td><td>${esc(shipment.bol_number || 'Pendiente')}${shipment.bol_number && blContext(shipment.bol_number).shared ? '<br><span class="exp-shared-badge">Compartido</span>' : ''}</td><td><button class="alt" type="button" data-unassign-shipment="${esc(shipment.id)}">Quitar</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="muted" style="margin-top:8px">No hay contenedores activos asignados.</div>'}</div><div class="exp-section"><b>Disponibles de este cliente</b>${available.length ? `<div class="exp-available">${available.map(shipment => `<div class="exp-available-item"><b>${esc(shipment.container_number || 'Contenedor')}</b><div class="muted">${esc(shipment.product || 'Sin producto')} · Importadora: ${esc(importerForShipment(shipment)?.name || 'Sin definir')} · B/L ${esc(shipment.bol_number || 'pendiente')}</div>${shipment.bol_number && blContext(shipment.bol_number).shared ? `<div style="margin-top:6px"><span class="exp-shared-badge">B/L compartido · ${blContext(shipment.bol_number).client_count} clientes</span></div>` : ''}<button class="orange" style="margin-top:8px" type="button" data-assign-shipment="${esc(shipment.id)}">Agregar</button></div>`).join('')}</div>` : '<div class="muted" style="margin-top:8px">No hay otros contenedores activos disponibles de este cliente.</div>'}</div></div>`;
   }
   function scopeFromValue(value,label) {
     const scope=String(value || 'general');
@@ -537,6 +548,7 @@
     const search=byId('expedientesSearch'); if (search) search.oninput=() => { state.search=search.value || ''; renderList(); };
     window.addEventListener('export-mca:data-loaded', loadData);
     window.addEventListener('export-mca:clients-changed', loadData);
+    window.addEventListener('export-mca:importers-changed', loadData);
   }
   async function init() {
     if (state.initialized) return true;
@@ -546,6 +558,7 @@
   function destroy() {
     window.removeEventListener('export-mca:data-loaded',loadData);
     window.removeEventListener('export-mca:clients-changed',loadData);
+    window.removeEventListener('export-mca:importers-changed',loadData);
     state.operations=[]; state.documents=[]; state.search=''; state.tab='active'; state.initialized=false;
   }
   window.ExpedientesModule = Object.freeze({ init,destroy,reload:loadData,open:openExpediente,getState:() => ({ initialized:state.initialized,operations:[...state.operations],documents:[...state.documents],tab:state.tab,search:state.search }) });
