@@ -9,6 +9,8 @@ const files = {
   navigation: 'admin/navigation-shell.js',
   navigationCss: 'admin/navigation-shell.css',
   sectionState: 'admin/section-state.js',
+  dashboard: 'admin/dashboard-operational-state.js',
+  dashboardApi: 'api/dashboard.js',
   loader: 'admin/erp.js',
   index: 'admin/index.html',
   alerts: 'admin/operational-alert-center.js'
@@ -42,6 +44,8 @@ for (const file of [
   files.expedientes,
   files.navigation,
   files.sectionState,
+  files.dashboard,
+  files.dashboardApi,
   files.loader,
   files.alerts
 ]) {
@@ -60,6 +64,8 @@ const expedientes = read(files.expedientes);
 const navigation = read(files.navigation);
 const navigationCss = read(files.navigationCss);
 const sectionState = read(files.sectionState);
+const dashboard = read(files.dashboard);
+const dashboardApi = read(files.dashboardApi);
 const loader = read(files.loader);
 const index = read(files.index);
 const alerts = read(files.alerts);
@@ -137,9 +143,39 @@ for (const fragment of [
 }
 
 for (const fragment of [
+  "owner: 'dashboard-operational-state.js'",
+  "source: 'api/dashboard.js'",
+  'payload.stats',
+  'payload.operations',
+  'payload.recent_activity'
+]) {
+  if (!dashboard.includes(fragment)) errors.push(`Falta propiedad de presentación UX-B en dashboard: ${fragment}`);
+}
+
+for (const forbidden of [
+  'function classifyShipment',
+  'function calculateOperationalStats',
+  'Array.isArray(window.shipments)',
+  'window.loadAll ='
+]) {
+  if (dashboard.includes(forbidden)) errors.push(`Dashboard frontend vuelve a calcular o interceptar datos: ${forbidden}`);
+}
+
+for (const fragment of [
+  "owner: 'api/dashboard.js'",
+  'function classifyShipment',
+  'function buildShipmentStats',
+  'function buildOperationStats',
+  'recent_activity:'
+]) {
+  if (!dashboardApi.includes(fragment)) errors.push(`Falta proyección operativa única del backend UX-B: ${fragment}`);
+}
+
+for (const fragment of [
   '/admin/clients-module.js',
   '/admin/containers-module.js',
   '/admin/expedientes-module.js',
+  '/admin/dashboard-operational-state.js',
   '/admin/navigation-shell.js',
   '/admin/section-state.js',
   '/admin/navigation-shell.css'
@@ -176,8 +212,8 @@ for (const forbidden of [
 if (alerts.includes('nav.innerHTML')) {
   errors.push('Centro de alertas no puede reemplazar el DOM completo del botón de navegación.');
 }
-for (const fragment of ["nav.querySelector('.nav-icon')", "nav.querySelector('.nav-label')"]) {
-  if (!alerts.includes(fragment)) errors.push(`Centro de alertas no preserva la estructura del shell: ${fragment}`);
+for (const fragment of ["nav.querySelector('.nav-icon')", "nav.querySelector('.nav-label')", "const target = $('alerts')"]) {
+  if (!alerts.includes(fragment)) errors.push(`Centro de alertas no preserva su propiedad visual: ${fragment}`);
 }
 
 if (!loader.includes('decodeURIComponent(')) errors.push('El loader no contiene decodeURIComponent() válido.');
@@ -190,9 +226,9 @@ if (errors.length) {
 }
 
 console.log('Validación de propiedad frontend superada.');
-console.log('- Clientes, Tracking, Expedientes, navegación y estado de secciones tienen propietarios explícitos.');
+console.log('- Clientes, Tracking, Expedientes, navegación, dashboard y estado de secciones tienen propietarios explícitos.');
 console.log('- Los propietarios/parches retirados no existen ni se cargan.');
 console.log('- navigation-shell.js no contiene llamadas de negocio ni wrappers de datos.');
-console.log('- El sidebar colapsable, drawer móvil y persistencia están presentes en la estructura UX-A.');
-console.log('- Centro de alertas conserva la estructura del botón de navegación.');
-console.log('- Sintaxis JavaScript válida en los propietarios frontend críticos.');
+console.log('- UX-B usa api/dashboard.js como única proyección operativa; el frontend solo presenta esa proyección.');
+console.log('- Centro de alertas conserva la propiedad de las alertas mostradas en Inicio.');
+console.log('- Sintaxis JavaScript válida en los propietarios críticos.');
