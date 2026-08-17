@@ -1,4 +1,5 @@
 import { fail, ok, readJson, requireAdmin, sendWhatsApp, supabase } from './_lib.js';
+import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
 
 const EVENTS = {
   load: { order: 1, status: 'Cargado en el buque', eventType: 'LOAD', templateEnv: 'TWILIO_CONTENT_SID', templateType: 'tracking' },
@@ -195,6 +196,7 @@ export default async function handler(req, res) {
       query: `?id=eq.${encodeURIComponent(id)}`,
       body: patch
     });
+    await reconcileOperationLifecycle(shipment.operation_id, admin, { source: `manual_tracking_${eventKey}`, shipment_id: shipment.id });
 
     const correctionDetail = `Estado anterior: ${previousStatus} · Estado nuevo: ${event.status}`;
 

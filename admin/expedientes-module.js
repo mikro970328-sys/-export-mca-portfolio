@@ -47,10 +47,10 @@
     const status = normalizedTrackingStatus(shipment);
     return shipment?.active === false || status.includes('entregado') || status.includes('delivered');
   }
-  function isDelivered(operation) { return operation?.status === 'delivered' || operation?.status === 'closed'; }
+  function isFinalized(operation) { const shipments = allOperationShipments(operation); return shipments.length > 0 && shipments.every(isShipmentDelivered); }
   function operationShipments(operation) {
     const shipments = allOperationShipments(operation);
-    return isDelivered(operation) ? shipments : shipments.filter(shipment => !isShipmentDelivered(shipment));
+    return isFinalized(operation) ? shipments : shipments.filter(shipment => !isShipmentDelivered(shipment));
   }
   function availableShipments(operation) {
     return allShipments().filter(shipment => String(shipment.client_id || '') === String(operation.client_id || '') && !shipment.operation_id && !isShipmentDelivered(shipment));
@@ -86,7 +86,7 @@
     return [...unique.values()];
   }
   function visibleDocuments(operation, documents) {
-    if (isDelivered(operation)) return documents;
+    if (isFinalized(operation)) return documents;
     const visibleShipments = operationShipments(operation);
     const shipmentIds = new Set(visibleShipments.map(shipment => String(shipment.id)));
     const bolNumbers = new Set(distinctBols(visibleShipments).map(bolKey));
@@ -107,18 +107,18 @@
     if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
-  function hiddenDeliveredCount(operation) { return isDelivered(operation) ? 0 : allOperationShipments(operation).filter(isShipmentDelivered).length; }
+  function hiddenDeliveredCount(operation) { return isFinalized(operation) ? 0 : allOperationShipments(operation).filter(isShipmentDelivered).length; }
   function operationTimestamp(operation) {
     const values = [operation.updated_at, operation.created_at, ...allOperationShipments(operation).flatMap(shipment => [shipment.updated_at, shipment.created_at])].filter(Boolean);
     const times = values.map(value => new Date(value).getTime()).filter(Number.isFinite);
     return times.length ? Math.max(...times) : 0;
   }
   function statusLabel(operation) {
-    if (isDelivered(operation)) return 'Entregado';
+    if (isFinalized(operation)) return 'Finalizado';
     const shipments = allOperationShipments(operation);
     if (shipments.length) {
       const statuses = shipments.map(normalizedTrackingStatus);
-      if (shipments.every(isShipmentDelivered)) return 'Listo para archivar';
+      if (shipments.every(isShipmentDelivered)) return 'Finalizado';
       if (statuses.some(status => status.includes('liberado') || status.includes('released'))) return 'Liberado';
       if (statuses.some(status => status.includes('arrib') || status.includes('destino') || status.includes('descarg') || status.includes('discharg'))) return 'En destino';
       if (statuses.some(status => status.includes('tránsito') || status.includes('transit') || status.includes('salid') || status.includes('depart'))) return 'En tránsito';
@@ -134,7 +134,7 @@
   }
 
   function sectionHtml() {
-    return `<section class="card"><div class="toolbar"><div><h2 class="section-title">Expedientes de exportación</h2><div class="muted">Busca operaciones actuales o históricas por cliente, expediente, contenedor, producto o B/L.</div></div><button id="newExpediente" class="orange" type="button">Nuevo expediente</button></div><input id="expedientesSearch" class="search" style="margin-top:14px" placeholder="Buscar por cliente, expediente, contenedor, producto o B/L"><div class="toolbar" style="margin-top:12px;align-items:center"><div class="exp-tabs"><button id="expTabActive" class="alt active" type="button">Activos</button><button id="expTabDelivered" class="alt" type="button">Entregados</button><button id="expTabAll" class="alt" type="button">Todos</button></div><button id="reloadExpedientes" class="alt" type="button">Actualizar</button></div><div id="expedientesMsg" class="msg"></div><div id="expedientesList"></div></section>`;
+    return `<section class="card"><div class="toolbar"><div><h2 class="section-title">Expedientes de exportación</h2><div class="muted">Busca operaciones activas o finalizadas por cliente, expediente, contenedor, producto o B/L.</div></div><button id="newExpediente" class="orange" type="button">Nuevo expediente</button></div><input id="expedientesSearch" class="search" style="margin-top:14px" placeholder="Buscar por cliente, expediente, contenedor, producto o B/L"><div class="toolbar" style="margin-top:12px;align-items:center"><div class="exp-tabs"><button id="expTabActive" class="alt active" type="button">Activos</button><button id="expTabDelivered" class="alt" type="button">Finalizados</button><button id="expTabAll" class="alt" type="button">Todos</button></div><button id="reloadExpedientes" class="alt" type="button">Actualizar</button></div><div id="expedientesMsg" class="msg"></div><div id="expedientesList"></div></section>`;
   }
   function matchesSearch(operation) {
     const search = state.search.trim().toLowerCase();
@@ -149,7 +149,7 @@
     const allShipmentsForOperation = allOperationShipments(operation);
     const docs = visibleDocuments(operation, documentsForOperation(operation));
     const bols = distinctBols(shipments);
-    const delivered = isDelivered(operation);
+    const delivered = isFinalized(operation);
     const dateValue = operationTimestamp(operation);
     return `<article class="exp-row" data-expediente-row="${esc(operation.id)}"><div class="exp-row-primary"><div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div><div class="exp-client">${esc(client?.name || 'Cliente')}</div></div><div class="exp-row-company"><b>${esc(client?.company || client?.mipyme_name || '—')}</b>${dateValue ? `<div class="muted">Último movimiento ${esc(formatDate(new Date(dateValue).toISOString()))}</div>` : ''}</div><div class="exp-row-status"><span class="pill ${delivered ? 'done' : ''}">${esc(statusLabel(operation))}</span></div><div class="exp-row-stats"><span class="pill">${allShipmentsForOperation.length} cont.</span><span class="pill">${distinctBols(allShipmentsForOperation).length} B/L</span><span class="pill ${docs.length ? 'done' : ''}">${docs.length} doc.</span>${!delivered && hiddenDeliveredCount(operation) ? `<span class="pill">${hiddenDeliveredCount(operation)} entregado${hiddenDeliveredCount(operation) === 1 ? '' : 's'} oculto${hiddenDeliveredCount(operation) === 1 ? '' : 's'}</span>` : ''}</div><div class="exp-row-actions"><button class="alt" type="button" data-open-expediente="${esc(operation.id)}">Abrir</button></div></article>`;
   }
@@ -158,12 +158,12 @@
     if (!target) return;
     let operations = state.operations.filter(operation => {
       if (state.tab === 'all') return operation.status !== 'cancelled';
-      if (state.tab === 'delivered') return isDelivered(operation);
-      return !isDelivered(operation) && operation.status !== 'cancelled';
+      if (state.tab === 'delivered') return isFinalized(operation);
+      return !isFinalized(operation) && operation.status !== 'cancelled';
     }).filter(matchesSearch);
     operations = [...operations].sort((a,b) => operationTimestamp(b) - operationTimestamp(a));
     if (!operations.length) {
-      const text = state.search.trim() ? 'No hay expedientes que coincidan con la búsqueda.' : state.tab === 'delivered' ? 'No hay expedientes entregados.' : state.tab === 'all' ? 'No hay expedientes registrados.' : 'No hay expedientes activos.';
+      const text = state.search.trim() ? 'No hay expedientes que coincidan con la búsqueda.' : state.tab === 'delivered' ? 'No hay expedientes finalizados.' : state.tab === 'all' ? 'No hay expedientes registrados.' : 'No hay expedientes activos.';
       target.innerHTML = `<div class="empty-state" style="margin-top:14px">${text}</div>`;
       return;
     }
@@ -326,9 +326,9 @@
     const bols = distinctBols(shipments);
     const shared = sharedBolsForOperation(operation);
     const hiddenDelivered = hiddenDeliveredCount(operation);
-    const delivered = isDelivered(operation);
+    const delivered = isFinalized(operation);
     const containerChips = shipments.length ? `<div class="exp-summary-label">Contenedores del expediente</div><div class="exp-container-chips">${shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')} · ${shipment.bol_number ? `B/L ${esc(shipment.bol_number)}` : 'B/L pendiente'}</span>`).join('')}</div>` : '<div class="muted" style="margin-top:10px">No quedan contenedores activos en este expediente.</div>';
-    return `<section><div class="toolbar"><div><div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div><h2 style="margin:3px 0">${esc(client?.name || 'Cliente')}</h2><div class="muted">${esc(client?.company || '')}</div></div><span class="pill ${delivered ? 'done' : ''}">${esc(statusLabel(operation))}</span></div><div class="exp-summary"><div class="exp-summary-top"><div class="exp-stats" style="margin:0"><span class="pill">${shipments.length} contenedor${shipments.length === 1 ? '' : 'es'}${delivered ? '' : ' activos'}</span><span class="pill">${bols.length} B/L</span><span class="pill ${documents.length ? 'done' : ''}">${documents.length} documento${documents.length === 1 ? '' : 's'}</span>${shared.length ? `<span class="exp-shared-badge">${shared.length} B/L compartido${shared.length === 1 ? '' : 's'}</span>` : ''}</div><div class="exp-summary-actions"><button id="manageExpContainers" class="alt" type="button">Gestionar contenedores</button><button id="toggleExpDelivered" class="${delivered ? 'alt' : 'orange'}" type="button">${delivered ? 'Reabrir expediente' : 'Marcar entregado'}</button></div></div>${containerChips}${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} ya entregado${hiddenDelivered === 1 ? '' : 's'} se oculta${hiddenDelivered === 1 ? '' : 'n'} automáticamente.</div>` : ''}${operation.notes ? `<div class="muted" style="margin-top:8px">${esc(operation.notes)}</div>` : ''}</div></section><section class="exp-section"><div class="exp-section-title"><div><h3 style="margin:0">Documentos del envío</h3><div class="muted">Abre una carpeta para ver o agregar documentos.</div></div></div>${documentFoldersHtml(operation,rawDocuments)}</section><div id="expDocumentsMsg" class="msg"></div>`;
+    return `<section><div class="toolbar"><div><div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div><h2 style="margin:3px 0">${esc(client?.name || 'Cliente')}</h2><div class="muted">${esc(client?.company || '')}</div></div><span class="pill ${delivered ? 'done' : ''}">${esc(statusLabel(operation))}</span></div><div class="exp-summary"><div class="exp-summary-top"><div class="exp-stats" style="margin:0"><span class="pill">${shipments.length} contenedor${shipments.length === 1 ? '' : 'es'}${delivered ? '' : ' activos'}</span><span class="pill">${bols.length} B/L</span><span class="pill ${documents.length ? 'done' : ''}">${documents.length} documento${documents.length === 1 ? '' : 's'}</span>${shared.length ? `<span class="exp-shared-badge">${shared.length} B/L compartido${shared.length === 1 ? '' : 's'}</span>` : ''}</div><div class="exp-summary-actions"><button id="manageExpContainers" class="alt" type="button">Gestionar contenedores</button></div></div>${containerChips}${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} ya entregado${hiddenDelivered === 1 ? '' : 's'} se oculta${hiddenDelivered === 1 ? '' : 'n'} automáticamente.</div>` : ''}${operation.notes ? `<div class="muted" style="margin-top:8px">${esc(operation.notes)}</div>` : ''}</div></section><section class="exp-section"><div class="exp-section-title"><div><h3 style="margin:0">Documentos del envío</h3><div class="muted">Abre una carpeta para ver o agregar documentos.</div></div></div>${documentFoldersHtml(operation,rawDocuments)}</section><div id="expDocumentsMsg" class="msg"></div>`;
   }
   function manageContainersHtml(operation) {
     const assigned=operationShipments(operation), available=availableShipments(operation), hiddenDelivered=hiddenDeliveredCount(operation);
@@ -430,7 +430,6 @@
   }
   function bindExpedienteActions(operation,documents) {
     bindDocumentActions(operation,documents);
-    const statusButton=byId('toggleExpDelivered'); if (statusButton) statusButton.onclick=() => setOperationStatus(operation,isDelivered(operation) ? 'draft' : 'delivered');
     const manageButton=byId('manageExpContainers'); if (manageButton) manageButton.onclick=() => openManageContainers(operation.id);
     document.querySelectorAll('[data-folder-toggle]').forEach(header => {
       header.onclick=event => {
@@ -495,11 +494,6 @@
     if (button?.disabled) return; button.disabled=true;
     try { await api('/api/operations',{ method:'PATCH',body:JSON.stringify({ action:'unassign_shipment',operation_id:operation.id,shipment_id:shipmentId }) }); if (typeof window.loadAll === 'function') await window.loadAll(); await loadData(); await openManageContainers(operation.id); }
     catch (error) { button.disabled=false; alert(error.message || 'No se pudo quitar el contenedor.'); }
-  }
-  async function setOperationStatus(operation,status) {
-    const button=byId('toggleExpDelivered'); if (button?.disabled) return; button.disabled=true;
-    try { await api('/api/operations',{ method:'PATCH',body:JSON.stringify({ action:'set_status',operation_id:operation.id,status }) }); state.tab=status === 'delivered' ? 'delivered' : 'active'; await loadData(); updateTabs(); if (typeof window.closeModal === 'function') window.closeModal(); }
-    catch (error) { button.disabled=false; alert(error.message || 'No se pudo actualizar el estado del expediente.'); }
   }
   async function deleteDocument(operation,item,button) {
     const warning=item.shared_bl ? `¿Borrar "${item.file_name || item.document_type || 'este documento'}"?\n\nEste archivo está compartido por el B/L ${item.bol_number || ''}. Se eliminará de todos los expedientes que lo muestran.` : `¿Borrar "${item.file_name || item.document_type || 'este documento'}"?\n\nEl archivo será eliminado del expediente.`;

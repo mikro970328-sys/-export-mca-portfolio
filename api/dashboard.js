@@ -1,7 +1,5 @@
 import { fail, ok, requireAdmin, supabase } from './_lib.js';
 
-const CLOSED_OPERATION_STATUSES = new Set(['delivered', 'closed', 'cancelled']);
-
 function normalize(value) {
   return String(value || '')
     .normalize('NFD')
@@ -53,18 +51,24 @@ function buildShipmentStats(shipments) {
 }
 
 function buildOperationStats(operations, shipments) {
-  const activeOperations = operations.filter(operation => !CLOSED_OPERATION_STATUSES.has(normalize(operation.status)));
-  const linkedOperationIds = new Set(
-    shipments
-      .filter(shipment => shipment.operation_id)
-      .map(shipment => String(shipment.operation_id))
-  );
+  const byOperation = new Map();
+  shipments.forEach(shipment => {
+    if (!shipment.operation_id) return;
+    const key = String(shipment.operation_id);
+    if (!byOperation.has(key)) byOperation.set(key, []);
+    byOperation.get(key).push(shipment);
+  });
+  const isFinalized = operation => {
+    const linked = byOperation.get(String(operation.id)) || [];
+    return linked.length > 0 && linked.every(shipment => classifyShipment(shipment) === 'delivered');
+  };
+  const activeOperations = operations.filter(operation => !isFinalized(operation) && normalize(operation.status) !== 'cancelled');
 
   return {
     total: operations.length,
     active: activeOperations.length,
-    incomplete: activeOperations.filter(operation => !linkedOperationIds.has(String(operation.id))).length,
-    closed: operations.length - activeOperations.length
+    incomplete: activeOperations.filter(operation => !(byOperation.get(String(operation.id)) || []).length).length,
+    closed: operations.filter(operation => isFinalized(operation)).length
   };
 }
 
