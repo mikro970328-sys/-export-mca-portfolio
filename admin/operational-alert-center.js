@@ -255,6 +255,9 @@
     }
     window.loadNotifications = loadNotifications;
     window.loadOperationalAlerts = loadNotifications;
+    window.addEventListener('export-mca:section-changed', event => {
+      if (event.detail?.id === 'dashboardSection') loadNotifications();
+    });
     setTimeout(loadNotifications, 300);
     setInterval(loadNotifications, 5 * 60 * 1000);
   }
