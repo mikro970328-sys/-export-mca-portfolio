@@ -149,7 +149,7 @@
 
   const hydrateSecondaryModules = async () => {
     const independentModules = [
-      loadScript('/admin/mobile-interaction-core.js?v=20260730-5', 'data-mobile-interaction-core')
+      loadScript('/admin/mobile-interaction-core.js?v=20260817-nav1', 'data-mobile-interaction-core')
     ];
 
     const clientsModule = loadScript('/admin/clients-module.js?v=20260817-importers1', 'data-clients-module');
@@ -185,7 +185,7 @@
       await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
       await loadScript('/admin/containers-module.js?v=20260817-importers1', 'data-containers-module');
       await loadScript('/admin/shipment-editor.js?v=20260817-importers1', 'data-shipment-editor');
-      await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');
+      await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
       await themePromise;
 
       if (typeof window.loadAll !== 'function') {
