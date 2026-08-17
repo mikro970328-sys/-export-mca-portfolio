@@ -265,7 +265,7 @@
     const original = button.textContent;
     button.disabled = true;
     button.textContent = 'Guardando...';
-    let createdShipmentId = null;
+    let rollbackShipmentId = null;
     try {
       const result = await request('/api/shipments', {
         method: 'POST',
@@ -281,8 +281,18 @@
           departure_date: byId('shipmentDepartureDate')?.value || null
         })
       });
-      createdShipmentId = result.shipment?.id || null;
-      if (createdShipmentId && importerId) await assignImporterToShipment(createdShipmentId, importerId);
+      rollbackShipmentId = result.shipment?.id || null;
+      if (rollbackShipmentId && importerId) {
+        try {
+          await assignImporterToShipment(rollbackShipmentId, importerId);
+        } catch (assignmentError) {
+          try { await request('/api/shipments?id=' + encodeURIComponent(rollbackShipmentId), { method: 'DELETE' }); }
+          catch (rollbackError) { console.error('[container importer rollback]', rollbackError); }
+          rollbackShipmentId = null;
+          throw assignmentError;
+        }
+      }
+      rollbackShipmentId = null;
 
       note(result.shipment?.client_id ? 'Contenedor registrado correctamente.' : 'Contenedor registrado sin cliente y marcado como disponible para venta.', true);
       ['shipmentContainer','shipmentBooking','shipmentBol','shipmentCarrier','shipmentProduct','shipmentQuantity','shipmentQuantityUnit','shipmentDepartureDate'].forEach(id => {
@@ -290,7 +300,9 @@
       });
       if (byId('shipmentClient')) byId('shipmentClient').value = '';
       if (byId('shipmentImporter')) byId('shipmentImporter').value = '';
-      if (typeof window.loadAll === 'function') await window.loadAll();
+      if (typeof window.loadAll === 'function') {
+        try { await window.loadAll(); } catch (refreshError) { console.error('[containers refresh]', refreshError); }
+      }
       await loadImporterState();
       syncImporterSelect();
       render();
@@ -306,10 +318,6 @@
         }
       }
     } catch (error) {
-      if (createdShipmentId && importerId) {
-        try { await request('/api/shipments?id=' + encodeURIComponent(createdShipmentId), { method: 'DELETE' }); }
-        catch (rollbackError) { console.error('[container importer rollback]', rollbackError); }
-      }
       note(error.message);
     } finally {
       button.disabled = false;
