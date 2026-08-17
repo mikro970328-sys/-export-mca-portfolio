@@ -140,6 +140,7 @@
     return false;
   });
   const navigationStylesPromise = loadStylesheet('/admin/navigation-shell.css?v=20260817-uxa2', 'data-navigation-shell-style');
+  const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260817-e1', 'data-ui-icon-system');
 
   const revealAdminShell = () => {
     document.getElementById('loginPage')?.classList.add('hidden');
@@ -184,6 +185,7 @@
       await loadScript('/admin/shipment-editor.js?v=20260817-importers1', 'data-shipment-editor');
       await loadScript('/admin/modal-dismissal.js?v=20260817-uxc2', 'data-modal-dismissal');
       await themePromise;
+      await iconSystemPromise;
       await navigationStylesPromise;
       await loadScript('/admin/navigation-shell.js?v=20260817-uxa2', 'data-navigation-shell');
       await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
