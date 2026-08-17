@@ -5,6 +5,7 @@ const files = {
   clients: 'admin/clients-module.js',
   containers: 'admin/containers-module.js',
   shipmentEditor: 'admin/shipment-editor.js',
+  registrationShell: 'admin/registration-form-shell.js',
   expedientes: 'admin/expedientes-module.js',
   navigation: 'admin/navigation-shell.js',
   navigationCss: 'admin/navigation-shell.css',
@@ -41,6 +42,7 @@ for (const file of [
   files.clients,
   files.containers,
   files.shipmentEditor,
+  files.registrationShell,
   files.expedientes,
   files.navigation,
   files.sectionState,
@@ -60,6 +62,7 @@ for (const file of retiredOwners) {
 
 const clients = read(files.clients);
 const containers = read(files.containers);
+const registrationShell = read(files.registrationShell);
 const expedientes = read(files.expedientes);
 const navigation = read(files.navigation);
 const navigationCss = read(files.navigationCss);
@@ -91,6 +94,27 @@ for (const fragment of [
   "owner: 'containers-module.js'"
 ]) {
   if (!containers.includes(fragment)) errors.push(`Falta propiedad consolidada de Tracking: ${fragment}`);
+}
+
+for (const fragment of [
+  'window.__registrationFormShellInstalled',
+  "owner: 'registration-form-shell.js'",
+  "responsibility: 'visual-guidance-only'",
+  'registration-block',
+  'registration-readiness'
+]) {
+  if (!registrationShell.includes(fragment)) errors.push(`Falta propiedad visual UX-C en registro de contenedor: ${fragment}`);
+}
+
+for (const forbidden of [
+  '/api/',
+  'fetch(',
+  'saveShipmentRecord',
+  "addEventListener('click', save",
+  'window.loadAll',
+  'window.ContainersModule ='
+]) {
+  if (registrationShell.includes(forbidden)) errors.push(`registration-form-shell.js invade lógica de negocio: ${forbidden}`);
 }
 
 for (const fragment of [
@@ -174,6 +198,7 @@ for (const fragment of [
 for (const fragment of [
   '/admin/clients-module.js',
   '/admin/containers-module.js',
+  '/admin/registration-form-shell.js',
   '/admin/expedientes-module.js',
   '/admin/dashboard-operational-state.js',
   '/admin/navigation-shell.js',
@@ -226,9 +251,10 @@ if (errors.length) {
 }
 
 console.log('Validación de propiedad frontend superada.');
-console.log('- Clientes, Tracking, Expedientes, navegación, dashboard y estado de secciones tienen propietarios explícitos.');
+console.log('- Clientes, Tracking, Expedientes, navegación, dashboard, UX-C y estado de secciones tienen propietarios explícitos.');
 console.log('- Los propietarios/parches retirados no existen ni se cargan.');
 console.log('- navigation-shell.js no contiene llamadas de negocio ni wrappers de datos.');
 console.log('- UX-B usa api/dashboard.js como única proyección operativa; el frontend solo presenta esa proyección.');
+console.log('- UX-C mantiene registration-form-shell.js limitado a guía visual; containers-module.js conserva guardado y validación de negocio.');
 console.log('- Centro de alertas conserva la propiedad de las alertas mostradas en Inicio.');
 console.log('- Sintaxis JavaScript válida en los propietarios críticos.');

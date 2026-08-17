@@ -180,6 +180,7 @@
 
       await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
       await loadScript('/admin/containers-module.js?v=20260817-importers1', 'data-containers-module');
+      await loadScript('/admin/registration-form-shell.js?v=20260817-uxc1', 'data-registration-form-shell');
       await loadScript('/admin/shipment-editor.js?v=20260817-importers1', 'data-shipment-editor');
       await themePromise;
       await navigationStylesPromise;
