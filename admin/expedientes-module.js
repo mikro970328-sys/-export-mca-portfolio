@@ -114,7 +114,7 @@
     return times.length ? Math.max(...times) : 0;
   }
   function statusLabel(operation) {
-    if (isFinalized(operation)) return 'Entregado';
+    if (isFinalized(operation)) return 'Finalizado';
     const shipments = allOperationShipments(operation);
     if (shipments.length) {
       const statuses = shipments.map(normalizedTrackingStatus);
@@ -328,7 +328,7 @@
     const hiddenDelivered = hiddenDeliveredCount(operation);
     const delivered = isFinalized(operation);
     const containerChips = shipments.length ? `<div class="exp-summary-label">Contenedores del expediente</div><div class="exp-container-chips">${shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')} · ${shipment.bol_number ? `B/L ${esc(shipment.bol_number)}` : 'B/L pendiente'}</span>`).join('')}</div>` : '<div class="muted" style="margin-top:10px">No quedan contenedores activos en este expediente.</div>';
-    return `<section><div class="toolbar"><div><div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div><h2 style="margin:3px 0">${esc(client?.name || 'Cliente')}</h2><div class="muted">${esc(client?.company || '')}</div></div><span class="pill ${delivered ? 'done' : ''}">${esc(statusLabel(operation))}</span></div><div class="exp-summary"><div class="exp-summary-top"><div class="exp-stats" style="margin:0"><span class="pill">${shipments.length} contenedor${shipments.length === 1 ? '' : 'es'}${delivered ? '' : ' activos'}</span><span class="pill">${bols.length} B/L</span><span class="pill ${documents.length ? 'done' : ''}">${documents.length} documento${documents.length === 1 ? '' : 's'}</span>${shared.length ? `<span class="exp-shared-badge">${shared.length} B/L compartido${shared.length === 1 ? '' : 's'}</span>` : ''}</div><div class="exp-summary-actions"><button id="manageExpContainers" class="alt" type="button">Gestionar contenedores</button><button id="toggleExpDelivered" class="${delivered ? 'alt' : 'orange'}" type="button">${delivered ? 'Reabrir expediente' : 'Marcar entregado'}</button></div></div>${containerChips}${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} ya entregado${hiddenDelivered === 1 ? '' : 's'} se oculta${hiddenDelivered === 1 ? '' : 'n'} automáticamente.</div>` : ''}${operation.notes ? `<div class="muted" style="margin-top:8px">${esc(operation.notes)}</div>` : ''}</div></section><section class="exp-section"><div class="exp-section-title"><div><h3 style="margin:0">Documentos del envío</h3><div class="muted">Abre una carpeta para ver o agregar documentos.</div></div></div>${documentFoldersHtml(operation,rawDocuments)}</section><div id="expDocumentsMsg" class="msg"></div>`;
+    return `<section><div class="toolbar"><div><div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div><h2 style="margin:3px 0">${esc(client?.name || 'Cliente')}</h2><div class="muted">${esc(client?.company || '')}</div></div><span class="pill ${delivered ? 'done' : ''}">${esc(statusLabel(operation))}</span></div><div class="exp-summary"><div class="exp-summary-top"><div class="exp-stats" style="margin:0"><span class="pill">${shipments.length} contenedor${shipments.length === 1 ? '' : 'es'}${delivered ? '' : ' activos'}</span><span class="pill">${bols.length} B/L</span><span class="pill ${documents.length ? 'done' : ''}">${documents.length} documento${documents.length === 1 ? '' : 's'}</span>${shared.length ? `<span class="exp-shared-badge">${shared.length} B/L compartido${shared.length === 1 ? '' : 's'}</span>` : ''}</div><div class="exp-summary-actions"><button id="manageExpContainers" class="alt" type="button">Gestionar contenedores</button></div></div>${containerChips}${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} ya entregado${hiddenDelivered === 1 ? '' : 's'} se oculta${hiddenDelivered === 1 ? '' : 'n'} automáticamente.</div>` : ''}${operation.notes ? `<div class="muted" style="margin-top:8px">${esc(operation.notes)}</div>` : ''}</div></section><section class="exp-section"><div class="exp-section-title"><div><h3 style="margin:0">Documentos del envío</h3><div class="muted">Abre una carpeta para ver o agregar documentos.</div></div></div>${documentFoldersHtml(operation,rawDocuments)}</section><div id="expDocumentsMsg" class="msg"></div>`;
   }
   function manageContainersHtml(operation) {
     const assigned=operationShipments(operation), available=availableShipments(operation), hiddenDelivered=hiddenDeliveredCount(operation);
@@ -430,7 +430,6 @@
   }
   function bindExpedienteActions(operation,documents) {
     bindDocumentActions(operation,documents);
-    const statusButton=byId('toggleExpDelivered'); if (statusButton) statusButton.onclick=() => setOperationStatus(operation,isFinalized(operation) ? 'draft' : 'delivered');
     const manageButton=byId('manageExpContainers'); if (manageButton) manageButton.onclick=() => openManageContainers(operation.id);
     document.querySelectorAll('[data-folder-toggle]').forEach(header => {
       header.onclick=event => {
