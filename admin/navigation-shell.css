@@ -1,0 +1,59 @@
+:root{--sidebar-collapsed:84px}
+
+.sidebar,.main-shell,.sidebar-head,.sidebar-nav,.sidebar-foot,.brand-title,.brand-sub,.nav-item,.nav-group-btn,.submenu,.platform-version,#currentUser,#currentRole{
+  transition:width .22s ease,margin-left .22s ease,padding .22s ease,opacity .16s ease,transform .22s ease;
+}
+
+@media(min-width:901px){
+  #appShell.sidebar-collapsed .sidebar{width:var(--sidebar-collapsed)!important}
+  #appShell.sidebar-collapsed .main-shell{margin-left:var(--sidebar-collapsed)!important}
+  #sidebar.desktop-collapsed .sidebar-head{justify-content:center;padding-left:0!important;padding-right:0!important}
+  #sidebar.desktop-collapsed .sidebar-head>div{display:none}
+  #sidebar.desktop-collapsed #sidebarToggle{margin:0 auto}
+  #sidebar.desktop-collapsed .sidebar-nav{padding-left:10px!important;padding-right:10px!important;overflow-x:hidden}
+  #sidebar.desktop-collapsed .nav-item,
+  #sidebar.desktop-collapsed .nav-group-btn{
+    min-height:46px;
+    justify-content:center;
+    padding-left:8px!important;
+    padding-right:8px!important;
+    font-size:0!important;
+    overflow:hidden;
+  }
+  #sidebar.desktop-collapsed .nav-item::first-letter,
+  #sidebar.desktop-collapsed .nav-group-btn::first-letter{font-size:20px}
+  #sidebar.desktop-collapsed .submenu{display:none!important}
+  #sidebar.desktop-collapsed .nav-group.open .submenu{display:none!important}
+  #sidebar.desktop-collapsed .sidebar-foot{padding:12px 10px!important;text-align:center}
+  #sidebar.desktop-collapsed #currentUser,
+  #sidebar.desktop-collapsed #currentRole,
+  #sidebar.desktop-collapsed #changeOwnPassword,
+  #sidebar.desktop-collapsed .platform-version{display:none!important}
+  #sidebar.desktop-collapsed #logout{
+    width:48px!important;
+    min-width:48px!important;
+    height:42px;
+    padding:0!important;
+    margin:0 auto!important;
+    overflow:hidden;
+    color:transparent!important;
+    position:relative;
+  }
+  #sidebar.desktop-collapsed #logout::after{
+    content:'↪';
+    position:absolute;
+    inset:0;
+    display:grid;
+    place-items:center;
+    color:var(--bad);
+    font-size:20px;
+  }
+  #sidebar.desktop-collapsed .nav-item.active::before{left:1px}
+  #sidebar.desktop-collapsed .nav-item:hover,
+  #sidebar.desktop-collapsed .nav-group-btn:hover{transform:none!important}
+}
+
+@media(max-width:900px){
+  #appShell.sidebar-collapsed .main-shell{margin-left:0!important}
+  #sidebar.desktop-collapsed{width:min(86vw,320px)!important}
+}
