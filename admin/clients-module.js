@@ -14,9 +14,10 @@
 
   const CLIENT_FIELD_IDS = [
     'clientName', 'clientCompany', 'clientMipyme',
-    'clientImporter', 'clientPhone', 'clientEmail'
+    'clientImporters', 'clientPhone', 'clientEmail'
   ];
 
+  let importerState = { importers: [], client_importers: [], shipment_importers: [] };
   let activeMenuTrigger = null;
   let activeMenuClientId = null;
   let menuBackdrop = null;
@@ -41,6 +42,8 @@
       .client-information-row{padding:12px 0;border-bottom:1px solid #e6ebf2}
       .client-information-label{font-size:11px;font-weight:800;text-transform:uppercase;color:#667085;margin-bottom:5px}
       .client-information-value{font-size:15px;color:#152238;word-break:break-word}
+      .client-importer-help{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
+      .client-importer-list{display:flex;gap:5px;flex-wrap:wrap}
       @media(max-width:700px){
         .client-actions-cell{position:sticky!important;right:0!important;background:#fff!important;z-index:3!important}
         .client-actions-popover{left:12px!important;right:12px!important;bottom:12px!important;top:auto!important;min-width:0!important;width:auto!important;border-radius:16px!important;padding:10px!important}
@@ -51,6 +54,40 @@
       }
     `;
     document.head.appendChild(style);
+  }
+
+  async function loadImporterState() {
+    try {
+      const result = await api('/api/importers');
+      importerState = {
+        importers: result.importers || [],
+        client_importers: result.client_importers || [],
+        shipment_importers: result.shipment_importers || []
+      };
+      window.importerState = importerState;
+      return true;
+    } catch (error) {
+      console.error('[clients importers]', error);
+      return false;
+    }
+  }
+
+  function importerNamesForClient(clientId) {
+    const ids = new Set(importerState.client_importers.filter(link => String(link.client_id) === String(clientId)).map(link => String(link.importer_id)));
+    return importerState.importers.filter(importer => ids.has(String(importer.id))).map(importer => importer.name);
+  }
+
+  function splitImporterNames(value) {
+    const map = new Map();
+    String(value || '').split(',').forEach(item => {
+      const clean = item.trim().replace(/\s+/g, ' ');
+      if (clean) map.set(clean.toUpperCase(), clean);
+    });
+    return [...map.values()];
+  }
+
+  function importerInputValue(clientId) {
+    return importerNamesForClient(clientId).join(', ');
   }
 
   function clientsSectionHtml() {
@@ -64,8 +101,9 @@
           <input id="clientCompany" placeholder="Empresa o negocio" autocomplete="organization">
           <label for="clientMipyme">Nombre de la MIPYME</label>
           <input id="clientMipyme" placeholder="Opcional, si el cliente tiene MIPYME">
-          <label for="clientImporter">Importadora por la que importa</label>
-          <input id="clientImporter" placeholder="Ejemplo: Quimimport, Consumimport...">
+          <label for="clientImporters">Importadoras cubanas registradas</label>
+          <input id="clientImporters" placeholder="Ejemplo: Quimimport, Consumimport, Alimport">
+          <div class="client-importer-help">Puedes registrar varias importadoras separadas por comas. Después, cada contenedor indicará por cuál de ellas entra.</div>
           <label for="clientPhone">WhatsApp *</label>
           <input id="clientPhone" placeholder="+5351234567" autocomplete="tel" inputmode="tel">
           <label for="clientEmail">Correo</label>
@@ -83,10 +121,29 @@
       name: byId(id('Name'))?.value || '',
       company: byId(id('Company'))?.value || '',
       mipyme_name: byId(id('Mipyme'))?.value || '',
-      importer_name: byId(id('Importer'))?.value || '',
       phone: byId(id('Phone'))?.value || '',
       email: byId(id('Email'))?.value || ''
     };
+  }
+
+  function importerPayload(mode = 'create') {
+    const id = mode === 'create' ? 'clientImporters' : 'clientEditImporters';
+    return splitImporterNames(byId(id)?.value || '');
+  }
+
+  async function syncClientImporters(clientId, names) {
+    const result = await api('/api/importers', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'sync_client', client_id: clientId, importer_names: names })
+    });
+    if (result.state) {
+      importerState = result.state;
+      window.importerState = importerState;
+    } else {
+      await loadImporterState();
+    }
+    window.dispatchEvent(new CustomEvent('export-mca:importers-changed'));
+    return result;
   }
 
   function welcomeLabel(status) {
@@ -116,13 +173,14 @@
   }
 
   function informationHtml(client) {
+    const importerNames = importerNamesForClient(client.id);
     return `
       <div class="client-information-grid">
         <section>
           ${informationRow('Nombre completo', client.name)}
           ${informationRow('Empresa', client.company)}
           ${informationRow('Nombre de la MIPYME', client.mipyme_name)}
-          ${informationRow('Importadora por la que importa', client.importer_name)}
+          ${informationRow('Importadoras cubanas registradas', importerNames.join(', '))}
         </section>
         <section>
           ${informationRow('WhatsApp', client.phone)}
@@ -216,14 +274,17 @@
       target.innerHTML = '<div class="empty-state">No hay clientes registrados.</div>';
       return;
     }
-    target.innerHTML = `<table><thead><tr><th>Nombre</th><th>Empresa</th><th>WhatsApp</th><th>Bienvenida</th><th>Acciones</th></tr></thead><tbody>${clients.map(client => `
-      <tr data-client-id="${escapeHtml(client.id)}">
+    target.innerHTML = `<table><thead><tr><th>Nombre</th><th>Empresa</th><th>Importadoras</th><th>WhatsApp</th><th>Bienvenida</th><th>Acciones</th></tr></thead><tbody>${clients.map(client => {
+      const importers = importerNamesForClient(client.id);
+      return `<tr data-client-id="${escapeHtml(client.id)}">
         <td><b>${escapeHtml(client.name)}</b></td>
         <td>${escapeHtml(client.company || '-')}</td>
+        <td>${importers.length ? `<div class="client-importer-list">${importers.map(name => `<span class="pill">${escapeHtml(name)}</span>`).join('')}</div>` : '<span class="muted">Sin registrar</span>'}</td>
         <td>${escapeHtml(client.phone || '-')}</td>
         <td><span class="pill ${client.welcome_status === 'sent' ? 'done' : ''}">${escapeHtml(client.welcome_status || 'pending')}</span></td>
         <td class="client-actions-cell"><button class="client-actions-trigger" type="button" data-client-menu-trigger aria-label="Abrir acciones del cliente" aria-haspopup="menu" aria-expanded="false" title="Acciones">⋮</button></td>
-      </tr>`).join('')}</tbody></table>`;
+      </tr>`;
+    }).join('')}</tbody></table>`;
   }
 
   async function saveClientRecord() {
@@ -232,13 +293,22 @@
     const originalText = button.textContent;
     button.disabled = true;
     button.textContent = 'Guardando...';
+    let createdClientId = null;
     try {
+      const importerNames = importerPayload('create');
       const result = await api('/api/clients', { method: 'POST', body: JSON.stringify(clientPayload('create')) });
+      createdClientId = result.client?.id || null;
+      if (createdClientId) await syncClientImporters(createdClientId, importerNames);
       note('clientMsg', createMessage(result.welcome), true);
       CLIENT_FIELD_IDS.forEach(id => { const field = byId(id); if (field) field.value = ''; });
       await loadAll();
+      await loadImporterState();
       notifyClientsChanged();
+      renderClientTable();
     } catch (error) {
+      if (createdClientId) {
+        try { await api('/api/clients?id=' + encodeURIComponent(createdClientId), { method: 'DELETE' }); } catch {}
+      }
       note('clientMsg', error.message);
     } finally {
       button.disabled = false;
@@ -251,7 +321,7 @@
       <div><label for="clientEditName">Nombre completo *</label><input id="clientEditName" value="${escapeHtml(client.name || '')}" autocomplete="name"></div>
       <div><label for="clientEditCompany">Empresa</label><input id="clientEditCompany" value="${escapeHtml(client.company || '')}" autocomplete="organization"></div>
       <div><label for="clientEditMipyme">Nombre de la MIPYME</label><input id="clientEditMipyme" value="${escapeHtml(client.mipyme_name || '')}"></div>
-      <div><label for="clientEditImporter">Importadora por la que importa</label><input id="clientEditImporter" value="${escapeHtml(client.importer_name || '')}"></div>
+      <div><label for="clientEditImporters">Importadoras cubanas registradas</label><input id="clientEditImporters" value="${escapeHtml(importerInputValue(client.id))}" placeholder="Quimimport, Consumimport, Alimport"><div class="client-importer-help">Varias importadoras pueden estar asociadas al mismo cliente. Sepáralas por comas.</div></div>
       <div><label for="clientEditPhone">WhatsApp *</label><input id="clientEditPhone" value="${escapeHtml(client.phone || '')}" autocomplete="tel" inputmode="tel"></div>
       <div><label for="clientEditEmail">Correo</label><input id="clientEditEmail" type="email" value="${escapeHtml(client.email || '')}" autocomplete="email"></div>
     </div><div class="toolbar" style="justify-content:flex-end;margin-top:18px"><button id="cancelClientEdit" class="alt" type="button">Cancelar</button><button id="saveClientEdit" class="orange" type="button">Guardar cambios</button></div><div id="clientEditMsg" class="msg" role="status" aria-live="polite"></div>`;
@@ -270,9 +340,12 @@
       button.textContent = 'Guardando...';
       try {
         await api('/api/clients', { method: 'PATCH', body: JSON.stringify({ id: client.id, ...clientPayload('edit') }) });
+        await syncClientImporters(client.id, importerPayload('edit'));
         closeModal();
         await loadAll();
+        await loadImporterState();
         notifyClientsChanged();
+        renderClientTable();
       } catch (error) {
         const target = byId('clientEditMsg');
         if (target) { target.textContent = error.message; target.className = 'msg bad'; }
@@ -299,11 +372,12 @@
     if (client) openClientMenu(client, trigger);
   }
 
-  function mount() {
+  async function mount() {
     const section = byId('clientsSection');
     if (!section) return;
     section.innerHTML = clientsSectionHtml();
     ensureActionMenu();
+    await loadImporterState();
     byId('saveClient')?.addEventListener('click', saveClientRecord);
     byId('clients')?.addEventListener('click', handleClientListClick);
     window.renderClients = renderClientTable;
@@ -311,6 +385,7 @@
     try { renderClients = renderClientTable; } catch {}
     try { editClient = openClientEditor; } catch {}
     renderClientTable();
+    window.addEventListener('export-mca:data-loaded', renderClientTable);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
