@@ -244,9 +244,20 @@
     addStyles();
     mountBell();
     const nav = document.querySelector('[data-section="notificationsSection"]');
-    if (nav) nav.innerHTML = '🔔 Centro de alertas';
+    if (nav) {
+      nav.dataset.navLabel = 'Centro de alertas';
+      nav.setAttribute('aria-label', 'Centro de alertas');
+      nav.title = 'Centro de alertas';
+      const icon = nav.querySelector('.nav-icon');
+      const label = nav.querySelector('.nav-label');
+      if (icon) icon.textContent = '🔔';
+      if (label) label.textContent = 'Centro de alertas';
+    }
     window.loadNotifications = loadNotifications;
     window.loadOperationalAlerts = loadNotifications;
+    window.addEventListener('export-mca:section-changed', event => {
+      if (event.detail?.id === 'dashboardSection') loadNotifications();
+    });
     setTimeout(loadNotifications, 300);
     setInterval(loadNotifications, 5 * 60 * 1000);
   }

@@ -139,6 +139,7 @@
     console.error('[platform theme]', error);
     return false;
   });
+  const navigationStylesPromise = loadStylesheet('/admin/navigation-shell.css?v=20260817-uxa2', 'data-navigation-shell-style');
 
   const revealAdminShell = () => {
     document.getElementById('loginPage')?.classList.add('hidden');
@@ -148,17 +149,12 @@
   };
 
   const hydrateSecondaryModules = async () => {
-    const independentModules = [
-      loadScript('/admin/mobile-interaction-core.js?v=20260817-nav1', 'data-mobile-interaction-core')
-    ];
-
     const clientsModule = loadScript('/admin/clients-module.js?v=20260817-importers1', 'data-clients-module');
 
-    const alertChain = loadScript('/admin/operational-alert-center.js?v=20260730-2', 'data-operational-alert-center')
+    const alertChain = loadScript('/admin/operational-alert-center.js?v=20260817-uxa1', 'data-operational-alert-center')
       .then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
 
     await Promise.all([
-      ...independentModules,
       clientsModule,
       loadScript('/admin/module-export-controls.js', 'data-module-export-controls'),
       alertChain
@@ -185,8 +181,10 @@
       await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
       await loadScript('/admin/containers-module.js?v=20260817-importers1', 'data-containers-module');
       await loadScript('/admin/shipment-editor.js?v=20260817-importers1', 'data-shipment-editor');
-      await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
       await themePromise;
+      await navigationStylesPromise;
+      await loadScript('/admin/navigation-shell.js?v=20260817-uxa2', 'data-navigation-shell');
+      await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
 
       if (typeof window.loadAll !== 'function') {
         throw new Error('El cargador inicial de datos no está disponible.');
