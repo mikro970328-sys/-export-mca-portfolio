@@ -2,7 +2,8 @@ name: One-off individual document download patch
 
 on:
   push:
-    branches: [ux/container-document-bundle]
+    branches:
+      - ux/container-document-bundle
     paths:
       - '.github/workflows/oneoff-individual-document-download.yml'
 
@@ -16,64 +17,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ux/container-document-bundle
-      - name: Add individual document downloads
+      - name: Apply exact individual-download patch
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('admin/expedientes-module.js')
-          s = p.read_text()
-
-          old_row = '''  function documentRow(item) {
-    return `<div class="exp-doc-row"><div><b>${esc(item.document_type || 'Documento')}</b>${item.shared_bl ? '<span class="exp-doc-shared">COMPARTIDO</span>' : ''}${item.notes ? `<div class="muted">${esc(item.notes)}</div>` : ''}</div><div>${esc(item.file_name || 'Archivo')}<div class="muted">v${esc(item.version || 1)} · ${esc(formatBytes(item.file_size_bytes))} · ${esc(formatDate(item.created_at))}</div></div><div class="exp-doc-actions">${item.signed_url ? `<button class="alt" type="button" data-open-document="${esc(item.id)}">Abrir</button>` : ''}<button class="danger" type="button" data-delete-document="${esc(item.id)}">Borrar</button></div></div>`;
-  }'''
-          new_row = '''  function documentRow(item) {
-    return `<div class="exp-doc-row"><div><b>${esc(item.document_type || 'Documento')}</b>${item.shared_bl ? '<span class="exp-doc-shared">COMPARTIDO</span>' : ''}${item.notes ? `<div class="muted">${esc(item.notes)}</div>` : ''}</div><div>${esc(item.file_name || 'Archivo')}<div class="muted">v${esc(item.version || 1)} · ${esc(formatBytes(item.file_size_bytes))} · ${esc(formatDate(item.created_at))}</div></div><div class="exp-doc-actions">${item.signed_url ? `<button class="alt" type="button" data-open-document="${esc(item.id)}">Abrir</button><button class="alt" type="button" data-download-document="${esc(item.id)}">Descargar</button>` : ''}<button class="danger" type="button" data-delete-document="${esc(item.id)}">Borrar</button></div></div>`;
-  }'''
-          if old_row not in s:
-              raise SystemExit('documentRow target not found')
-          s = s.replace(old_row, new_row, 1)
-
-          old_bind = '''  function bindDocumentActions(operation,documents) {
-    const map=new Map(documents.map(item => [String(item.id),item]));
-    document.querySelectorAll('[data-open-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.openDocument)); if (item?.signed_url) window.open(item.signed_url,'_blank','noopener'); }; });
-    document.querySelectorAll('[data-delete-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.deleteDocument)); if (item) deleteDocument(operation,item,button); }; });
-  }'''
-          new_bind = '''  function bindDocumentActions(operation,documents) {
-    const map=new Map(documents.map(item => [String(item.id),item]));
-    document.querySelectorAll('[data-open-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.openDocument)); if (item?.signed_url) window.open(item.signed_url,'_blank','noopener'); }; });
-    document.querySelectorAll('[data-download-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.downloadDocument)); if (item?.signed_url) downloadIndividualDocument(item,button); }; });
-    document.querySelectorAll('[data-delete-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.deleteDocument)); if (item) deleteDocument(operation,item,button); }; });
-  }
-  async function downloadIndividualDocument(item, button) {
-    const url = String(item?.signed_url || '');
-    if (!url) return;
-    const previousLabel = button?.textContent || 'Descargar';
-    if (button) { button.disabled = true; button.textContent = 'Descargando...'; }
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('No se pudo descargar el archivo.');
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = item.file_name || 'documento';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-    } catch (error) {
-      alert(error.message || 'No se pudo descargar el archivo.');
-    } finally {
-      if (button && document.body.contains(button)) { button.disabled = false; button.textContent = previousLabel; }
-    }
-  }'''
-          if old_bind not in s:
-              raise SystemExit('bindDocumentActions target not found')
-          s = s.replace(old_bind, new_bind, 1)
-
-          p.write_text(s)
-          PY
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnAgPSBQYXRoKCJhZG1pbi9leHBlZGllbnRlcy1tb2R1bGUuanMiKQpzID0gcC5yZWFkX3RleHQoKQppZiAiZGF0YS1kb3dubG9hZC1kb2N1bWVudD0iIGluIHM6CiAgICByYWlzZSBTeXN0ZW1FeGl0KDApCm9sZDEgPSAiIiIke2l0ZW0uc2lnbmVkX3VybCA/IGA8YnV0dG9uIGNsYXNzPVwiYWx0XCIgdHlwZT1cImJ1dHRvblwiIGRhdGEtb3Blbi1kb2N1bWVudD1cIiR7ZXNjKGl0ZW0uaWQpfVwiPkFicmlyPC9idXR0b24+YCA6ICcnfTxidXR0b24gY2xhc3M9XCJkYW5nZXJcIiIiIgpuZXcxID0gIiIiJHtpdGVtLnNpZ25lZF91cmwgPyBgPGJ1dHRvbiBjbGFzcz1cImFsdFwiIHR5cGU9XCJidXR0b25cIiBkYXRhLW9wZW4tZG9jdW1lbnQ9XCIke2VzYyhpdGVtLmlkKX1cIj5BYnJpcjwvYnV0dG9uPjxidXR0b24gY2xhc3M9XCJhbHRcIiB0eXBlPVwiYnV0dG9uXCIgZGF0YS1kb3dubG9hZC1kb2N1bWVudD1cIiR7ZXNjKGl0ZW0uaWQpfVwiPkRlc2NhcmdhcjwvYnV0dG9uPmAgOiAnJ308YnV0dG9uIGNsYXNzPVwiZGFuZ2VyXCIiIiIKaWYgb2xkMSBub3QgaW4gczoKICAgIHJhaXNlIFN5c3RlbUV4aXQoInJvdyB0YXJnZXQgbm90IGZvdW5kIikKcyA9IHMucmVwbGFjZShvbGQxLCBuZXcxLCAxKQpvbGQyID0gIiIiICAgIGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3JBbGwoJ1tkYXRhLWRlbGV0ZS1kb2N1bWVudF0nKS5mb3JFYWNoKGJ1dHRvbiA9PiB7IGJ1dHRvbi5vbmNsaWNrPSgpID0+IHsgY29uc3QgaXRlbT1tYXAuZ2V0KFN0cmluZyhidXR0b24uZGF0YXNldC5kZWxldGVEb2N1bWVudCkpOyBpZiAoaXRlbSkgZGVsZXRlRG9jdW1lbnQob3BlcmF0aW9uLGl0ZW0sYnV0dG9uKTsgfTsgfSk7CiAgfQogIGZ1bmN0aW9uIGZpbGVuYW1lRnJvbURpc3Bvc2l0aW9uIiIiCm5ldzIgPSAiIiIgICAgZG9jdW1lbnQucXVlcnlTZWxlY3RvckFsbCgnW2RhdGEtZG93bmxvYWQtZG9jdW1lbnRdJykuZm9yRWFjaChidXR0b24gPT4geyBidXR0b24ub25jbGljaz0oKSA9PiB7IGNvbnN0IGl0ZW09bWFwLmdldChTdHJpbmcoYnV0dG9uLmRhdGFzZXQuZG93bmxvYWREb2N1bWVudCkpOyBpZiAoaXRlbT8uc2lnbmVkX3VybCkgZG93bmxvYWRJbmRpdmlkdWFsRG9jdW1lbnQoaXRlbSxidXR0b24pOyB9OyB9KTsKICAgIGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3JBbGwoJ1tkYXRhLWRlbGV0ZS1kb2N1bWVudF0nKS5mb3JFYWNoKGJ1dHRvbiA9PiB7IGJ1dHRvbi5vbmNsaWNrPSgpID0+IHsgY29uc3QgaXRlbT1tYXAuZ2V0KFN0cmluZyhidXR0b24uZGF0YXNldC5kZWxldGVEb2N1bWVudCkpOyBpZiAoaXRlbSkgZGVsZXRlRG9jdW1lbnQob3BlcmF0aW9uLGl0ZW0sYnV0dG9uKTsgfTsgfSk7CiAgfQogIGFzeW5jIGZ1bmN0aW9uIGRvd25sb2FkSW5kaXZpZHVhbERvY3VtZW50KGl0ZW0sIGJ1dHRvbikgewogICAgY29uc3QgdXJsID0gU3RyaW5nKGl0ZW0/LnNpZ25lZF91cmwgfHwgJycpOwogICAgaWYgKCF1cmwpIHJldHVybjsKICAgIGNvbnN0IHByZXZpb3VzTGFiZWwgPSBidXR0b24/LnRleHRDb250ZW50IHx8ICdEZXNjYXJnYXInOwogICAgaWYgKGJ1dHRvbikgeyBidXR0b24uZGlzYWJsZWQgPSB0cnVlOyBidXR0b24udGV4dENvbnRlbnQgPSAnRGVzY2FyZ2FuZG8uLi4nOyB9CiAgICB0cnkgewogICAgICBjb25zdCByZXNwb25zZSA9IGF3YWl0IGZldGNoKHVybCk7CiAgICAgIGlmICghcmVzcG9uc2Uub2spIHRocm93IG5ldyBFcnJvcignTm8gc2UgcHVkbyBkZXNjYXJnYXIgZWwgYXJjaGl2by4nKTsKICAgICAgY29uc3QgYmxvYiA9IGF3YWl0IHJlc3BvbnNlLmJsb2IoKTsKICAgICAgY29uc3Qgb2JqZWN0VXJsID0gVVJMLmNyZWF0ZU9iamVjdFVSTChibG9iKTsKICAgICAgY29uc3QgbGluayA9IGRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoJ2EnKTsKICAgICAgbGluay5ocmVmID0gb2JqZWN0VXJsOwogICAgICBsaW5rLmRvd25sb2FkID0gaXRlbS5maWxlX25hbWUgfHwgJ2RvY3VtZW50byc7CiAgICAgIGxpbmsuc3R5bGUuZGlzcGxheSA9ICdub25lJzsKICAgICAgZG9jdW1lbnQuYm9keS5hcHBlbmRDaGlsZChsaW5rKTsKICAgICAgbGluay5jbGljaygpOwogICAgICBsaW5rLnJlbW92ZSgpOwogICAgICBzZXRUaW1lb3V0KCgpID0+IFVSTC5yZXZva2VPYmplY3RVUkwob2JqZWN0VXJsKSwgMTAwMCk7CiAgICB9IGNhdGNoIChlcnJvcikgewogICAgICBhbGVydChlcnJvci5tZXNzYWdlIHx8ICdObyBzZSBwdWRvIGRlc2NhcmdhciBlbCBhcmNoaXZvLicpOwogICAgfSBmaW5hbGx5IHsKICAgICAgaWYgKGJ1dHRvbiAmJiBkb2N1bWVudC5ib2R5LmNvbnRhaW5zKGJ1dHRvbikpIHsgYnV0dG9uLmRpc2FibGVkID0gZmFsc2U7IGJ1dHRvbi50ZXh0Q29udGVudCA9IHByZXZpb3VzTGFiZWw7IH0KICAgIH0KICB9CiAgZnVuY3Rpb24gZmlsZW5hbWVGcm9tRGlzcG9zaXRpb24iIiIKaWYgb2xkMiBub3QgaW4gczoKICAgIHJhaXNlIFN5c3RlbUV4aXQoImJpbmQgdGFyZ2V0IG5vdCBmb3VuZCIpCnMgPSBzLnJlcGxhY2Uob2xkMiwgbmV3MiwgMSkKcC53cml0ZV90ZXh0KHMpCg==' | base64 -d > /tmp/patch_individual_download.py
+          python3 /tmp/patch_individual_download.py
       - name: Commit exact product change
         run: |
           git config user.name "github-actions[bot]"
