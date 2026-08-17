@@ -7,6 +7,8 @@ on:
       - 'admin/containers-module.js'
       - 'admin/shipment-editor.js'
       - 'admin/expedientes-module.js'
+      - 'admin/dashboard-operational-state.js'
+      - 'api/dashboard.js'
       - 'admin/navigation-shell.js'
       - 'admin/navigation-shell.css'
       - 'admin/section-state.js'
@@ -28,5 +30,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Validate frontend ownership and UX-A shell
+      - name: Validate frontend ownership and UX-A/UX-B
         run: node scripts/check-frontend-ownership.mjs
