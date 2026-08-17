@@ -15,6 +15,10 @@
     return Array.isArray(window.clients) ? window.clients : (typeof clients !== 'undefined' && Array.isArray(clients) ? clients : []);
   }
 
+  function importerState() {
+    return window.importerState || { importers: [], client_importers: [], shipment_importers: [] };
+  }
+
   async function request(path, options = {}) {
     const token = localStorage.getItem('export_mca_token') || '';
     const response = await fetch(path, {
@@ -30,6 +34,18 @@
     return data;
   }
 
+  async function ensureImporterState() {
+    const state = importerState();
+    if (Array.isArray(state.importers) && state.importers.length) return state;
+    const result = await request('/api/importers');
+    window.importerState = {
+      importers: result.importers || [],
+      client_importers: result.client_importers || [],
+      shipment_importers: result.shipment_importers || []
+    };
+    return window.importerState;
+  }
+
   function installStyles() {
     if (byId('shipmentEditorStyles')) return;
     const style = document.createElement('style');
@@ -43,6 +59,20 @@
 
   function clientOptions(selected) {
     return `<option value="">Sin cliente / Disponible para venta</option>${clientRows().map(client => `<option value="${esc(client.id)}" ${String(client.id) === String(selected || '') ? 'selected' : ''}>${esc(client.name)}${client.company ? ' · ' + esc(client.company) : ''}</option>`).join('')}`;
+  }
+
+  function importerIdForShipment(shipmentId) {
+    return importerState().shipment_importers?.find(item => String(item.shipment_id) === String(shipmentId || ''))?.importer_id || null;
+  }
+
+  function importerIdsForClient(clientId) {
+    return new Set((importerState().client_importers || []).filter(link => String(link.client_id) === String(clientId || '')).map(link => String(link.importer_id)));
+  }
+
+  function importerOptions(clientId, selected) {
+    const linkedIds = clientId ? importerIdsForClient(clientId) : null;
+    const list = (importerState().importers || []).filter(importer => importer.active !== false && (!linkedIds || linkedIds.has(String(importer.id))));
+    return `<option value="">Sin importadora definida</option>${list.map(importer => `<option value="${esc(importer.id)}" ${String(importer.id) === String(selected || '') ? 'selected' : ''}>${esc(importer.name)}</option>`).join('')}`;
   }
 
   function statuses(selected) {
@@ -69,9 +99,11 @@
 
   function html(shipment) {
     const status = shipment.operational_status || shipment.last_status || 'Registrado';
+    const importerId = importerIdForShipment(shipment.id);
     return `<div id="shipmentEditorMessage"></div>
       <div class="shipment-editor-grid">
         <div><label>Cliente</label><select id="editorClient">${clientOptions(shipment.client_id)}</select><div class="shipment-editor-help">Puede quedar sin cliente hasta que el contenedor sea vendido.</div></div>
+        <div><label>Importadora cubana</label><select id="editorImporter">${importerOptions(shipment.client_id, importerId)}</select><div id="editorImporterHelp" class="shipment-editor-help">La importadora pertenece a este contenedor, no a todo el expediente.</div></div>
         <div><label>Número de contenedor *</label><input id="editorContainer" value="${esc(shipment.container_number)}" maxlength="11"></div>
         <div><label>Producto</label><input id="editorProduct" value="${esc(shipment.product || '')}"></div>
         <div><label>Cantidad</label><input id="editorQuantity" type="number" min="0" step="0.001" value="${esc(shipment.quantity ?? '')}"></div>
@@ -93,6 +125,26 @@
       <div class="shipment-editor-footer"><button id="shipmentEditorCancel" class="alt" type="button">Cancelar</button><button id="shipmentEditorSave" class="orange" type="button">Guardar cambios</button></div>`;
   }
 
+  function syncImporterSelect() {
+    const select = byId('editorImporter');
+    if (!select) return;
+    const clientId = byId('editorClient')?.value || '';
+    const selected = select.value;
+    select.innerHTML = importerOptions(clientId, selected);
+    if ([...select.options].some(option => option.value === selected)) select.value = selected;
+    else select.value = '';
+    const help = byId('editorImporterHelp');
+    if (!help) return;
+    if (!clientId) {
+      help.textContent = 'Sin cliente, puedes mantener una importadora registrada o dejarla pendiente.';
+      return;
+    }
+    const count = importerIdsForClient(clientId).size;
+    help.textContent = count
+      ? `El cliente está registrado en ${count} importadora${count === 1 ? '' : 's'}.`
+      : 'Este cliente no tiene importadoras registradas. Agrégalas desde Clientes o deja este campo pendiente.';
+  }
+
   function setError(message = '') {
     const target = byId('shipmentEditorMessage');
     if (!target) return;
@@ -106,6 +158,9 @@
     if (rows().some(item => item.id !== current.id && item.active !== false && norm(item.container_number) === container)) return 'Ese número de contenedor ya está registrado en otra operación activa.';
     const quantity = String(byId('editorQuantity')?.value || '').trim();
     if (quantity && (!Number.isFinite(Number(quantity)) || Number(quantity) < 0)) return 'La cantidad no es válida.';
+    const clientId = byId('editorClient')?.value || '';
+    const importerId = byId('editorImporter')?.value || '';
+    if (clientId && importerId && !importerIdsForClient(clientId).has(String(importerId))) return 'La importadora seleccionada no está registrada para ese cliente.';
     return '';
   }
 
@@ -137,7 +192,13 @@
     setError('');
     try {
       await request('/api/shipments', { method: 'PATCH', body: JSON.stringify(payload()) });
+      const importerResult = await request('/api/importers', {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'assign_shipment', shipment_id: current.id, importer_id: byId('editorImporter')?.value || null })
+      });
+      if (importerResult.state) window.importerState = importerResult.state;
       if (typeof window.loadAll === 'function') await window.loadAll();
+      await window.ContainersModule?.syncImporters?.();
       window.closeModal?.();
     } catch (error) {
       setError(error.message);
@@ -150,15 +211,18 @@
     }
   }
 
-  function open(id, options = {}) {
+  async function open(id, options = {}) {
     const shipment = rows().find(item => String(item.id) === String(id));
     if (!shipment) throw new Error('No se encontró el contenedor.');
     current = shipment;
+    await ensureImporterState();
     installStyles();
     window.openModal?.(`Editar contenedor · ${shipment.container_number}`, html(shipment));
     byId('shipmentEditorCancel').onclick = () => window.closeModal?.();
     byId('shipmentEditorSave').onclick = save;
+    byId('editorClient')?.addEventListener('change', syncImporterSelect);
     document.querySelectorAll('#modal input,#modal select').forEach(field => field.addEventListener('input', () => setError('')));
+    syncImporterSelect();
     if (options.focus === 'client') byId('editorClient')?.focus();
     else byId('editorContainer')?.focus();
   }
