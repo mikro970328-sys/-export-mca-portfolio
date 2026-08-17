@@ -142,19 +142,19 @@
       return;
     }
 
-    if (target.matches('[data-section]')) {
-      const section = target.getAttribute('data-section');
-      if (section && typeof window.showSection === 'function') {
-        event.preventDefault();
-        window.showSection(section);
-        if (section === 'dashboardSection') queueMicrotask(refreshDashboardAlerts);
-      }
-      if (isMobile()) closeMenu();
+    if (target.matches('[data-section]') && isMobile()) {
+      closeMenu();
     }
   }, true);
 
   document.addEventListener('click', event => {
     if (event.target === byId('mobileOverlay')) closeMenu();
+  });
+
+  window.addEventListener('export-mca:section-changed', event => {
+    const section = event.detail?.id;
+    if (isMobile()) closeMenu();
+    if (section === 'dashboardSection') queueMicrotask(refreshDashboardAlerts);
   });
 
   window.addEventListener('resize', () => {

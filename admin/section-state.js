@@ -35,14 +35,26 @@
     window.__sectionRestorePending = false;
   }
 
+  function refreshSectionOwner(id) {
+    if (id !== 'dashboardSection') return;
+    if (typeof window.initializeOperationalDashboard === 'function') {
+      window.initializeOperationalDashboard();
+    }
+  }
+
   window.showSection = function (id) {
+    if (!canOpen(id)) return false;
     originalShowSection(id);
-    if (canOpen(id)) localStorage.setItem(STORAGE_KEY, id);
+    refreshSectionOwner(id);
+    localStorage.setItem(STORAGE_KEY, id);
+    window.dispatchEvent(new CustomEvent('export-mca:section-changed', { detail: { id } }));
+    return true;
   };
 
   function restoreSection() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved || saved === 'dashboardSection') {
+      window.showSection('dashboardSection');
       revealApp();
       return;
     }
@@ -54,7 +66,7 @@
     }
 
     localStorage.removeItem(STORAGE_KEY);
-    originalShowSection('dashboardSection');
+    window.showSection('dashboardSection');
     requestAnimationFrame(revealApp);
   }
 
