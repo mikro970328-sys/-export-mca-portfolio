@@ -43,7 +43,10 @@
       .client-information-label{font-size:11px;font-weight:800;text-transform:uppercase;color:#667085;margin-bottom:5px}
       .client-information-value{font-size:15px;color:#152238;word-break:break-word}
       .client-importer-help{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
-      .client-importer-list{display:flex;gap:5px;flex-wrap:wrap}
+      .client-importer-detail-list{display:grid;gap:8px;margin-top:7px}
+      .client-importer-detail-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid #e1e7ef;border-radius:10px;background:#f8fafc;font-weight:700;color:#152238}
+      .client-importer-detail-item::before{content:'↳';color:#667085;font-weight:900}
+      .client-importer-summary{margin-top:7px;font-size:12px;color:#667085}
       @media(max-width:700px){
         .client-actions-cell{position:sticky!important;right:0!important;background:#fff!important;z-index:3!important}
         .client-actions-popover{left:12px!important;right:12px!important;bottom:12px!important;top:auto!important;min-width:0!important;width:auto!important;border-radius:16px!important;padding:10px!important}
@@ -73,8 +76,14 @@
   }
 
   function importerNamesForClient(clientId) {
-    const ids = new Set(importerState.client_importers.filter(link => String(link.client_id) === String(clientId)).map(link => String(link.importer_id)));
-    return importerState.importers.filter(importer => ids.has(String(importer.id))).map(importer => importer.name);
+    const ids = new Set(
+      importerState.client_importers
+        .filter(link => String(link.client_id) === String(clientId))
+        .map(link => String(link.importer_id))
+    );
+    return importerState.importers
+      .filter(importer => ids.has(String(importer.id)))
+      .map(importer => importer.name);
   }
 
   function splitImporterNames(value) {
@@ -103,7 +112,7 @@
           <input id="clientMipyme" placeholder="Opcional, si el cliente tiene MIPYME">
           <label for="clientImporters">Importadoras cubanas registradas</label>
           <input id="clientImporters" placeholder="Ejemplo: Quimimport, Consumimport, Alimport">
-          <div class="client-importer-help">Puedes registrar varias importadoras separadas por comas. Después, cada contenedor indicará por cuál de ellas entra.</div>
+          <div class="client-importer-help">Puedes registrar varias importadoras separadas por comas. Se guardan en la ficha del cliente, pero no se acumulan en la tabla principal.</div>
           <label for="clientPhone">WhatsApp *</label>
           <input id="clientPhone" placeholder="+5351234567" autocomplete="tel" inputmode="tel">
           <label for="clientEmail">Correo</label>
@@ -172,15 +181,26 @@
     return `<div class="client-information-row"><div class="client-information-label">${escapeHtml(label)}</div><div class="client-information-value">${escapeHtml(value || 'No disponible')}</div></div>`;
   }
 
+  function importerInformationBlock(clientId) {
+    const importerNames = importerNamesForClient(clientId);
+    return `<div class="client-information-row">
+      <div class="client-information-label">Empresas / importadoras donde está inscrito</div>
+      <div class="client-information-value">
+        ${importerNames.length
+          ? `<div class="client-importer-detail-list">${importerNames.map(name => `<div class="client-importer-detail-item">${escapeHtml(name)}</div>`).join('')}</div><div class="client-importer-summary">${importerNames.length} registro${importerNames.length === 1 ? '' : 's'} asociado${importerNames.length === 1 ? '' : 's'} a este cliente.</div>`
+          : '<span class="muted">Sin registrar</span>'}
+      </div>
+    </div>`;
+  }
+
   function informationHtml(client) {
-    const importerNames = importerNamesForClient(client.id);
     return `
       <div class="client-information-grid">
         <section>
           ${informationRow('Nombre completo', client.name)}
           ${informationRow('Empresa', client.company)}
           ${informationRow('Nombre de la MIPYME', client.mipyme_name)}
-          ${informationRow('Importadoras cubanas registradas', importerNames.join(', '))}
+          ${importerInformationBlock(client.id)}
         </section>
         <section>
           ${informationRow('WhatsApp', client.phone)}
@@ -215,7 +235,7 @@
     const rect = trigger.getBoundingClientRect();
     const width = Math.max(230, menuPopover.offsetWidth || 230);
     const height = Math.max(230, menuPopover.offsetHeight || 230);
-    let left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
+    const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
     let top = rect.bottom + 7;
     if (top + height > window.innerHeight - 8) top = Math.max(8, rect.top - height - 7);
     Object.assign(menuPopover.style, { left: `${left}px`, top: `${top}px`, right: 'auto', bottom: 'auto' });
@@ -240,7 +260,9 @@
     if (window.matchMedia('(max-width:700px)').matches) {
       menuBackdrop.classList.add('show');
       document.body.classList.add('client-actions-open');
-    } else requestAnimationFrame(() => positionClientMenu(trigger));
+    } else {
+      requestAnimationFrame(() => positionClientMenu(trigger));
+    }
   }
 
   function ensureActionMenu() {
@@ -274,17 +296,14 @@
       target.innerHTML = '<div class="empty-state">No hay clientes registrados.</div>';
       return;
     }
-    target.innerHTML = `<table><thead><tr><th>Nombre</th><th>Empresa</th><th>Importadoras</th><th>WhatsApp</th><th>Bienvenida</th><th>Acciones</th></tr></thead><tbody>${clients.map(client => {
-      const importers = importerNamesForClient(client.id);
-      return `<tr data-client-id="${escapeHtml(client.id)}">
+    target.innerHTML = `<table><thead><tr><th>Nombre</th><th>Empresa</th><th>WhatsApp</th><th>Bienvenida</th><th>Acciones</th></tr></thead><tbody>${clients.map(client => `
+      <tr data-client-id="${escapeHtml(client.id)}">
         <td><b>${escapeHtml(client.name)}</b></td>
         <td>${escapeHtml(client.company || '-')}</td>
-        <td>${importers.length ? `<div class="client-importer-list">${importers.map(name => `<span class="pill">${escapeHtml(name)}</span>`).join('')}</div>` : '<span class="muted">Sin registrar</span>'}</td>
         <td>${escapeHtml(client.phone || '-')}</td>
         <td><span class="pill ${client.welcome_status === 'sent' ? 'done' : ''}">${escapeHtml(client.welcome_status || 'pending')}</span></td>
         <td class="client-actions-cell"><button class="client-actions-trigger" type="button" data-client-menu-trigger aria-label="Abrir acciones del cliente" aria-haspopup="menu" aria-expanded="false" title="Acciones">⋮</button></td>
-      </tr>`;
-    }).join('')}</tbody></table>`;
+      </tr>`).join('')}</tbody></table>`;
   }
 
   async function saveClientRecord() {
@@ -354,7 +373,10 @@
         renderClientTable();
       } catch (error) {
         const target = byId('clientEditMsg');
-        if (target) { target.textContent = error.message; target.className = 'msg bad'; }
+        if (target) {
+          target.textContent = error.message;
+          target.className = 'msg bad';
+        }
         button.disabled = false;
         button.textContent = originalText;
       }
