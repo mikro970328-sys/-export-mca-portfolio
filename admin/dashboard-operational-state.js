@@ -59,15 +59,6 @@
           <span class="dashboard-chip" id="dashboardFreshness">Actualizando…</span>
         </div>
       </section>
-      <section class="card">
-        <div class="section-head"><h3>Acciones rápidas</h3><span class="muted">Ir directo a la tarea que necesitas.</span></div>
-        <div class="toolbar">
-          <button type="button" class="alt" data-dashboard-section="registerContainerSection">＋ Registrar contenedor</button>
-          <button type="button" class="alt" data-dashboard-section="containersSection">◎ Abrir Tracking</button>
-          <button type="button" class="alt" data-dashboard-section="newOperationsSection">▤ Ver expedientes</button>
-          <button type="button" class="alt" data-dashboard-section="notificationsSection">✉ Centro de alertas</button>
-        </div>
-      </section>
       <section id="stats" class="stats"></section>
       <section class="dashboard-grid">
         <section class="card">
@@ -88,9 +79,6 @@
     if (date) date.textContent = new Date().toLocaleDateString('es-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     byId('dashboardOpenContainers')?.addEventListener('click', () => openTracking('active'));
     byId('dashboardOpenOperations')?.addEventListener('click', () => openSection('newOperationsSection'));
-    section.querySelectorAll('[data-dashboard-section]').forEach(button => {
-      button.addEventListener('click', () => openSection(button.dataset.dashboardSection));
-    });
     return true;
   }
 
