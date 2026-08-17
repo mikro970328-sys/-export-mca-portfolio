@@ -9,6 +9,7 @@
     operations: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 5V3h8v2M3 10h18M9 14h6"/>',
     clients: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
     containerAdd: '<path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/><path d="M18 11v6M15 14h6"/>',
+    container: '<path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/>',
     tracking: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
     files: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h6"/>',
     publications: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9M13 13h4M13 17h4"/>',
@@ -22,18 +23,26 @@
   });
 
   const labelIcons = Object.freeze({
-    'Inicio': 'home', 'Operaciones': 'operations', 'Clientes': 'clients',
-    'Registrar contenedor': 'containerAdd', 'Tracking': 'tracking',
-    'Expedientes de exportación': 'files', 'Expedientes': 'files',
-    'Publicaciones comerciales': 'publications', 'Notificaciones': 'bell',
-    'Centro de alertas': 'bell', 'Trabajadores': 'workers',
-    'Administración': 'settings', 'Administradores': 'admin',
-    'Cambiar contraseña': 'key', 'Cerrar sesión': 'logout'
+    'Inicio': 'home',
+    'Operaciones': 'operations',
+    'Clientes': 'clients',
+    'Registrar contenedor': 'containerAdd',
+    'Tracking': 'tracking',
+    'Expedientes de exportación': 'files',
+    'Expedientes': 'files',
+    'Publicaciones comerciales': 'publications',
+    'Notificaciones': 'bell',
+    'Centro de alertas': 'bell',
+    'Trabajadores': 'workers',
+    'Administración': 'settings',
+    'Administradores': 'admin',
+    'Cambiar contraseña': 'key',
+    'Cerrar sesión': 'logout'
   });
 
   function svg(name, className = 'ui-icon-svg') {
     const body = paths[name] || paths.files;
-    return `<svg class="${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
+    return `<svg class="${className}" data-ui-icon="${name}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
   }
 
   function ensureStyles() {
@@ -47,53 +56,92 @@
       .menu-btn>.ui-icon-svg{width:21px;height:21px;margin:auto}
       .alert-bell{color:var(--navy)!important}
       .alert-bell>.ui-icon-svg{width:20px;height:20px;color:var(--navy)!important;stroke:var(--navy)!important}
+      .activity-icon>.ui-icon-svg{width:21px;height:21px;color:var(--navy);stroke:var(--navy)}
       body.sidebar-collapsed .sidebar-nav .nav-icon .ui-icon-svg{width:21px;height:21px}
     `;
     document.head.appendChild(style);
   }
 
+  function hasIcon(element, name) {
+    return Boolean(element?.querySelector(`svg[data-ui-icon="${name}"]`));
+  }
+
   function replaceControlIcon(control, name) {
     if (!control || !name) return;
     const icon = control.querySelector('.nav-icon');
-    if (!icon) return;
-    const hasCorrectSvg = icon.dataset.iconName === name && icon.querySelector('svg.ui-icon-svg');
-    if (!hasCorrectSvg) {
+    if (icon && !hasIcon(icon, name)) {
       icon.innerHTML = svg(name);
       icon.dataset.iconName = name;
     }
   }
 
   function hydrateNavigation(root = document) {
-    root.querySelectorAll?.('[data-nav-label]').forEach(control => replaceControlIcon(control, labelIcons[control.dataset.navLabel]));
+    root.querySelectorAll?.('[data-nav-label]').forEach(control => {
+      replaceControlIcon(control, labelIcons[control.dataset.navLabel]);
+    });
+
     root.querySelectorAll?.('.nav-chevron').forEach(chevron => {
-      if (chevron.dataset.iconName === 'chevron' && chevron.querySelector('svg.ui-icon-svg')) return;
-      chevron.innerHTML = svg('chevron'); chevron.dataset.iconName = 'chevron';
+      if (hasIcon(chevron, 'chevron')) return;
+      chevron.innerHTML = svg('chevron');
+      chevron.dataset.iconName = 'chevron';
     });
   }
 
   function hydrateMenuButtons(root = document) {
     ['sidebarToggle', 'mobileMenuBtn'].forEach(id => {
       const button = root.getElementById?.(id) || document.getElementById(id);
-      if (!button || (button.dataset.iconName === 'menu' && button.querySelector('svg.ui-icon-svg'))) return;
-      button.innerHTML = svg('menu'); button.dataset.iconName = 'menu';
+      if (!button || hasIcon(button, 'menu')) return;
+      button.innerHTML = svg('menu');
+      button.dataset.iconName = 'menu';
     });
   }
 
   function hydrateBell(root = document) {
     const button = root.getElementById?.('operationalAlertBell') || document.getElementById('operationalAlertBell');
-    if (!button || (button.dataset.iconName === 'bell' && button.querySelector('svg.ui-icon-svg'))) return;
+    if (!button || hasIcon(button, 'bell')) return;
     [...button.childNodes].forEach(node => {
       if (node.nodeType === Node.TEXT_NODE) node.remove();
       else if (node.nodeType === Node.ELEMENT_NODE && node.id !== 'operationalAlertBadge') node.remove();
     });
-    button.insertAdjacentHTML('afterbegin', svg('bell')); button.dataset.iconName = 'bell';
+    button.insertAdjacentHTML('afterbegin', svg('bell'));
+    button.dataset.iconName = 'bell';
   }
 
-  function hydrate(root = document) { ensureStyles(); hydrateNavigation(root); hydrateMenuButtons(root); hydrateBell(root); }
+  function hydrateRecentActivity(root = document) {
+    root.querySelectorAll?.('.activity-icon').forEach(icon => {
+      if (hasIcon(icon, 'container')) return;
+      icon.innerHTML = svg('container');
+      icon.dataset.iconName = 'container';
+    });
+  }
+
+  function hydrate(root = document) {
+    ensureStyles();
+    hydrateNavigation(root);
+    hydrateMenuButtons(root);
+    hydrateBell(root);
+    hydrateRecentActivity(root);
+  }
+
   let scheduled = false;
-  function scheduleHydrate() { if (scheduled) return; scheduled = true; queueMicrotask(() => { scheduled = false; hydrate(document); }); }
+  function scheduleHydrate() {
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(() => {
+      scheduled = false;
+      hydrate(document);
+    });
+  }
+
   const observer = new MutationObserver(scheduleHydrate);
-  function mount() { hydrate(document); observer.observe(document.body, { childList: true, subtree: true }); }
+
+  function mount() {
+    hydrate(document);
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
   window.ExportMcaIcons = Object.freeze({ svg, hydrate, owner: 'ui-icon-system.js' });
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true }); else mount();
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
+  else mount();
 })();
