@@ -271,11 +271,22 @@
     const addAction = uploadScope ? `<div class="exp-folder-body-actions"><button class="orange" type="button" data-upload-scope="${esc(uploadScope)}" data-upload-label="${esc(uploadLabel || title)}">+ Agregar documento</button></div>` : '';
     return `<div class="exp-folder ${sharedContext?.shared ? 'shared' : ''}"><div class="exp-folder-head" data-folder-toggle="${esc(id)}" role="button" tabindex="0" aria-expanded="false" aria-controls="${esc(id)}"><div><div class="exp-folder-title"><span id="${esc(id)}-arrow" class="exp-folder-arrow">▶</span><span>${esc(title)}</span>${sharedContext?.shared ? `<span class="exp-shared-badge">Compartido · ${sharedContext.client_count} clientes</span>` : ''}</div><div class="exp-folder-meta">${esc(meta)}</div></div><div class="exp-folder-actions"><span class="pill ${documents.length ? 'done' : ''}">${documents.length} archivo${documents.length === 1 ? '' : 's'}</span></div></div><div id="${esc(id)}" class="exp-folder-body hidden">${addAction}${sharedContextHtml(sharedContext)}${documentBlock(documents,'No hay documentos cargados todavía.')}${children}</div></div>`;
   }
+  function applicableDocumentsForShipment(shipment, documents) {
+    const shipmentId = String(shipment?.id || '');
+    const shipmentBol = bolKey(shipment?.bol_number);
+    return documents.filter(item => {
+      if (item.shipment_id) return String(item.shipment_id) === shipmentId;
+      if (item.bol_number) return Boolean(shipmentBol) && bolKey(item.bol_number) === shipmentBol;
+      return !item.shipment_id && !item.bol_number;
+    });
+  }
   function containerRowsHtml(shipments, documents, groupLabel) {
     if (!shipments.length) return '<div class="muted">No hay contenedores en este grupo.</div>';
     return shipments.map(shipment => {
       const ownDocs = documents.filter(item => String(item.shipment_id || '') === String(shipment.id));
-      return `<div class="exp-container-card"><div class="exp-container-belongs">${esc(groupLabel)}</div><div class="exp-container-line"><div><b>${esc(shipment.container_number || '—')}</b><div class="muted">${esc(shipment.product || 'Sin producto')}${shipment.operational_status ? ` · ${esc(shipment.operational_status)}` : ''}</div></div><div class="exp-container-actions"><span class="pill ${ownDocs.length ? 'done' : ''}">${ownDocs.length} archivo${ownDocs.length === 1 ? '' : 's'}</span><button class="orange" type="button" data-upload-scope="shipment:${esc(shipment.id)}" data-upload-label="Contenedor ${esc(shipment.container_number || '')}">+ Agregar documento</button></div></div>${ownDocs.length ? `<div class="exp-container-files">${ownDocs.map(documentRow).join('')}</div>` : ''}</div>`;
+      const applicableDocs = applicableDocumentsForShipment(shipment, documents);
+      const downloadAction = applicableDocs.length ? `<button class="alt" type="button" data-download-shipment-docs="${esc(shipment.id)}">Descargar todo (${applicableDocs.length})</button>` : '';
+      return `<div class="exp-container-card"><div class="exp-container-belongs">${esc(groupLabel)}</div><div class="exp-container-line"><div><b>${esc(shipment.container_number || '—')}</b><div class="muted">${esc(shipment.product || 'Sin producto')}${shipment.operational_status ? ` · ${esc(shipment.operational_status)}` : ''}</div></div><div class="exp-container-actions"><span class="pill ${ownDocs.length ? 'done' : ''}">${ownDocs.length} archivo${ownDocs.length === 1 ? '' : 's'}</span>${downloadAction}<button class="orange" type="button" data-upload-scope="shipment:${esc(shipment.id)}" data-upload-label="Contenedor ${esc(shipment.container_number || '')}">+ Agregar documento</button></div></div>${ownDocs.length ? `<div class="exp-container-files">${ownDocs.map(documentRow).join('')}</div>` : ''}</div>`;
     }).join('');
   }
   function documentFoldersHtml(operation, allDocuments) {
@@ -339,6 +350,17 @@
     document.querySelectorAll('[data-open-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.openDocument)); if (item?.signed_url) window.open(item.signed_url,'_blank','noopener'); }; });
     document.querySelectorAll('[data-delete-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.deleteDocument)); if (item) deleteDocument(operation,item,button); }; });
   }
+  function downloadShipmentDocuments(shipmentId) {
+    const id = String(shipmentId || '').trim();
+    if (!id) return;
+    const link = document.createElement('a');
+    link.href = `/api/document-bundle?shipment_id=${encodeURIComponent(id)}`;
+    link.download = '';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
   function toggleFolder(header) {
     const body=byId(header?.dataset.folderToggle);
     if (!header || !body) return;
@@ -368,6 +390,12 @@
       button.onclick=event => {
         event.stopPropagation();
         openUploadModal(operation,scopeFromValue(button.dataset.uploadScope,button.dataset.uploadLabel));
+      };
+    });
+    document.querySelectorAll('[data-download-shipment-docs]').forEach(button => {
+      button.onclick=event => {
+        event.stopPropagation();
+        downloadShipmentDocuments(button.dataset.downloadShipmentDocs);
       };
     });
   }
