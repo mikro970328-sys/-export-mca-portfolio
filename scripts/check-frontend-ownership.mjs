@@ -92,7 +92,7 @@ for (const fragment of [
   'Array.isArray(window.shipments)',
   "window.addEventListener('export-mca:clients-changed', loadData)",
   "window.addEventListener('export-mca:data-loaded', loadData)",
-  "owner: 'expedientes-module.js'"
+  'window.ExpedientesModule = Object.freeze'
 ]) {
   if (!expedientes.includes(fragment)) errors.push(`Falta propiedad consolidada de Expedientes: ${fragment}`);
 }
