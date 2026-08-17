@@ -112,6 +112,34 @@
     document.head.appendChild(script);
   });
 
+  const loadStylesheet = (href, marker) => new Promise((resolve, reject) => {
+    const existing = document.querySelector(`link[${marker}]`);
+    if (existing) {
+      if (existing.dataset.loaded === 'true' || existing.sheet) resolve();
+      else {
+        existing.addEventListener('load', resolve, { once: true });
+        existing.addEventListener('error', reject, { once: true });
+      }
+      return;
+    }
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.setAttribute(marker, 'true');
+    link.onload = () => {
+      link.dataset.loaded = 'true';
+      resolve();
+    };
+    link.onerror = () => reject(new Error(`No se pudo cargar ${href}`));
+    document.head.appendChild(link);
+  });
+
+  const themePromise = loadStylesheet('/admin/platform-theme.css?v=20260816-1', 'data-platform-theme').catch(error => {
+    console.error('[platform theme]', error);
+    return false;
+  });
+
   const revealAdminShell = () => {
     document.getElementById('loginPage')?.classList.add('hidden');
     document.getElementById('appShell')?.classList.remove('hidden');
@@ -158,6 +186,7 @@
       await loadScript('/admin/containers-module.js?v=20260814-owner2', 'data-containers-module');
       await loadScript('/admin/shipment-editor.js?v=20260814-owner2', 'data-shipment-editor');
       await loadScript('/admin/section-state.js?v=20260731-critical1', 'data-section-state');
+      await themePromise;
 
       if (typeof window.loadAll !== 'function') {
         throw new Error('El cargador inicial de datos no está disponible.');
