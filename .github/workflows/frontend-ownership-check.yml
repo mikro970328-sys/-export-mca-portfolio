@@ -8,6 +8,7 @@ on:
       - 'admin/shipment-editor.js'
       - 'admin/registration-form-shell.js'
       - 'admin/modal-dismissal.js'
+      - 'admin/ux-d-cross-navigation.js'
       - 'admin/expedientes-module.js'
       - 'admin/dashboard-operational-state.js'
       - 'api/dashboard.js'
@@ -32,5 +33,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Validate frontend ownership and UX-A/UX-B/UX-C
+      - name: Validate frontend ownership and UX-A/UX-B/UX-C/UX-D
         run: node scripts/check-frontend-ownership.mjs
