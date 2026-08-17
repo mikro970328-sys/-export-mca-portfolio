@@ -293,22 +293,28 @@
     const originalText = button.textContent;
     button.disabled = true;
     button.textContent = 'Guardando...';
-    let createdClientId = null;
+    let rollbackClientId = null;
     try {
       const importerNames = importerPayload('create');
       const result = await api('/api/clients', { method: 'POST', body: JSON.stringify(clientPayload('create')) });
-      createdClientId = result.client?.id || null;
-      if (createdClientId) await syncClientImporters(createdClientId, importerNames);
+      rollbackClientId = result.client?.id || null;
+      if (rollbackClientId) {
+        try {
+          await syncClientImporters(rollbackClientId, importerNames);
+        } catch (syncError) {
+          try { await api('/api/clients?id=' + encodeURIComponent(rollbackClientId), { method: 'DELETE' }); } catch {}
+          rollbackClientId = null;
+          throw syncError;
+        }
+      }
+      rollbackClientId = null;
       note('clientMsg', createMessage(result.welcome), true);
       CLIENT_FIELD_IDS.forEach(id => { const field = byId(id); if (field) field.value = ''; });
-      await loadAll();
+      try { await loadAll(); } catch (refreshError) { console.error('[clients refresh]', refreshError); }
       await loadImporterState();
       notifyClientsChanged();
       renderClientTable();
     } catch (error) {
-      if (createdClientId) {
-        try { await api('/api/clients?id=' + encodeURIComponent(createdClientId), { method: 'DELETE' }); } catch {}
-      }
       note('clientMsg', error.message);
     } finally {
       button.disabled = false;
