@@ -122,7 +122,7 @@
     const rows = [
       ['Expedientes activos', operations.active, 'En curso actualmente'],
       ['Sin contenedores vinculados', operations.incomplete, 'Conviene revisar estos expedientes'],
-      ['Expedientes cerrados', operations.closed, 'Histórico completado']
+      ['Expedientes finalizados', operations.closed, 'Operaciones completadas']
     ];
     target.innerHTML = rows.map((row, index) => `<div class="status-row" data-dashboard-operation="${index}" aria-label="Abrir expedientes"><div class="status-top"><b>${row[0]}</b><span>${Number(row[1] || 0)}</span></div><div class="muted" style="margin-top:6px">${row[2]}</div></div>`).join('');
     rows.forEach((row, index) => activateInteractiveElement(target.querySelector(`[data-dashboard-operation="${index}"]`), () => openSection('newOperationsSection')));

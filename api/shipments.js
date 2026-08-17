@@ -1,4 +1,5 @@
 import { fail, normalizeContainer, ok, readJson, requireAdmin, sendWhatsApp, supabase } from './_lib.js';
+import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
 
 const cleanText = value => String(value ?? '').trim() || null;
 const cleanClientId = value => cleanText(value);
@@ -510,6 +511,7 @@ export default async function handler(req, res) {
         });
         await history(shipment, active ? 'reactivated' : 'delivered', active ? 'Contenedor reactivado' : 'Contenedor entregado');
         await audit(active ? 'shipment_reactivated' : 'shipment_delivered', shipment, { actor: admin.username });
+        await reconcileOperationLifecycle(shipment.operation_id, admin, { source: active ? 'shipment_reactivated' : 'shipment_delivered', shipment_id: shipment.id });
         return ok(res, { active, status });
       }
 

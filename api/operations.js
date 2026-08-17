@@ -1,4 +1,5 @@
 import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { operationIsFinalized, reconcileOperationLifecycle } from './_operation-lifecycle.js';
 
 const OPERATION_SELECT = [
   'id',
@@ -80,6 +81,7 @@ async function assignShipment(admin, operationId, shipmentId) {
     container_number: shipment.container_number,
     client_id: operation.client_id
   });
+  await reconcileOperationLifecycle(operation.id, admin, { source: 'shipment_assigned', shipment_id: shipment.id });
 
   return getOperation(operation.id);
 }
@@ -110,6 +112,7 @@ async function unassignShipment(admin, operationId, shipmentId) {
     container_number: shipment.container_number,
     client_id: operation.client_id
   });
+  await reconcileOperationLifecycle(operation.id, admin, { source: 'shipment_unassigned', shipment_id: shipment.id });
 
   return getOperation(operation.id);
 }
@@ -119,7 +122,11 @@ async function setStatus(admin, operationId, status) {
   const next = required(status, 'STATUS').toLowerCase();
   if (!ALLOWED_STATUS.has(next)) throw new Error('Estado de expediente inválido');
 
-  const closed = next === 'delivered' || next === 'closed';
+  const currentlyFinalized = operationIsFinalized(operation);
+  const requestedFinalized = next === 'delivered' || next === 'closed';
+  if (requestedFinalized && !currentlyFinalized) throw new Error('El expediente solo puede finalizar cuando todos sus contenedores estén entregados');
+  if (!requestedFinalized && currentlyFinalized) throw new Error('Reactiva primero al menos un contenedor antes de reabrir este expediente');
+  const closed = requestedFinalized;
   const rows = await supabase('operations', {
     method: 'PATCH',
     prefer: 'return=representation',
