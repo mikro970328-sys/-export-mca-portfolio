@@ -135,8 +135,11 @@
     document.head.appendChild(link);
   });
 
-  const themePromise = loadStylesheet('/admin/platform-theme.css?v=20260816-1', 'data-platform-theme').catch(error => {
-    console.error('[platform theme]', error);
+  const themePromise = Promise.all([
+    loadStylesheet('/admin/platform-theme.css?v=20260816-1', 'data-platform-theme'),
+    loadStylesheet('/admin/navigation-shell.css?v=20260817-uxa1', 'data-navigation-shell-style')
+  ]).catch(error => {
+    console.error('[platform styles]', error);
     return false;
   });
 
@@ -149,7 +152,7 @@
 
   const hydrateSecondaryModules = async () => {
     const independentModules = [
-      loadScript('/admin/mobile-interaction-core.js?v=20260817-nav1', 'data-mobile-interaction-core')
+      loadScript('/admin/navigation-shell.js?v=20260817-uxa1', 'data-navigation-shell')
     ];
 
     const clientsModule = loadScript('/admin/clients-module.js?v=20260817-importers1', 'data-clients-module');
