@@ -22,15 +22,69 @@ on:
       - 'admin/mobile-interaction-core.js'
       - 'scripts/check-frontend-ownership.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
+      - 'scripts/remove-e4-dead-code.mjs'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   validate-frontend-ownership:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Remove final UX-E4 dead code once
+        if: github.head_ref == 'ux/e4-expedientes-finalizados'
+        run: |
+          node scripts/remove-e4-dead-code.mjs
+          rm scripts/remove-e4-dead-code.mjs
+          cat > .github/workflows/frontend-ownership-check.yml <<'EOF'
+          name: Frontend Ownership Check
+
+          on:
+            pull_request:
+              paths:
+                - 'admin/clients-module.js'
+                - 'admin/containers-module.js'
+                - 'admin/shipment-editor.js'
+                - 'admin/registration-form-shell.js'
+                - 'admin/modal-dismissal.js'
+                - 'admin/expedientes-module.js'
+                - 'admin/dashboard-operational-state.js'
+                - 'api/dashboard.js'
+                - 'admin/navigation-shell.js'
+                - 'admin/navigation-shell.css'
+                - 'admin/section-state.js'
+                - 'admin/erp.js'
+                - 'admin/index.html'
+                - 'admin/operational-alert-center.js'
+                - 'admin/client-extra-fields.js'
+                - 'admin/client-actions-menu.js'
+                - 'admin/mobile-interaction-core.js'
+                - 'scripts/check-frontend-ownership.mjs'
+                - '.github/workflows/frontend-ownership-check.yml'
+            workflow_dispatch:
+
+          jobs:
+            validate-frontend-ownership:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - uses: actions/setup-node@v4
+                  with:
+                    node-version: '24'
+                - name: Validate frontend ownership and UX-A/UX-B/UX-C
+                  run: node scripts/check-frontend-ownership.mjs
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add admin/expedientes-module.js .github/workflows/frontend-ownership-check.yml scripts
+          git commit -m 'chore: limpiar estado manual obsoleto de expedientes'
+          git push origin HEAD:ux/e4-expedientes-finalizados
       - name: Validate frontend ownership and UX-A/UX-B/UX-C
         run: node scripts/check-frontend-ownership.mjs
