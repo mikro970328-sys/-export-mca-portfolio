@@ -6,6 +6,7 @@ const files = {
   containers: 'admin/containers-module.js',
   shipmentEditor: 'admin/shipment-editor.js',
   registrationShell: 'admin/registration-form-shell.js',
+  modalDismissal: 'admin/modal-dismissal.js',
   expedientes: 'admin/expedientes-module.js',
   navigation: 'admin/navigation-shell.js',
   navigationCss: 'admin/navigation-shell.css',
@@ -43,6 +44,7 @@ for (const file of [
   files.containers,
   files.shipmentEditor,
   files.registrationShell,
+  files.modalDismissal,
   files.expedientes,
   files.navigation,
   files.sectionState,
@@ -63,6 +65,7 @@ for (const file of retiredOwners) {
 const clients = read(files.clients);
 const containers = read(files.containers);
 const registrationShell = read(files.registrationShell);
+const modalDismissal = read(files.modalDismissal);
 const expedientes = read(files.expedientes);
 const navigation = read(files.navigation);
 const navigationCss = read(files.navigationCss);
@@ -115,6 +118,27 @@ for (const forbidden of [
   'window.ContainersModule ='
 ]) {
   if (registrationShell.includes(forbidden)) errors.push(`registration-form-shell.js invade lógica de negocio: ${forbidden}`);
+}
+
+for (const fragment of [
+  'window.__modalDismissalInstalled',
+  "owner: 'modal-dismissal.js'",
+  'requestClose',
+  "event.key !== 'Escape'",
+  'event.target === modal',
+  'Hay cambios sin guardar'
+]) {
+  if (!modalDismissal.includes(fragment)) errors.push(`Falta política UX-C de cierre modal: ${fragment}`);
+}
+
+for (const forbidden of [
+  '/api/',
+  'fetch(',
+  'window.openModal =',
+  'window.closeModal =',
+  'innerHTML ='
+]) {
+  if (modalDismissal.includes(forbidden)) errors.push(`modal-dismissal.js invade apertura/contenido del modal: ${forbidden}`);
 }
 
 for (const fragment of [
@@ -199,6 +223,7 @@ for (const fragment of [
   '/admin/clients-module.js',
   '/admin/containers-module.js',
   '/admin/registration-form-shell.js',
+  '/admin/modal-dismissal.js',
   '/admin/expedientes-module.js',
   '/admin/dashboard-operational-state.js',
   '/admin/navigation-shell.js',
@@ -256,5 +281,6 @@ console.log('- Los propietarios/parches retirados no existen ni se cargan.');
 console.log('- navigation-shell.js no contiene llamadas de negocio ni wrappers de datos.');
 console.log('- UX-B usa api/dashboard.js como única proyección operativa; el frontend solo presenta esa proyección.');
 console.log('- UX-C mantiene registration-form-shell.js limitado a guía visual; containers-module.js conserva guardado y validación de negocio.');
+console.log('- UX-C mantiene modal-dismissal.js limitado a política de cierre; index.html conserva apertura y contenido del modal.');
 console.log('- Centro de alertas conserva la propiedad de las alertas mostradas en Inicio.');
 console.log('- Sintaxis JavaScript válida en los propietarios críticos.');
