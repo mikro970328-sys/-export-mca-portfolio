@@ -259,7 +259,7 @@
   }
 
   function documentRow(item) {
-    return `<div class="exp-doc-row"><div><b>${esc(item.document_type || 'Documento')}</b>${item.shared_bl ? '<span class="exp-doc-shared">COMPARTIDO</span>' : ''}${item.notes ? `<div class="muted">${esc(item.notes)}</div>` : ''}</div><div>${esc(item.file_name || 'Archivo')}<div class="muted">v${esc(item.version || 1)} · ${esc(formatBytes(item.file_size_bytes))} · ${esc(formatDate(item.created_at))}</div></div><div class="exp-doc-actions">${item.signed_url ? `<button class="alt" type="button" data-open-document="${esc(item.id)}">Abrir</button>` : ''}<button class="danger" type="button" data-delete-document="${esc(item.id)}">Borrar</button></div></div>`;
+    return `<div class="exp-doc-row"><div><b>${esc(item.document_type || 'Documento')}</b>${item.shared_bl ? '<span class="exp-doc-shared">COMPARTIDO</span>' : ''}${item.notes ? `<div class="muted">${esc(item.notes)}</div>` : ''}</div><div>${esc(item.file_name || 'Archivo')}<div class="muted">v${esc(item.version || 1)} · ${esc(formatBytes(item.file_size_bytes))} · ${esc(formatDate(item.created_at))}</div></div><div class="exp-doc-actions">${item.signed_url ? `<button class="alt" type="button" data-open-document="${esc(item.id)}">Abrir</button><button class="alt" type="button" data-download-document="${esc(item.id)}">Descargar</button>` : ''}<button class="danger" type="button" data-delete-document="${esc(item.id)}">Borrar</button></div></div>`;
   }
   function documentBlock(documents, emptyText) { return documents.length ? documents.map(documentRow).join('') : `<div class="muted" style="padding:4px 0">${esc(emptyText)}</div>`; }
   function sharedContextHtml(context) {
@@ -348,7 +348,32 @@
   function bindDocumentActions(operation,documents) {
     const map=new Map(documents.map(item => [String(item.id),item]));
     document.querySelectorAll('[data-open-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.openDocument)); if (item?.signed_url) window.open(item.signed_url,'_blank','noopener'); }; });
+    document.querySelectorAll('[data-download-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.downloadDocument)); if (item?.signed_url) downloadIndividualDocument(item,button); }; });
     document.querySelectorAll('[data-delete-document]').forEach(button => { button.onclick=() => { const item=map.get(String(button.dataset.deleteDocument)); if (item) deleteDocument(operation,item,button); }; });
+  }
+  async function downloadIndividualDocument(item, button) {
+    const url = String(item?.signed_url || '');
+    if (!url) return;
+    const previousLabel = button?.textContent || 'Descargar';
+    if (button) { button.disabled = true; button.textContent = 'Descargando...'; }
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('No se pudo descargar el archivo.');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = item.file_name || 'documento';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      alert(error.message || 'No se pudo descargar el archivo.');
+    } finally {
+      if (button && document.body.contains(button)) { button.disabled = false; button.textContent = previousLabel; }
+    }
   }
   function filenameFromDisposition(disposition, fallback = 'Documentos_contenedor.zip') {
     const value = String(disposition || '');
