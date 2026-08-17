@@ -90,14 +90,11 @@
     return importerById(importerIdForShipment(shipment?.id));
   }
 
-  function importerIdsForClient(clientId) {
-    return new Set(importerState.client_importers.filter(link => String(link.client_id) === String(clientId || '')).map(link => String(link.importer_id)));
-  }
-
-  function importerOptions(clientId = '', selected = '') {
-    const linkedIds = clientId ? importerIdsForClient(clientId) : null;
-    const list = importerState.importers.filter(importer => importer.active !== false && (!linkedIds || linkedIds.has(String(importer.id))));
-    return `<option value="">Sin importadora definida</option>${list.map(importer => `<option value="${esc(importer.id)}" ${String(importer.id) === String(selected || '') ? 'selected' : ''}>${esc(importer.name)}</option>`).join('')}`;
+  function importerSuggestions() {
+    return importerState.importers
+      .filter(importer => importer.active !== false)
+      .map(importer => `<option value="${esc(importer.name)}"></option>`)
+      .join('');
   }
 
   function ensureRegistrationImporterField() {
@@ -107,7 +104,7 @@
     if (!clientWrapper) return;
     const wrapper = document.createElement('div');
     wrapper.id = 'shipmentImporterField';
-    wrapper.innerHTML = `<label for="shipmentImporter">Importadora cubana</label><select id="shipmentImporter"><option value="">Sin importadora definida</option></select><div id="shipmentImporterHelp" class="container-importer-help">Selecciona por cuál importadora entrará este contenedor.</div>`;
+    wrapper.innerHTML = `<label for="shipmentImporter">Importadora cubana</label><input id="shipmentImporter" list="shipmentImporterOptions" placeholder="Ej. Quimimport, Servoven"><datalist id="shipmentImporterOptions"></datalist><div id="shipmentImporterHelp" class="container-importer-help">Escribe la importadora concreta por la que entrará este contenedor. No depende de las importadoras registradas para el cliente.</div>`;
     clientWrapper.insertAdjacentElement('afterend', wrapper);
   }
 
@@ -121,33 +118,19 @@
     const selected = select.value;
     select.innerHTML = clientOptions(selected);
     if ([...select.options].some(option => option.value === selected)) select.value = selected;
-    syncImporterSelect();
   }
 
-  function syncImporterSelect() {
-    const select = byId('shipmentImporter');
-    if (!select) return;
-    const clientId = byId('shipmentClient')?.value || '';
-    const selected = select.value;
-    select.innerHTML = importerOptions(clientId, selected);
-    if ([...select.options].some(option => option.value === selected)) select.value = selected;
-    else select.value = '';
+  function syncImporterInput() {
+    const list = byId('shipmentImporterOptions');
+    if (list) list.innerHTML = importerSuggestions();
     const help = byId('shipmentImporterHelp');
-    if (!help) return;
-    if (!clientId) {
-      help.textContent = 'Sin cliente, puedes seleccionar cualquier importadora registrada o dejarla pendiente.';
-      return;
-    }
-    const count = importerIdsForClient(clientId).size;
-    help.textContent = count
-      ? `Este cliente está registrado en ${count} importadora${count === 1 ? '' : 's'}. Selecciona la que corresponde a este contenedor.`
-      : 'Este cliente no tiene importadoras registradas. Puedes dejarla pendiente y agregar sus importadoras desde Clientes.';
+    if (help) help.textContent = 'Escribe la importadora concreta por la que entrará este contenedor. Puedes usar una existente o escribir una nueva.';
   }
 
-  async function assignImporterToShipment(shipmentId, importerId) {
+  async function assignImporterToShipment(shipmentId, importerName) {
     const result = await request('/api/importers', {
       method: 'PATCH',
-      body: JSON.stringify({ action: 'assign_shipment', shipment_id: shipmentId, importer_id: importerId || null })
+      body: JSON.stringify({ action: 'assign_shipment', shipment_id: shipmentId, importer_name: String(importerName || '').trim() })
     });
     if (result.state) {
       importerState = result.state;
@@ -258,10 +241,7 @@
     if (quantityText && (!Number.isFinite(Number(quantityText)) || Number(quantityText) < 0)) return note('La cantidad no es válida.');
 
     const clientId = byId('shipmentClient')?.value || null;
-    const importerId = byId('shipmentImporter')?.value || null;
-    if (clientId && importerId && !importerIdsForClient(clientId).has(String(importerId))) {
-      return note('La importadora seleccionada no está registrada para este cliente.');
-    }
+    const importerName = String(byId('shipmentImporter')?.value || '').trim();
 
     const original = button.textContent;
     button.disabled = true;
@@ -283,9 +263,9 @@
         })
       });
       rollbackShipmentId = result.shipment?.id || null;
-      if (rollbackShipmentId && importerId) {
+      if (rollbackShipmentId && importerName) {
         try {
-          await assignImporterToShipment(rollbackShipmentId, importerId);
+          await assignImporterToShipment(rollbackShipmentId, importerName);
         } catch (assignmentError) {
           try { await request('/api/shipments?id=' + encodeURIComponent(rollbackShipmentId), { method: 'DELETE' }); }
           catch (rollbackError) { console.error('[container importer rollback]', rollbackError); }
@@ -305,7 +285,7 @@
         try { await window.loadAll(); } catch (refreshError) { console.error('[containers refresh]', refreshError); }
       }
       await loadImporterState();
-      syncImporterSelect();
+      syncImporterInput();
       render();
 
       if (result.shipment?.shipsgo_status === 'failed') {
@@ -692,7 +672,6 @@
 
   function bind() {
     byId('saveShipment')?.addEventListener('click', saveShipmentRecord);
-    byId('shipmentClient')?.addEventListener('change', syncImporterSelect);
     byId('shipmentSearch')?.addEventListener('input', render);
     document.querySelectorAll('[data-container-filter]').forEach(button => button.addEventListener('click', () => {
       activeFilter = button.dataset.containerFilter;
@@ -716,13 +695,13 @@
 
   function syncData() {
     syncClientSelect();
-    syncImporterSelect();
+    syncImporterInput();
     render();
   }
 
   async function refreshImporters() {
     await loadImporterState();
-    syncImporterSelect();
+    syncImporterInput();
     render();
   }
 
