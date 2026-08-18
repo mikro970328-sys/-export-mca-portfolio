@@ -123,10 +123,10 @@ export default async function handler(req, res) {
           if (entryMode === 'pallets') {
             pallets = positive(line.pallets, `Pallets de la línea ${index + 1}`);
             if (unitsPerPallet === null) unitsPerPallet = numberOrNull(product.default_units_per_pallet);
-            if (unitsPerPallet === null || !Number.isFinite(unitsPerPallet) || unitsPerPallet <= 0) {
-              throw new Error(`Indica las unidades por pallet en la línea ${index + 1}`);
+            if (unitsPerPallet !== null && (!Number.isFinite(unitsPerPallet) || unitsPerPallet <= 0)) {
+              throw new Error(`Unidades por pallet inválidas en la línea ${index + 1}`);
             }
-            quantity = pallets * unitsPerPallet;
+            quantity = unitsPerPallet ? pallets * unitsPerPallet : 0;
           } else if (entryMode === 'units') {
             quantity = positive(line.quantity, `Cantidad de la línea ${index + 1}`);
             pallets = 0;
