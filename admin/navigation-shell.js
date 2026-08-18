@@ -234,7 +234,7 @@
       toggle: toggleShell,
       closeMobile: closeMobileMenu,
       openWarehouse: openWarehouseSection,
-      owner:'navigation-shell.js'
+      owner: 'navigation-shell.js'
     });
   }
 
