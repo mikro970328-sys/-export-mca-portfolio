@@ -6,6 +6,10 @@
   const DESKTOP_QUERY = '(min-width:901px)';
   const COLLAPSE_KEY = 'export_mca_sidebar_collapsed';
   const GROUP_STATE_KEY = 'export_mca_nav_groups';
+  const EMBEDDED_OPERATIONS = [
+    { id:'warehouseSection', label:'Almacén', icon:'▥', src:'/admin/warehouse.html?embedded=1' },
+    { id:'inventorySection', label:'Inventario', icon:'▦', src:'/admin/inventory.html?embedded=1' }
+  ];
 
   const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
 
@@ -20,9 +24,7 @@
     try {
       const value = JSON.parse(localStorage.getItem(GROUP_STATE_KEY) || '{}');
       return value && typeof value === 'object' ? value : {};
-    } catch {
-      return {};
-    }
+    } catch { return {}; }
   }
 
   function groupKey(group, index) {
@@ -43,54 +45,55 @@
     if (persist) saveGroupState(group, Boolean(open));
   }
 
-  function openWarehouseSection() {
-    const id = 'warehouseSection';
+  function openEmbeddedSection(config) {
+    const id = config.id;
     if (typeof window.showSection === 'function') window.showSection(id);
     else {
-      document.querySelectorAll('.app-section').forEach(s => s.classList.toggle('hidden', s.id !== id));
-      document.querySelectorAll('[data-section]').forEach(b => b.classList.toggle('active', b.dataset.section === id));
+      document.querySelectorAll('.app-section').forEach(section => section.classList.toggle('hidden', section.id !== id));
+      document.querySelectorAll('[data-section]').forEach(button => button.classList.toggle('active', button.dataset.section === id));
       localStorage.setItem('export_mca_current_section', id);
       window.scrollTo({ top:0 });
     }
     const title = byId('pageTitle');
-    if (title) title.textContent = 'Almacén';
+    if (title) title.textContent = config.label;
     syncActiveGroup();
     closeMobileMenu();
     window.dispatchEvent(new CustomEvent('export-mca:section-changed', { detail:{ id } }));
   }
 
-  function ensureWarehouseSection() {
+  function ensureEmbeddedOperations() {
     const operations = document.querySelector('.nav-group[data-nav-group="operations"] .submenu');
-    if (operations && !operations.querySelector('[data-section="warehouseSection"]')) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.dataset.section = 'warehouseSection';
-      button.dataset.navLabel = 'Almacén';
-      button.innerHTML = '<span class="nav-icon" aria-hidden="true">▥</span><span class="nav-label">Almacén</span>';
-      button.setAttribute('aria-label', 'Almacén');
-      button.title = 'Almacén';
-      button.onclick = event => { event.preventDefault(); openWarehouseSection(); };
-      operations.appendChild(button);
-    }
-
     const main = document.querySelector('.main-shell main');
-    if (main && !byId('warehouseSection')) {
-      const section = document.createElement('section');
-      section.id = 'warehouseSection';
-      section.className = 'app-section hidden';
-      section.innerHTML = '<iframe src="/admin/warehouse.html?embedded=1" title="Almacén" style="width:100%;height:calc(100vh - 120px);min-height:760px;border:0;border-radius:14px;background:#f4f7fb"></iframe>';
-      main.appendChild(section);
+    for (const config of EMBEDDED_OPERATIONS) {
+      if (operations && !operations.querySelector(`[data-section="${config.id}"]`)) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.section = config.id;
+        button.dataset.navLabel = config.label;
+        button.innerHTML = `<span class="nav-icon" aria-hidden="true">${config.icon}</span><span class="nav-label">${config.label}</span>`;
+        button.setAttribute('aria-label', config.label);
+        button.title = config.label;
+        button.onclick = event => { event.preventDefault(); openEmbeddedSection(config); };
+        operations.appendChild(button);
+      }
+      if (main && !byId(config.id)) {
+        const section = document.createElement('section');
+        section.id = config.id;
+        section.className = 'app-section hidden';
+        section.innerHTML = `<iframe src="${config.src}" title="${config.label}" style="width:100%;height:calc(100vh - 120px);min-height:760px;border:0;border-radius:14px;background:#f4f7fb"></iframe>`;
+        main.appendChild(section);
+      }
     }
-
-    if (localStorage.getItem('export_mca_current_section') === 'warehouseSection') openWarehouseSection();
+    const saved = localStorage.getItem('export_mca_current_section');
+    const config = EMBEDDED_OPERATIONS.find(item => item.id === saved);
+    if (config) openEmbeddedSection(config);
   }
 
   function initializeGroups() {
     const state = readGroupState();
     document.querySelectorAll('.nav-group').forEach((group, index) => {
       const saved = state[groupKey(group, index)];
-      const fallback = isDesktop();
-      setGroupOpen(group, typeof saved === 'boolean' ? saved : fallback, false);
+      setGroupOpen(group, typeof saved === 'boolean' ? saved : isDesktop(), false);
     });
     syncActiveGroup();
   }
@@ -138,10 +141,7 @@
   }
 
   function toggleShell() {
-    if (isDesktop()) {
-      setDesktopCollapsed(!document.body.classList.contains('sidebar-collapsed'));
-      return;
-    }
+    if (isDesktop()) return setDesktopCollapsed(!document.body.classList.contains('sidebar-collapsed'));
     const sidebar = byId('sidebar');
     if (sidebar?.classList.contains('mobile-open')) closeMobileMenu();
     else openMobileMenu();
@@ -160,8 +160,7 @@
 
   function syncActiveGroup() {
     document.querySelectorAll('.nav-group').forEach(group => {
-      const hasActive = Boolean(group.querySelector('.submenu [data-section].active'));
-      group.classList.toggle('has-active-section', hasActive);
+      group.classList.toggle('has-active-section', Boolean(group.querySelector('.submenu [data-section].active')));
     });
   }
 
@@ -182,21 +181,10 @@
     const element = event.target instanceof Element ? event.target : null;
     if (!element) return;
     const shellToggle = element.closest('#sidebarToggle,#mobileMenuBtn');
-    if (shellToggle) {
-      event.preventDefault();
-      toggleShell();
-      return;
-    }
+    if (shellToggle) { event.preventDefault(); toggleShell(); return; }
     const groupButton = element.closest('.nav-group-btn');
-    if (groupButton) {
-      event.preventDefault();
-      toggleGroup(groupButton);
-      return;
-    }
-    if (element === byId('mobileOverlay')) {
-      event.preventDefault();
-      closeMobileMenu();
-    }
+    if (groupButton) { event.preventDefault(); toggleGroup(groupButton); return; }
+    if (element === byId('mobileOverlay')) { event.preventDefault(); closeMobileMenu(); }
   }
 
   function handleKeydown(event) {
@@ -212,7 +200,7 @@
   function mount() {
     const sidebar = byId('sidebar');
     if (!sidebar) return;
-    ensureWarehouseSection();
+    ensureEmbeddedOperations();
     installAccessibleLabels();
     initializeGroups();
     initializeDesktopState();
@@ -233,7 +221,8 @@
       expand: () => setDesktopCollapsed(false),
       toggle: toggleShell,
       closeMobile: closeMobileMenu,
-      openWarehouse: openWarehouseSection,
+      openWarehouse: () => openEmbeddedSection(EMBEDDED_OPERATIONS[0]),
+      openInventory: () => openEmbeddedSection(EMBEDDED_OPERATIONS[1]),
       owner: 'navigation-shell.js'
     });
   }
