@@ -22,7 +22,7 @@ async function loadAll() {
     supabase('warehouses', { query:'?select=*&order=active.desc,name.asc' }),
     supabase('products', { query:'?select=*&order=active.desc,name.asc' }),
     supabase('warehouse_receipts', { query:'?select=*,warehouse:warehouses(id,code,name,country,city),supplier:suppliers(id,name)&order=received_at.desc,created_at.desc' }),
-    supabase('warehouse_receipt_items', { query:'?select=*,product:products(id,sku,name,brand,category,package_format)&order=created_at.asc' })
+    supabase('warehouse_receipt_items', { query:'?select=*,product:products(id,sku,name,brand,category,package_format,unit,default_units_per_pallet)&order=created_at.asc' })
   ]);
   const byReceipt = new Map();
   for (const item of items || []) {
@@ -87,16 +87,33 @@ export default async function handler(req, res) {
         const cleanLines = lines.map((line, index) => {
           const productId = text(line.product_id);
           if (!productId) throw new Error(`Selecciona el producto de la línea ${index + 1}`);
-          const quantity = positive(line.quantity, `Cantidad de la línea ${index + 1}`);
-          const pallets = line.pallets === '' || line.pallets == null ? 0 : positive(line.pallets, `Pallets de la línea ${index + 1}`, true);
-          const unitsPerPallet = numberOrNull(line.units_per_pallet);
+
+          const entryMode = text(line.entry_mode).toLowerCase() || 'units';
+          let pallets = 0;
+          let quantity = 0;
+          let unitsPerPallet = numberOrNull(line.units_per_pallet);
+
+          if (entryMode === 'pallets') {
+            pallets = positive(line.pallets, `Pallets de la línea ${index + 1}`);
+            if (unitsPerPallet === null || !Number.isFinite(unitsPerPallet) || unitsPerPallet <= 0) {
+              throw new Error(`Indica las unidades por pallet en la línea ${index + 1}`);
+            }
+            quantity = pallets * unitsPerPallet;
+          } else if (entryMode === 'units') {
+            quantity = positive(line.quantity, `Cantidad de la línea ${index + 1}`);
+            pallets = 0;
+            unitsPerPallet = null;
+          } else {
+            throw new Error(`Forma de recepción inválida en línea ${index + 1}`);
+          }
+
           const netWeight = numberOrNull(line.net_weight_kg);
           const grossWeight = numberOrNull(line.gross_weight_kg);
           const unitCost = numberOrNull(line.unit_cost);
-          if (unitsPerPallet !== null && (!Number.isFinite(unitsPerPallet) || unitsPerPallet <= 0)) throw new Error(`Unidades/pallet inválidas en línea ${index + 1}`);
           if (netWeight !== null && (!Number.isFinite(netWeight) || netWeight < 0)) throw new Error(`Peso neto inválido en línea ${index + 1}`);
           if (grossWeight !== null && (!Number.isFinite(grossWeight) || grossWeight < 0)) throw new Error(`Peso bruto inválido en línea ${index + 1}`);
           if (unitCost !== null && (!Number.isFinite(unitCost) || unitCost < 0)) throw new Error(`Costo inválido en línea ${index + 1}`);
+
           return {
             product_id:productId, pallets, quantity, unit:text(line.unit) || 'unidades',
             units_per_pallet:unitsPerPallet, net_weight_kg:netWeight, gross_weight_kg:grossWeight,
