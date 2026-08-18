@@ -102,9 +102,18 @@ export default async function handler(req, res) {
         const lines = Array.isArray(body.items) ? body.items : [];
         if (!lines.length) throw new Error('Agrega al menos una línea de mercancía');
 
+        const productIds = [...new Set(lines.map(line => text(line.product_id)).filter(Boolean))];
+        if (!productIds.length) throw new Error('Selecciona al menos un producto');
+        const productRows = await supabase('products', {
+          query:`?select=id,name,unit,default_units_per_pallet&id=in.(${productIds.join(',')})`
+        });
+        const productById = new Map((productRows || []).map(product => [product.id, product]));
+
         const cleanLines = lines.map((line, index) => {
           const productId = text(line.product_id);
           if (!productId) throw new Error(`Selecciona el producto de la línea ${index + 1}`);
+          const product = productById.get(productId);
+          if (!product) throw new Error(`El producto de la línea ${index + 1} no existe`);
 
           const entryMode = text(line.entry_mode).toLowerCase() || 'units';
           let pallets = 0;
@@ -113,6 +122,7 @@ export default async function handler(req, res) {
 
           if (entryMode === 'pallets') {
             pallets = positive(line.pallets, `Pallets de la línea ${index + 1}`);
+            if (unitsPerPallet === null) unitsPerPallet = numberOrNull(product.default_units_per_pallet);
             if (unitsPerPallet === null || !Number.isFinite(unitsPerPallet) || unitsPerPallet <= 0) {
               throw new Error(`Indica las unidades por pallet en la línea ${index + 1}`);
             }
@@ -133,7 +143,7 @@ export default async function handler(req, res) {
           if (unitCost !== null && (!Number.isFinite(unitCost) || unitCost < 0)) throw new Error(`Costo inválido en línea ${index + 1}`);
 
           return {
-            product_id:productId, pallets, quantity, unit:normalizeUnit(line.unit),
+            product_id:productId, pallets, quantity, unit:normalizeUnit(product.unit),
             units_per_pallet:unitsPerPallet, net_weight_kg:netWeight, gross_weight_kg:grossWeight,
             unit_cost:unitCost, currency:text(line.currency).toUpperCase() || 'USD',
             lot_number:text(line.lot_number) || null, notes:text(line.notes) || null
