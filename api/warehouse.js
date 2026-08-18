@@ -7,6 +7,12 @@ const positive = (value, label, allowZero = false) => {
   if (!Number.isFinite(n) || (allowZero ? n < 0 : n <= 0)) throw new Error(`${label} inválido`);
   return n;
 };
+const isNumericText = value => /^[-+]?\d+(?:[.,]\d+)?$/.test(text(value));
+const normalizeUnit = (value, fallback = 'unidades') => {
+  const candidate = text(value);
+  if (!candidate || isNumericText(candidate)) return text(fallback) && !isNumericText(fallback) ? text(fallback) : 'unidades';
+  return candidate;
+};
 
 async function audit(admin, action, entityType, entityId, details = {}) {
   try {
@@ -18,21 +24,30 @@ async function audit(admin, action, entityType, entityId, details = {}) {
 }
 
 async function loadAll() {
-  const [warehouses, products, receipts, items] = await Promise.all([
+  const [warehouses, rawProducts, receipts, rawItems] = await Promise.all([
     supabase('warehouses', { query:'?select=*&order=active.desc,name.asc' }),
     supabase('products', { query:'?select=*&order=active.desc,name.asc' }),
     supabase('warehouse_receipts', { query:'?select=*,warehouse:warehouses(id,code,name,country,city),supplier:suppliers(id,name)&order=received_at.desc,created_at.desc' }),
     supabase('warehouse_receipt_items', { query:'?select=*,product:products(id,sku,name,brand,category,package_format,unit,default_units_per_pallet)&order=created_at.asc' })
   ]);
+
+  const products = (rawProducts || []).map(product => ({
+    ...product,
+    unit: normalizeUnit(product.unit)
+  }));
+
   const byReceipt = new Map();
-  for (const item of items || []) {
+  for (const rawItem of rawItems || []) {
+    const product = rawItem.product ? { ...rawItem.product, unit: normalizeUnit(rawItem.product.unit) } : null;
+    const item = { ...rawItem, product, unit: normalizeUnit(rawItem.unit, product?.unit) };
     if (!byReceipt.has(item.receipt_id)) byReceipt.set(item.receipt_id, []);
     byReceipt.get(item.receipt_id).push(item);
   }
+
   return {
     warehouses: warehouses || [],
-    products: products || [],
-    receipts: (receipts || []).map(r => ({ ...r, items:byReceipt.get(r.id) || [] }))
+    products,
+    receipts: (receipts || []).map(receipt => ({ ...receipt, items:byReceipt.get(receipt.id) || [] }))
   };
 }
 
@@ -63,6 +78,9 @@ export default async function handler(req, res) {
         const name = text(body.name);
         if (!name) throw new Error('El nombre del producto es obligatorio');
         const sku = text(body.sku).toUpperCase() || null;
+        const rawUnit = text(body.unit);
+        if (rawUnit && isNumericText(rawUnit)) throw new Error('La unidad base debe ser texto, por ejemplo: paneles, cajas o unidades');
+        const unit = normalizeUnit(rawUnit);
         const defaultUnits = numberOrNull(body.default_units_per_pallet);
         if (defaultUnits !== null && (!Number.isFinite(defaultUnits) || defaultUnits <= 0)) throw new Error('Unidades por pallet inválidas');
         const unitWeight = numberOrNull(body.unit_weight_kg);
@@ -70,11 +88,11 @@ export default async function handler(req, res) {
         const created = await supabase('products', { method:'POST', query:'?select=*', body:[{
           sku, name, description:text(body.description) || null, category:text(body.category) || null,
           brand:text(body.brand) || null, hs_code:text(body.hs_code) || null,
-          country_of_origin:text(body.country_of_origin) || null, unit:text(body.unit) || 'unidades',
+          country_of_origin:text(body.country_of_origin) || null, unit,
           unit_weight_kg:unitWeight, package_format:text(body.package_format) || null,
           default_units_per_pallet:defaultUnits, notes:text(body.notes) || null
         }] });
-        await audit(admin, 'product_created', 'product', created?.[0]?.id, { sku, name });
+        await audit(admin, 'product_created', 'product', created?.[0]?.id, { sku, name, unit });
         return ok(res, { product:created?.[0] });
       }
 
@@ -115,7 +133,7 @@ export default async function handler(req, res) {
           if (unitCost !== null && (!Number.isFinite(unitCost) || unitCost < 0)) throw new Error(`Costo inválido en línea ${index + 1}`);
 
           return {
-            product_id:productId, pallets, quantity, unit:text(line.unit) || 'unidades',
+            product_id:productId, pallets, quantity, unit:normalizeUnit(line.unit),
             units_per_pallet:unitsPerPallet, net_weight_kg:netWeight, gross_weight_kg:grossWeight,
             unit_cost:unitCost, currency:text(line.currency).toUpperCase() || 'USD',
             lot_number:text(line.lot_number) || null, notes:text(line.notes) || null
