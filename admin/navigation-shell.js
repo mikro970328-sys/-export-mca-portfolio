@@ -43,6 +43,48 @@
     if (persist) saveGroupState(group, Boolean(open));
   }
 
+  function openWarehouseSection() {
+    const id = 'warehouseSection';
+    if (typeof window.showSection === 'function') window.showSection(id);
+    else {
+      document.querySelectorAll('.app-section').forEach(s => s.classList.toggle('hidden', s.id !== id));
+      document.querySelectorAll('[data-section]').forEach(b => b.classList.toggle('active', b.dataset.section === id));
+      localStorage.setItem('export_mca_current_section', id);
+      window.scrollTo({ top:0 });
+    }
+    const title = byId('pageTitle');
+    if (title) title.textContent = 'Almacén';
+    syncActiveGroup();
+    closeMobileMenu();
+    window.dispatchEvent(new CustomEvent('export-mca:section-changed', { detail:{ id } }));
+  }
+
+  function ensureWarehouseSection() {
+    const operations = document.querySelector('.nav-group[data-nav-group="operations"] .submenu');
+    if (operations && !operations.querySelector('[data-section="warehouseSection"]')) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.section = 'warehouseSection';
+      button.dataset.navLabel = 'Almacén';
+      button.innerHTML = '<span class="nav-icon" aria-hidden="true">▥</span><span class="nav-label">Almacén</span>';
+      button.setAttribute('aria-label', 'Almacén');
+      button.title = 'Almacén';
+      button.onclick = event => { event.preventDefault(); openWarehouseSection(); };
+      operations.appendChild(button);
+    }
+
+    const main = document.querySelector('.main-shell main');
+    if (main && !byId('warehouseSection')) {
+      const section = document.createElement('section');
+      section.id = 'warehouseSection';
+      section.className = 'app-section hidden';
+      section.innerHTML = '<iframe src="/admin/warehouse.html?embedded=1" title="Almacén" style="width:100%;height:calc(100vh - 120px);min-height:760px;border:0;border-radius:14px;background:#f4f7fb"></iframe>';
+      main.appendChild(section);
+    }
+
+    if (localStorage.getItem('export_mca_current_section') === 'warehouseSection') openWarehouseSection();
+  }
+
   function initializeGroups() {
     const state = readGroupState();
     document.querySelectorAll('.nav-group').forEach((group, index) => {
@@ -67,9 +109,7 @@
       toggle.title = next ? 'Expandir menú lateral' : 'Contraer menú lateral';
     }
     if (persist) localStorage.setItem(COLLAPSE_KEY, String(next));
-    window.dispatchEvent(new CustomEvent('export-mca:navigation-shell-changed', {
-      detail: { desktopCollapsed: next }
-    }));
+    window.dispatchEvent(new CustomEvent('export-mca:navigation-shell-changed', { detail:{ desktopCollapsed:next } }));
   }
 
   function initializeDesktopState() {
@@ -110,13 +150,11 @@
   function toggleGroup(button) {
     const group = button?.closest('.nav-group');
     if (!group) return;
-
     if (isDesktop() && document.body.classList.contains('sidebar-collapsed')) {
       setDesktopCollapsed(false);
       setGroupOpen(group, true);
       return;
     }
-
     setGroupOpen(group, !group.classList.contains('open'));
   }
 
@@ -143,21 +181,18 @@
   function handleClick(event) {
     const element = event.target instanceof Element ? event.target : null;
     if (!element) return;
-
     const shellToggle = element.closest('#sidebarToggle,#mobileMenuBtn');
     if (shellToggle) {
       event.preventDefault();
       toggleShell();
       return;
     }
-
     const groupButton = element.closest('.nav-group-btn');
     if (groupButton) {
       event.preventDefault();
       toggleGroup(groupButton);
       return;
     }
-
     if (element === byId('mobileOverlay')) {
       event.preventDefault();
       closeMobileMenu();
@@ -177,11 +212,10 @@
   function mount() {
     const sidebar = byId('sidebar');
     if (!sidebar) return;
-
+    ensureWarehouseSection();
     installAccessibleLabels();
     initializeGroups();
     initializeDesktopState();
-
     document.addEventListener('click', handleClick);
     document.addEventListener('keydown', handleKeydown);
     window.addEventListener('resize', handleViewportChange);
@@ -194,16 +228,16 @@
       syncActiveGroup();
       closeMobileMenu();
     });
-
     window.NavigationShell = Object.freeze({
       collapse: () => setDesktopCollapsed(true),
       expand: () => setDesktopCollapsed(false),
       toggle: toggleShell,
       closeMobile: closeMobileMenu,
+      openWarehouse: openWarehouseSection,
       owner: 'navigation-shell.js'
     });
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
   else mount();
 })();
