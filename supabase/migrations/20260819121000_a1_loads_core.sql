@@ -22,11 +22,12 @@ create table public.loads (
   updated_at timestamptz not null default now(),
   constraint loads_load_number_unique unique (load_number),
   constraint loads_status_timestamps_check check (
-    (status <> 'loading' or loading_started_at is not null)
-    and (status <> 'loaded' or (loading_started_at is not null and loaded_at is not null))
-    and (status <> 'dispatched' or (loading_started_at is not null and loaded_at is not null and dispatched_at is not null))
-    and (status <> 'cancelled' or cancelled_at is not null)
-    and not (dispatched_at is not null and cancelled_at is not null)
+    (status = 'draft' and loading_started_at is null and loaded_at is null and dispatched_at is null and cancelled_at is null)
+    or (status = 'reserved' and loading_started_at is null and loaded_at is null and dispatched_at is null and cancelled_at is null)
+    or (status = 'loading' and loading_started_at is not null and loaded_at is null and dispatched_at is null and cancelled_at is null)
+    or (status = 'loaded' and loading_started_at is not null and loaded_at is not null and dispatched_at is null and cancelled_at is null)
+    or (status = 'dispatched' and loading_started_at is not null and loaded_at is not null and dispatched_at is not null and cancelled_at is null)
+    or (status = 'cancelled' and dispatched_at is null and cancelled_at is not null)
   )
 );
 
