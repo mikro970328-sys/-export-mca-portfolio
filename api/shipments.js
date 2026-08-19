@@ -1,5 +1,6 @@
 import { fail, normalizeContainer, ok, readJson, requireAdmin, sendWhatsApp, supabase } from './_lib.js';
 import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
+import { deleteShipsGoTracking, registerShipsGo } from './_shipsgo.js';
 
 const cleanText = value => String(value ?? '').trim() || null;
 const cleanClientId = value => cleanText(value);
@@ -97,106 +98,6 @@ function templateConfig(type, shipment, body = {}) {
     delivered: { sid: process.env.TWILIO_DELIVERED_CONTENT_SID, label: 'Contenedor entregado', variables: { '1': name, '2': container } }
   };
   return map[type] || null;
-}
-
-function shipsGoConfig() {
-  const token = process.env.SHIPSGO_API_KEY || process.env.SHIPSGO_TOKEN;
-  const base = process.env.SHIPSGO_API_BASE_URL || 'https://api.shipsgo.com/v2';
-  if (!token) throw new Error('SHIPSGO_CONFIG_MISSING: falta SHIPSGO_API_KEY en Vercel');
-  return { token, base: base.replace(/\/$/, '') };
-}
-
-async function shipsGoRequest(path, options = {}) {
-  const { token, base } = shipsGoConfig();
-  const response = await fetch(`${base}/${String(path).replace(/^\//, '')}`, {
-    method: options.method || 'GET',
-    headers: {
-      'X-Shipsgo-User-Token': token,
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...(options.headers || {})
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
-  });
-  const text = await response.text();
-  let data = {};
-  try { data = text ? JSON.parse(text) : {}; } catch { data = { message: text }; }
-  if (!response.ok) {
-    const message = data?.message || data?.detail || data?.error || text || 'Error de ShipsGo';
-    const error = new Error(`SHIPSGO_${response.status}:${message}`);
-    error.status = response.status;
-    error.data = data;
-    throw error;
-  }
-  return data;
-}
-
-function firstShipsGoItem(response) {
-  if (Array.isArray(response)) return response[0] || null;
-  if (Array.isArray(response?.data)) return response.data[0] || null;
-  if (Array.isArray(response?.items)) return response.items[0] || null;
-  if (Array.isArray(response?.results)) return response.results[0] || null;
-  return null;
-}
-
-async function findShipsGoTracking(containerNumber) {
-  const paths = [
-    process.env.SHIPSGO_SEARCH_PATH || `ocean/shipments?filters[container_number]=eq:${encodeURIComponent(containerNumber)}&take=1`,
-    `ocean/shipments?container_number=${encodeURIComponent(containerNumber)}&take=1`
-  ];
-  for (const path of [...new Set(paths)]) {
-    try {
-      const found = await shipsGoRequest(path);
-      const existing = firstShipsGoItem(found);
-      if (existing) return existing;
-    } catch (error) {
-      const message = String(error.message || '');
-      if (!message.includes('SHIPSGO_404')) console.warn('SHIPSGO_LOOKUP_FAILED', message);
-    }
-  }
-  return null;
-}
-
-async function registerShipsGo(containerNumber, knownTrackingId = null) {
-  if (knownTrackingId) return { mode: 'reused', id: knownTrackingId, raw: null };
-  const existing = await findShipsGoTracking(containerNumber);
-  if (existing) return { mode: 'linked', id: existing.id || existing.shipment_id || null, raw: existing };
-
-  const createPath = process.env.SHIPSGO_CREATE_PATH || 'ocean/shipments';
-  const payload = { container_number: containerNumber, reference: `EXPORT-MCA-${containerNumber}` };
-  try {
-    const created = await shipsGoRequest(createPath, { method: 'POST', body: payload });
-    const item = created?.data || created;
-    return { mode: 'created', id: item?.id || item?.shipment_id || null, raw: item };
-  } catch (error) {
-    if (error.status === 409 || String(error.message).includes('SHIPSGO_409')) {
-      const linked = await findShipsGoTracking(containerNumber);
-      if (linked) return { mode: 'linked', id: linked.id || linked.shipment_id || null, raw: linked };
-      return { mode: 'already_exists', id: null, raw: error.data || null };
-    }
-    throw error;
-  }
-}
-
-async function deleteShipsGoTracking(shipment) {
-  let trackingId = shipment.shipsgo_tracking_id || null;
-  if (!trackingId) {
-    const found = await findShipsGoTracking(shipment.container_number);
-    trackingId = found?.id || found?.shipment_id || null;
-  }
-  if (!trackingId) return { deleted: false, reason: 'not_found', tracking_id: null };
-
-  const template = process.env.SHIPSGO_DELETE_PATH || 'ocean/shipments/{id}';
-  const path = template.includes('{id}')
-    ? template.replace('{id}', encodeURIComponent(trackingId))
-    : `${template.replace(/\/$/, '')}/${encodeURIComponent(trackingId)}`;
-  try {
-    const response = await shipsGoRequest(path, { method: 'DELETE' });
-    return { deleted: true, tracking_id: trackingId, response };
-  } catch (error) {
-    if (error.status === 404) return { deleted: true, tracking_id: trackingId, already_missing: true };
-    throw error;
-  }
 }
 
 export default async function handler(req, res) {
@@ -304,52 +205,17 @@ export default async function handler(req, res) {
 
       let shipment = created?.[0];
       if (shipment) {
-        await history(
-          shipment,
-          clientId ? 'created' : 'created_unassigned',
-          clientId ? 'Contenedor registrado' : 'Contenedor registrado sin cliente',
-          clientId ? containerNumber : `${containerNumber} · Disponible para venta`
-        );
-        await audit('shipment_created', shipment, {
-          container_number: containerNumber,
-          client_id: clientId,
-          unassigned: !clientId,
-          actor: admin.username
-        });
+        await history(shipment, clientId ? 'created' : 'created_unassigned', clientId ? 'Contenedor registrado' : 'Contenedor registrado sin cliente', clientId ? containerNumber : `${containerNumber} · Disponible para venta`);
+        await audit('shipment_created', shipment, { container_number: containerNumber, client_id: clientId, unassigned: !clientId, actor: admin.username });
         try {
           const tracking = await registerShipsGo(containerNumber);
           const now = new Date().toISOString();
-          await supabase('shipments', {
-            method: 'PATCH',
-            query: `?id=eq.${shipment.id}`,
-            body: {
-              shipsgo_status: 'active',
-              shipsgo_tracking_id: tracking.id,
-              shipsgo_link_mode: tracking.mode,
-              shipsgo_error: null,
-              updated_at: now
-            }
-          });
-          await history(
-            shipment,
-            tracking.mode === 'created' ? 'shipsgo_created' : 'shipsgo_linked',
-            tracking.mode === 'created' ? 'Tracking creado en ShipsGo' : 'Tracking existente vinculado en ShipsGo',
-            tracking.id || null,
-            'shipsgo'
-          );
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${shipment.id}`, body: { shipsgo_status: 'active', shipsgo_tracking_id: tracking.id, shipsgo_link_mode: tracking.mode, shipsgo_error: null, updated_at: now } });
+          await history(shipment, tracking.mode === 'created' ? 'shipsgo_created' : 'shipsgo_linked', tracking.mode === 'created' ? 'Tracking creado en ShipsGo' : 'Tracking existente vinculado en ShipsGo', tracking.id || null, 'shipsgo');
           await audit('shipsgo_tracking_ready', shipment, { tracking_id: tracking.id, mode: tracking.mode });
-          shipment = {
-            ...shipment,
-            shipsgo_status: 'active',
-            shipsgo_tracking_id: tracking.id,
-            shipsgo_link_mode: tracking.mode
-          };
+          shipment = { ...shipment, shipsgo_status: 'active', shipsgo_tracking_id: tracking.id, shipsgo_link_mode: tracking.mode };
         } catch (error) {
-          await supabase('shipments', {
-            method: 'PATCH',
-            query: `?id=eq.${shipment.id}`,
-            body: { shipsgo_status: 'failed', shipsgo_error: error.message, updated_at: new Date().toISOString() }
-          });
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${shipment.id}`, body: { shipsgo_status: 'failed', shipsgo_error: error.message, updated_at: new Date().toISOString() } });
           await history(shipment, 'shipsgo_failed', 'No se pudo activar el tracking en ShipsGo', error.message, 'shipsgo');
           await audit('shipsgo_tracking_failed', shipment, { error: error.message });
           shipment = { ...shipment, shipsgo_status: 'failed', shipsgo_error: error.message };
@@ -362,9 +228,7 @@ export default async function handler(req, res) {
       const body = await readJson(req);
       const id = String(body.id || '').trim();
       if (!id) return fail(res, 400, 'Falta el identificador del contenedor');
-      const rows = await supabase('shipments', {
-        query: `?select=*,clients(id,name,phone,active)&id=eq.${encodeURIComponent(id)}&limit=1`
-      });
+      const rows = await supabase('shipments', { query: `?select=*,clients(id,name,phone,active)&id=eq.${encodeURIComponent(id)}&limit=1` });
       const shipment = rows?.[0];
       if (!shipment) return fail(res, 404, 'Contenedor no encontrado');
       const action = body.action || 'edit';
@@ -378,23 +242,12 @@ export default async function handler(req, res) {
         const now = new Date().toISOString();
         try {
           const sent = await sendWhatsApp({ to: shipment.clients.phone, contentSid: config.sid, variables: config.variables });
-          await logNotification(shipment, type, {
-            status: sent.status || 'queued',
-            sid: sent.sid,
-            template_sid: config.sid,
-            sent_at: now,
-            payload: { status: body.status, location: body.location, manual_test: true }
-          });
+          await logNotification(shipment, type, { status: sent.status || 'queued', sid: sent.sid, template_sid: config.sid, sent_at: now, payload: { status: body.status, location: body.location, manual_test: true } });
           await history(shipment, `whatsapp_${type}`, `WhatsApp manual · ${config.label}`, `SID: ${sent.sid} · Estado: ${sent.status || 'queued'}`, 'whatsapp');
           await audit('manual_whatsapp_template_sent', shipment, { type, sid: sent.sid, actor: admin.username, test_mode: true });
           return ok(res, { sent: true, type, label: config.label, sid: sent.sid, status: sent.status || 'queued' });
         } catch (error) {
-          await logNotification(shipment, type, {
-            status: 'failed',
-            error: error.message,
-            template_sid: config.sid,
-            payload: { status: body.status, location: body.location, manual_test: true }
-          });
+          await logNotification(shipment, type, { status: 'failed', error: error.message, template_sid: config.sid, payload: { status: body.status, location: body.location, manual_test: true } });
           await history(shipment, `whatsapp_${type}_failed`, `Falló WhatsApp manual · ${config.label}`, error.message, 'whatsapp');
           await audit('manual_whatsapp_template_failed', shipment, { type, error: error.message, actor: admin.username, test_mode: true });
           return fail(res, 400, `No se pudo enviar ${config.label}`, error.message);
@@ -404,66 +257,30 @@ export default async function handler(req, res) {
       if (action === 'release') {
         if (shipment.released_at) return fail(res, 409, 'Este contenedor ya fue marcado como liberado');
         const now = new Date().toISOString();
-        const basePatch = {
-          operational_status: 'Liberado',
-          last_status: 'Liberado',
-          released_at: now,
-          release_method: 'manual',
-          released_by_admin_id: admin.admin_id || null,
-          released_by_username: admin.username || null,
-          updated_at: now
-        };
-
+        const basePatch = { operational_status: 'Liberado', last_status: 'Liberado', released_at: now, release_method: 'manual', released_by_admin_id: admin.admin_id || null, released_by_username: admin.username || null, updated_at: now };
         if (!shipment.client_id || !shipment.clients?.active || !shipment.clients?.phone) {
-          await supabase('shipments', {
-            method: 'PATCH',
-            query: `?id=eq.${id}`,
-            body: { ...basePatch, release_notification_status: 'not_requested', release_notification_error: null }
-          });
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { ...basePatch, release_notification_status: 'not_requested', release_notification_error: null } });
           await history(shipment, 'released', 'Contenedor liberado manualmente', `Administrador: ${admin.username || 'desconocido'} · Sin cliente; WhatsApp omitido`);
           await audit('shipment_released_without_client', shipment, { actor: admin.username, method: 'manual' });
           return ok(res, { released: true, notification_status: 'not_requested' });
         }
-
         const contentSid = process.env.TWILIO_RELEASE_CONTENT_SID;
         if (!contentSid) {
-          await supabase('shipments', {
-            method: 'PATCH',
-            query: `?id=eq.${id}`,
-            body: { ...basePatch, release_notification_status: 'pending', release_notification_error: 'Plantilla pendiente de aprobación' }
-          });
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { ...basePatch, release_notification_status: 'pending', release_notification_error: 'Plantilla pendiente de aprobación' } });
           await logNotification(shipment, 'release', { status: 'pending', error: 'Plantilla pendiente de aprobación' });
           await history(shipment, 'released', 'Contenedor liberado manualmente', `Administrador: ${admin.username || 'desconocido'} · Notificación pendiente de plantilla`);
           await audit('shipment_released_pending_notification', shipment, { actor: admin.username, method: 'manual' });
           return ok(res, { released: true, notification_status: 'pending_template' });
         }
-
         try {
-          const sent = await sendWhatsApp({
-            to: shipment.clients.phone,
-            contentSid,
-            variables: { '1': shipment.clients.name, '2': shipment.container_number }
-          });
-          await supabase('shipments', {
-            method: 'PATCH',
-            query: `?id=eq.${id}`,
-            body: { ...basePatch, release_notification_status: 'sent', release_notification_error: null }
-          });
-          await logNotification(shipment, 'release', {
-            status: sent.status || 'queued',
-            sid: sent.sid,
-            template_sid: contentSid,
-            sent_at: now
-          });
+          const sent = await sendWhatsApp({ to: shipment.clients.phone, contentSid, variables: { '1': shipment.clients.name, '2': shipment.container_number } });
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { ...basePatch, release_notification_status: 'sent', release_notification_error: null } });
+          await logNotification(shipment, 'release', { status: sent.status || 'queued', sid: sent.sid, template_sid: contentSid, sent_at: now });
           await history(shipment, 'released', 'Contenedor liberado manualmente', `Administrador: ${admin.username || 'desconocido'} · WhatsApp: ${sent.sid}`);
           await audit('shipment_released', shipment, { sid: sent.sid, actor: admin.username, method: 'manual' });
           return ok(res, { released: true, sid: sent.sid });
         } catch (error) {
-          await supabase('shipments', {
-            method: 'PATCH',
-            query: `?id=eq.${id}`,
-            body: { ...basePatch, release_notification_status: 'failed', release_notification_error: error.message }
-          });
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { ...basePatch, release_notification_status: 'failed', release_notification_error: error.message } });
           await logNotification(shipment, 'release', { status: 'failed', error: error.message, template_sid: contentSid });
           await history(shipment, 'release_failed', 'Contenedor liberado; falló la notificación', error.message);
           await audit('shipment_released_notification_failed', shipment, { error: error.message, actor: admin.username, method: 'manual' });
@@ -475,26 +292,12 @@ export default async function handler(req, res) {
         try {
           const tracking = await registerShipsGo(shipment.container_number, shipment.shipsgo_tracking_id);
           const trackingId = tracking.id || shipment.shipsgo_tracking_id || null;
-          await supabase('shipments', {
-            method: 'PATCH',
-            query: `?id=eq.${id}`,
-            body: {
-              shipsgo_status: 'active',
-              shipsgo_tracking_id: trackingId,
-              shipsgo_link_mode: tracking.mode,
-              shipsgo_error: null,
-              updated_at: new Date().toISOString()
-            }
-          });
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { shipsgo_status: 'active', shipsgo_tracking_id: trackingId, shipsgo_link_mode: tracking.mode, shipsgo_error: null, updated_at: new Date().toISOString() } });
           await history(shipment, 'shipsgo_ready', tracking.mode === 'reused' ? 'Tracking automático reactivado' : 'Tracking de ShipsGo activado', trackingId || shipment.container_number, 'shipsgo');
           await audit('shipsgo_tracking_reactivated', shipment, { tracking_id: trackingId, mode: tracking.mode, actor: admin.username });
           return ok(res, { tracking: { ...tracking, id: trackingId } });
         } catch (error) {
-          await supabase('shipments', {
-            method: 'PATCH',
-            query: `?id=eq.${id}`,
-            body: { shipsgo_status: 'failed', shipsgo_error: error.message, updated_at: new Date().toISOString() }
-          });
+          await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { shipsgo_status: 'failed', shipsgo_error: error.message, updated_at: new Date().toISOString() } });
           await history(shipment, 'shipsgo_failed', 'No se pudo activar el tracking en ShipsGo', error.message, 'shipsgo');
           return fail(res, 400, 'No se pudo activar ShipsGo', error.message);
         }
@@ -504,11 +307,7 @@ export default async function handler(req, res) {
         const active = action === 'reactivate';
         const now = new Date().toISOString();
         const status = active ? 'Activo' : 'Entregado';
-        await supabase('shipments', {
-          method: 'PATCH',
-          query: `?id=eq.${id}`,
-          body: { active, operational_status: status, last_status: status, delivered_at: active ? null : now, updated_at: now }
-        });
+        await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}`, body: { active, operational_status: status, last_status: status, delivered_at: active ? null : now, updated_at: now } });
         await history(shipment, active ? 'reactivated' : 'delivered', active ? 'Contenedor reactivado' : 'Contenedor entregado');
         await audit(active ? 'shipment_reactivated' : 'shipment_delivered', shipment, { actor: admin.username });
         await reconcileOperationLifecycle(shipment.operation_id, admin, { source: active ? 'shipment_reactivated' : 'shipment_delivered', shipment_id: shipment.id });
@@ -519,9 +318,7 @@ export default async function handler(req, res) {
       if (body.client_id !== undefined) patch.client_id = cleanClientId(body.client_id);
       if (body.container_number !== undefined) {
         const number = normalizeContainer(body.container_number);
-        const duplicate = await supabase('shipments', {
-          query: `?select=id&container_number=eq.${encodeURIComponent(number)}&active=eq.true&id=neq.${encodeURIComponent(id)}&limit=1`
-        });
+        const duplicate = await supabase('shipments', { query: `?select=id&container_number=eq.${encodeURIComponent(number)}&active=eq.true&id=neq.${encodeURIComponent(id)}&limit=1` });
         if (duplicate?.length) return fail(res, 409, 'Ese número de contenedor ya tiene una operación activa');
         patch.container_number = number;
       }
@@ -536,25 +333,12 @@ export default async function handler(req, res) {
       }
 
       const clientChanged = Object.prototype.hasOwnProperty.call(patch, 'client_id') && patch.client_id !== shipment.client_id;
-      const updated = await supabase('shipments', {
-        method: 'PATCH',
-        query: `?id=eq.${id}&select=*`,
-        body: patch
-      });
+      const updated = await supabase('shipments', { method: 'PATCH', query: `?id=eq.${id}&select=*`, body: patch });
 
       if (clientChanged) {
         const assigned = Boolean(patch.client_id);
-        await history(
-          { ...shipment, client_id: patch.client_id },
-          assigned ? 'client_assigned' : 'client_unassigned',
-          assigned ? 'Cliente asignado al contenedor' : 'Cliente removido del contenedor',
-          assigned ? `Cliente: ${patch.client_id} · Asignado por ${admin.username || 'administrador'}` : `Disponible para venta · Cambio por ${admin.username || 'administrador'}`
-        );
-        await audit(assigned ? 'shipment_client_assigned' : 'shipment_client_unassigned', shipment, {
-          previous_client_id: shipment.client_id || null,
-          client_id: patch.client_id || null,
-          actor: admin.username
-        });
+        await history({ ...shipment, client_id: patch.client_id }, assigned ? 'client_assigned' : 'client_unassigned', assigned ? 'Cliente asignado al contenedor' : 'Cliente removido del contenedor', assigned ? `Cliente: ${patch.client_id} · Asignado por ${admin.username || 'administrador'}` : `Disponible para venta · Cambio por ${admin.username || 'administrador'}`);
+        await audit(assigned ? 'shipment_client_assigned' : 'shipment_client_unassigned', shipment, { previous_client_id: shipment.client_id || null, client_id: patch.client_id || null, actor: admin.username });
       }
 
       await history(shipment, 'updated', 'Datos del contenedor actualizados', JSON.stringify(patch));
@@ -564,9 +348,7 @@ export default async function handler(req, res) {
 
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
-    const message = error.message === 'CONTAINER_INVALID'
-      ? 'Número de contenedor inválido. Debe tener 4 letras y 7 números.'
-      : error.message;
+    const message = error.message === 'CONTAINER_INVALID' ? 'Número de contenedor inválido. Debe tener 4 letras y 7 números.' : error.message;
     return fail(res, 400, message);
   }
 }
