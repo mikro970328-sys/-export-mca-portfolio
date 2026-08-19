@@ -1,3 +1,5 @@
+import { supabase } from './_lib.js';
+
 function shipsGoConfig() {
   const token = process.env.SHIPSGO_API_KEY || process.env.SHIPSGO_TOKEN;
   const base = process.env.SHIPSGO_API_BASE_URL || 'https://api.shipsgo.com/v2';
@@ -77,7 +79,22 @@ export async function registerShipsGo(containerNumber, knownTrackingId = null) {
   }
 }
 
+async function assertShipmentTrackingCanBeDeleted(shipmentId) {
+  if (!shipmentId) return;
+  const linked = await supabase('loads', {
+    query: `?select=id,load_number,status&shipment_id=eq.${encodeURIComponent(shipmentId)}&limit=1`
+  });
+  if (linked?.length) {
+    const error = new Error(`LOAD_SHIPMENT_DELETE_BLOCKED:${linked[0].load_number || linked[0].id}`);
+    error.status = 409;
+    throw error;
+  }
+}
+
 export async function deleteShipsGoTracking(shipment) {
+  // Domain guard intentionally runs before any external side effect.
+  await assertShipmentTrackingCanBeDeleted(shipment?.id);
+
   let trackingId = shipment.shipsgo_tracking_id || null;
   if (!trackingId) {
     const found = await findShipsGoTracking(shipment.container_number);
