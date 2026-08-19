@@ -1,8 +1,10 @@
 -- A1 · Núcleo de Cargues
 -- Fase estrictamente aditiva: define estructura y restricciones.
 -- No reserva, descuenta ni mueve inventario; no inicia Tracking.
+-- Esta migración es deliberadamente determinista: si un objeto ya existe,
+-- debe fallar para revelar deriva de esquema en lugar de ocultarla.
 
-create table if not exists public.loads (
+create table public.loads (
   id uuid primary key default gen_random_uuid(),
   load_serial bigint generated always as identity,
   load_number text generated always as ('CG-' || lpad(load_serial::text, 4, '0')) stored,
@@ -28,15 +30,15 @@ create table if not exists public.loads (
   )
 );
 
-create unique index if not exists loads_shipment_id_unique
+create unique index loads_shipment_id_unique
   on public.loads(shipment_id)
   where shipment_id is not null;
 
-create index if not exists loads_warehouse_id_idx on public.loads(warehouse_id);
-create index if not exists loads_status_idx on public.loads(status);
-create index if not exists loads_created_at_idx on public.loads(created_at desc);
+create index loads_warehouse_id_idx on public.loads(warehouse_id);
+create index loads_status_idx on public.loads(status);
+create index loads_created_at_idx on public.loads(created_at desc);
 
-create table if not exists public.load_items (
+create table public.load_items (
   id uuid primary key default gen_random_uuid(),
   load_id uuid not null references public.loads(id) on delete cascade,
   product_id uuid not null references public.products(id) on delete restrict,
@@ -56,10 +58,10 @@ create table if not exists public.load_items (
   constraint load_items_load_product_unique unique (load_id, product_id)
 );
 
-create index if not exists load_items_load_id_idx on public.load_items(load_id);
-create index if not exists load_items_product_id_idx on public.load_items(product_id);
+create index load_items_load_id_idx on public.load_items(load_id);
+create index load_items_product_id_idx on public.load_items(product_id);
 
-create table if not exists public.load_allocations (
+create table public.load_allocations (
   id uuid primary key default gen_random_uuid(),
   load_item_id uuid not null references public.load_items(id) on delete cascade,
   receipt_item_id uuid not null references public.warehouse_receipt_items(id) on delete restrict,
@@ -76,10 +78,10 @@ create table if not exists public.load_allocations (
   constraint load_allocations_source_unique unique (load_item_id, receipt_item_id)
 );
 
-create index if not exists load_allocations_load_item_id_idx on public.load_allocations(load_item_id);
-create index if not exists load_allocations_receipt_item_id_idx on public.load_allocations(receipt_item_id);
+create index load_allocations_load_item_id_idx on public.load_allocations(load_item_id);
+create index load_allocations_receipt_item_id_idx on public.load_allocations(receipt_item_id);
 
-create or replace function public.validate_load_allocation_source()
+create function public.validate_load_allocation_source()
 returns trigger
 language plpgsql
 set search_path = public
@@ -141,7 +143,7 @@ revoke all on public.load_items from anon, authenticated;
 revoke all on public.load_allocations from anon, authenticated;
 revoke all on function public.validate_load_allocation_source() from public, anon, authenticated;
 
--- Identity sequences have independent privileges from their owning table.
+-- Identity sequences have privileges independent from their owning table.
 revoke all on sequence public.loads_load_serial_seq from anon, authenticated;
 grant usage, select on sequence public.loads_load_serial_seq to service_role;
 
