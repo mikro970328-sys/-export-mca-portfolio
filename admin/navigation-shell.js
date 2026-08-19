@@ -8,7 +8,8 @@
   const GROUP_STATE_KEY = 'export_mca_nav_groups';
   const EMBEDDED_OPERATIONS = [
     { id:'warehouseSection', label:'Almacén', icon:'▥', src:'/admin/warehouse.html?embedded=1' },
-    { id:'inventorySection', label:'Inventario', icon:'▦', src:'/admin/inventory.html?embedded=1' }
+    { id:'inventorySection', label:'Inventario', icon:'▦', src:'/admin/inventory.html?embedded=1' },
+    { id:'loadsSection', label:'Cargues', icon:'⇄', src:'/admin/loads.html?embedded=1' }
   ];
 
   const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
@@ -223,6 +224,7 @@
       closeMobile: closeMobileMenu,
       openWarehouse: () => openEmbeddedSection(EMBEDDED_OPERATIONS[0]),
       openInventory: () => openEmbeddedSection(EMBEDDED_OPERATIONS[1]),
+      openLoads: () => openEmbeddedSection(EMBEDDED_OPERATIONS[2]),
       owner: 'navigation-shell.js'
     });
   }
