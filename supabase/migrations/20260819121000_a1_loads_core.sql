@@ -4,7 +4,8 @@
 
 create table if not exists public.loads (
   id uuid primary key default gen_random_uuid(),
-  load_number text not null unique,
+  load_serial bigint generated always as identity,
+  load_number text generated always as ('CG-' || lpad(load_serial::text, 4, '0')) stored,
   warehouse_id uuid not null references public.warehouses(id) on delete restrict,
   shipment_id uuid null references public.shipments(id) on delete restrict,
   status text not null default 'draft' check (status in ('draft','reserved','loading','loaded','dispatched','cancelled')),
@@ -17,6 +18,7 @@ create table if not exists public.loads (
   created_by uuid null references public.admin_users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint loads_load_number_unique unique (load_number),
   constraint loads_status_timestamps_check check (
     (status <> 'loading' or loading_started_at is not null)
     and (status <> 'loaded' or loaded_at is not null)
@@ -89,5 +91,6 @@ grant all on public.load_items to service_role;
 grant all on public.load_allocations to service_role;
 
 comment on table public.loads is 'Cabecera de cargue físico. A1 define estructura; efectos de inventario se implementan en fases posteriores.';
+comment on column public.loads.load_number is 'Número CG generado exclusivamente por PostgreSQL a partir de load_serial.';
 comment on table public.load_items is 'Contenido lógico planificado por producto dentro de un cargue.';
 comment on table public.load_allocations is 'Asignación exacta de cantidades de un load_item a warehouse_receipt_items de origen.';
