@@ -21,9 +21,10 @@ create table if not exists public.loads (
   constraint loads_load_number_unique unique (load_number),
   constraint loads_status_timestamps_check check (
     (status <> 'loading' or loading_started_at is not null)
-    and (status <> 'loaded' or loaded_at is not null)
-    and (status <> 'dispatched' or dispatched_at is not null)
+    and (status <> 'loaded' or (loading_started_at is not null and loaded_at is not null))
+    and (status <> 'dispatched' or (loading_started_at is not null and loaded_at is not null and dispatched_at is not null))
     and (status <> 'cancelled' or cancelled_at is not null)
+    and not (dispatched_at is not null and cancelled_at is not null)
   )
 );
 
@@ -78,6 +79,59 @@ create table if not exists public.load_allocations (
 create index if not exists load_allocations_load_item_id_idx on public.load_allocations(load_item_id);
 create index if not exists load_allocations_receipt_item_id_idx on public.load_allocations(receipt_item_id);
 
+create or replace function public.validate_load_allocation_source()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_load_product_id uuid;
+  v_load_warehouse_id uuid;
+  v_receipt_product_id uuid;
+  v_receipt_warehouse_id uuid;
+  v_receipt_status text;
+begin
+  select li.product_id, l.warehouse_id
+    into v_load_product_id, v_load_warehouse_id
+  from public.load_items li
+  join public.loads l on l.id = li.load_id
+  where li.id = new.load_item_id;
+
+  if v_load_product_id is null then
+    raise exception 'LOAD_ITEM_NOT_FOUND';
+  end if;
+
+  select wri.product_id, wr.warehouse_id, wr.status
+    into v_receipt_product_id, v_receipt_warehouse_id, v_receipt_status
+  from public.warehouse_receipt_items wri
+  join public.warehouse_receipts wr on wr.id = wri.receipt_id
+  where wri.id = new.receipt_item_id;
+
+  if v_receipt_product_id is null then
+    raise exception 'RECEIPT_ITEM_NOT_FOUND';
+  end if;
+
+  if v_receipt_status <> 'received' then
+    raise exception 'WR_NOT_ACTIVE';
+  end if;
+
+  if v_receipt_product_id <> v_load_product_id then
+    raise exception 'LOAD_ALLOCATION_PRODUCT_MISMATCH';
+  end if;
+
+  if v_receipt_warehouse_id <> v_load_warehouse_id then
+    raise exception 'LOAD_ALLOCATION_WAREHOUSE_MISMATCH';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger load_allocations_validate_source
+before insert or update of load_item_id, receipt_item_id
+on public.load_allocations
+for each row execute function public.validate_load_allocation_source();
+
 alter table public.loads enable row level security;
 alter table public.load_items enable row level security;
 alter table public.load_allocations enable row level security;
@@ -85,12 +139,19 @@ alter table public.load_allocations enable row level security;
 revoke all on public.loads from anon, authenticated;
 revoke all on public.load_items from anon, authenticated;
 revoke all on public.load_allocations from anon, authenticated;
+revoke all on function public.validate_load_allocation_source() from public, anon, authenticated;
+
+-- Identity sequences have independent privileges from their owning table.
+revoke all on sequence public.loads_load_serial_seq from anon, authenticated;
+grant usage, select on sequence public.loads_load_serial_seq to service_role;
 
 grant all on public.loads to service_role;
 grant all on public.load_items to service_role;
 grant all on public.load_allocations to service_role;
+grant execute on function public.validate_load_allocation_source() to service_role;
 
 comment on table public.loads is 'Cabecera de cargue físico. A1 define estructura; efectos de inventario se implementan en fases posteriores.';
 comment on column public.loads.load_number is 'Número CG generado exclusivamente por PostgreSQL a partir de load_serial.';
 comment on table public.load_items is 'Contenido lógico planificado por producto dentro de un cargue.';
 comment on table public.load_allocations is 'Asignación exacta de cantidades de un load_item a warehouse_receipt_items de origen.';
+comment on function public.validate_load_allocation_source() is 'Impide asignar a un cargue mercancía de otro producto, otro almacén o un WR cancelado.';
