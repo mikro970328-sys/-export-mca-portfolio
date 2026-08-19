@@ -40,16 +40,18 @@ language plpgsql
 set search_path = public
 as $$
 declare
+  v_status text;
   v_active boolean;
   v_delivered_at timestamptz;
   v_released_at timestamptz;
   v_discharged_at timestamptz;
 begin
-  if new.shipment_id is not distinct from old.shipment_id then
+  if tg_op = 'UPDATE' and new.shipment_id is not distinct from old.shipment_id then
     return new;
   end if;
 
-  if old.status not in ('draft','reserved') then
+  v_status := new.status;
+  if v_status not in ('draft','reserved') then
     raise exception 'LOAD_SHIPMENT_LOCKED_BY_STATUS';
   end if;
 
@@ -73,7 +75,7 @@ end;
 $$;
 
 create trigger loads_validate_shipment_link
-before update of shipment_id on public.loads
+before insert or update of shipment_id on public.loads
 for each row execute function public.validate_load_shipment_link();
 
 create function public.assign_load_shipment(p_load_id uuid, p_shipment_id uuid)
@@ -244,10 +246,11 @@ begin
   where src.receipt_item_id is null
      or src.physical_quantity < req.allocated_quantity
      or src.physical_pallets < req.allocated_pallets
+     or src.physical_quantity < src.reserved_quantity
+     or src.physical_pallets < src.reserved_pallets
   limit 1;
   if found then raise exception 'INSUFFICIENT_WR_PHYSICAL_BALANCE'; end if;
 
-  -- Dispatch consume simultáneamente la reserva del cargue y el físico del WR.
   insert into public.inventory_movements (
     warehouse_id, product_id, receipt_item_id, movement_type,
     quantity_delta, pallets_delta, reserved_quantity_delta, reserved_pallets_delta,
@@ -348,7 +351,7 @@ begin
 
   perform set_config('export_mca.load_transition','cancel',true);
   update public.loads
-  set status='cancelled', cancelled_at=now(), updated_at=now()
+  set status='cancelled', cancelled_at=now(), shipment_id=null, updated_at=now()
   where id=p_load_id
   returning * into v_load;
   return v_load;
