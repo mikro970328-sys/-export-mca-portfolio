@@ -8,22 +8,37 @@ language plpgsql
 set search_path = public
 as $$
 declare
-  v_load_id uuid;
-  v_status text;
+  v_old_status text;
+  v_new_status text;
 begin
-  v_load_id := coalesce(new.load_id, old.load_id);
-  select status into v_status from public.loads where id = v_load_id;
-  if v_status is distinct from 'draft' then
+  if tg_op = 'INSERT' then
+    select status into v_new_status from public.loads where id = new.load_id;
+    if v_new_status is distinct from 'draft' then
+      raise exception 'LOAD_NOT_DRAFT';
+    end if;
+    return new;
+  end if;
+
+  if tg_op = 'DELETE' then
+    select status into v_old_status from public.loads where id = old.load_id;
+    if v_old_status is distinct from 'draft' then
+      raise exception 'LOAD_NOT_DRAFT';
+    end if;
+    return old;
+  end if;
+
+  select status into v_old_status from public.loads where id = old.load_id;
+  select status into v_new_status from public.loads where id = new.load_id;
+  if v_old_status is distinct from 'draft' or v_new_status is distinct from 'draft' then
     raise exception 'LOAD_NOT_DRAFT';
   end if;
 
-  if tg_op = 'UPDATE'
-     and (new.load_id is distinct from old.load_id or new.product_id is distinct from old.product_id)
+  if (new.load_id is distinct from old.load_id or new.product_id is distinct from old.product_id)
      and exists (select 1 from public.load_allocations where load_item_id = old.id) then
     raise exception 'LOAD_ITEM_HAS_ALLOCATIONS';
   end if;
 
-  return case when tg_op = 'DELETE' then old else new end;
+  return new;
 end;
 $$;
 
@@ -37,20 +52,46 @@ language plpgsql
 set search_path = public
 as $$
 declare
-  v_load_item_id uuid;
-  v_status text;
+  v_old_status text;
+  v_new_status text;
 begin
-  v_load_item_id := coalesce(new.load_item_id, old.load_item_id);
-  select l.status into v_status
+  if tg_op = 'INSERT' then
+    select l.status into v_new_status
+    from public.load_items li
+    join public.loads l on l.id = li.load_id
+    where li.id = new.load_item_id;
+    if v_new_status is distinct from 'draft' then
+      raise exception 'LOAD_NOT_DRAFT';
+    end if;
+    return new;
+  end if;
+
+  if tg_op = 'DELETE' then
+    select l.status into v_old_status
+    from public.load_items li
+    join public.loads l on l.id = li.load_id
+    where li.id = old.load_item_id;
+    if v_old_status is distinct from 'draft' then
+      raise exception 'LOAD_NOT_DRAFT';
+    end if;
+    return old;
+  end if;
+
+  select l.status into v_old_status
   from public.load_items li
   join public.loads l on l.id = li.load_id
-  where li.id = v_load_item_id;
+  where li.id = old.load_item_id;
 
-  if v_status is distinct from 'draft' then
+  select l.status into v_new_status
+  from public.load_items li
+  join public.loads l on l.id = li.load_id
+  where li.id = new.load_item_id;
+
+  if v_old_status is distinct from 'draft' or v_new_status is distinct from 'draft' then
     raise exception 'LOAD_NOT_DRAFT';
   end if;
 
-  return case when tg_op = 'DELETE' then old else new end;
+  return new;
 end;
 $$;
 
@@ -197,7 +238,6 @@ begin
 
   if found then raise exception 'LOAD_ALLOCATIONS_INCOMPLETE'; end if;
 
-  -- Serializa todas las fuentes WR del cargue en un orden determinista.
   perform wri.id
   from public.warehouse_receipt_items wri
   join public.load_allocations la on la.receipt_item_id = wri.id
