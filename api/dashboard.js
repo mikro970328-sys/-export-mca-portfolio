@@ -99,14 +99,13 @@ export default async function handler(req,res) {
   if (req.method !== 'GET') return fail(res,405,'Método no permitido');
 
   try {
-    const [clients, shipments, operations, receipts, loads, warehouses, products, inventorySources, documents] = await Promise.all([
+    const [clients, shipments, operations, receipts, loads, warehouses, inventorySources, documents] = await Promise.all([
       supabase('clients',{ query:'?select=id,active' }),
       supabase('shipments',{ query:'?select=id,client_id,operation_id,container_number,active,operational_status,last_status,last_event_at,updated_at,created_at,released_at,delivered_at,clients(id,name)' }),
       supabase('operations',{ query:'?select=id,status,updated_at,closed_at' }),
       supabase('warehouse_receipts',{ query:'?select=id,status' }),
       supabase('loads',{ query:'?select=id,status' }),
       supabase('warehouses',{ query:'?select=id,active' }),
-      supabase('products',{ query:'?select=id,active' }),
       supabase('inventory_source_balances',{ query:'?select=receipt_id,product_id,physical_quantity,physical_pallets,reserved_quantity,reserved_pallets,warehouse_active' }),
       supabase('documents',{ query:'?select=id' })
     ]);
@@ -133,10 +132,6 @@ export default async function handler(req,res) {
       warehouses:{
         total:(warehouses || []).length,
         active:(warehouses || []).filter(row => row.active !== false).length
-      },
-      products:{
-        total:(products || []).length,
-        active:(products || []).filter(row => row.active !== false).length
       },
       documents:{ total:(documents || []).length },
       recent_activity:recentActivity(shipmentRows)
