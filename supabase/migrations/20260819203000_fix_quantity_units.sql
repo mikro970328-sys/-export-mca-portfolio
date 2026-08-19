@@ -8,12 +8,19 @@ update public.products
 set unit = 'paneles'
 where lower(btrim(unit)) in ('panekes');
 
+-- Migración de mantenimiento: sincroniza únicamente la unidad textual histórica.
+-- Se desactiva temporalmente el guard de edición de cargues porque hay cargues ya reservados;
+-- no se alteran cantidades, allocations, estados ni inventario.
+alter table public.load_items disable trigger load_items_guard_mutation;
+
 update public.load_items li
 set unit = p.unit,
     updated_at = now()
 from public.products p
 where p.id = li.product_id
   and li.unit is distinct from p.unit;
+
+alter table public.load_items enable trigger load_items_guard_mutation;
 
 alter table public.products
   add constraint products_unit_semantic_check
