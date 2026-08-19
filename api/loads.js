@@ -71,7 +71,14 @@ async function getLoad(id) {
   const rows = await supabase('loads', {
     query: `?select=id,load_number,warehouse_id,shipment_id,status,scheduled_at,loading_started_at,loaded_at,dispatched_at,cancelled_at,notes,created_at,updated_at,warehouse:warehouses(id,code,name),shipment:shipments(id,container_number,client_id,importer_id,booking_number,bol_number,carrier,operational_status,last_status,shipsgo_status,shipsgo_tracking_id,shipsgo_link_mode,shipsgo_error)&id=eq.${encodeURIComponent(id)}&limit=1`
   });
-  return rows?.[0] || null;
+  const load = rows?.[0] || null;
+  if (!load) return null;
+
+  const expedienteDocuments = await supabase('load_expediente_documents', {
+    query: `?select=document_id,scope,operation_id,client_id,shipment_id,document_load_id,bol_number,shared_bl,document_type,file_name,storage_bucket,storage_path,mime_type,file_size_bytes,version,notes,uploaded_by_admin_id,uploaded_by_username,created_at&load_id=eq.${encodeURIComponent(id)}&order=created_at.desc&limit=1000`
+  }) || [];
+
+  return { ...load, expediente_documents: expedienteDocuments };
 }
 
 export default async function handler(req, res) {
