@@ -50,7 +50,7 @@ begin
     return new;
   end if;
 
-  v_status := new.status;
+  v_status := case when tg_op = 'INSERT' then new.status else old.status end;
   if v_status not in ('draft','reserved') then
     raise exception 'LOAD_SHIPMENT_LOCKED_BY_STATUS';
   end if;
