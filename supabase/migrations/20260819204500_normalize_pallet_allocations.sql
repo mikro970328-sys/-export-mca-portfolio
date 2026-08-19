@@ -49,10 +49,12 @@ alter table public.load_items disable trigger load_items_guard_mutation;
 update public.load_allocations la
 set allocated_quantity = la.allocated_pallets * wri.units_per_pallet,
     updated_at = now()
-from public.load_items li
-join public.loads l on l.id = li.load_id
-join public.warehouse_receipt_items wri on wri.id = la.receipt_item_id
+from public.load_items li,
+     public.loads l,
+     public.warehouse_receipt_items wri
 where li.id = la.load_item_id
+  and l.id = li.load_id
+  and wri.id = la.receipt_item_id
   and l.status in ('draft','reserved','loading','loaded')
   and la.allocated_quantity = 0
   and la.allocated_pallets > 0
@@ -68,9 +70,10 @@ from (
          sum(la.allocated_pallets) as pallets
   from public.load_allocations la
   group by la.load_item_id
-) totals
-join public.loads l on l.id = li.load_id
+) totals,
+public.loads l
 where totals.load_item_id = li.id
+  and l.id = li.load_id
   and l.status in ('draft','reserved','loading','loaded')
   and (li.planned_quantity is distinct from totals.quantity
        or li.planned_pallets is distinct from totals.pallets);
