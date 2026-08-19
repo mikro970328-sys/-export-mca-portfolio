@@ -12,12 +12,15 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
 
   try {
-    const [balances, warehouses] = await Promise.all([
+    const [balances, warehouses, rawTraceability] = await Promise.all([
       supabase('inventory_source_balances', {
         query:'?select=*&order=received_at.asc,receipt_number.asc'
       }),
       supabase('warehouses', {
         query:'?select=id,code,name,country,city,active&order=active.desc,name.asc'
+      }),
+      supabase('inventory_traceability', {
+        query:'?select=*&order=occurred_at.desc,created_at.desc'
       })
     ]);
 
@@ -28,8 +31,8 @@ export default async function handler(req, res) {
       const physicalPallets = n(row.physical_pallets);
       const reservedQuantity = n(row.reserved_quantity);
       const reservedPallets = n(row.reserved_pallets);
-      const availableQuantity = Math.max(0, physicalQuantity - reservedQuantity);
-      const availablePallets = Math.max(0, physicalPallets - reservedPallets);
+      const availableQuantity = physicalQuantity - reservedQuantity;
+      const availablePallets = physicalPallets - reservedPallets;
       const unit = cleanUnit(row.receipt_unit || row.product_unit);
 
       const source = {
@@ -110,14 +113,25 @@ export default async function handler(req, res) {
       return String(a.product?.name || '').localeCompare(String(b.product?.name || ''), 'es');
     });
 
+    const traceability = (rawTraceability || []).map(row => ({
+      ...row,
+      unit:cleanUnit(row.unit),
+      quantity_delta:n(row.quantity_delta),
+      pallets_delta:n(row.pallets_delta),
+      reserved_quantity_delta:n(row.reserved_quantity_delta),
+      reserved_pallets_delta:n(row.reserved_pallets_delta)
+    }));
+
     return ok(res, {
       inventory,
+      traceability,
       warehouses:warehouses || [],
       totals:{
         products:new Set(inventory.map(row => row.product_id)).size,
         physical_pallets:inventory.reduce((sum, row) => sum + n(row.physical_pallets), 0),
         reserved_pallets:inventory.reduce((sum, row) => sum + n(row.reserved_pallets), 0),
-        available_pallets:inventory.reduce((sum, row) => sum + n(row.available_pallets), 0)
+        available_pallets:inventory.reduce((sum, row) => sum + n(row.available_pallets), 0),
+        traceability_events:traceability.length
       }
     });
   } catch (error) {
