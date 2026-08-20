@@ -108,6 +108,13 @@
     return links.filter(item => String(item.operation_id || '') === String(operationId));
   }
 
+  async function loadsForReceipt(receiptNumber) {
+    const key = normalize(receiptNumber);
+    if (!key) return [];
+    const links = await requestLinks();
+    return links.filter(item => Array.isArray(item.receipt_numbers) && item.receipt_numbers.some(receipt => normalize(receipt) === key));
+  }
+
   function openTracking(context = {}, options = {}) {
     section('containersSection');
     const shipment = findShipment(context);
@@ -176,6 +183,7 @@
     openExpediente,
     loadForShipment,
     loadsForOperation,
+    loadsForReceipt,
     restoreContext,
     refreshLinks: () => requestLinks({ refresh:true }),
     owner: 'operational-navigation.js'
