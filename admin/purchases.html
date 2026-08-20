@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compras · Export MCA</title>
+<link rel="stylesheet" href="/admin/purchases.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="head"><div><h1>Compras</h1><div class="muted">Purchase Orders y recepción física vinculada a WR.</div></div><button id="newOrder" class="btn orange">+ Nueva PO</button></div>
+  <div id="metrics" class="metrics"></div>
+  <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar PO, proveedor, referencia o producto"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="closed">Cerradas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="orderList" class="orders"></div></section>
+</main>
+<div id="orderModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="orderTitle">Nueva Purchase Order</h2><div class="muted">La PO registra lo comprado; el inventario solo nace cuando se registra un WR.</div></div><button class="btn" data-close="order">✕</button></div><div class="grid3"><div><label>Proveedor *</label><select id="oSupplier"></select></div><div><label>Almacén esperado</label><select id="oWarehouse"></select></div><div><label>Moneda *</label><input id="oCurrency" value="USD" maxlength="3"></div></div><div class="grid3"><div><label>Fecha de orden</label><input id="oDate" type="date"></div><div><label>Llegada estimada</label><input id="oExpected" type="datetime-local"></div><div><label>Referencia proveedor</label><input id="oReference"></div></div><label>Notas</label><textarea id="oNotes"></textarea><div class="toolbar" style="padding:12px 0 0;border:0"><div><b>Mercancía ordenada</b><div class="muted">Productos del catálogo maestro.</div></div><button id="addOrderLine" class="btn">+ Línea</button></div><div id="orderLines"></div><div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="order">Cancelar</button><button id="saveOrder" class="btn orange">Guardar PO</button></div><div id="orderMsg" class="msg"></div></div></div>
+<div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div><div id="detailMsg" class="msg"></div></div></div>
+<div id="receiveModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="receiveTitle">Recibir PO</h2><div class="muted">Esta acción crea un WR real y actualiza el progreso físico de la PO.</div></div><button class="btn" data-close="receive">✕</button></div><div class="grid3"><div><label>Almacén receptor *</label><select id="rWarehouse"></select></div><div><label>Fecha y hora</label><input id="rReceivedAt" type="datetime-local"></div><div><label>Referencia / BOL terrestre</label><input id="rReference"></div></div><div class="grid"><div><label>Camión</label><input id="rTruck"></div><div><label>Chofer</label><input id="rDriver"></div></div><label>Notas</label><textarea id="rNotes"></textarea><div id="receiveLines"></div><div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="receive">Cancelar</button><button id="saveReceipt" class="btn orange">Registrar WR</button></div><div id="receiveMsg" class="msg"></div></div></div>
+<script src="/admin/purchases.js"></script>
+</body>
+</html>

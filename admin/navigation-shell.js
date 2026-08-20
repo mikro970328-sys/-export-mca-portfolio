@@ -9,6 +9,7 @@
   const EMBEDDED_OPERATIONS = [
     { id:'warehouseSection', label:'Almacén', icon:'▥', src:'/admin/warehouse.html?embedded=1' },
     { id:'suppliersSection', label:'Proveedores', icon:'◫', src:'/admin/suppliers.html?embedded=1' },
+    { id:'purchasesSection', label:'Compras', icon:'▤', src:'/admin/purchases.html?embedded=1' },
     { id:'inventorySection', label:'Inventario', icon:'▦', src:'/admin/inventory.html?embedded=1' },
     { id:'loadsSection', label:'Cargues', icon:'⇄', src:'/admin/loads.html?embedded=1' }
   ];
@@ -225,8 +226,9 @@
       closeMobile: closeMobileMenu,
       openWarehouse: () => openEmbeddedSection(EMBEDDED_OPERATIONS[0]),
       openSuppliers: () => openEmbeddedSection(EMBEDDED_OPERATIONS[1]),
-      openInventory: () => openEmbeddedSection(EMBEDDED_OPERATIONS[2]),
-      openLoads: () => openEmbeddedSection(EMBEDDED_OPERATIONS[3]),
+      openPurchases: () => openEmbeddedSection(EMBEDDED_OPERATIONS[2]),
+      openInventory: () => openEmbeddedSection(EMBEDDED_OPERATIONS[3]),
+      openLoads: () => openEmbeddedSection(EMBEDDED_OPERATIONS[4]),
       owner: 'navigation-shell.js'
     });
   }
