@@ -80,6 +80,13 @@
     setTimeout(() => element.classList.remove('op-context-highlight'), 1500);
   }
 
+  function observeChanges(target, callback) {
+    if (!target) return null;
+    const observer = new MutationObserver(callback);
+    observer.observe(target, { childList:true, subtree:true });
+    return observer;
+  }
+
   function initSuppliers() {
     const nav = parentNav();
     if (!nav) return;
@@ -133,18 +140,17 @@
         const edit = row.querySelector('[data-edit]');
         const actions = row.querySelector('.actions');
         if (!edit || !actions || actions.querySelector('[data-operational-activity]')) return;
-        const control = button('Actividad', () => {
-          history.replaceState(history.state, '', location.href);
-          return nav.openSupplier({ supplierId:edit.dataset.edit });
-        });
+        const control = button('Actividad', () => nav.openSupplier({ supplierId:edit.dataset.edit }));
         control.dataset.operationalActivity = edit.dataset.edit;
         actions.prepend(control);
       });
     }
 
     attachActivityButtons();
-    const list = document.getElementById('supplierList');
-    if (list) new MutationObserver(attachActivityButtons).observe(list, { childList:true, subtree:true });
+    observeChanges(document.getElementById('supplierList'), () => {
+      nav.invalidateLinks?.();
+      attachActivityButtons();
+    });
     window.openOperationalSupplier = openSupplier;
   }
 
@@ -200,6 +206,7 @@
       const title = document.getElementById('detailTitle');
       if (title) observer.observe(title, { childList:true, subtree:true });
     }
+    observeChanges(document.getElementById('orderList'), () => nav.invalidateLinks?.());
   }
 
   function initWarehouse() {
@@ -241,6 +248,7 @@
       const title = document.getElementById('detailTitle');
       if (title) observer.observe(title, { childList:true, subtree:true });
     }
+    observeChanges(document.getElementById('receiptList'), () => nav.invalidateLinks?.());
   }
 
   function initInventory() {
