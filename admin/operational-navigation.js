@@ -40,7 +40,7 @@
   }
 
   async function requestLinks({ refresh = false } = {}) {
-    if (!refresh && Array.isArray(linksCache)) return linksCache;
+    if (!refresh && linksCache) return linksCache;
     if (!refresh && linksPromise) return linksPromise;
 
     const token = localStorage.getItem('export_mca_token') || '';
@@ -50,7 +50,11 @@
       .then(async response => {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || 'No se pudieron cargar los enlaces operativos');
-        linksCache = Array.isArray(data.links) ? data.links : [];
+        linksCache = {
+          links:Array.isArray(data.links) ? data.links : [],
+          purchases:Array.isArray(data.purchases) ? data.purchases : [],
+          receipts:Array.isArray(data.receipts) ? data.receipts : []
+        };
         return linksCache;
       })
       .finally(() => { linksPromise = null; });
@@ -98,21 +102,53 @@
 
   async function loadForShipment(shipmentId) {
     if (!shipmentId) return null;
-    const links = await requestLinks();
-    return links.find(item => String(item.shipment_id) === String(shipmentId)) || null;
+    const data = await requestLinks();
+    return data.links.find(item => String(item.shipment_id) === String(shipmentId)) || null;
   }
 
   async function loadsForOperation(operationId) {
     if (!operationId) return [];
-    const links = await requestLinks();
-    return links.filter(item => String(item.operation_id || '') === String(operationId));
+    const data = await requestLinks();
+    return data.links.filter(item => String(item.operation_id || '') === String(operationId));
   }
 
   async function loadsForReceipt(receiptNumber) {
     const key = normalize(receiptNumber);
     if (!key) return [];
-    const links = await requestLinks();
-    return links.filter(item => Array.isArray(item.receipt_numbers) && item.receipt_numbers.some(receipt => normalize(receipt) === key));
+    const data = await requestLinks();
+    return data.links.filter(item => Array.isArray(item.receipt_numbers) && item.receipt_numbers.some(receipt => normalize(receipt) === key));
+  }
+
+  async function purchaseOrdersForSupplier(supplierId) {
+    if (!supplierId) return [];
+    const data = await requestLinks();
+    return data.purchases.filter(item => String(item.supplier_id || '') === String(supplierId));
+  }
+
+  async function receiptsForSupplier(supplierId) {
+    if (!supplierId) return [];
+    const data = await requestLinks();
+    return data.receipts.filter(item => String(item.supplier_id || '') === String(supplierId));
+  }
+
+  async function purchaseOrdersForReceipt(receiptNumber) {
+    const key = normalize(receiptNumber);
+    if (!key) return [];
+    const data = await requestLinks();
+    return data.purchases.filter(item => Array.isArray(item.receipts) && item.receipts.some(receipt => normalize(receipt.receipt_number) === key));
+  }
+
+  async function receiptsForPurchase(purchaseOrderId) {
+    if (!purchaseOrderId) return [];
+    const data = await requestLinks();
+    return data.purchases.find(item => String(item.purchase_order_id) === String(purchaseOrderId))?.receipts || [];
+  }
+
+  async function receiptByNumber(receiptNumber) {
+    const key = normalize(receiptNumber);
+    if (!key) return null;
+    const data = await requestLinks();
+    return data.receipts.find(item => normalize(item.receipt_number) === key) || null;
   }
 
   function openTracking(context = {}, options = {}) {
@@ -145,6 +181,28 @@
     return callEmbedded('inventorySection', 'traceWR', [receipt]);
   }
 
+  async function openWarehouseReceipt({ receiptNumber = null } = {}, options = {}) {
+    const receipt = await receiptByNumber(receiptNumber);
+    if (!receipt?.id) return false;
+    if (options.history !== false) writeContext('receipt', receipt.receipt_number, options);
+    window.NavigationShell?.openWarehouse?.();
+    return callEmbedded('warehouseSection', 'showReceipt', [receipt.id]);
+  }
+
+  function openPurchase({ purchaseOrderId = null } = {}, options = {}) {
+    if (!purchaseOrderId) return false;
+    if (options.history !== false) writeContext('po', purchaseOrderId, options);
+    window.NavigationShell?.openPurchases?.();
+    return callEmbedded('purchasesSection', 'openPurchase', [purchaseOrderId]);
+  }
+
+  function openSupplier({ supplierId = null } = {}, options = {}) {
+    if (!supplierId) return false;
+    if (options.history !== false) writeContext('supplier', supplierId, options);
+    window.NavigationShell?.openSuppliers?.();
+    return callEmbedded('suppliersSection', 'openSupplier', [supplierId]);
+  }
+
   function openExpediente(operationId, options = {}) {
     if (!operationId) return false;
     if (options.history !== false) writeContext('expediente', operationId, options);
@@ -161,6 +219,9 @@
       if (context.type === 'tracking') return openTracking({ shipmentId:context.id }, { history:false });
       if (context.type === 'load') return openLoad({ loadId:context.id }, { history:false });
       if (context.type === 'wr') return openInventoryReceipt(context.id, { history:false });
+      if (context.type === 'receipt') return openWarehouseReceipt({ receiptNumber:context.id }, { history:false });
+      if (context.type === 'po') return openPurchase({ purchaseOrderId:context.id }, { history:false });
+      if (context.type === 'supplier') return openSupplier({ supplierId:context.id }, { history:false });
       if (context.type === 'expediente') return openExpediente(context.id, { history:false });
       return false;
     } finally {
@@ -180,10 +241,18 @@
     openLoad,
     openLoadForShipment,
     openInventoryReceipt,
+    openWarehouseReceipt,
+    openPurchase,
+    openSupplier,
     openExpediente,
     loadForShipment,
     loadsForOperation,
     loadsForReceipt,
+    purchaseOrdersForSupplier,
+    receiptsForSupplier,
+    purchaseOrdersForReceipt,
+    receiptsForPurchase,
+    receiptByNumber,
     restoreContext,
     refreshLinks: () => requestLinks({ refresh:true }),
     owner: 'operational-navigation.js'
