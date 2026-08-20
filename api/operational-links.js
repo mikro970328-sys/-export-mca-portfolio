@@ -13,9 +13,9 @@ export default async function handler(req, res) {
     const shipmentIds = [...new Set((loads || []).map(item => item.shipment_id).filter(Boolean))];
     if (!shipmentIds.length) return ok(res, { links: [] });
 
-    const filter = shipmentIds.map(id => `"${String(id).replace(/"/g, '')}"`).join(',');
+    const filter = shipmentIds.map(id => String(id).trim()).filter(Boolean).join(',');
     const shipments = await supabase('shipments', {
-      query: `?select=id,operation_id,container_number&id=in.(${encodeURIComponent(filter)})`
+      query: `?select=id,operation_id,container_number&id=in.(${filter})`
     });
     const byShipment = new Map((shipments || []).map(item => [String(item.id), item]));
 
