@@ -190,6 +190,7 @@
       await navigationStylesPromise;
       await loadScript('/admin/navigation-shell.js?v=20260817-uxa2', 'data-navigation-shell');
       await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
+      await loadScript('/admin/operational-navigation.js?v=20260819-b11', 'data-operational-navigation');
 
       if (typeof window.loadAll !== 'function') {
         throw new Error('El cargador inicial de datos no está disponible.');
