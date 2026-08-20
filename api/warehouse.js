@@ -24,9 +24,10 @@ async function audit(admin, action, entityType, entityId, details = {}) {
 }
 
 async function loadAll() {
-  const [warehouses, rawProducts, receipts, rawItems] = await Promise.all([
+  const [warehouses, rawProducts, suppliers, receipts, rawItems] = await Promise.all([
     supabase('warehouses', { query:'?select=*&order=active.desc,name.asc' }),
     supabase('products', { query:'?select=*&order=active.desc,name.asc' }),
+    supabase('suppliers', { query:'?select=id,name,legal_name,email,phone,address,country,tax_id,notes,active&order=active.desc,name.asc' }),
     supabase('warehouse_receipts', { query:'?select=*,warehouse:warehouses(id,code,name,country,city),supplier:suppliers(id,name)&order=received_at.desc,created_at.desc' }),
     supabase('warehouse_receipt_items', { query:'?select=*,product:products(id,sku,name,brand,category,package_format,unit,default_units_per_pallet)&order=created_at.asc' })
   ]);
@@ -47,6 +48,7 @@ async function loadAll() {
   return {
     warehouses: warehouses || [],
     products,
+    suppliers: suppliers || [],
     receipts: (receipts || []).map(receipt => ({ ...receipt, items:byReceipt.get(receipt.id) || [] }))
   };
 }
@@ -102,6 +104,18 @@ export default async function handler(req, res) {
         const lines = Array.isArray(body.items) ? body.items : [];
         if (!lines.length) throw new Error('Agrega al menos una línea de mercancía');
 
+        const supplierId = text(body.supplier_id) || null;
+        let supplierName = null;
+        if (supplierId) {
+          const supplierRows = await supabase('suppliers', {
+            query:`?select=id,name,active&id=eq.${encodeURIComponent(supplierId)}&limit=1`
+          });
+          const supplier = supplierRows?.[0];
+          if (!supplier) throw new Error('El proveedor seleccionado no existe');
+          if (supplier.active === false) throw new Error('El proveedor seleccionado está inactivo');
+          supplierName = supplier.name;
+        }
+
         const productIds = [...new Set(lines.map(line => text(line.product_id)).filter(Boolean))];
         if (!productIds.length) throw new Error('Selecciona al menos un producto');
         const productRows = await supabase('products', {
@@ -152,18 +166,17 @@ export default async function handler(req, res) {
 
         const receivedAt = body.received_at ? new Date(body.received_at).toISOString() : new Date().toISOString();
         const createdHeaders = await supabase('warehouse_receipts', { method:'POST', query:'?select=*', body:[{
-          warehouse_id:warehouseId, supplier_id:text(body.supplier_id) || null,
-          supplier_name:text(body.supplier_name) || null, received_at:receivedAt,
-          truck_reference:text(body.truck_reference) || null, driver_name:text(body.driver_name) || null,
-          reference_number:text(body.reference_number) || null, notes:text(body.notes) || null,
-          created_by:admin.id || null
+          warehouse_id:warehouseId, supplier_id:supplierId, supplier_name:supplierName,
+          received_at:receivedAt, truck_reference:text(body.truck_reference) || null,
+          driver_name:text(body.driver_name) || null, reference_number:text(body.reference_number) || null,
+          notes:text(body.notes) || null, created_by:admin.id || null
         }] });
         const receipt = createdHeaders?.[0];
         if (!receipt?.id) throw new Error('No se pudo crear la recepción');
         try {
           const createdItems = await supabase('warehouse_receipt_items', { method:'POST', query:'?select=*', body:cleanLines.map(line => ({ ...line, receipt_id:receipt.id })) });
           await audit(admin, 'warehouse_receipt_created', 'warehouse_receipt', receipt.id, {
-            receipt_number:receipt.receipt_number, warehouse_id:warehouseId,
+            receipt_number:receipt.receipt_number, warehouse_id:warehouseId, supplier_id:supplierId,
             lines:cleanLines.length, total_quantity:cleanLines.reduce((sum,x)=>sum+x.quantity,0),
             total_pallets:cleanLines.reduce((sum,x)=>sum+x.pallets,0)
           });
