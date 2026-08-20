@@ -3,6 +3,8 @@
   window.__operationalNavigationInstalled = true;
 
   const normalize = value => String(value || '').trim().toUpperCase();
+  let linksCache = null;
+  let linksPromise = null;
 
   function section(id) {
     return typeof window.showSection === 'function' ? window.showSection(id) : false;
@@ -36,6 +38,29 @@
     return true;
   }
 
+  async function requestLinks({ refresh = false } = {}) {
+    if (!refresh && Array.isArray(linksCache)) return linksCache;
+    if (!refresh && linksPromise) return linksPromise;
+
+    const token = localStorage.getItem('export_mca_token') || '';
+    linksPromise = fetch('/api/operational-links', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'No se pudieron cargar los enlaces operativos');
+        linksCache = Array.isArray(data.links) ? data.links : [];
+        return linksCache;
+      })
+      .finally(() => { linksPromise = null; });
+
+    return linksPromise;
+  }
+
+  function invalidateLinks() {
+    linksCache = null;
+  }
+
   function findShipment({ shipmentId = null, containerNumber = null } = {}) {
     const rows = Array.isArray(window.shipments) ? window.shipments : [];
     if (shipmentId) {
@@ -44,6 +69,18 @@
     }
     const key = normalize(containerNumber);
     return key ? rows.find(item => normalize(item.container_number) === key) || null : null;
+  }
+
+  async function loadForShipment(shipmentId) {
+    if (!shipmentId) return null;
+    const links = await requestLinks();
+    return links.find(item => String(item.shipment_id) === String(shipmentId)) || null;
+  }
+
+  async function loadsForOperation(operationId) {
+    if (!operationId) return [];
+    const links = await requestLinks();
+    return links.filter(item => String(item.operation_id || '') === String(operationId));
   }
 
   function openTracking(context = {}) {
@@ -60,6 +97,12 @@
     return callEmbedded('loadsSection', 'openLoad', [loadId]);
   }
 
+  async function openLoadForShipment(shipmentId) {
+    const link = await loadForShipment(shipmentId);
+    if (!link) return false;
+    return openLoad({ loadId: link.load_id });
+  }
+
   function openInventoryReceipt(receiptNumber) {
     const receipt = String(receiptNumber || '').trim();
     if (!receipt) return false;
@@ -74,11 +117,17 @@
     return true;
   }
 
+  window.addEventListener('export-mca:data-loaded', invalidateLinks);
+
   window.OperationalNavigation = Object.freeze({
     openTracking,
     openLoad,
+    openLoadForShipment,
     openInventoryReceipt,
     openExpediente,
+    loadForShipment,
+    loadsForOperation,
+    refreshLinks: () => requestLinks({ refresh:true }),
     owner: 'operational-navigation.js'
   });
 })();
