@@ -5,6 +5,7 @@
   const normalize = value => String(value || '').trim().toUpperCase();
   let linksCache = null;
   let linksPromise = null;
+  let restoringContext = false;
 
   function section(id) {
     return typeof window.showSection === 'function' ? window.showSection(id) : false;
@@ -61,6 +62,30 @@
     linksCache = null;
   }
 
+  function contextHash(type, value) {
+    const params = new URLSearchParams();
+    params.set('opnav', type);
+    params.set('id', String(value || '').trim());
+    return `#${params.toString()}`;
+  }
+
+  function writeContext(type, value, { replace = false } = {}) {
+    if (restoringContext || !type || !value) return;
+    const hash = contextHash(type, value);
+    if (location.hash === hash) return;
+    const method = replace ? 'replaceState' : 'pushState';
+    history[method]({ ...(history.state || {}), operationalContext: { type, id:String(value) } }, '', hash);
+  }
+
+  function readContext() {
+    if (!location.hash) return null;
+    const params = new URLSearchParams(location.hash.slice(1));
+    const type = params.get('opnav');
+    const id = params.get('id');
+    if (!type || !id) return null;
+    return { type, id };
+  }
+
   function findShipment({ shipmentId = null, containerNumber = null } = {}) {
     const rows = Array.isArray(window.shipments) ? window.shipments : [];
     if (shipmentId) {
@@ -83,41 +108,65 @@
     return links.filter(item => String(item.operation_id || '') === String(operationId));
   }
 
-  function openTracking(context = {}) {
+  function openTracking(context = {}, options = {}) {
     section('containersSection');
     const shipment = findShipment(context);
     if (!shipment) return false;
+    if (options.history !== false) writeContext('tracking', shipment.id, options);
     requestAnimationFrame(() => window.ContainersModule?.openDetails?.(shipment));
     return true;
   }
 
-  function openLoad({ loadId = null } = {}) {
+  function openLoad({ loadId = null } = {}, options = {}) {
     if (!loadId) return false;
+    if (options.history !== false) writeContext('load', loadId, options);
     window.NavigationShell?.openLoads?.();
     return callEmbedded('loadsSection', 'openLoad', [loadId]);
   }
 
-  async function openLoadForShipment(shipmentId) {
+  async function openLoadForShipment(shipmentId, options = {}) {
     const link = await loadForShipment(shipmentId);
     if (!link) return false;
-    return openLoad({ loadId: link.load_id });
+    return openLoad({ loadId: link.load_id }, options);
   }
 
-  function openInventoryReceipt(receiptNumber) {
+  function openInventoryReceipt(receiptNumber, options = {}) {
     const receipt = String(receiptNumber || '').trim();
     if (!receipt) return false;
+    if (options.history !== false) writeContext('wr', receipt, options);
     window.NavigationShell?.openInventory?.();
     return callEmbedded('inventorySection', 'traceWR', [receipt]);
   }
 
-  function openExpediente(operationId) {
+  function openExpediente(operationId, options = {}) {
     if (!operationId) return false;
+    if (options.history !== false) writeContext('expediente', operationId, options);
     section('newOperationsSection');
     requestAnimationFrame(() => window.ExpedientesModule?.open?.(operationId));
     return true;
   }
 
-  window.addEventListener('export-mca:data-loaded', invalidateLinks);
+  async function restoreContext() {
+    const context = readContext();
+    if (!context || restoringContext) return false;
+    restoringContext = true;
+    try {
+      if (context.type === 'tracking') return openTracking({ shipmentId:context.id }, { history:false });
+      if (context.type === 'load') return openLoad({ loadId:context.id }, { history:false });
+      if (context.type === 'wr') return openInventoryReceipt(context.id, { history:false });
+      if (context.type === 'expediente') return openExpediente(context.id, { history:false });
+      return false;
+    } finally {
+      restoringContext = false;
+    }
+  }
+
+  window.addEventListener('hashchange', () => { restoreContext().catch(error => console.error('[operational navigation restore]', error)); });
+  window.addEventListener('popstate', () => { restoreContext().catch(error => console.error('[operational navigation restore]', error)); });
+  window.addEventListener('export-mca:data-loaded', () => {
+    invalidateLinks();
+    restoreContext().catch(error => console.error('[operational navigation restore]', error));
+  });
 
   window.OperationalNavigation = Object.freeze({
     openTracking,
@@ -127,6 +176,7 @@
     openExpediente,
     loadForShipment,
     loadsForOperation,
+    restoreContext,
     refreshLinks: () => requestLinks({ refresh:true }),
     owner: 'operational-navigation.js'
   });
