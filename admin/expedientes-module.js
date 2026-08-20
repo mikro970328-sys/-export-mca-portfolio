@@ -330,7 +330,7 @@
     if (!ordered.length) html += '<div class="empty-state" style="margin-top:10px">Cuando asignes contenedores activos, aquí aparecerán sus documentos organizados por B/L.</div>';
     return html;
   }
-  function expedienteHtml(operation, rawDocuments) {
+  function expedienteHtml(operation, rawDocuments, loadLinks = []) {
     const client = clientForOperation(operation);
     const shipments = operationShipments(operation);
     const documents = visibleDocuments(operation, rawDocuments);
@@ -339,7 +339,8 @@
     const hiddenDelivered = hiddenDeliveredCount(operation);
     const delivered = isFinalized(operation);
     const containerChips = shipments.length ? `<div class="exp-summary-label">Contenedores del expediente</div><div class="exp-container-chips">${shipments.map(shipment => `<span class="pill">${esc(shipment.container_number || '—')} · ${shipment.bol_number ? `B/L ${esc(shipment.bol_number)}` : 'B/L pendiente'} · ${esc(importerForShipment(shipment)?.name || 'Importadora sin definir')}</span>`).join('')}</div>` : '<div class="muted" style="margin-top:10px">No quedan contenedores activos en este expediente.</div>';
-    return `<section><div class="toolbar"><div><div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div><h2 style="margin:3px 0">${esc(client?.name || 'Cliente')}</h2><div class="muted">${esc(client?.company || '')}</div></div><span class="pill ${delivered ? 'done' : ''}">${esc(statusLabel(operation))}</span></div><div class="exp-summary"><div class="exp-summary-top"><div class="exp-stats" style="margin:0"><span class="pill">${shipments.length} contenedor${shipments.length === 1 ? '' : 'es'}${delivered ? '' : ' activos'}</span><span class="pill">${bols.length} B/L</span><span class="pill ${documents.length ? 'done' : ''}">${documents.length} documento${documents.length === 1 ? '' : 's'}</span>${shared.length ? `<span class="exp-shared-badge">${shared.length} B/L compartido${shared.length === 1 ? '' : 's'}</span>` : ''}</div><div class="exp-summary-actions"><button id="manageExpContainers" class="alt" type="button">Gestionar contenedores</button></div></div>${containerChips}${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} ya entregado${hiddenDelivered === 1 ? '' : 's'} se oculta${hiddenDelivered === 1 ? '' : 'n'} automáticamente.</div>` : ''}${operation.notes ? `<div class="muted" style="margin-top:8px">${esc(operation.notes)}</div>` : ''}</div></section><section class="exp-section"><div class="exp-section-title"><div><h3 style="margin:0">Documentos del envío</h3><div class="muted">Abre una carpeta para ver o agregar documentos.</div></div></div>${documentFoldersHtml(operation,rawDocuments)}</section><div id="expDocumentsMsg" class="msg"></div>`;
+    const loadChips = loadLinks.length ? `<div class="exp-summary-label">Cargues relacionados</div><div class="exp-container-chips">${loadLinks.map(load => `<button class="alt" type="button" data-open-load="${esc(load.load_id)}">${esc(load.load_number || 'Cargue')} · ${esc(load.load_status || 'Estado')}</button>`).join('')}</div>` : '';
+    return `<section><div class="toolbar"><div><div class="exp-code">${esc(operation.operation_code || 'Expediente')}</div><h2 style="margin:3px 0">${esc(client?.name || 'Cliente')}</h2><div class="muted">${esc(client?.company || '')}</div></div><span class="pill ${delivered ? 'done' : ''}">${esc(statusLabel(operation))}</span></div><div class="exp-summary"><div class="exp-summary-top"><div class="exp-stats" style="margin:0"><span class="pill">${shipments.length} contenedor${shipments.length === 1 ? '' : 'es'}${delivered ? '' : ' activos'}</span><span class="pill">${bols.length} B/L</span><span class="pill ${documents.length ? 'done' : ''}">${documents.length} documento${documents.length === 1 ? '' : 's'}</span>${shared.length ? `<span class="exp-shared-badge">${shared.length} B/L compartido${shared.length === 1 ? '' : 's'}</span>` : ''}</div><div class="exp-summary-actions"><button id="manageExpContainers" class="alt" type="button">Gestionar contenedores</button></div></div>${containerChips}${loadChips}${hiddenDelivered ? `<div class="exp-delivered-note">${hiddenDelivered} contenedor${hiddenDelivered === 1 ? '' : 'es'} ya entregado${hiddenDelivered === 1 ? '' : 's'} se oculta${hiddenDelivered === 1 ? '' : 'n'} automáticamente.</div>` : ''}${operation.notes ? `<div class="muted" style="margin-top:8px">${esc(operation.notes)}</div>` : ''}</div></section><section class="exp-section"><div class="exp-section-title"><div><h3 style="margin:0">Documentos del envío</h3><div class="muted">Abre una carpeta para ver o agregar documentos.</div></div></div>${documentFoldersHtml(operation,rawDocuments)}</section><div id="expDocumentsMsg" class="msg"></div>`;
   }
   function manageContainersHtml(operation) {
     const assigned=operationShipments(operation), available=availableShipments(operation), hiddenDelivered=hiddenDeliveredCount(operation);
@@ -442,6 +443,7 @@
   function bindExpedienteActions(operation,documents) {
     bindDocumentActions(operation,documents);
     const manageButton=byId('manageExpContainers'); if (manageButton) manageButton.onclick=() => openManageContainers(operation.id);
+    document.querySelectorAll('[data-open-load]').forEach(button => { button.onclick=() => window.OperationalNavigation?.openLoad?.({ loadId:button.dataset.openLoad }); });
     document.querySelectorAll('[data-folder-toggle]').forEach(header => {
       header.onclick=event => {
         if (event.target.closest('[data-upload-scope]')) return;
@@ -473,7 +475,10 @@
       const operation=operationResult.operation, documents=documentResult.documents || [];
       if (!operation) throw new Error('Expediente no encontrado');
       if (typeof window.openModal !== 'function') throw new Error('EXPEDIENTES_MODAL_MISSING');
-      window.openModal(`Expediente · ${operation.operation_code || ''}`,expedienteHtml(operation,documents));
+      let loadLinks=[];
+      try { loadLinks=await window.OperationalNavigation?.loadsForOperation?.(operation.id) || []; }
+      catch (error) { console.error('[expediente related loads]',error); }
+      window.openModal(`Expediente · ${operation.operation_code || ''}`,expedienteHtml(operation,documents,loadLinks));
       bindExpedienteActions(operation,documents);
     } catch (error) { alert(error.message || 'No se pudo abrir el expediente.'); }
   }
