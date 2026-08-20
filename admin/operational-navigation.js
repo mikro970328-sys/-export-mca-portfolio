@@ -3,134 +3,45 @@
   window.__operationalNavigationInstalled = true;
 
   const normalize = value => String(value || '').trim().toUpperCase();
-  let linksCache = null;
-  let linksPromise = null;
-  let restoringContext = false;
+  const OPERATIONAL_SECTIONS = ['suppliersSection','purchasesSection','warehouseSection','inventorySection'];
+  let cache = null;
+  let pending = null;
+  let restoring = false;
 
-  function section(id) {
-    return typeof window.showSection === 'function' ? window.showSection(id) : false;
-  }
-
-  function embeddedFrame(sectionId) {
-    return document.querySelector(`#${sectionId} iframe`);
-  }
-
-  function childStyle(doc) {
-    if (!doc || doc.getElementById('b2-operational-navigation-style')) return;
-    const style = doc.createElement('style');
-    style.id = 'b2-operational-navigation-style';
-    style.textContent = '.b2-opnav{margin-top:12px;padding:11px;border:1px solid #dfe5ee;border-radius:10px;background:#f8fafc}.b2-opnav-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}.b2-opnav-title{font-size:10px;text-transform:uppercase;color:#667085;font-weight:900}.b2-opnav-actions{display:flex;gap:7px;flex-wrap:wrap}.b2-opnav-btn{border:1px solid #cfd9e8!important;background:#fff!important;color:#06204a!important;border-radius:8px!important;padding:7px 9px!important;font-size:10px!important;font-weight:900!important;cursor:pointer!important}.b2-opnav-btn.primary{background:#06204a!important;color:#fff!important;border-color:#06204a!important}.b2-opnav-empty{font-size:11px;color:#667085}.b2-opnav-count{font-size:10px;color:#667085}.b2-opnav-highlight{outline:2px solid #f58220;outline-offset:2px;border-radius:9px}@media(max-width:650px){.b2-opnav-btn{flex:1 1 130px;text-align:left}}';
-    doc.head?.appendChild(style);
-  }
-
-  function makeButton(doc, label, handler, primary = false) {
-    const button = doc.createElement('button');
-    button.type = 'button';
-    button.className = `b2-opnav-btn${primary ? ' primary' : ''}`;
-    button.textContent = label;
-    button.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      Promise.resolve(handler()).catch(error => console.error('[operational navigation action]', error));
-    });
-    return button;
-  }
-
-  function navigationBlock(doc, title, items = []) {
-    const block = doc.createElement('div');
-    block.className = 'b2-opnav';
-    const head = doc.createElement('div');
-    head.className = 'b2-opnav-head';
-    const name = doc.createElement('div');
-    name.className = 'b2-opnav-title';
-    name.textContent = title;
-    head.appendChild(name);
-    if (items.length) {
-      const count = doc.createElement('div');
-      count.className = 'b2-opnav-count';
-      count.textContent = `${items.length} relacionado${items.length === 1 ? '' : 's'}`;
-      head.appendChild(count);
-    }
-    block.appendChild(head);
-    const actions = doc.createElement('div');
-    actions.className = 'b2-opnav-actions';
-    if (!items.length) {
-      const empty = doc.createElement('div');
-      empty.className = 'b2-opnav-empty';
-      empty.textContent = 'Sin relaciones operativas registradas.';
-      actions.appendChild(empty);
-    } else {
-      items.forEach(item => actions.appendChild(makeButton(doc, item.label, item.action, item.primary)));
-    }
-    block.appendChild(actions);
-    return block;
-  }
-
-  function callEmbedded(sectionId, method, args = []) {
-    const frame = embeddedFrame(sectionId);
-    if (!frame) return false;
-
-    const invoke = () => {
-      try {
-        decorateEmbedded(sectionId, frame);
-        const fn = frame.contentWindow?.[method];
-        if (typeof fn !== 'function') return false;
-        fn(...args);
-        return true;
-      } catch (error) {
-        console.error('[operational navigation embedded]', sectionId, method, error);
-        return false;
-      }
-    };
-
-    if (frame.contentDocument?.readyState === 'complete') {
-      requestAnimationFrame(invoke);
-      return true;
-    }
-    frame.addEventListener('load', () => requestAnimationFrame(invoke), { once:true });
-    return true;
-  }
+  const section = id => typeof window.showSection === 'function' ? window.showSection(id) : false;
+  const frameFor = id => document.querySelector(`#${id} iframe`);
 
   async function requestLinks({ refresh = false } = {}) {
-    if (!refresh && linksCache) return linksCache;
-    if (!refresh && linksPromise) return linksPromise;
-
+    if (!refresh && cache) return cache;
+    if (!refresh && pending) return pending;
     const token = localStorage.getItem('export_mca_token') || '';
-    linksPromise = fetch('/api/operational-links', {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    })
+    pending = fetch('/api/operational-links', { headers:token ? { Authorization:`Bearer ${token}` } : {} })
       .then(async response => {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || 'No se pudieron cargar los enlaces operativos');
-        linksCache = {
+        cache = {
           links:Array.isArray(data.links) ? data.links : [],
           purchases:Array.isArray(data.purchases) ? data.purchases : [],
           receipts:Array.isArray(data.receipts) ? data.receipts : []
         };
-        return linksCache;
+        return cache;
       })
-      .finally(() => { linksPromise = null; });
-
-    return linksPromise;
+      .finally(() => { pending = null; });
+    return pending;
   }
 
-  function invalidateLinks() {
-    linksCache = null;
-  }
-
-  function contextHash(type, value) {
-    const params = new URLSearchParams();
-    params.set('opnav', type);
-    params.set('id', String(value || '').trim());
-    return `#${params.toString()}`;
-  }
+  function invalidateLinks() { cache = null; }
 
   function writeContext(type, value, { replace = false } = {}) {
-    if (restoringContext || !type || !value) return;
-    const hash = contextHash(type, value);
+    if (restoring || !type || !value) return;
+    const params = new URLSearchParams({ opnav:type, id:String(value).trim() });
+    const hash = `#${params.toString()}`;
     if (location.hash === hash) return;
-    const method = replace ? 'replaceState' : 'pushState';
-    history[method]({ ...(history.state || {}), operationalContext: { type, id:String(value) } }, '', hash);
+    history[replace ? 'replaceState' : 'pushState'](
+      { ...(history.state || {}), operationalContext:{ type, id:String(value) } },
+      '',
+      hash
+    );
   }
 
   function readContext() {
@@ -138,76 +49,366 @@
     const params = new URLSearchParams(location.hash.slice(1));
     const type = params.get('opnav');
     const id = params.get('id');
-    if (!type || !id) return null;
-    return { type, id };
+    return type && id ? { type, id } : null;
   }
 
   function findShipment({ shipmentId = null, containerNumber = null } = {}) {
     const rows = Array.isArray(window.shipments) ? window.shipments : [];
     if (shipmentId) {
-      const byId = rows.find(item => String(item.id) === String(shipmentId));
-      if (byId) return byId;
+      const found = rows.find(row => String(row.id) === String(shipmentId));
+      if (found) return found;
     }
-    const key = normalize(containerNumber);
-    return key ? rows.find(item => normalize(item.container_number) === key) || null : null;
+    const container = normalize(containerNumber);
+    return container ? rows.find(row => normalize(row.container_number) === container) || null : null;
   }
 
   async function loadForShipment(shipmentId) {
     if (!shipmentId) return null;
     const data = await requestLinks();
-    return data.links.find(item => String(item.shipment_id) === String(shipmentId)) || null;
+    return data.links.find(row => String(row.shipment_id) === String(shipmentId)) || null;
   }
 
   async function loadsForOperation(operationId) {
     if (!operationId) return [];
     const data = await requestLinks();
-    return data.links.filter(item => String(item.operation_id || '') === String(operationId));
+    return data.links.filter(row => String(row.operation_id || '') === String(operationId));
   }
 
   async function loadsForReceipt(receiptNumber) {
-    const key = normalize(receiptNumber);
-    if (!key) return [];
+    const receipt = normalize(receiptNumber);
+    if (!receipt) return [];
     const data = await requestLinks();
-    return data.links.filter(item => Array.isArray(item.receipt_numbers) && item.receipt_numbers.some(receipt => normalize(receipt) === key));
+    return data.links.filter(row => Array.isArray(row.receipt_numbers) && row.receipt_numbers.some(value => normalize(value) === receipt));
   }
 
   async function purchaseOrdersForSupplier(supplierId) {
     if (!supplierId) return [];
     const data = await requestLinks();
-    return data.purchases.filter(item => String(item.supplier_id || '') === String(supplierId));
+    return data.purchases.filter(row => String(row.supplier_id || '') === String(supplierId));
   }
 
   async function receiptsForSupplier(supplierId) {
     if (!supplierId) return [];
     const data = await requestLinks();
-    return data.receipts.filter(item => String(item.supplier_id || '') === String(supplierId));
+    return data.receipts.filter(row => String(row.supplier_id || '') === String(supplierId));
   }
 
   async function purchaseOrdersForReceipt(receiptNumber) {
-    const key = normalize(receiptNumber);
-    if (!key) return [];
+    const receipt = normalize(receiptNumber);
+    if (!receipt) return [];
     const data = await requestLinks();
-    return data.purchases.filter(item => Array.isArray(item.receipts) && item.receipts.some(receipt => normalize(receipt.receipt_number) === key));
+    return data.purchases.filter(row => Array.isArray(row.receipts) && row.receipts.some(item => normalize(item.receipt_number) === receipt));
   }
 
   async function receiptsForPurchase(purchaseOrderId) {
     if (!purchaseOrderId) return [];
     const data = await requestLinks();
-    return data.purchases.find(item => String(item.purchase_order_id) === String(purchaseOrderId))?.receipts || [];
+    return data.purchases.find(row => String(row.purchase_order_id) === String(purchaseOrderId))?.receipts || [];
   }
 
   async function purchaseByNumber(poNumber) {
-    const key = normalize(poNumber);
-    if (!key) return null;
+    const po = normalize(poNumber);
+    if (!po) return null;
     const data = await requestLinks();
-    return data.purchases.find(item => normalize(item.po_number) === key) || null;
+    return data.purchases.find(row => normalize(row.po_number) === po) || null;
   }
 
   async function receiptByNumber(receiptNumber) {
-    const key = normalize(receiptNumber);
-    if (!key) return null;
+    const receipt = normalize(receiptNumber);
+    if (!receipt) return null;
     const data = await requestLinks();
-    return data.receipts.find(item => normalize(item.receipt_number) === key) || null;
+    return data.receipts.find(row => normalize(row.receipt_number) === receipt) || null;
+  }
+
+  function installChildStyle(doc) {
+    if (!doc?.head || doc.getElementById('operational-context-style')) return;
+    const style = doc.createElement('style');
+    style.id = 'operational-context-style';
+    style.textContent = `
+      .op-context{margin-top:12px;padding:11px;border:1px solid #dfe5ee;border-radius:10px;background:#f8fafc}
+      .op-context-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+      .op-context-title{font-size:10px;text-transform:uppercase;color:#667085;font-weight:900}
+      .op-context-count,.op-context-empty{font-size:10px;color:#667085}
+      .op-context-actions{display:flex;gap:7px;flex-wrap:wrap}
+      .op-context-btn{border:1px solid #cfd9e8!important;background:#fff!important;color:#06204a!important;border-radius:8px!important;padding:7px 9px!important;font-size:10px!important;font-weight:900!important;cursor:pointer!important}
+      .op-context-btn.primary{background:#06204a!important;color:#fff!important;border-color:#06204a!important}
+      .op-context-highlight{outline:2px solid #f58220;outline-offset:2px;border-radius:9px}
+      @media(max-width:650px){.op-context-btn{flex:1 1 130px;text-align:left}}
+    `;
+    doc.head.appendChild(style);
+  }
+
+  function contextButton(doc, label, action, primary = false) {
+    const button = doc.createElement('button');
+    button.type = 'button';
+    button.className = `op-context-btn${primary ? ' primary' : ''}`;
+    button.textContent = label;
+    button.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      Promise.resolve(action()).catch(error => console.error('[operational context action]', error));
+    });
+    return button;
+  }
+
+  function contextBlock(doc, title, items) {
+    const block = doc.createElement('div');
+    block.className = 'op-context';
+    const head = doc.createElement('div');
+    head.className = 'op-context-head';
+    const heading = doc.createElement('div');
+    heading.className = 'op-context-title';
+    heading.textContent = title;
+    head.appendChild(heading);
+    if (items.length) {
+      const count = doc.createElement('div');
+      count.className = 'op-context-count';
+      count.textContent = `${items.length} relacionado${items.length === 1 ? '' : 's'}`;
+      head.appendChild(count);
+    }
+    block.appendChild(head);
+    const actions = doc.createElement('div');
+    actions.className = 'op-context-actions';
+    if (!items.length) {
+      const empty = doc.createElement('div');
+      empty.className = 'op-context-empty';
+      empty.textContent = 'Sin relaciones operativas registradas.';
+      actions.appendChild(empty);
+    } else {
+      items.forEach(item => actions.appendChild(contextButton(doc, item.label, item.action, item.primary)));
+    }
+    block.appendChild(actions);
+    return block;
+  }
+
+  function decorateSuppliers(frame) {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    installChildStyle(doc);
+
+    async function openSupplierActivity(supplierId) {
+      const row = doc.querySelector(`[data-edit="${CSS.escape(String(supplierId))}"]`)?.closest('.supplier-row');
+      const supplierName = row?.querySelector('.supplier-name')?.textContent?.trim() || 'Proveedor';
+      const [purchases, receipts] = await Promise.all([
+        purchaseOrdersForSupplier(supplierId),
+        receiptsForSupplier(supplierId)
+      ]);
+
+      let modal = doc.getElementById('supplierOperationalActivity');
+      if (!modal) {
+        modal = doc.createElement('div');
+        modal.id = 'supplierOperationalActivity';
+        modal.className = 'modal hidden';
+        modal.innerHTML = '<div class="dialog"><div class="dialog-head"><div><h2 id="supplierOperationalTitle"></h2><div class="supplier-meta">Purchase Orders y Warehouse Receipts vinculados al proveedor maestro.</div></div><button class="btn" id="supplierOperationalClose">✕</button></div><div id="supplierOperationalBody"></div></div>';
+        doc.body.appendChild(modal);
+        doc.getElementById('supplierOperationalClose').onclick = () => modal.classList.add('hidden');
+        modal.addEventListener('click', event => { if (event.target === modal) modal.classList.add('hidden'); });
+      }
+
+      doc.getElementById('supplierOperationalTitle').textContent = supplierName;
+      const body = doc.getElementById('supplierOperationalBody');
+      body.innerHTML = '';
+      body.appendChild(contextBlock(doc, 'Purchase Orders', purchases.map(po => ({
+        label:`${po.po_number} · ${po.po_status || 'sin estado'}`,
+        action:() => openPurchase({ purchaseOrderId:po.purchase_order_id })
+      }))));
+      body.appendChild(contextBlock(doc, 'Warehouse Receipts', receipts.map(receipt => ({
+        label:`${receipt.receipt_number} · ${receipt.status === 'cancelled' ? 'Anulado' : 'Recibido'}`,
+        action:() => openWarehouseReceipt({ receiptNumber:receipt.receipt_number })
+      }))));
+      modal.classList.remove('hidden');
+      row?.scrollIntoView({ block:'center', behavior:'smooth' });
+      row?.classList.add('op-context-highlight');
+      setTimeout(() => row?.classList.remove('op-context-highlight'), 1500);
+      return true;
+    }
+
+    function attachButtons() {
+      doc.querySelectorAll('.supplier-row').forEach(row => {
+        const edit = row.querySelector('[data-edit]');
+        const actions = row.querySelector('.actions');
+        if (!edit || !actions || actions.querySelector('[data-operational-activity]')) return;
+        const button = contextButton(doc, 'Actividad', () => {
+          writeContext('supplier', edit.dataset.edit);
+          return openSupplierActivity(edit.dataset.edit);
+        });
+        button.dataset.operationalActivity = edit.dataset.edit;
+        actions.prepend(button);
+      });
+    }
+
+    attachButtons();
+    if (!frame.__supplierOperationalObserver) {
+      const list = doc.getElementById('supplierList');
+      if (list) {
+        frame.__supplierOperationalObserver = new MutationObserver(attachButtons);
+        frame.__supplierOperationalObserver.observe(list, { childList:true, subtree:true });
+      }
+    }
+    frame.contentWindow.openSupplier = openSupplierActivity;
+  }
+
+  async function renderPurchaseContext(frame) {
+    const doc = frame.contentDocument;
+    const modal = doc?.getElementById('detailModal');
+    if (!doc || !modal || modal.classList.contains('hidden')) return;
+    const poNumber = doc.getElementById('detailTitle')?.textContent?.trim();
+    const purchase = await purchaseByNumber(poNumber);
+    if (!purchase?.purchase_order_id || modal.classList.contains('hidden')) return;
+    const body = doc.getElementById('detailBody');
+    if (!body) return;
+    doc.getElementById('purchaseOperationalContext')?.remove();
+    const items = [];
+    if (purchase.supplier_id) items.push({
+      label:'Ver proveedor', primary:true,
+      action:() => openSupplier({ supplierId:purchase.supplier_id })
+    });
+    purchase.receipts.forEach(receipt => items.push({
+      label:`${receipt.receipt_number}${receipt.receipt_status === 'cancelled' ? ' · anulado' : ''}`,
+      action:() => openWarehouseReceipt({ receiptNumber:receipt.receipt_number })
+    }));
+    const block = contextBlock(doc, 'Trazabilidad · Proveedor y WR recibidos', items);
+    block.id = 'purchaseOperationalContext';
+    body.appendChild(block);
+  }
+
+  function decoratePurchases(frame) {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    installChildStyle(doc);
+    const win = frame.contentWindow;
+    if (typeof win.openPurchase !== 'function') win.openPurchase = id => win.openDetail?.(id);
+    const modal = doc.getElementById('detailModal');
+    if (modal && !frame.__purchaseOperationalObserver) {
+      frame.__purchaseOperationalObserver = new MutationObserver(() => {
+        renderPurchaseContext(frame).catch(error => console.error('[purchase operational context]', error));
+      });
+      frame.__purchaseOperationalObserver.observe(modal, { attributes:true, attributeFilter:['class'] });
+      const title = doc.getElementById('detailTitle');
+      if (title) frame.__purchaseOperationalObserver.observe(title, { childList:true, subtree:true });
+    }
+    renderPurchaseContext(frame).catch(error => console.error('[purchase operational context]', error));
+  }
+
+  async function renderWarehouseContext(frame) {
+    const doc = frame.contentDocument;
+    const modal = doc?.getElementById('detailModal');
+    if (!doc || !modal || modal.classList.contains('hidden')) return;
+    const receiptNumber = doc.getElementById('detailTitle')?.textContent?.trim();
+    if (!receiptNumber) return;
+    const purchases = await purchaseOrdersForReceipt(receiptNumber);
+    if (modal.classList.contains('hidden')) return;
+    const body = doc.getElementById('detailBody');
+    if (!body) return;
+    doc.getElementById('warehouseOperationalContext')?.remove();
+    const items = [
+      { label:'Ver en Inventario', primary:true, action:() => openInventoryReceipt(receiptNumber) },
+      ...purchases.map(po => ({ label:`Origen ${po.po_number}`, action:() => openPurchase({ purchaseOrderId:po.purchase_order_id }) }))
+    ];
+    const block = contextBlock(doc, 'Trazabilidad · PO de origen e Inventario', items);
+    block.id = 'warehouseOperationalContext';
+    body.appendChild(block);
+  }
+
+  function decorateWarehouse(frame) {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    installChildStyle(doc);
+    const modal = doc.getElementById('detailModal');
+    if (modal && !frame.__warehouseOperationalObserver) {
+      frame.__warehouseOperationalObserver = new MutationObserver(() => {
+        renderWarehouseContext(frame).catch(error => console.error('[warehouse operational context]', error));
+      });
+      frame.__warehouseOperationalObserver.observe(modal, { attributes:true, attributeFilter:['class'] });
+      const title = doc.getElementById('detailTitle');
+      if (title) frame.__warehouseOperationalObserver.observe(title, { childList:true, subtree:true });
+    }
+    renderWarehouseContext(frame).catch(error => console.error('[warehouse operational context]', error));
+  }
+
+  async function renderInventoryContext(frame, receiptNumber) {
+    const doc = frame.contentDocument;
+    if (!doc || !receiptNumber) return;
+    installChildStyle(doc);
+    let card = doc.getElementById('purchaseOriginCard');
+    if (!card) {
+      card = doc.createElement('section');
+      card.id = 'purchaseOriginCard';
+      card.className = 'card hidden';
+      const trace = doc.getElementById('traceView');
+      if (trace) trace.insertBefore(card, trace.firstChild);
+    }
+    const purchases = await purchaseOrdersForReceipt(receiptNumber);
+    card.innerHTML = '';
+    card.appendChild(contextBlock(doc, `Origen de compra · ${receiptNumber}`, purchases.map(po => ({
+      label:po.po_number,
+      action:() => openPurchase({ purchaseOrderId:po.purchase_order_id })
+    }))));
+    card.classList.remove('hidden');
+  }
+
+  function decorateInventory(frame) {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    installChildStyle(doc);
+    const win = frame.contentWindow;
+    if (!frame.__originalTraceWR && typeof win.traceWR === 'function') {
+      frame.__originalTraceWR = win.traceWR;
+      win.traceWR = receiptNumber => {
+        const result = frame.__originalTraceWR(receiptNumber);
+        renderInventoryContext(frame, String(receiptNumber || '').trim()).catch(error => console.error('[inventory purchase origin]', error));
+        return result;
+      };
+    }
+    const title = doc.getElementById('relatedLoadsTitle');
+    if (title && !frame.__inventoryOperationalObserver) {
+      frame.__inventoryOperationalObserver = new MutationObserver(() => {
+        const match = title.textContent.match(/·\s*(WR-[A-Z0-9-]+)/i);
+        if (match?.[1]) renderInventoryContext(frame, match[1]).catch(error => console.error('[inventory purchase origin]', error));
+      });
+      frame.__inventoryOperationalObserver.observe(title, { childList:true, subtree:true });
+    }
+  }
+
+  function decorateEmbedded(sectionId, frame = frameFor(sectionId)) {
+    if (!frame?.contentDocument || frame.contentDocument.readyState !== 'complete') return false;
+    try {
+      if (sectionId === 'suppliersSection') decorateSuppliers(frame);
+      if (sectionId === 'purchasesSection') decoratePurchases(frame);
+      if (sectionId === 'warehouseSection') decorateWarehouse(frame);
+      if (sectionId === 'inventorySection') decorateInventory(frame);
+      return true;
+    } catch (error) {
+      console.error('[operational navigation decorate]', sectionId, error);
+      return false;
+    }
+  }
+
+  function decorateAll() {
+    OPERATIONAL_SECTIONS.forEach(id => {
+      const frame = frameFor(id);
+      if (!frame) return;
+      if (frame.contentDocument?.readyState === 'complete') decorateEmbedded(id, frame);
+      else frame.addEventListener('load', () => decorateEmbedded(id, frame), { once:true });
+    });
+  }
+
+  function callEmbedded(sectionId, method, args = []) {
+    const frame = frameFor(sectionId);
+    if (!frame) return false;
+    const invoke = () => {
+      decorateEmbedded(sectionId, frame);
+      const fn = frame.contentWindow?.[method];
+      if (typeof fn !== 'function') return false;
+      fn(...args);
+      return true;
+    };
+    if (frame.contentDocument?.readyState === 'complete') {
+      requestAnimationFrame(invoke);
+      return true;
+    }
+    frame.addEventListener('load', () => requestAnimationFrame(invoke), { once:true });
+    return true;
   }
 
   function openTracking(context = {}, options = {}) {
@@ -228,8 +429,7 @@
 
   async function openLoadForShipment(shipmentId, options = {}) {
     const link = await loadForShipment(shipmentId);
-    if (!link) return false;
-    return openLoad({ loadId: link.load_id }, options);
+    return link ? openLoad({ loadId:link.load_id }, options) : false;
   }
 
   function openInventoryReceipt(receiptNumber, options = {}) {
@@ -270,215 +470,10 @@
     return true;
   }
 
-  async function showSupplierActivity(frame, supplierId) {
-    const doc = frame.contentDocument;
-    if (!doc) return false;
-    const supplierRow = doc.querySelector(`[data-edit="${CSS.escape(String(supplierId))}"]`)?.closest('.supplier-row');
-    const supplierName = supplierRow?.querySelector('.supplier-name')?.textContent?.trim() || 'Proveedor';
-    const [purchases, receipts] = await Promise.all([purchaseOrdersForSupplier(supplierId), receiptsForSupplier(supplierId)]);
-    let modal = doc.getElementById('b2SupplierActivityModal');
-    if (!modal) {
-      modal = doc.createElement('div');
-      modal.id = 'b2SupplierActivityModal';
-      modal.className = 'modal hidden';
-      modal.innerHTML = '<div class="dialog"><div class="dialog-head"><div><h2 id="b2SupplierActivityTitle"></h2><div class="supplier-meta">Purchase Orders y Warehouse Receipts vinculados por el proveedor maestro.</div></div><button class="btn" id="b2SupplierActivityClose">✕</button></div><div id="b2SupplierActivityBody"></div></div>';
-      doc.body.appendChild(modal);
-      doc.getElementById('b2SupplierActivityClose').onclick = () => modal.classList.add('hidden');
-      modal.addEventListener('click', event => { if (event.target === modal) modal.classList.add('hidden'); });
-    }
-    doc.getElementById('b2SupplierActivityTitle').textContent = supplierName;
-    const body = doc.getElementById('b2SupplierActivityBody');
-    body.innerHTML = '';
-    body.appendChild(navigationBlock(doc, 'Purchase Orders', purchases.map(po => ({
-      label:`${po.po_number} · ${po.status || 'sin estado'}`,
-      action:() => openPurchase({ purchaseOrderId:po.purchase_order_id })
-    }))));
-    body.appendChild(navigationBlock(doc, 'Warehouse Receipts', receipts.map(receipt => ({
-      label:`${receipt.receipt_number} · ${receipt.status === 'cancelled' ? 'Anulado' : 'Recibido'}`,
-      action:() => openWarehouseReceipt({ receiptNumber:receipt.receipt_number })
-    }))));
-    modal.classList.remove('hidden');
-    supplierRow?.scrollIntoView({ block:'center', behavior:'smooth' });
-    supplierRow?.classList.add('b2-opnav-highlight');
-    setTimeout(() => supplierRow?.classList.remove('b2-opnav-highlight'), 1600);
-    return true;
-  }
-
-  function decorateSuppliers(frame) {
-    const doc = frame.contentDocument;
-    if (!doc) return;
-    childStyle(doc);
-    const attach = () => {
-      doc.querySelectorAll('.supplier-row').forEach(row => {
-        const edit = row.querySelector('[data-edit]');
-        const actions = row.querySelector('.actions');
-        if (!edit || !actions || actions.querySelector('[data-b2-supplier-trace]')) return;
-        const button = makeButton(doc, 'Actividad', () => {
-          writeContext('supplier', edit.dataset.edit);
-          return showSupplierActivity(frame, edit.dataset.edit);
-        });
-        button.dataset.b2SupplierTrace = edit.dataset.edit;
-        actions.prepend(button);
-      });
-    };
-    attach();
-    if (!frame.__b2SupplierObserver) {
-      const target = doc.getElementById('supplierList');
-      if (target) {
-        frame.__b2SupplierObserver = new MutationObserver(attach);
-        frame.__b2SupplierObserver.observe(target, { childList:true, subtree:true });
-      }
-    }
-    frame.contentWindow.openSupplier = supplierId => showSupplierActivity(frame, supplierId);
-  }
-
-  async function renderPurchaseTrace(frame) {
-    const doc = frame.contentDocument;
-    if (!doc) return;
-    const modal = doc.getElementById('detailModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    const poNumber = doc.getElementById('detailTitle')?.textContent?.trim();
-    const purchase = await purchaseByNumber(poNumber);
-    if (!purchase?.purchase_order_id || modal.classList.contains('hidden')) return;
-    const body = doc.getElementById('detailBody');
-    if (!body) return;
-    doc.getElementById('b2PurchaseTrace')?.remove();
-    const items = [];
-    if (purchase.supplier_id) items.push({ label:'Ver proveedor', primary:true, action:() => openSupplier({ supplierId:purchase.supplier_id }) });
-    (purchase.receipts || []).forEach(receipt => items.push({
-      label:`${receipt.receipt_number}${receipt.status === 'cancelled' ? ' · anulado' : ''}`,
-      action:() => openWarehouseReceipt({ receiptNumber:receipt.receipt_number })
-    }));
-    const block = navigationBlock(doc, 'Trazabilidad · Proveedor y WR recibidos', items);
-    block.id = 'b2PurchaseTrace';
-    body.appendChild(block);
-  }
-
-  function decoratePurchases(frame) {
-    const doc = frame.contentDocument;
-    if (!doc) return;
-    childStyle(doc);
-    const win = frame.contentWindow;
-    if (typeof win.openPurchase !== 'function') win.openPurchase = purchaseOrderId => win.openDetail?.(purchaseOrderId);
-    const modal = doc.getElementById('detailModal');
-    if (modal && !frame.__b2PurchaseObserver) {
-      frame.__b2PurchaseObserver = new MutationObserver(() => {
-        renderPurchaseTrace(frame).catch(error => console.error('[purchase traceability]', error));
-      });
-      frame.__b2PurchaseObserver.observe(modal, { attributes:true, attributeFilter:['class'] });
-      const title = doc.getElementById('detailTitle');
-      if (title) frame.__b2PurchaseObserver.observe(title, { childList:true, subtree:true });
-    }
-    renderPurchaseTrace(frame).catch(error => console.error('[purchase traceability]', error));
-  }
-
-  async function renderWarehouseTrace(frame) {
-    const doc = frame.contentDocument;
-    if (!doc) return;
-    const modal = doc.getElementById('detailModal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    const receiptNumber = doc.getElementById('detailTitle')?.textContent?.trim();
-    if (!receiptNumber) return;
-    const purchases = await purchaseOrdersForReceipt(receiptNumber);
-    const body = doc.getElementById('detailBody');
-    if (!body || modal.classList.contains('hidden')) return;
-    doc.getElementById('b2WarehouseTrace')?.remove();
-    const items = [
-      { label:'Ver en Inventario', primary:true, action:() => openInventoryReceipt(receiptNumber) },
-      ...purchases.map(po => ({ label:`Origen ${po.po_number}`, action:() => openPurchase({ purchaseOrderId:po.purchase_order_id }) }))
-    ];
-    const block = navigationBlock(doc, 'Trazabilidad · PO de origen e Inventario', items);
-    block.id = 'b2WarehouseTrace';
-    body.appendChild(block);
-  }
-
-  function decorateWarehouse(frame) {
-    const doc = frame.contentDocument;
-    if (!doc) return;
-    childStyle(doc);
-    const modal = doc.getElementById('detailModal');
-    if (modal && !frame.__b2WarehouseObserver) {
-      frame.__b2WarehouseObserver = new MutationObserver(() => {
-        renderWarehouseTrace(frame).catch(error => console.error('[warehouse traceability]', error));
-      });
-      frame.__b2WarehouseObserver.observe(modal, { attributes:true, attributeFilter:['class'] });
-      const title = doc.getElementById('detailTitle');
-      if (title) frame.__b2WarehouseObserver.observe(title, { childList:true, subtree:true });
-    }
-    renderWarehouseTrace(frame).catch(error => console.error('[warehouse traceability]', error));
-  }
-
-  async function renderInventoryOrigins(frame, receiptNumber) {
-    const doc = frame.contentDocument;
-    if (!doc || !receiptNumber) return;
-    let card = doc.getElementById('b2PurchaseOriginsCard');
-    if (!card) {
-      card = doc.createElement('section');
-      card.id = 'b2PurchaseOriginsCard';
-      card.className = 'card hidden';
-      const traceView = doc.getElementById('traceView');
-      if (traceView) traceView.insertBefore(card, traceView.firstChild);
-    }
-    const purchases = await purchaseOrdersForReceipt(receiptNumber);
-    card.innerHTML = '';
-    const block = navigationBlock(doc, `Origen de compra · ${receiptNumber}`, purchases.map(po => ({
-      label:po.po_number,
-      action:() => openPurchase({ purchaseOrderId:po.purchase_order_id })
-    })));
-    card.appendChild(block);
-    card.classList.remove('hidden');
-  }
-
-  function decorateInventory(frame) {
-    const doc = frame.contentDocument;
-    if (!doc) return;
-    childStyle(doc);
-    const win = frame.contentWindow;
-    if (!frame.__b2OriginalTraceWR && typeof win.traceWR === 'function') {
-      frame.__b2OriginalTraceWR = win.traceWR;
-      win.traceWR = receiptNumber => {
-        const result = frame.__b2OriginalTraceWR(receiptNumber);
-        renderInventoryOrigins(frame, String(receiptNumber || '').trim()).catch(error => console.error('[inventory purchase origins]', error));
-        return result;
-      };
-    }
-    const title = doc.getElementById('relatedLoadsTitle');
-    if (title && !frame.__b2InventoryObserver) {
-      frame.__b2InventoryObserver = new MutationObserver(() => {
-        const match = title.textContent.match(/·\s*(WR-[A-Z0-9-]+)/i);
-        if (match?.[1]) renderInventoryOrigins(frame, match[1]).catch(error => console.error('[inventory purchase origins]', error));
-      });
-      frame.__b2InventoryObserver.observe(title, { childList:true, subtree:true });
-    }
-  }
-
-  function decorateEmbedded(sectionId, frame = embeddedFrame(sectionId)) {
-    if (!frame?.contentDocument || frame.contentDocument.readyState !== 'complete') return false;
-    try {
-      if (sectionId === 'suppliersSection') decorateSuppliers(frame);
-      if (sectionId === 'purchasesSection') decoratePurchases(frame);
-      if (sectionId === 'warehouseSection') decorateWarehouse(frame);
-      if (sectionId === 'inventorySection') decorateInventory(frame);
-      return true;
-    } catch (error) {
-      console.error('[operational navigation decorate]', sectionId, error);
-      return false;
-    }
-  }
-
-  function decorateAllEmbedded() {
-    ['suppliersSection','purchasesSection','warehouseSection','inventorySection'].forEach(sectionId => {
-      const frame = embeddedFrame(sectionId);
-      if (!frame) return;
-      if (frame.contentDocument?.readyState === 'complete') decorateEmbedded(sectionId, frame);
-      else frame.addEventListener('load', () => decorateEmbedded(sectionId, frame), { once:true });
-    });
-  }
-
   async function restoreContext() {
     const context = readContext();
-    if (!context || restoringContext) return false;
-    restoringContext = true;
+    if (!context || restoring) return false;
+    restoring = true;
     try {
       if (context.type === 'tracking') return openTracking({ shipmentId:context.id }, { history:false });
       if (context.type === 'load') return openLoad({ loadId:context.id }, { history:false });
@@ -489,19 +484,19 @@
       if (context.type === 'expediente') return openExpediente(context.id, { history:false });
       return false;
     } finally {
-      restoringContext = false;
+      restoring = false;
     }
   }
 
-  window.addEventListener('hashchange', () => { restoreContext().catch(error => console.error('[operational navigation restore]', error)); });
-  window.addEventListener('popstate', () => { restoreContext().catch(error => console.error('[operational navigation restore]', error)); });
+  window.addEventListener('hashchange', () => restoreContext().catch(error => console.error('[operational context restore]', error)));
+  window.addEventListener('popstate', () => restoreContext().catch(error => console.error('[operational context restore]', error)));
   window.addEventListener('export-mca:data-loaded', () => {
     invalidateLinks();
-    decorateAllEmbedded();
-    restoreContext().catch(error => console.error('[operational navigation restore]', error));
+    decorateAll();
+    restoreContext().catch(error => console.error('[operational context restore]', error));
   });
-  window.addEventListener('export-mca:section-changed', () => requestAnimationFrame(decorateAllEmbedded));
-  window.addEventListener('load', () => requestAnimationFrame(decorateAllEmbedded), { once:true });
+  window.addEventListener('export-mca:section-changed', () => requestAnimationFrame(decorateAll));
+  window.addEventListener('load', () => requestAnimationFrame(decorateAll), { once:true });
 
   window.OperationalNavigation = Object.freeze({
     openTracking,
@@ -522,9 +517,9 @@
     purchaseByNumber,
     receiptByNumber,
     restoreContext,
-    refreshLinks: () => requestLinks({ refresh:true }),
-    owner: 'operational-navigation.js'
+    refreshLinks:() => requestLinks({ refresh:true }),
+    owner:'operational-navigation.js'
   });
 
-  requestAnimationFrame(decorateAllEmbedded);
+  requestAnimationFrame(decorateAll);
 })();
