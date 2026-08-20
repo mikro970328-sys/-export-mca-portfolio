@@ -14,7 +14,7 @@
 
   async function requestLinks({ refresh = false } = {}) {
     if (!refresh && cache) return cache;
-    if (!refresh && pending) return pending;
+    if (pending) return pending;
     const token = localStorage.getItem('export_mca_token') || '';
     pending = fetch('/api/operational-links', { headers:token ? { Authorization:`Bearer ${token}` } : {} })
       .then(async response => {
@@ -132,10 +132,11 @@
       if (win.OperationalContextBridge?.ready) return resolve(true);
 
       let settled = false;
+      let timer = null;
       const finish = value => {
         if (settled) return;
         settled = true;
-        clearTimeout(timer);
+        if (timer) clearTimeout(timer);
         resolve(value);
       };
       const ready = () => finish(true);
@@ -151,7 +152,7 @@
         (doc.head || doc.documentElement).appendChild(script);
       }
 
-      const timer = setTimeout(() => finish(Boolean(win.OperationalContextBridge?.ready)), 2500);
+      timer = setTimeout(() => finish(Boolean(win.OperationalContextBridge?.ready)), 2500);
     });
 
     if (frame.contentDocument?.readyState === 'complete') return inject();
@@ -300,6 +301,7 @@
     receiptsForPurchase,
     purchaseByNumber,
     receiptByNumber,
+    invalidateLinks,
     restoreContext,
     refreshLinks:() => requestLinks({ refresh:true }),
     owner:'operational-navigation.js'
