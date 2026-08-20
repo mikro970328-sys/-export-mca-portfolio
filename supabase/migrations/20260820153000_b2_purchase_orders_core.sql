@@ -23,6 +23,9 @@ create table public.purchase_orders (
   constraint purchase_orders_status_check check (status in ('draft','issued','confirmed','closed','cancelled'))
 );
 
+alter sequence public.purchase_order_number_seq owned by public.purchase_orders.po_number;
+alter table public.purchase_orders enable row level security;
+
 create index purchase_orders_supplier_id_idx on public.purchase_orders(supplier_id);
 create index purchase_orders_warehouse_id_idx on public.purchase_orders(warehouse_id) where warehouse_id is not null;
 create index purchase_orders_status_idx on public.purchase_orders(status);
@@ -55,6 +58,8 @@ create table public.purchase_order_items (
   constraint purchase_order_items_currency_check check (currency ~ '^[A-Z]{3}$')
 );
 
+alter table public.purchase_order_items enable row level security;
+
 create index purchase_order_items_purchase_order_id_idx on public.purchase_order_items(purchase_order_id);
 create index purchase_order_items_product_id_idx on public.purchase_order_items(product_id);
 
@@ -75,17 +80,20 @@ create table public.purchase_receipt_allocations (
   constraint purchase_receipt_allocations_source_unique unique (purchase_order_item_id, receipt_item_id)
 );
 
+alter table public.purchase_receipt_allocations enable row level security;
+
 create index purchase_receipt_allocations_po_item_idx on public.purchase_receipt_allocations(purchase_order_item_id);
 create index purchase_receipt_allocations_receipt_item_idx on public.purchase_receipt_allocations(receipt_item_id);
 create index purchase_receipt_allocations_created_by_idx on public.purchase_receipt_allocations(created_by) where created_by is not null;
 
-create or replace function public.validate_purchase_order_item_unit()
+create or replace function public.validate_purchase_order_item()
 returns trigger
 language plpgsql
 set search_path to 'public'
 as $function$
 declare
   v_product_unit text;
+  v_po_currency text;
 begin
   select unit into v_product_unit
   from public.products
@@ -99,13 +107,25 @@ begin
     raise exception 'PO_UNIT_MUST_MATCH_PRODUCT';
   end if;
 
+  select currency into v_po_currency
+  from public.purchase_orders
+  where id = new.purchase_order_id;
+
+  if not found then
+    raise exception 'PO_NOT_FOUND';
+  end if;
+
+  if new.currency is distinct from v_po_currency then
+    raise exception 'PO_ITEM_CURRENCY_MUST_MATCH_PO';
+  end if;
+
   return new;
 end;
 $function$;
 
-create trigger purchase_order_items_validate_unit
-before insert or update of product_id, unit on public.purchase_order_items
-for each row execute function public.validate_purchase_order_item_unit();
+create trigger purchase_order_items_validate
+before insert or update of purchase_order_id, product_id, unit, currency on public.purchase_order_items
+for each row execute function public.validate_purchase_order_item();
 
 create or replace function public.guard_purchase_order_item_structure()
 returns trigger
@@ -135,6 +155,14 @@ language plpgsql
 set search_path to 'public'
 as $function$
 begin
+  if new.currency is distinct from old.currency
+     and exists (
+       select 1 from public.purchase_order_items
+       where purchase_order_id = old.id
+     ) then
+    raise exception 'PO_CURRENCY_HAS_ITEMS';
+  end if;
+
   if (new.supplier_id is distinct from old.supplier_id
       or new.warehouse_id is distinct from old.warehouse_id)
      and exists (
@@ -150,7 +178,7 @@ end;
 $function$;
 
 create trigger purchase_orders_guard_structure
-before update of supplier_id, warehouse_id on public.purchase_orders
+before update of supplier_id, warehouse_id, currency on public.purchase_orders
 for each row execute function public.guard_purchase_order_structure();
 
 create or replace function public.validate_purchase_receipt_allocation()
@@ -212,7 +240,7 @@ begin
     into v_existing_quantity, v_existing_pallets
   from public.purchase_receipt_allocations
   where receipt_item_id = new.receipt_item_id
-    and id <> coalesce(new.id, gen_random_uuid());
+    and id <> new.id;
 
   if v_existing_quantity + new.received_quantity > v_wr_quantity
      or v_existing_pallets + new.received_pallets > v_wr_pallets then
@@ -227,7 +255,9 @@ create trigger purchase_receipt_allocations_validate
 before insert or update on public.purchase_receipt_allocations
 for each row execute function public.validate_purchase_receipt_allocation();
 
-create or replace view public.purchase_order_item_progress as
+create or replace view public.purchase_order_item_progress
+with (security_invoker = true)
+as
 select
   poi.id as purchase_order_item_id,
   poi.purchase_order_id,
@@ -259,7 +289,9 @@ from public.purchase_order_items poi
 left join public.purchase_receipt_allocations pra on pra.purchase_order_item_id = poi.id
 group by poi.id;
 
-create or replace view public.purchase_order_progress as
+create or replace view public.purchase_order_progress
+with (security_invoker = true)
+as
 select
   po.id as purchase_order_id,
   po.po_number,
