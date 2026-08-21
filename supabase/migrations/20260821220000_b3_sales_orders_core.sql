@@ -3,11 +3,10 @@
 -- No crea, reserva ni descuenta inventario.
 -- Cargues sigue siendo el único propietario de la reserva física por WR.
 
-create sequence if not exists public.sales_order_number_seq;
-
 create table public.sales_orders (
   id uuid primary key default gen_random_uuid(),
-  so_number text not null unique default ('SO-' || lpad(nextval('public.sales_order_number_seq'::regclass)::text, 4, '0')),
+  so_serial bigint generated always as identity,
+  so_number text generated always as ('SO-' || lpad(so_serial::text, 4, '0')) stored,
   client_id uuid not null references public.clients(id) on delete restrict,
   importer_id uuid references public.importers(id) on delete restrict,
   order_date date not null default current_date,
@@ -19,7 +18,7 @@ create table public.sales_orders (
   created_by uuid references public.admin_users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint sales_orders_so_number_not_blank check (btrim(so_number) <> ''),
+  constraint sales_orders_so_number_unique unique (so_number),
   constraint sales_orders_currency_check check (currency ~ '^[A-Z]{3}$'),
   constraint sales_orders_status_check check (status in ('draft','confirmed','closed','cancelled')),
   constraint sales_orders_client_importer_fkey
@@ -28,7 +27,6 @@ create table public.sales_orders (
     on delete restrict
 );
 
-alter sequence public.sales_order_number_seq owned by public.sales_orders.so_number;
 alter table public.sales_orders enable row level security;
 
 create index sales_orders_client_id_idx on public.sales_orders(client_id);
@@ -107,6 +105,19 @@ create trigger sales_orders_prevent_delete
 before delete on public.sales_orders
 for each row execute function public.prevent_sales_order_delete();
 
+alter table public.loads
+  add column client_id uuid references public.clients(id) on delete restrict,
+  add column importer_id uuid references public.importers(id) on delete restrict,
+  add constraint loads_sales_client_importer_presence_check
+    check (importer_id is null or client_id is not null),
+  add constraint loads_sales_client_importer_fkey
+    foreign key (client_id, importer_id)
+    references public.client_importers(client_id, importer_id)
+    on delete restrict;
+
+create index loads_client_id_idx on public.loads(client_id) where client_id is not null;
+create index loads_importer_id_idx on public.loads(importer_id) where importer_id is not null;
+
 create table public.sales_order_items (
   id uuid primary key default gen_random_uuid(),
   sales_order_id uuid not null references public.sales_orders(id) on delete restrict,
@@ -159,6 +170,85 @@ create index sales_fulfillment_allocations_created_by_idx on public.sales_fulfil
 create trigger sales_fulfillment_allocations_set_updated_at
 before update on public.sales_fulfillment_allocations
 for each row execute function public.set_erp_updated_at();
+
+create or replace function public.guard_load_sales_context()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $function$
+declare
+  v_shipment_client_id uuid;
+  v_shipment_importer_id uuid;
+begin
+  if new.client_id is not distinct from old.client_id
+     and new.importer_id is not distinct from old.importer_id then
+    return new;
+  end if;
+
+  if exists (
+    select 1
+    from public.load_items li
+    join public.sales_fulfillment_allocations sfa on sfa.load_item_id = li.id
+    where li.load_id = old.id
+  ) then
+    raise exception 'LOAD_HAS_SALES_ALLOCATIONS';
+  end if;
+
+  if new.shipment_id is not null then
+    select client_id, importer_id
+      into v_shipment_client_id, v_shipment_importer_id
+    from public.shipments
+    where id = new.shipment_id;
+
+    if new.client_id is distinct from v_shipment_client_id
+       or new.importer_id is distinct from v_shipment_importer_id then
+      raise exception 'LOAD_SALES_CONTEXT_SHIPMENT_MISMATCH';
+    end if;
+  end if;
+
+  return new;
+end;
+$function$;
+
+create trigger loads_guard_sales_context
+before update of client_id, importer_id on public.loads
+for each row execute function public.guard_load_sales_context();
+
+create or replace function public.validate_load_shipment_sales_context()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $function$
+declare
+  v_shipment_client_id uuid;
+  v_shipment_importer_id uuid;
+begin
+  if new.shipment_id is null
+     or (new.client_id is null and new.importer_id is null) then
+    return new;
+  end if;
+
+  select client_id, importer_id
+    into v_shipment_client_id, v_shipment_importer_id
+  from public.shipments
+  where id = new.shipment_id;
+
+  if not found then
+    raise exception 'SHIPMENT_NOT_FOUND';
+  end if;
+
+  if new.client_id is distinct from v_shipment_client_id
+     or new.importer_id is distinct from v_shipment_importer_id then
+    raise exception 'LOAD_SALES_CONTEXT_SHIPMENT_MISMATCH';
+  end if;
+
+  return new;
+end;
+$function$;
+
+create trigger loads_validate_shipment_sales_context
+before update of shipment_id on public.loads
+for each row execute function public.validate_load_shipment_sales_context();
 
 create or replace function public.validate_sales_order_item()
 returns trigger
@@ -282,7 +372,6 @@ language plpgsql
 set search_path to 'public'
 as $function$
 declare
-  v_so_id uuid;
   v_client_id uuid;
   v_importer_id uuid;
   v_so_status text;
@@ -293,18 +382,22 @@ declare
 
   v_load_id uuid;
   v_load_status text;
+  v_load_client_id uuid;
+  v_load_importer_id uuid;
+  v_load_shipment_id uuid;
   v_load_product_id uuid;
   v_load_unit text;
   v_load_quantity numeric;
   v_load_pallets numeric;
 
+  v_shipment_client_id uuid;
+  v_shipment_importer_id uuid;
   v_existing_so_quantity numeric;
   v_existing_so_pallets numeric;
   v_existing_load_quantity numeric;
   v_existing_load_pallets numeric;
 begin
   select
-    so.id,
     so.client_id,
     so.importer_id,
     so.status,
@@ -313,7 +406,6 @@ begin
     soi.ordered_quantity,
     soi.ordered_pallets
   into
-    v_so_id,
     v_client_id,
     v_importer_id,
     v_so_status,
@@ -337,6 +429,9 @@ begin
   select
     li.load_id,
     l.status,
+    l.client_id,
+    l.importer_id,
+    l.shipment_id,
     li.product_id,
     li.unit,
     li.planned_quantity,
@@ -344,6 +439,9 @@ begin
   into
     v_load_id,
     v_load_status,
+    v_load_client_id,
+    v_load_importer_id,
+    v_load_shipment_id,
     v_load_product_id,
     v_load_unit,
     v_load_quantity,
@@ -410,19 +508,25 @@ begin
     raise exception 'SO_ALLOCATION_EXCEEDS_LOAD_ITEM';
   end if;
 
-  if exists (
-    select 1
-    from public.sales_fulfillment_allocations other
-    join public.sales_order_items other_item on other_item.id = other.sales_order_item_id
-    join public.sales_orders other_so on other_so.id = other_item.sales_order_id
-    join public.load_items other_li on other_li.id = other.load_item_id
-    where other_li.load_id = v_load_id
-      and other.id <> new.id
-      and (
-        other_so.client_id is distinct from v_client_id
-        or other_so.importer_id is distinct from v_importer_id
-      )
-  ) then
+  if v_load_client_id is null and v_load_importer_id is null then
+    if v_load_shipment_id is not null then
+      select client_id, importer_id
+        into v_shipment_client_id, v_shipment_importer_id
+      from public.shipments
+      where id = v_load_shipment_id;
+
+      if v_shipment_client_id is distinct from v_client_id
+         or v_shipment_importer_id is distinct from v_importer_id then
+        raise exception 'LOAD_SALES_CONTEXT_SHIPMENT_MISMATCH';
+      end if;
+    end if;
+
+    update public.loads
+    set client_id = v_client_id,
+        importer_id = v_importer_id
+    where id = v_load_id;
+  elsif v_load_client_id is distinct from v_client_id
+        or v_load_importer_id is distinct from v_importer_id then
     raise exception 'LOAD_SALES_CONTEXT_MISMATCH';
   end if;
 
@@ -466,6 +570,59 @@ $function$;
 create trigger sales_fulfillment_allocations_guard_mutation
 before update or delete on public.sales_fulfillment_allocations
 for each row execute function public.guard_sales_fulfillment_allocation_mutation();
+
+create or replace function public.clear_load_sales_context_after_allocation_change()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $function$
+declare
+  v_old_load_id uuid;
+begin
+  select load_id into v_old_load_id
+  from public.load_items
+  where id = old.load_item_id;
+
+  if v_old_load_id is null then
+    if tg_op = 'DELETE' then
+      return old;
+    end if;
+    return new;
+  end if;
+
+  if tg_op = 'UPDATE' and new.load_item_id = old.load_item_id then
+    return new;
+  end if;
+
+  if not exists (
+       select 1
+       from public.load_items li
+       join public.sales_fulfillment_allocations sfa on sfa.load_item_id = li.id
+       where li.load_id = v_old_load_id
+     )
+     and exists (
+       select 1
+       from public.loads l
+       where l.id = v_old_load_id
+         and l.status = 'draft'
+         and l.shipment_id is null
+     ) then
+    update public.loads
+    set client_id = null,
+        importer_id = null
+    where id = v_old_load_id;
+  end if;
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end;
+$function$;
+
+create trigger sales_fulfillment_allocations_clear_old_load_context
+after update or delete on public.sales_fulfillment_allocations
+for each row execute function public.clear_load_sales_context_after_allocation_change();
 
 create or replace view public.sales_order_item_progress
 with (security_invoker = true)
@@ -664,6 +821,8 @@ create trigger sales_orders_guard_status
 before update of status on public.sales_orders
 for each row execute function public.guard_sales_order_status();
 
+comment on column public.loads.client_id is 'Contexto comercial del Cargue. Debe coincidir con todas las Sales Orders vinculadas y con el contenedor si existe.';
+comment on column public.loads.importer_id is 'Importador del contexto comercial del Cargue. Nullable; si existe debe pertenecer al cliente mediante client_importers.';
 comment on table public.sales_orders is 'Orden comercial de venta. Representa demanda del cliente y no modifica inventario.';
 comment on table public.sales_order_items is 'Líneas comerciales de Sales Order. ordered_quantity está expresada en unit y unit_price usa la moneda de la cabecera.';
 comment on table public.sales_fulfillment_allocations is 'Trazabilidad comercial entre líneas vendidas y líneas de Cargue. El estado físico se deriva del estado del Cargue.';
