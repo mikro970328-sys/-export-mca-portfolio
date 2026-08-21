@@ -93,9 +93,23 @@ create trigger sales_orders_validate_parties
 before insert or update of client_id, importer_id on public.sales_orders
 for each row execute function public.validate_sales_order_parties();
 
+create or replace function public.prevent_sales_order_delete()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $function$
+begin
+  raise exception 'SO_DELETE_NOT_ALLOWED';
+end;
+$function$;
+
+create trigger sales_orders_prevent_delete
+before delete on public.sales_orders
+for each row execute function public.prevent_sales_order_delete();
+
 create table public.sales_order_items (
   id uuid primary key default gen_random_uuid(),
-  sales_order_id uuid not null references public.sales_orders(id) on delete cascade,
+  sales_order_id uuid not null references public.sales_orders(id) on delete restrict,
   product_id uuid not null references public.products(id) on delete restrict,
   ordered_quantity numeric not null,
   ordered_pallets numeric not null default 0,
@@ -562,6 +576,8 @@ as $function$
 declare
   v_item_count integer;
   v_incomplete_count integer;
+  v_client_active boolean;
+  v_importer_active boolean;
 begin
   if new.status = old.status then
     return new;
@@ -585,6 +601,35 @@ begin
 
   if new.status = 'confirmed' and v_item_count = 0 then
     raise exception 'SO_HAS_NO_ITEMS';
+  end if;
+
+  if new.status = 'confirmed' then
+    select active into v_client_active
+    from public.clients
+    where id = old.client_id;
+
+    if v_client_active is not true then
+      raise exception 'SO_CLIENT_INACTIVE';
+    end if;
+
+    if old.importer_id is not null then
+      select active into v_importer_active
+      from public.importers
+      where id = old.importer_id;
+
+      if v_importer_active is not true then
+        raise exception 'SO_IMPORTER_INACTIVE';
+      end if;
+
+      if not exists (
+        select 1
+        from public.client_importers
+        where client_id = old.client_id
+          and importer_id = old.importer_id
+      ) then
+        raise exception 'SO_CLIENT_IMPORTER_MISMATCH';
+      end if;
+    end if;
   end if;
 
   if new.status = 'closed' then
