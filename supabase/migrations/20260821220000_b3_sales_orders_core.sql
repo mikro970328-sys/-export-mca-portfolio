@@ -821,6 +821,30 @@ create trigger sales_orders_guard_status
 before update of status on public.sales_orders
 for each row execute function public.guard_sales_order_status();
 
+revoke all on table public.sales_orders from anon, authenticated;
+revoke all on table public.sales_order_items from anon, authenticated;
+revoke all on table public.sales_fulfillment_allocations from anon, authenticated;
+revoke all on table public.sales_order_item_progress from anon, authenticated;
+revoke all on table public.sales_order_progress from anon, authenticated;
+
+grant all on table public.sales_orders to service_role;
+grant all on table public.sales_order_items to service_role;
+grant all on table public.sales_fulfillment_allocations to service_role;
+grant select on table public.sales_order_item_progress to service_role;
+grant select on table public.sales_order_progress to service_role;
+
+revoke all on function public.validate_sales_order_parties() from public, anon, authenticated;
+revoke all on function public.prevent_sales_order_delete() from public, anon, authenticated;
+revoke all on function public.guard_load_sales_context() from public, anon, authenticated;
+revoke all on function public.validate_load_shipment_sales_context() from public, anon, authenticated;
+revoke all on function public.validate_sales_order_item() from public, anon, authenticated;
+revoke all on function public.guard_sales_order_item_delete() from public, anon, authenticated;
+revoke all on function public.guard_sales_order_structure() from public, anon, authenticated;
+revoke all on function public.validate_sales_fulfillment_allocation() from public, anon, authenticated;
+revoke all on function public.guard_sales_fulfillment_allocation_mutation() from public, anon, authenticated;
+revoke all on function public.clear_load_sales_context_after_allocation_change() from public, anon, authenticated;
+revoke all on function public.guard_sales_order_status() from public, anon, authenticated;
+
 comment on column public.loads.client_id is 'Contexto comercial del Cargue. Debe coincidir con todas las Sales Orders vinculadas y con el contenedor si existe.';
 comment on column public.loads.importer_id is 'Importador del contexto comercial del Cargue. Nullable; si existe debe pertenecer al cliente mediante client_importers.';
 comment on table public.sales_orders is 'Orden comercial de venta. Representa demanda del cliente y no modifica inventario.';
