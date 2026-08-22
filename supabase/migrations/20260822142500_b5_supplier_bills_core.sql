@@ -99,7 +99,10 @@ create table public.supplier_payments (
   constraint supplier_payments_currency_check check (currency ~ '^[A-Z]{3}$'),
   constraint supplier_payments_status_check check (status in ('posted','reversed')),
   constraint supplier_payments_method_not_blank check (method is null or btrim(method) <> ''),
-  constraint supplier_payments_reference_not_blank check (reference is null or btrim(reference) <> '')
+  constraint supplier_payments_reference_not_blank check (reference is null or btrim(reference) <> ''),
+  constraint supplier_payments_reversal_reason_not_blank check (
+    reversal_reason is null or btrim(reversal_reason) <> ''
+  )
 );
 
 alter table public.supplier_payments enable row level security;
@@ -108,6 +111,7 @@ create index supplier_payments_supplier_idx on public.supplier_payments(supplier
 create index supplier_payments_status_idx on public.supplier_payments(status);
 create index supplier_payments_date_idx on public.supplier_payments(payment_date desc);
 create index supplier_payments_created_by_idx on public.supplier_payments(created_by) where created_by is not null;
+create index supplier_payments_reversed_by_idx on public.supplier_payments(reversed_by) where reversed_by is not null;
 
 create trigger supplier_payments_set_updated_at
 before update on public.supplier_payments
@@ -129,7 +133,7 @@ create index supplier_payment_applications_payment_idx on public.supplier_paymen
 create index supplier_payment_applications_bill_idx on public.supplier_payment_applications(supplier_bill_id);
 create index supplier_payment_applications_created_by_idx on public.supplier_payment_applications(created_by) where created_by is not null;
 
--- Header source-of-truth: supplier and currency always come from the PO.
+-- Header source-of-truth: supplier and currency always come from an immutable PO context.
 create or replace function public.validate_supplier_bill_header()
 returns trigger
 language plpgsql
@@ -144,11 +148,12 @@ begin
   where id = new.purchase_order_id;
 
   if not found then raise exception 'SUPPLIER_BILL_PO_NOT_FOUND'; end if;
-  if v_po.status = 'cancelled' then raise exception 'SUPPLIER_BILL_PO_CANCELLED'; end if;
+  if v_po.status not in ('issued','confirmed','closed') then
+    raise exception 'SUPPLIER_BILL_PO_NOT_BILLABLE';
+  end if;
 
   new.supplier_id := v_po.supplier_id;
   new.currency := v_po.currency;
-
   return new;
 end;
 $function$;
@@ -157,6 +162,38 @@ create trigger supplier_bills_validate_header
 before insert or update of purchase_order_id, supplier_id, currency on public.supplier_bills
 for each row execute function public.validate_supplier_bill_header();
 
+create or replace function public.guard_supplier_bill_header_mutation()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $function$
+declare
+  v_business_changed boolean;
+begin
+  v_business_changed :=
+    new.purchase_order_id is distinct from old.purchase_order_id
+    or new.supplier_invoice_number is distinct from old.supplier_invoice_number
+    or new.bill_date is distinct from old.bill_date
+    or new.due_date is distinct from old.due_date
+    or new.currency is distinct from old.currency
+    or new.notes is distinct from old.notes;
+
+  if new.status is distinct from old.status and v_business_changed then
+    raise exception 'SUPPLIER_BILL_TRANSITION_WITH_HEADER_CHANGE';
+  end if;
+
+  if old.status <> 'draft' and v_business_changed then
+    raise exception 'SUPPLIER_BILL_HEADER_LOCKED';
+  end if;
+
+  return new;
+end;
+$function$;
+
+create trigger supplier_bills_guard_header_mutation
+before update on public.supplier_bills
+for each row execute function public.guard_supplier_bill_header_mutation();
+
 create or replace function public.guard_supplier_bill_status_transition()
 returns trigger
 language plpgsql
@@ -164,6 +201,8 @@ set search_path to 'public'
 as $function$
 declare
   v_transition text;
+  v_has_items boolean;
+  v_has_active_payments boolean;
 begin
   if tg_op = 'INSERT' then
     if new.status <> 'draft' then raise exception 'SUPPLIER_BILL_MUST_START_DRAFT'; end if;
@@ -173,9 +212,35 @@ begin
   if new.status is not distinct from old.status then return new; end if;
   v_transition := current_setting('export_mca.supplier_bill_transition', true);
 
-  if old.status = 'draft' and new.status = 'posted' and v_transition = 'post' then return new; end if;
-  if old.status = 'draft' and new.status = 'void' and v_transition = 'void' then return new; end if;
-  if old.status = 'posted' and new.status = 'void' and v_transition = 'void' then return new; end if;
+  if old.status = 'draft' and new.status = 'posted' and v_transition = 'post' then
+    if new.supplier_invoice_number is null or btrim(new.supplier_invoice_number) = '' then
+      raise exception 'SUPPLIER_BILL_INVOICE_NUMBER_REQUIRED';
+    end if;
+
+    select exists (
+      select 1 from public.supplier_bill_items where supplier_bill_id = old.id
+    ) into v_has_items;
+    if not v_has_items then raise exception 'SUPPLIER_BILL_HAS_NO_ITEMS'; end if;
+
+    return new;
+  end if;
+
+  if old.status = 'draft' and new.status = 'void' and v_transition = 'void' then
+    return new;
+  end if;
+
+  if old.status = 'posted' and new.status = 'void' and v_transition = 'void' then
+    select exists (
+      select 1
+      from public.supplier_payment_applications spa
+      join public.supplier_payments sp on sp.id = spa.supplier_payment_id
+      where spa.supplier_bill_id = old.id
+        and sp.status = 'posted'
+    ) into v_has_active_payments;
+
+    if v_has_active_payments then raise exception 'SUPPLIER_BILL_HAS_ACTIVE_PAYMENTS'; end if;
+    return new;
+  end if;
 
   raise exception 'INVALID_SUPPLIER_BILL_STATUS_TRANSITION: % -> %', old.status, new.status;
 end;
@@ -252,7 +317,11 @@ as $function$
 declare
   v_status text;
 begin
-  select status into v_status from public.supplier_bills where id = old.supplier_bill_id for update;
+  select status into v_status
+  from public.supplier_bills
+  where id = old.supplier_bill_id
+  for update;
+
   if v_status is distinct from 'draft' then raise exception 'SUPPLIER_BILL_ITEMS_LOCKED'; end if;
   return old;
 end;
@@ -262,7 +331,7 @@ create trigger supplier_bill_items_guard_delete
 before delete on public.supplier_bill_items
 for each row execute function public.guard_supplier_bill_item_delete();
 
--- Payment header source-of-truth: supplier and currency come from the referenced PO.
+-- Payment header source-of-truth: supplier and currency come from an immutable PO context.
 create or replace function public.validate_supplier_payment_header()
 returns trigger
 language plpgsql
@@ -277,7 +346,9 @@ begin
   where id = new.purchase_order_id;
 
   if not found then raise exception 'SUPPLIER_PAYMENT_PO_NOT_FOUND'; end if;
-  if v_po.status = 'cancelled' then raise exception 'SUPPLIER_PAYMENT_PO_CANCELLED'; end if;
+  if v_po.status not in ('issued','confirmed','closed') then
+    raise exception 'SUPPLIER_PAYMENT_PO_NOT_PAYABLE';
+  end if;
 
   new.supplier_id := v_po.supplier_id;
   new.currency := v_po.currency;
@@ -296,6 +367,7 @@ set search_path to 'public'
 as $function$
 declare
   v_transition text;
+  v_business_changed boolean;
 begin
   if tg_op = 'INSERT' then
     if new.status <> 'posted' then raise exception 'SUPPLIER_PAYMENT_MUST_START_POSTED'; end if;
@@ -304,16 +376,32 @@ begin
 
   if tg_op = 'DELETE' then raise exception 'SUPPLIER_PAYMENT_DELETE_FORBIDDEN'; end if;
 
+  v_business_changed :=
+    new.purchase_order_id is distinct from old.purchase_order_id
+    or new.supplier_id is distinct from old.supplier_id
+    or new.amount is distinct from old.amount
+    or new.currency is distinct from old.currency
+    or new.payment_date is distinct from old.payment_date
+    or new.method is distinct from old.method
+    or new.reference is distinct from old.reference
+    or new.notes is distinct from old.notes
+    or new.created_by is distinct from old.created_by;
+
   if new.status is distinct from old.status then
+    if v_business_changed then raise exception 'SUPPLIER_PAYMENT_IMMUTABLE'; end if;
+
     v_transition := current_setting('export_mca.supplier_payment_transition', true);
     if old.status = 'posted' and new.status = 'reversed' and v_transition = 'reverse' then
+      if new.reversal_reason is null or btrim(new.reversal_reason) = '' then
+        raise exception 'SUPPLIER_PAYMENT_REVERSAL_REASON_REQUIRED';
+      end if;
       return new;
     end if;
+
     raise exception 'INVALID_SUPPLIER_PAYMENT_STATUS_TRANSITION: % -> %', old.status, new.status;
   end if;
 
-  if old.status <> 'posted' then raise exception 'SUPPLIER_PAYMENT_REVERSED_IMMUTABLE'; end if;
-  return new;
+  raise exception 'SUPPLIER_PAYMENT_IMMUTABLE';
 end;
 $function$;
 
@@ -398,7 +486,7 @@ language plpgsql
 set search_path to 'public'
 as $function$
 begin
-  if current_setting('export_mca.supplier_payment_application_delete', true) <> 'allow' then
+  if current_setting('export_mca.supplier_payment_application_delete', true) is distinct from 'allow' then
     raise exception 'SUPPLIER_PAYMENT_APPLICATION_DELETE_FORBIDDEN';
   end if;
   return old;
@@ -408,6 +496,32 @@ $function$;
 create trigger supplier_payment_applications_guard_delete
 before delete on public.supplier_payment_applications
 for each row execute function public.guard_supplier_payment_application_delete();
+
+-- A PO with active AP cannot be cancelled until bills are void and payments are reversed.
+create or replace function public.guard_purchase_order_ap_cancellation()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $function$
+begin
+  if new.status = 'cancelled' and old.status <> 'cancelled' then
+    if exists (
+      select 1 from public.supplier_bills
+      where purchase_order_id = old.id and status <> 'void'
+    ) or exists (
+      select 1 from public.supplier_payments
+      where purchase_order_id = old.id and status = 'posted'
+    ) then
+      raise exception 'PO_HAS_ACTIVE_AP';
+    end if;
+  end if;
+  return new;
+end;
+$function$;
+
+create trigger purchase_orders_guard_ap_cancellation
+before update of status on public.purchase_orders
+for each row execute function public.guard_purchase_order_ap_cancellation();
 
 -- PO billing capacity. Draft bills reserve capacity; posted bills are actual obligations; void bills do not count.
 create or replace view public.purchase_order_ap_item_progress
@@ -543,19 +657,23 @@ revoke all on public.purchase_order_ap_item_progress from anon, authenticated;
 revoke all on public.supplier_bill_financial_progress from anon, authenticated;
 revoke all on public.supplier_payment_progress from anon, authenticated;
 revoke all on public.purchase_order_ap_progress from anon, authenticated;
+revoke all on sequence public.supplier_bills_bill_serial_seq from anon, authenticated;
+revoke all on sequence public.supplier_payments_payment_serial_seq from anon, authenticated;
 
 grant select, insert, update, delete on public.supplier_bills to service_role;
 grant select, insert, update, delete on public.supplier_bill_items to service_role;
 grant select, insert, update, delete on public.supplier_payments to service_role;
 grant select, insert, update, delete on public.supplier_payment_applications to service_role;
+grant usage, select on sequence public.supplier_bills_bill_serial_seq to service_role;
+grant usage, select on sequence public.supplier_payments_payment_serial_seq to service_role;
 grant select on public.purchase_order_ap_item_progress to service_role;
 grant select on public.supplier_bill_financial_progress to service_role;
 grant select on public.supplier_payment_progress to service_role;
 grant select on public.purchase_order_ap_progress to service_role;
 
-comment on table public.supplier_bills is 'Accounts Payable obligation from a supplier against one Purchase Order; never creates inventory.';
-comment on table public.supplier_bill_items is 'Supplier bill lines tied to immutable PO lines; actual vendor unit cost is preserved separately from PO cost snapshot.';
-comment on table public.supplier_payments is 'Cash outflow to a supplier against a PO. May remain unapplied as a prepayment until supplier bills exist.';
+comment on table public.supplier_bills is 'Accounts Payable obligation from a supplier against one immutable Purchase Order; never creates inventory.';
+comment on table public.supplier_bill_items is 'Supplier bill lines tied to PO lines; actual vendor unit cost is preserved separately from PO cost snapshot.';
+comment on table public.supplier_payments is 'Immutable cash outflow to a supplier against a PO. May remain unapplied as a prepayment until supplier bills exist.';
 comment on table public.supplier_payment_applications is 'Application of supplier cash payments/prepayments to posted supplier bills.';
 comment on view public.purchase_order_ap_item_progress is 'PO line billing capacity. Draft bills reserve capacity; posted bills are obligations; void bills release capacity.';
 comment on view public.supplier_bill_financial_progress is 'Derived AP balance and overdue state from posted bills and active posted payment applications.';
