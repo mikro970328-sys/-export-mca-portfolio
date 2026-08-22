@@ -12,6 +12,7 @@
     { id:'purchasesSection', label:'Compras', icon:'▤', src:'/admin/purchases.html?embedded=1' },
     { id:'salesSection', label:'Ventas', icon:'▧', src:'/admin/sales.html?embedded=1' },
     { id:'invoicesSection', label:'Facturación', icon:'▨', src:'/admin/invoices.html?embedded=1' },
+    { id:'payablesSection', label:'Cuentas por pagar', icon:'▩', src:'/admin/payables.html?embedded=1' },
     { id:'inventorySection', label:'Inventario', icon:'▦', src:'/admin/inventory.html?embedded=1' },
     { id:'loadsSection', label:'Cargues', icon:'⇄', src:'/admin/loads.html?embedded=1' }
   ];
@@ -238,6 +239,7 @@
       openPurchases: () => openEmbeddedById('purchasesSection'),
       openSales: () => openEmbeddedById('salesSection'),
       openInvoices: () => openEmbeddedById('invoicesSection'),
+      openPayables: () => openEmbeddedById('payablesSection'),
       openInventory: () => openEmbeddedById('inventorySection'),
       openLoads: () => openEmbeddedById('loadsSection'),
       owner: 'navigation-shell.js'
