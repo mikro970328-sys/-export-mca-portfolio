@@ -22,6 +22,12 @@
 
 <div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div><div id="detailMsg" class="msg"></div></div></div>
 
+<div id="paymentModal" class="modal hidden"><div class="dialog compact"><div class="dialog-head"><div><h2 id="paymentTitle">Registrar cobro</h2><div id="paymentSubtitle" class="muted"></div></div><button class="btn" data-close="payment">✕</button></div>
+<div class="grid"><div><label>Monto *</label><input id="pAmount" type="number" min="0" step="0.01"></div><div><label>Fecha del cobro</label><input id="pDate" type="date"></div></div>
+<div class="grid"><div><label>Método</label><select id="pMethod"><option value="wire">Wire</option><option value="ach">ACH</option><option value="check">Check</option><option value="cash">Cash</option><option value="other">Otro</option></select></div><div><label>Referencia</label><input id="pReference" placeholder="Wire, ACH, check, etc."></div></div>
+<label>Notas</label><textarea id="pNotes"></textarea>
+<div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="payment">Cancelar</button><button id="savePayment" class="btn orange">Registrar cobro</button></div><div id="paymentMsg" class="msg"></div></div></div>
+
 <script src="/admin/invoices.js"></script>
 </body>
 </html>
