@@ -7,6 +7,7 @@ const files = {
   shipmentEditor: 'admin/shipment-editor.js',
   registrationShell: 'admin/registration-form-shell.js',
   modalDismissal: 'admin/modal-dismissal.js',
+  uxDCrossNavigation: 'admin/ux-d-cross-navigation.js',
   expedientes: 'admin/expedientes-module.js',
   navigation: 'admin/navigation-shell.js',
   navigationCss: 'admin/navigation-shell.css',
@@ -45,6 +46,7 @@ for (const file of [
   files.shipmentEditor,
   files.registrationShell,
   files.modalDismissal,
+  files.uxDCrossNavigation,
   files.expedientes,
   files.navigation,
   files.sectionState,
@@ -66,6 +68,7 @@ const clients = read(files.clients);
 const containers = read(files.containers);
 const registrationShell = read(files.registrationShell);
 const modalDismissal = read(files.modalDismissal);
+const uxDCrossNavigation = read(files.uxDCrossNavigation);
 const expedientes = read(files.expedientes);
 const navigation = read(files.navigation);
 const navigationCss = read(files.navigationCss);
@@ -139,6 +142,28 @@ for (const forbidden of [
   'innerHTML ='
 ]) {
   if (modalDismissal.includes(forbidden)) errors.push(`modal-dismissal.js invade apertura/contenido del modal: ${forbidden}`);
+}
+
+for (const fragment of [
+  'window.__uxdCrossNavigationInstalled',
+  "owner: 'ux-d-cross-navigation.js'",
+  "responsibility: 'cross-module-navigation-only'",
+  'openTracking',
+  'openExpedientes',
+  "data-container-filter=\"all\""
+]) {
+  if (!uxDCrossNavigation.includes(fragment)) errors.push(`Falta propiedad UX-D de navegación cruzada: ${fragment}`);
+}
+
+for (const forbidden of [
+  '/api/',
+  'fetch(',
+  'MutationObserver',
+  'window.loadAll =',
+  'window.ContainersModule =',
+  'window.ExpedientesModule ='
+]) {
+  if (uxDCrossNavigation.includes(forbidden)) errors.push(`ux-d-cross-navigation.js invade lógica de negocio: ${forbidden}`);
 }
 
 for (const fragment of [
@@ -224,6 +249,7 @@ for (const fragment of [
   '/admin/containers-module.js',
   '/admin/registration-form-shell.js',
   '/admin/modal-dismissal.js',
+  '/admin/ux-d-cross-navigation.js',
   '/admin/expedientes-module.js',
   '/admin/dashboard-operational-state.js',
   '/admin/navigation-shell.js',
@@ -276,11 +302,12 @@ if (errors.length) {
 }
 
 console.log('Validación de propiedad frontend superada.');
-console.log('- Clientes, Tracking, Expedientes, navegación, dashboard, UX-C y estado de secciones tienen propietarios explícitos.');
+console.log('- Clientes, Tracking, Expedientes, navegación, dashboard, UX-C, UX-D y estado de secciones tienen propietarios explícitos.');
 console.log('- Los propietarios/parches retirados no existen ni se cargan.');
 console.log('- navigation-shell.js no contiene llamadas de negocio ni wrappers de datos.');
 console.log('- UX-B usa api/dashboard.js como única proyección operativa; el frontend solo presenta esa proyección.');
 console.log('- UX-C mantiene registration-form-shell.js limitado a guía visual; containers-module.js conserva guardado y validación de negocio.');
 console.log('- UX-C mantiene modal-dismissal.js limitado a política de cierre; index.html conserva apertura y contenido del modal.');
+console.log('- UX-D mantiene ux-d-cross-navigation.js limitado a navegación contextual; Tracking y Expedientes conservan sus datos y lógica.');
 console.log('- Centro de alertas conserva la propiedad de las alertas mostradas en Inicio.');
 console.log('- Sintaxis JavaScript válida en los propietarios críticos.');
