@@ -1,7 +1,11 @@
 -- B4.1 forward · Semántica explícita de progreso de facturación.
 -- Draft reserva capacidad para evitar sobre-facturación, pero solo issued cuenta como facturado.
+-- Son views derivadas sin datos propios: se recrean para cambiar el contrato de columnas limpiamente.
 
-create or replace view public.sales_order_item_invoice_progress
+drop view if exists public.sales_order_invoice_progress;
+drop view if exists public.sales_order_item_invoice_progress;
+
+create view public.sales_order_item_invoice_progress
 with (security_invoker = true)
 as
 select
@@ -27,7 +31,7 @@ left join public.invoice_items ii on ii.sales_order_item_id = soi.id
 left join public.invoices i on i.id = ii.invoice_id
 group by soi.id, soi.sales_order_id, soi.product_id, soi.ordered_quantity, soi.unit, soi.unit_price;
 
-create or replace view public.sales_order_invoice_progress
+create view public.sales_order_invoice_progress
 with (security_invoker = true)
 as
 select
