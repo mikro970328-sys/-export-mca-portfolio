@@ -1,0 +1,127 @@
+import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+
+const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
+const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
+
+function translatedError(raw) {
+  const messages = [
+    ['SUPPLIER_PAYMENT_PO_NOT_FOUND','Purchase Order no encontrada.'],
+    ['SUPPLIER_PAYMENT_PO_NOT_PAYABLE','La Purchase Order debe estar emitida, confirmada o cerrada para registrar pagos.'],
+    ['SUPPLIER_PAYMENT_AMOUNT_INVALID','El monto del pago debe ser mayor que cero.'],
+    ['SUPPLIER_PAYMENT_NOT_FOUND','Pago de proveedor no encontrado.'],
+    ['SUPPLIER_PAYMENT_ALREADY_REVERSED','El pago ya fue revertido.'],
+    ['SUPPLIER_PAYMENT_REVERSAL_REASON_REQUIRED','Indica el motivo del reverso.'],
+    ['SUPPLIER_PAYMENT_NOT_POSTED','Solo un pago registrado puede distribuirse.'],
+    ['SUPPLIER_PAYMENT_APPLICATIONS_INVALID','La distribución del pago no es válida.'],
+    ['SUPPLIER_PAYMENT_BILL_REQUIRED','Selecciona una factura de proveedor.'],
+    ['SUPPLIER_PAYMENT_APPLICATION_AMOUNT_INVALID','El monto aplicado debe ser mayor que cero.'],
+    ['SUPPLIER_PAYMENT_APPLICATION_EXCEEDS_PAYMENT','La distribución supera el monto disponible del pago.'],
+    ['SUPPLIER_PAYMENT_APPLICATION_EXCEEDS_BILL','La distribución supera el saldo de la factura.'],
+    ['SUPPLIER_PAYMENT_APPLICATION_CONTEXT_MISMATCH','El pago y la factura deben pertenecer a la misma Purchase Order, proveedor y moneda.'],
+    ['SUPPLIER_BILL_NOT_POSTED','Solo se puede aplicar dinero a facturas contabilizadas.']
+  ];
+  return messages.find(([key]) => raw.includes(key))?.[1] || raw;
+}
+
+function cleanApplications(applications) {
+  if (!Array.isArray(applications)) throw new Error('La distribución del pago no es válida');
+  return applications.map((row, index) => {
+    const billId = text(row.supplier_bill_id,80);
+    const amount = text(row.amount,80);
+    if (!billId) throw new Error(`Falta la factura en la distribución ${index + 1}`);
+    if (!amount || Number(amount) <= 0) throw new Error(`Indica un monto válido en la distribución ${index + 1}`);
+    return { supplier_bill_id:billId, amount };
+  });
+}
+
+async function loadPayments() {
+  const [payments, progress, applications] = await Promise.all([
+    supabase('supplier_payments', { query:'?select=id,payment_number,purchase_order_id,supplier_id,amount,currency,payment_date,method,reference,status,notes,reversed_at,reversal_reason,created_at,supplier:suppliers(id,name,legal_name),purchase_order:purchase_orders(id,po_number,status,supplier_reference)&order=payment_date.desc,created_at.desc&limit=2000' }),
+    supabase('supplier_payment_progress', { query:'?select=*&order=payment_date.desc&limit=2000' }),
+    supabase('supplier_payment_applications', { query:'?select=id,supplier_payment_id,supplier_bill_id,amount,created_at&order=created_at.asc&limit=5000' })
+  ]);
+  const progressByPayment = new Map((progress || []).map(row => [row.supplier_payment_id,row]));
+  const appsByPayment = new Map();
+  for (const app of applications || []) {
+    if (!appsByPayment.has(app.supplier_payment_id)) appsByPayment.set(app.supplier_payment_id, []);
+    appsByPayment.get(app.supplier_payment_id).push(app);
+  }
+  return (payments || []).map(payment => ({ ...payment, progress:progressByPayment.get(payment.id) || null, applications:appsByPayment.get(payment.id) || [] }));
+}
+
+async function loadBills() {
+  const [bills, financial] = await Promise.all([
+    supabase('supplier_bills', { query:'?select=id,bill_number,purchase_order_id,supplier_id,supplier_invoice_number,currency,status,supplier:suppliers(id,name,legal_name)&status=eq.posted&order=bill_date.desc&limit=1000' }),
+    supabase('supplier_bill_financial_progress', { query:'?select=*&status=eq.posted&limit=1000' })
+  ]);
+  const progress = new Map((financial || []).map(row => [row.supplier_bill_id,row]));
+  return (bills || []).map(bill => ({ ...bill, financial:progress.get(bill.id) || null }));
+}
+
+async function loadPurchaseOrders() {
+  return supabase('purchase_orders', { query:'?select=id,po_number,supplier_id,status,currency,supplier_reference,supplier:suppliers(id,name,legal_name)&status=in.(issued,confirmed,closed)&order=created_at.desc&limit=1000' });
+}
+
+async function bootstrap() {
+  const [payments, bills, purchase_orders] = await Promise.all([loadPayments(), loadBills(), loadPurchaseOrders()]);
+  return { payments, bills, purchase_orders };
+}
+
+export default async function handler(req, res) {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+  try {
+    if (req.method === 'GET') return ok(res,await bootstrap());
+    if (req.method !== 'POST') return fail(res,405,'Método no permitido');
+
+    const body = await readJson(req);
+    const action = text(body.action,60).toLowerCase();
+
+    if (action === 'register') {
+      const poId = text(body.purchase_order_id,80);
+      if (!poId) throw new Error('Selecciona una Purchase Order');
+      const amount = Number(body.amount || 0);
+      if (!(amount > 0)) throw new Error('El monto del pago debe ser mayor que cero');
+      const result = await supabase('rpc/register_supplier_payment', { method:'POST', body:{
+        p_purchase_order_id:poId,
+        p_amount:amount,
+        p_payment_date:text(body.payment_date,40) || null,
+        p_method:text(body.method,100) || null,
+        p_reference:text(body.reference,300) || null,
+        p_notes:text(body.notes,2000) || null,
+        p_actor:admin.admin_id || null
+      }});
+      const payment = rpcRow(result);
+      if (!payment?.id) throw new Error('No se pudo registrar el pago');
+      await writeAudit(admin,'supplier_payment_registered','supplier_payment',payment.id,{ payment_number:payment.payment_number, purchase_order_id:poId, amount });
+      return ok(res,{ payment:(await loadPayments()).find(row => row.id === payment.id) || payment });
+    }
+
+    if (action === 'reverse') {
+      const paymentId = text(body.supplier_payment_id,80);
+      const reason = text(body.reason,1000);
+      if (!paymentId) throw new Error('Falta el pago de proveedor');
+      if (!reason) throw new Error('Indica el motivo del reverso');
+      const result = await supabase('rpc/reverse_supplier_payment', { method:'POST', body:{ p_supplier_payment_id:paymentId, p_reason:reason, p_actor:admin.admin_id || null } });
+      const payment = rpcRow(result);
+      await writeAudit(admin,'supplier_payment_reversed','supplier_payment',paymentId,{ payment_number:payment?.payment_number || null, reason });
+      return ok(res,{ payment:(await loadPayments()).find(row => row.id === paymentId) || payment });
+    }
+
+    if (action === 'replace_applications') {
+      const paymentId = text(body.supplier_payment_id,80);
+      if (!paymentId) throw new Error('Falta el pago de proveedor');
+      const applications = cleanApplications(body.applications || []);
+      const result = await supabase('rpc/replace_supplier_payment_applications', { method:'POST', body:{ p_supplier_payment_id:paymentId, p_applications:applications, p_actor:admin.admin_id || null } });
+      const payment = rpcRow(result);
+      await writeAudit(admin,'supplier_payment_allocated','supplier_payment',paymentId,{ application_count:applications.length });
+      return ok(res,{ payment:(await loadPayments()).find(row => row.id === paymentId) || payment });
+    }
+
+    return fail(res,400,'Acción de pago de proveedor no válida');
+  } catch (error) {
+    const raw = String(error.message || 'No se pudo procesar el pago del proveedor');
+    console.error('[supplier-payments]',error);
+    return fail(res,400,translatedError(raw));
+  }
+}
