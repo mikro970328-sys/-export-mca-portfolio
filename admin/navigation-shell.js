@@ -11,11 +11,13 @@
     { id:'suppliersSection', label:'Proveedores', icon:'◫', src:'/admin/suppliers.html?embedded=1' },
     { id:'purchasesSection', label:'Compras', icon:'▤', src:'/admin/purchases.html?embedded=1' },
     { id:'salesSection', label:'Ventas', icon:'▧', src:'/admin/sales.html?embedded=1' },
+    { id:'invoicesSection', label:'Facturación', icon:'▨', src:'/admin/invoices.html?embedded=1' },
     { id:'inventorySection', label:'Inventario', icon:'▦', src:'/admin/inventory.html?embedded=1' },
     { id:'loadsSection', label:'Cargues', icon:'⇄', src:'/admin/loads.html?embedded=1' }
   ];
 
   const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
+  const embeddedById = id => EMBEDDED_OPERATIONS.find(item => item.id === id) || null;
 
   function readBoolean(key, fallback = false) {
     const value = localStorage.getItem(key);
@@ -50,6 +52,7 @@
   }
 
   function openEmbeddedSection(config) {
+    if (!config) return false;
     const id = config.id;
     if (typeof window.showSection === 'function') window.showSection(id);
     else {
@@ -63,6 +66,11 @@
     syncActiveGroup();
     closeMobileMenu();
     window.dispatchEvent(new CustomEvent('export-mca:section-changed', { detail:{ id } }));
+    return true;
+  }
+
+  function openEmbeddedById(id) {
+    return openEmbeddedSection(embeddedById(id));
   }
 
   function ensureEmbeddedOperations() {
@@ -89,7 +97,7 @@
       }
     }
     const saved = localStorage.getItem('export_mca_current_section');
-    const config = EMBEDDED_OPERATIONS.find(item => item.id === saved);
+    const config = embeddedById(saved);
     if (config) openEmbeddedSection(config);
   }
 
@@ -225,12 +233,13 @@
       expand: () => setDesktopCollapsed(false),
       toggle: toggleShell,
       closeMobile: closeMobileMenu,
-      openWarehouse: () => openEmbeddedSection(EMBEDDED_OPERATIONS[0]),
-      openSuppliers: () => openEmbeddedSection(EMBEDDED_OPERATIONS[1]),
-      openPurchases: () => openEmbeddedSection(EMBEDDED_OPERATIONS[2]),
-      openSales: () => openEmbeddedSection(EMBEDDED_OPERATIONS[3]),
-      openInventory: () => openEmbeddedSection(EMBEDDED_OPERATIONS[4]),
-      openLoads: () => openEmbeddedSection(EMBEDDED_OPERATIONS[5]),
+      openWarehouse: () => openEmbeddedById('warehouseSection'),
+      openSuppliers: () => openEmbeddedById('suppliersSection'),
+      openPurchases: () => openEmbeddedById('purchasesSection'),
+      openSales: () => openEmbeddedById('salesSection'),
+      openInvoices: () => openEmbeddedById('invoicesSection'),
+      openInventory: () => openEmbeddedById('inventorySection'),
+      openLoads: () => openEmbeddedById('loadsSection'),
       owner: 'navigation-shell.js'
     });
   }
