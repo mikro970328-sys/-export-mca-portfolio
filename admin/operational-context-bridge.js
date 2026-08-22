@@ -87,6 +87,10 @@
     return observer;
   }
 
+  function uniqueReceiptNumbers(loads = []) {
+    return [...new Set(loads.flatMap(load => Array.isArray(load.receipt_numbers) ? load.receipt_numbers : []).filter(Boolean))];
+  }
+
   function initSuppliers() {
     const nav = parentNav();
     if (!nav) return;
@@ -209,6 +213,158 @@
     observeChanges(document.getElementById('orderList'), () => nav.invalidateLinks?.());
   }
 
+  function initSales() {
+    const nav = parentNav();
+    if (!nav) return;
+
+    async function renderContext() {
+      const modal = document.getElementById('detailModal');
+      if (!modal || modal.classList.contains('hidden')) return;
+      const soNumber = document.getElementById('detailTitle')?.textContent?.trim();
+      const sale = await nav.salesByNumber(soNumber);
+      if (!sale?.sales_order_id || modal.classList.contains('hidden')) return;
+      const body = document.getElementById('detailBody');
+      if (!body) return;
+      ['salesOperationalClient','salesOperationalLoads','salesOperationalSources','salesOperationalDownstream']
+        .forEach(id => document.getElementById(id)?.remove());
+
+      const clientBlock = block(
+        'Cliente',
+        sale.client_id ? [{ label:'Ver cliente', primary:true, action:() => nav.openClient({ clientId:sale.client_id }) }] : [],
+        'La Sales Order no tiene cliente resoluble.'
+      );
+      clientBlock.id = 'salesOperationalClient';
+      body.appendChild(clientBlock);
+
+      const loadBlock = block(
+        'Cargues vinculados',
+        (sale.loads || []).map(load => ({
+          label:`${load.load_number} · ${load.load_status || 'sin estado'}`,
+          action:() => nav.openLoad({ loadId:load.load_id })
+        })),
+        'Todavía no hay Cargues vinculados a esta Sales Order.'
+      );
+      loadBlock.id = 'salesOperationalLoads';
+      body.appendChild(loadBlock);
+
+      const receiptNumbers = uniqueReceiptNumbers(sale.loads || []);
+      const sourceBlock = block(
+        'Inventario / WR de origen',
+        receiptNumbers.map(receiptNumber => ({
+          label:receiptNumber,
+          action:() => nav.openInventoryReceipt(receiptNumber)
+        })),
+        'Todavía no hay WR físicos vinculados.'
+      );
+      sourceBlock.id = 'salesOperationalSources';
+      body.appendChild(sourceBlock);
+
+      const downstream = [];
+      (sale.loads || []).forEach(load => {
+        if (load.shipment_id) downstream.push({
+          label:`Tracking · ${load.container_number || load.load_number}`,
+          action:() => nav.openTracking({ shipmentId:load.shipment_id })
+        });
+        if (load.operation_id) downstream.push({
+          label:`Expediente · ${load.container_number || load.load_number}`,
+          action:() => nav.openExpediente(load.operation_id)
+        });
+      });
+      const downstreamBlock = block(
+        'Tracking / Expediente',
+        downstream,
+        'El Cargue todavía no está vinculado a Tracking o Expediente.'
+      );
+      downstreamBlock.id = 'salesOperationalDownstream';
+      body.appendChild(downstreamBlock);
+    }
+
+    window.openOperationalSale = salesOrderId => {
+      if (typeof window.openDetail !== 'function') return false;
+      window.openDetail(salesOrderId);
+      renderContext().catch(error => console.error('[sales operational context]', error));
+      return true;
+    };
+
+    const modal = document.getElementById('detailModal');
+    if (modal) {
+      const observer = new MutationObserver(() => renderContext().catch(error => console.error('[sales operational context]', error)));
+      observer.observe(modal, { attributes:true, attributeFilter:['class'] });
+      const title = document.getElementById('detailTitle');
+      if (title) observer.observe(title, { childList:true, subtree:true });
+    }
+    observeChanges(document.getElementById('orderList'), () => nav.invalidateLinks?.());
+  }
+
+  function initLoads() {
+    const nav = parentNav();
+    if (!nav || typeof window.openLoad !== 'function') return;
+    const originalOpenLoad = window.openLoad;
+    let currentLoadId = null;
+
+    async function renderContext(loadId = currentLoadId) {
+      const modal = document.getElementById('drawerModal');
+      if (!loadId || !modal || modal.classList.contains('hidden')) return;
+      const [load, sales] = await Promise.all([
+        nav.loadById(loadId),
+        nav.salesOrdersForLoad(loadId)
+      ]);
+      if (!load || modal.classList.contains('hidden')) return;
+      const body = document.getElementById('drawerBody');
+      if (!body) return;
+      ['loadOperationalSales','loadOperationalSources','loadOperationalDownstream']
+        .forEach(id => document.getElementById(id)?.remove());
+
+      const salesBlock = block(
+        'Sales Orders',
+        sales.map(order => ({
+          label:`${order.so_number} · ${order.so_status || 'sin estado'}`,
+          action:() => nav.openSales({ salesOrderId:order.sales_order_id })
+        })),
+        'Este Cargue no está vinculado a una Sales Order.'
+      );
+      salesBlock.id = 'loadOperationalSales';
+      body.appendChild(salesBlock);
+
+      const sourceBlock = block(
+        'Warehouse Receipts de origen',
+        (load.receipt_numbers || []).map(receiptNumber => ({
+          label:receiptNumber,
+          action:() => nav.openInventoryReceipt(receiptNumber)
+        })),
+        'Este Cargue no tiene WR resolubles.'
+      );
+      sourceBlock.id = 'loadOperationalSources';
+      body.appendChild(sourceBlock);
+
+      const downstream = [];
+      if (load.shipment_id) downstream.push({
+        label:`Tracking · ${load.container_number || load.load_number}`,
+        action:() => nav.openTracking({ shipmentId:load.shipment_id })
+      });
+      if (load.operation_id) downstream.push({
+        label:`Expediente · ${load.container_number || load.load_number}`,
+        action:() => nav.openExpediente(load.operation_id)
+      });
+      const downstreamBlock = block('Tracking / Expediente', downstream, 'Este Cargue todavía no está vinculado a Tracking o Expediente.');
+      downstreamBlock.id = 'loadOperationalDownstream';
+      body.appendChild(downstreamBlock);
+    }
+
+    window.openLoad = loadId => {
+      currentLoadId = loadId;
+      const result = originalOpenLoad(loadId);
+      requestAnimationFrame(() => renderContext(loadId).catch(error => console.error('[load operational context]', error)));
+      return result;
+    };
+    window.openOperationalLoad = loadId => window.openLoad(loadId);
+
+    const modal = document.getElementById('drawerModal');
+    if (modal) new MutationObserver(() => renderContext().catch(error => console.error('[load operational context]', error)))
+      .observe(modal, { attributes:true, attributeFilter:['class'] });
+    observeChanges(document.getElementById('loadRows'), () => nav.invalidateLinks?.());
+  }
+
   function initWarehouse() {
     const nav = parentNav();
     if (!nav) return;
@@ -218,11 +374,16 @@
       if (!modal || modal.classList.contains('hidden')) return;
       const receiptNumber = document.getElementById('detailTitle')?.textContent?.trim();
       if (!receiptNumber) return;
-      const purchases = await nav.purchaseOrdersForReceipt(receiptNumber);
+      const [purchases, loads, sales] = await Promise.all([
+        nav.purchaseOrdersForReceipt(receiptNumber),
+        nav.loadsForReceipt(receiptNumber),
+        nav.salesOrdersForReceipt(receiptNumber)
+      ]);
       if (modal.classList.contains('hidden')) return;
       const body = document.getElementById('detailBody');
       if (!body) return;
       document.getElementById('warehouseOperationalContext')?.remove();
+      document.getElementById('warehouseCommercialContext')?.remove();
       const context = block('Trazabilidad · PO de origen e Inventario', [
         { label:'Ver en Inventario', primary:true, action:() => nav.openInventoryReceipt(receiptNumber) },
         ...purchases.map(po => ({
@@ -232,6 +393,13 @@
       ]);
       context.id = 'warehouseOperationalContext';
       body.appendChild(context);
+
+      const commercial = block('Salida comercial · Cargues / Sales Orders', [
+        ...loads.map(load => ({ label:load.load_number, action:() => nav.openLoad({ loadId:load.load_id }) })),
+        ...sales.map(order => ({ label:order.so_number, action:() => nav.openSales({ salesOrderId:order.sales_order_id }) }))
+      ], 'Este WR todavía no participa en un Cargue comercial.');
+      commercial.id = 'warehouseCommercialContext';
+      body.appendChild(commercial);
     }
 
     window.openOperationalReceipt = receiptId => {
@@ -265,7 +433,20 @@
         const traceView = document.getElementById('traceView');
         if (traceView) traceView.insertBefore(card, traceView.firstChild);
       }
-      const purchases = await nav.purchaseOrdersForReceipt(receiptNumber);
+      let commercialCard = document.getElementById('salesUsageCard');
+      if (!commercialCard) {
+        commercialCard = document.createElement('section');
+        commercialCard.id = 'salesUsageCard';
+        commercialCard.className = 'card hidden';
+        const traceView = document.getElementById('traceView');
+        if (traceView) traceView.insertBefore(commercialCard, card.nextSibling);
+      }
+
+      const [purchases, loads, sales] = await Promise.all([
+        nav.purchaseOrdersForReceipt(receiptNumber),
+        nav.loadsForReceipt(receiptNumber),
+        nav.salesOrdersForReceipt(receiptNumber)
+      ]);
       card.innerHTML = '';
       card.appendChild(block(
         `Origen de compra · ${receiptNumber}`,
@@ -276,13 +457,24 @@
         'Este WR no tiene una PO de origen activa; puede ser directo o histórico.'
       ));
       card.classList.remove('hidden');
+
+      commercialCard.innerHTML = '';
+      commercialCard.appendChild(block(
+        `Salida comercial · ${receiptNumber}`,
+        [
+          ...loads.map(load => ({ label:load.load_number, action:() => nav.openLoad({ loadId:load.load_id }) })),
+          ...sales.map(order => ({ label:order.so_number, action:() => nav.openSales({ salesOrderId:order.sales_order_id }) }))
+        ],
+        'Este WR todavía no está reservado o despachado para una Sales Order.'
+      ));
+      commercialCard.classList.remove('hidden');
     }
 
     const originalTraceWR = typeof window.traceWR === 'function' ? window.traceWR : null;
     if (originalTraceWR) {
       window.traceWR = receiptNumber => {
         const result = originalTraceWR(receiptNumber);
-        renderOrigin(String(receiptNumber || '').trim()).catch(error => console.error('[inventory purchase origin]', error));
+        renderOrigin(String(receiptNumber || '').trim()).catch(error => console.error('[inventory operational origin]', error));
         return result;
       };
     }
@@ -291,7 +483,7 @@
     if (title) {
       const updateFromTitle = () => {
         const match = title.textContent.match(/·\s*(WR-[A-Z0-9-]+)/i);
-        if (match?.[1]) renderOrigin(match[1]).catch(error => console.error('[inventory purchase origin]', error));
+        if (match?.[1]) renderOrigin(match[1]).catch(error => console.error('[inventory operational origin]', error));
       };
       new MutationObserver(updateFromTitle).observe(title, { childList:true, subtree:true });
       updateFromTitle();
@@ -302,6 +494,8 @@
   let moduleName = 'none';
   if (path.endsWith('/admin/suppliers.html')) { moduleName = 'suppliers'; initSuppliers(); }
   else if (path.endsWith('/admin/purchases.html')) { moduleName = 'purchases'; initPurchases(); }
+  else if (path.endsWith('/admin/sales.html')) { moduleName = 'sales'; initSales(); }
+  else if (path.endsWith('/admin/loads.html')) { moduleName = 'loads'; initLoads(); }
   else if (path.endsWith('/admin/warehouse.html')) { moduleName = 'warehouse'; initWarehouse(); }
   else if (path.endsWith('/admin/inventory.html')) { moduleName = 'inventory'; initInventory(); }
 

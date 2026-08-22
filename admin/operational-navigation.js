@@ -3,7 +3,7 @@
   window.__operationalNavigationInstalled = true;
 
   const normalize = value => String(value || '').trim().toUpperCase();
-  const CONTEXT_SECTIONS = ['suppliersSection','purchasesSection','warehouseSection','inventorySection'];
+  const CONTEXT_SECTIONS = ['suppliersSection','purchasesSection','salesSection','warehouseSection','inventorySection','loadsSection'];
   const BRIDGE_SRC = '/admin/operational-context-bridge.js';
   let cache = null;
   let pending = null;
@@ -23,7 +23,8 @@
         cache = {
           links:Array.isArray(data.links) ? data.links : [],
           purchases:Array.isArray(data.purchases) ? data.purchases : [],
-          receipts:Array.isArray(data.receipts) ? data.receipts : []
+          receipts:Array.isArray(data.receipts) ? data.receipts : [],
+          sales:Array.isArray(data.sales) ? data.sales : []
         };
         return cache;
       })
@@ -67,6 +68,12 @@
     if (!shipmentId) return null;
     const data = await requestLinks();
     return data.links.find(row => String(row.shipment_id) === String(shipmentId)) || null;
+  }
+
+  async function loadById(loadId) {
+    if (!loadId) return null;
+    const data = await requestLinks();
+    return data.links.find(row => String(row.load_id) === String(loadId)) || null;
   }
 
   async function loadsForOperation(operationId) {
@@ -119,6 +126,46 @@
     if (!receipt) return null;
     const data = await requestLinks();
     return data.receipts.find(row => normalize(row.receipt_number) === receipt) || null;
+  }
+
+  async function salesOrdersForClient(clientId) {
+    if (!clientId) return [];
+    const data = await requestLinks();
+    return data.sales.filter(row => String(row.client_id || '') === String(clientId));
+  }
+
+  async function loadsForSalesOrder(salesOrderId) {
+    if (!salesOrderId) return [];
+    const data = await requestLinks();
+    return data.sales.find(row => String(row.sales_order_id) === String(salesOrderId))?.loads || [];
+  }
+
+  async function salesOrdersForLoad(loadId) {
+    if (!loadId) return [];
+    const data = await requestLinks();
+    return data.links.find(row => String(row.load_id) === String(loadId))?.sales_orders || [];
+  }
+
+  async function salesOrdersForReceipt(receiptNumber) {
+    const receipt = normalize(receiptNumber);
+    if (!receipt) return [];
+    const data = await requestLinks();
+    return data.sales.filter(order => Array.isArray(order.loads) && order.loads.some(load =>
+      Array.isArray(load.receipt_numbers) && load.receipt_numbers.some(value => normalize(value) === receipt)
+    ));
+  }
+
+  async function salesByNumber(soNumber) {
+    const so = normalize(soNumber);
+    if (!so) return null;
+    const data = await requestLinks();
+    return data.sales.find(row => normalize(row.so_number) === so) || null;
+  }
+
+  async function saleById(salesOrderId) {
+    if (!salesOrderId) return null;
+    const data = await requestLinks();
+    return data.sales.find(row => String(row.sales_order_id) === String(salesOrderId)) || null;
   }
 
   function installBridge(sectionId) {
@@ -208,7 +255,13 @@
     if (!loadId) return false;
     if (options.history !== false) writeContext('load', loadId, options);
     window.NavigationShell?.openLoads?.();
-    return callEmbedded('loadsSection', 'openLoad', [loadId]);
+    installBridge('loadsSection')
+      .then(ready => {
+        if (ready && callEmbedded('loadsSection', 'openOperationalLoad', [loadId])) return;
+        callEmbedded('loadsSection', 'openLoad', [loadId]);
+      })
+      .catch(() => callEmbedded('loadsSection', 'openLoad', [loadId]));
+    return true;
   }
 
   async function openLoadForShipment(shipmentId, options = {}) {
@@ -240,11 +293,32 @@
     return callContextEmbedded('purchasesSection', 'openOperationalPurchase', [purchaseOrderId]);
   }
 
+  function openSales({ salesOrderId = null } = {}, options = {}) {
+    if (!salesOrderId) return false;
+    if (options.history !== false) writeContext('so', salesOrderId, options);
+    window.NavigationShell?.openSales?.();
+    installBridge('salesSection')
+      .then(ready => {
+        if (ready && callEmbedded('salesSection', 'openOperationalSale', [salesOrderId])) return;
+        callEmbedded('salesSection', 'openDetail', [salesOrderId]);
+      })
+      .catch(() => callEmbedded('salesSection', 'openDetail', [salesOrderId]));
+    return true;
+  }
+
   async function openSupplier({ supplierId = null } = {}, options = {}) {
     if (!supplierId) return false;
     if (options.history !== false) writeContext('supplier', supplierId, options);
     window.NavigationShell?.openSuppliers?.();
     return callContextEmbedded('suppliersSection', 'openOperationalSupplier', [supplierId]);
+  }
+
+  function openClient({ clientId = null } = {}, options = {}) {
+    if (!clientId) return false;
+    if (options.history !== false) writeContext('client', clientId, options);
+    section('clientsSection');
+    requestAnimationFrame(() => window.ClientsModule?.openInformation?.(clientId));
+    return true;
   }
 
   function openExpediente(operationId, options = {}) {
@@ -265,7 +339,9 @@
       if (context.type === 'wr') return openInventoryReceipt(context.id, { history:false });
       if (context.type === 'receipt') return openWarehouseReceipt({ receiptNumber:context.id }, { history:false });
       if (context.type === 'po') return openPurchase({ purchaseOrderId:context.id }, { history:false });
+      if (context.type === 'so') return openSales({ salesOrderId:context.id }, { history:false });
       if (context.type === 'supplier') return openSupplier({ supplierId:context.id }, { history:false });
+      if (context.type === 'client') return openClient({ clientId:context.id }, { history:false });
       if (context.type === 'expediente') return openExpediente(context.id, { history:false });
       return false;
     } finally {
@@ -290,9 +366,12 @@
     openInventoryReceipt,
     openWarehouseReceipt,
     openPurchase,
+    openSales,
     openSupplier,
+    openClient,
     openExpediente,
     loadForShipment,
+    loadById,
     loadsForOperation,
     loadsForReceipt,
     purchaseOrdersForSupplier,
@@ -301,6 +380,12 @@
     receiptsForPurchase,
     purchaseByNumber,
     receiptByNumber,
+    salesOrdersForClient,
+    loadsForSalesOrder,
+    salesOrdersForLoad,
+    salesOrdersForReceipt,
+    salesByNumber,
+    saleById,
     invalidateLinks,
     restoreContext,
     refreshLinks:() => requestLinks({ refresh:true }),
