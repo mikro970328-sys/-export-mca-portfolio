@@ -22,6 +22,13 @@
 <div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="order">Cancelar</button><button id="saveOrder" class="btn orange">Guardar SO</button></div><div id="orderMsg" class="msg"></div></div></div>
 
 <div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div><div id="detailMsg" class="msg"></div></div></div>
+
+<div id="loadModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="loadTitle">Crear Cargue</h2><div class="muted">Selecciona cantidades por WR. El Cargue y la trazabilidad SO → WR se guardan en una sola transacción.</div></div><button class="btn" data-close="load">✕</button></div>
+<div class="grid"><div><label>Almacén *</label><select id="lWarehouse"></select></div><div><label>Fecha programada</label><input id="lScheduled" type="datetime-local"></div></div>
+<label>Notas del Cargue</label><textarea id="lNotes"></textarea>
+<div id="loadLines" class="detail-items"></div>
+<div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="load">Cancelar</button><button id="saveLoad" class="btn orange">Crear Cargue</button></div><div id="loadMsg" class="msg"></div></div></div>
+
 <script src="/admin/sales.js"></script>
 </body>
 </html>
