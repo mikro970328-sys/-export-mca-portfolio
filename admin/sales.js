@@ -1,7 +1,7 @@
 const token=localStorage.getItem('export_mca_token');
 if(!token) location.href='/admin/';
 const $=id=>document.getElementById(id);
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const n=v=>Number(v||0);
 const fmt=v=>new Intl.NumberFormat('en-US',{maximumFractionDigits:3}).format(n(v));
 const money=(v,c='USD')=>new Intl.NumberFormat('en-US',{style:'currency',currency:c,maximumFractionDigits:2}).format(n(v));
