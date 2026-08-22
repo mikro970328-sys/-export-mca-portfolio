@@ -26,7 +26,7 @@ async function paged(path, baseQuery, pageSize = 1000) {
 
 async function loadLoadLinks() {
   const loads = await supabase('loads', {
-    query:'?select=id,load_number,status,shipment_id,updated_at&order=updated_at.desc'
+    query:'?select=id,load_number,status,shipment_id,client_id,importer_id,updated_at&order=updated_at.desc'
   });
   if (!loads?.length) return [];
 
@@ -75,6 +75,8 @@ async function loadLoadLinks() {
       load_id:load.id,
       load_number:load.load_number,
       load_status:load.status,
+      client_id:load.client_id || null,
+      importer_id:load.importer_id || null,
       shipment_id:load.shipment_id || null,
       container_number:shipment?.container_number || null,
       operation_id:shipment?.operation_id || null,
@@ -148,20 +150,98 @@ async function loadPurchaseLinks() {
   return { purchases, receipts };
 }
 
+async function loadSalesLinks(loadLinks) {
+  const [orders, items, allocations] = await Promise.all([
+    paged(
+      'sales_orders',
+      '?select=id,so_number,client_id,importer_id,status,order_date,requested_at,updated_at&order=updated_at.desc'
+    ),
+    paged(
+      'sales_order_items',
+      '?select=id,sales_order_id'
+    ),
+    paged(
+      'sales_fulfillment_allocations',
+      '?select=sales_order_item_id,load_item_id'
+    )
+  ]);
+
+  if (!orders.length) return { sales:[], links:loadLinks.map(link => ({ ...link, sales_orders:[] })) };
+
+  const loadItems = await paged('load_items', '?select=id,load_id');
+  const orderByItem = new Map(items.map(item => [String(item.id), String(item.sales_order_id)]));
+  const loadByItem = new Map(loadItems.map(item => [String(item.id), String(item.load_id)]));
+  const linkByLoad = new Map(loadLinks.map(link => [String(link.load_id), link]));
+  const loadIdsByOrder = new Map();
+  const orderIdsByLoad = new Map();
+
+  allocations.forEach(allocation => {
+    const orderId = orderByItem.get(String(allocation.sales_order_item_id));
+    const loadId = loadByItem.get(String(allocation.load_item_id));
+    if (!orderId || !loadId) return;
+    if (!loadIdsByOrder.has(orderId)) loadIdsByOrder.set(orderId, new Set());
+    if (!orderIdsByLoad.has(loadId)) orderIdsByLoad.set(loadId, new Set());
+    loadIdsByOrder.get(orderId).add(loadId);
+    orderIdsByLoad.get(loadId).add(orderId);
+  });
+
+  const orderById = new Map(orders.map(order => [String(order.id), order]));
+  const snapshotOrder = order => ({
+    sales_order_id:order.id,
+    so_number:order.so_number,
+    so_status:order.status,
+    client_id:order.client_id,
+    importer_id:order.importer_id || null,
+    order_date:order.order_date || null,
+    requested_at:order.requested_at || null,
+    updated_at:order.updated_at || null
+  });
+  const snapshotLoad = link => ({
+    load_id:link.load_id,
+    load_number:link.load_number,
+    load_status:link.load_status,
+    shipment_id:link.shipment_id || null,
+    container_number:link.container_number || null,
+    operation_id:link.operation_id || null,
+    receipt_numbers:Array.isArray(link.receipt_numbers) ? link.receipt_numbers : [],
+    updated_at:link.updated_at || null
+  });
+
+  const sales = orders.map(order => ({
+    ...snapshotOrder(order),
+    loads:[...(loadIdsByOrder.get(String(order.id)) || [])]
+      .map(loadId => linkByLoad.get(String(loadId)))
+      .filter(Boolean)
+      .map(snapshotLoad)
+  }));
+
+  const enrichedLinks = loadLinks.map(link => ({
+    ...link,
+    sales_orders:[...(orderIdsByLoad.get(String(link.load_id)) || [])]
+      .map(orderId => orderById.get(String(orderId)))
+      .filter(Boolean)
+      .map(snapshotOrder)
+  }));
+
+  return { sales, links:enrichedLinks };
+}
+
 export default async function handler(req, res) {
   const admin = requireAdmin(req, res);
   if (!admin) return;
   if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
 
   try {
-    const [links, purchaseData] = await Promise.all([
+    const [baseLinks, purchaseData] = await Promise.all([
       loadLoadLinks(),
       loadPurchaseLinks()
     ]);
+    const salesData = await loadSalesLinks(baseLinks);
     return ok(res, {
-      links,
+      links:salesData.links,
       purchases:purchaseData.purchases,
-      receipts:purchaseData.receipts
+      receipts:purchaseData.receipts,
+      sales:salesData.sales
     });
   } catch (error) {
     console.error('[operational-links]', error);
