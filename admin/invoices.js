@@ -1,6 +1,6 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const state = { invoices:[], salesOrders:[], view:'open', search:'', editingId:null, selectedOrderId:null };
+  const state = { invoices:[], salesOrders:[], view:'open', search:'', editingId:null, paymentInvoiceId:null };
   const esc = value => String(value ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const num = value => Number(value || 0);
   const money = (value, currency='USD') => `${currency} ${num(value).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -75,6 +75,7 @@
     $('invoiceList').innerHTML = rows.map(invoice => {
       const f = invoice.financial || {};
       const actions = [`<button class="btn" data-detail="${esc(invoice.id)}">Ver</button>`];
+      if (invoice.status === 'issued' && num(f.balance_due) > 0) actions.push(`<button class="btn orange" data-payment="${esc(invoice.id)}">Cobrar</button>`);
       if (invoice.status === 'draft') actions.push(`<button class="btn" data-edit="${esc(invoice.id)}">Editar</button>`,`<button class="btn primary" data-issue="${esc(invoice.id)}">Emitir</button>`);
       if (invoice.status === 'draft' || invoice.status === 'issued') actions.push(`<button class="btn danger" data-void="${esc(invoice.id)}">Anular</button>`);
       return `<div class="row">
@@ -181,6 +182,13 @@
     finally { $('saveInvoice').disabled = false; }
   }
 
+  function paymentRows(invoice) {
+    return (invoice.payments || []).map(payment => {
+      const canReverse = payment.status === 'posted';
+      return `<div class="detail-item"><div class="line-head"><div><b>${esc(date(payment.payment_date))} · ${esc(payment.method || 'Cobro')}</b><div class="small">${esc(payment.reference_number || 'Sin referencia')} · ${esc(payment.status)}</div></div><div class="actions"><b>${esc(money(payment.amount,payment.currency))}</b>${canReverse ? `<button class="btn danger" data-reverse-payment="${esc(payment.id)}" data-invoice-id="${esc(invoice.id)}">Revertir</button>` : ''}</div></div></div>`;
+    }).join('');
+  }
+
   function openDetail(id) {
     const invoice = state.invoices.find(row => String(row.id) === String(id));
     if (!invoice) return;
@@ -188,14 +196,69 @@
     $('detailTitle').textContent = invoice.invoice_number;
     $('detailSubtitle').textContent = `${clientName(invoice)} · ${invoice.sales_order?.so_number || 'Sin SO'} · ${date(invoice.issue_date)}`;
     const items = (invoice.items || []).map(item => `<div class="detail-item"><div class="line-head"><b>${esc(item.description)}</b><b>${esc(money(item.line_total,invoice.currency))}</b></div><div class="small">${esc(item.quantity)} ${esc(item.unit)} × ${esc(money(item.unit_price,invoice.currency))}</div></div>`).join('');
-    const payments = (invoice.payments || []).map(payment => `<div class="detail-item"><div class="line-head"><b>${esc(date(payment.payment_date))} · ${esc(payment.method || 'Cobro')}</b><b>${esc(money(payment.amount,payment.currency))}</b></div><div class="small">${esc(payment.reference_number || '')} · ${esc(payment.status)}</div></div>`).join('');
+    const payments = paymentRows(invoice);
     $('detailBody').innerHTML = `<div class="summary"><div><b>Total</b>${esc(money(f.total,invoice.currency))}</div><div><b>Cobrado</b>${esc(money(f.paid_amount,invoice.currency))}</div><div><b>Saldo</b>${esc(money(f.balance_due,invoice.currency))}</div><div><b>Estado</b>${statusPill(invoice)}</div></div><div class="detail-items"><b>Líneas</b>${items || '<div class="empty">Sin líneas.</div>'}</div><div class="detail-items"><b>Cobros</b>${payments || '<div class="empty">Todavía no hay cobros registrados.</div>'}</div>${invoice.notes ? `<div class="line"><b>Notas</b><div class="small">${esc(invoice.notes)}</div></div>` : ''}`;
     const actions = [];
+    if (invoice.status === 'issued' && num(f.balance_due) > 0) actions.push(`<button class="btn orange" data-payment="${esc(invoice.id)}">Registrar cobro</button>`);
     if (invoice.status === 'draft') actions.push(`<button class="btn" data-edit="${esc(invoice.id)}">Editar</button>`,`<button class="btn primary" data-issue="${esc(invoice.id)}">Emitir</button>`);
     if (invoice.status === 'draft' || invoice.status === 'issued') actions.push(`<button class="btn danger" data-void="${esc(invoice.id)}">Anular</button>`);
     $('detailActions').innerHTML = actions.join('');
     message('detailMsg','');
     setModal('detailModal',true);
+  }
+
+  function openPayment(id) {
+    const invoice = state.invoices.find(row => String(row.id) === String(id));
+    if (!invoice || invoice.status !== 'issued') return;
+    const balance = num(invoice.financial?.balance_due);
+    if (balance <= 0) return;
+    state.paymentInvoiceId = invoice.id;
+    $('paymentTitle').textContent = `Registrar cobro · ${invoice.invoice_number}`;
+    $('paymentSubtitle').textContent = `Saldo pendiente: ${money(balance,invoice.currency)}`;
+    $('pAmount').max = String(balance);
+    $('pAmount').value = String(balance);
+    $('pDate').value = new Date().toISOString().slice(0,10);
+    $('pMethod').value = 'wire';
+    $('pReference').value = '';
+    $('pNotes').value = '';
+    message('paymentMsg','');
+    setModal('paymentModal',true);
+  }
+
+  async function savePayment() {
+    const invoice = state.invoices.find(row => row.id === state.paymentInvoiceId);
+    if (!invoice) return message('paymentMsg','Factura no encontrada.');
+    const amount = num($('pAmount').value);
+    const balance = num(invoice.financial?.balance_due);
+    if (amount <= 0) return message('paymentMsg','El monto debe ser mayor que cero.');
+    if (amount > balance) return message('paymentMsg','El monto supera el saldo pendiente.');
+    $('savePayment').disabled = true;
+    try {
+      await request('/api/invoice-payments',{ method:'POST', body:JSON.stringify({
+        action:'register',
+        invoice_id:invoice.id,
+        amount,
+        payment_date:$('pDate').value || null,
+        method:$('pMethod').value || null,
+        reference_number:$('pReference').value || null,
+        notes:$('pNotes').value || null
+      })});
+      setModal('paymentModal',false);
+      await refresh();
+      openDetail(invoice.id);
+    } catch (error) { message('paymentMsg',error.message); }
+    finally { $('savePayment').disabled = false; }
+  }
+
+  async function reversePayment(paymentId, invoiceId) {
+    const reason = prompt('Motivo del reverso (opcional):','');
+    if (reason === null) return;
+    if (!confirm('¿Confirmas revertir este cobro? El registro se conservará como reversed.')) return;
+    try {
+      await request('/api/invoice-payments',{ method:'POST', body:JSON.stringify({ action:'reverse', payment_id:paymentId, reason }) });
+      await refresh();
+      openDetail(invoiceId);
+    } catch (error) { alert(error.message); }
   }
 
   async function transition(id, action) {
@@ -212,9 +275,15 @@
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
     const close = target.closest('[data-close]');
-    if (close) { setModal(close.dataset.close === 'invoice' ? 'invoiceModal' : 'detailModal',false); return; }
+    if (close) {
+      const modalId = close.dataset.close === 'invoice' ? 'invoiceModal' : close.dataset.close === 'payment' ? 'paymentModal' : 'detailModal';
+      setModal(modalId,false);
+      return;
+    }
     const detail = target.closest('[data-detail]'); if (detail) return openDetail(detail.dataset.detail);
     const edit = target.closest('[data-edit]'); if (edit) { setModal('detailModal',false); return openEdit(edit.dataset.edit); }
+    const payment = target.closest('[data-payment]'); if (payment) return openPayment(payment.dataset.payment);
+    const reverse = target.closest('[data-reverse-payment]'); if (reverse) return reversePayment(reverse.dataset.reversePayment, reverse.dataset.invoiceId);
     const issue = target.closest('[data-issue]'); if (issue) return transition(issue.dataset.issue,'issue');
     const voidButton = target.closest('[data-void]'); if (voidButton) return transition(voidButton.dataset.void,'void');
     const tab = target.closest('[data-view]'); if (tab) {
@@ -229,7 +298,8 @@
   $('search').oninput = event => { state.search = event.target.value || ''; renderList(); };
   $('iSalesOrder').onchange = () => renderInvoiceLines(state.editingId ? state.invoices.find(row => row.id === state.editingId) : null);
   $('saveInvoice').onclick = saveInvoice;
-  ['invoiceModal','detailModal'].forEach(id => $(id)?.addEventListener('click',event => { if (event.target === $(id)) setModal(id,false); }));
+  $('savePayment').onclick = savePayment;
+  ['invoiceModal','detailModal','paymentModal'].forEach(id => $(id)?.addEventListener('click',event => { if (event.target === $(id)) setModal(id,false); }));
 
   window.openOperationalInvoice = openDetail;
   refresh().catch(error => { $('invoiceList').innerHTML = `<div class="empty">${esc(error.message)}</div>`; });
