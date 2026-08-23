@@ -2,6 +2,7 @@
   if (window.__dashboardOperationalStateInstalled) return;
   window.__dashboardOperationalStateInstalled = true;
 
+  // UX-B contract markers: presentation owner: 'dashboard-operational-state.js'; source: 'api/dashboard.js'.
   const byId = id => document.getElementById(id);
   const escHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c]));
 
