@@ -1,5 +1,6 @@
 import { fail, ok, requireAdmin, supabase } from './_lib.js';
 
+// UX-B projection owner: 'api/dashboard.js'.
 function normalize(value) {
   return String(value || '')
     .normalize('NFD')
