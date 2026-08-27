@@ -1,5 +1,6 @@
 -- B6.1 · Cost Charges + merchandise cost basis
 -- Costos adicionales no crean inventario. Costo de mercancía se deriva de PO + Supplier Bills posted.
+-- warehouse_receipt_items.unit_cost/currency son legacy y NO son fuente de costo para B6.
 
 create table public.cost_charges (
   id uuid primary key default gen_random_uuid(),
@@ -17,6 +18,8 @@ create table public.cost_charges (
   status text not null default 'draft',
   notes text,
   created_by uuid references public.admin_users(id) on delete set null,
+  posted_by uuid references public.admin_users(id) on delete set null,
+  voided_by uuid references public.admin_users(id) on delete set null,
   posted_at timestamptz,
   voided_at timestamptz,
   created_at timestamptz not null default now(),
@@ -29,7 +32,12 @@ create table public.cost_charges (
   constraint cost_charges_amount_check check (amount > 0),
   constraint cost_charges_currency_check check (currency ~ '^[A-Z]{3}$'),
   constraint cost_charges_status_check check (status in ('draft','posted','void')),
-  constraint cost_charges_reference_not_blank check (reference is null or btrim(reference) <> '')
+  constraint cost_charges_reference_not_blank check (reference is null or btrim(reference) <> ''),
+  constraint cost_charges_lifecycle_timestamps_check check (
+    (status = 'draft' and posted_at is null and voided_at is null)
+    or (status = 'posted' and posted_at is not null and voided_at is null)
+    or (status = 'void' and voided_at is not null)
+  )
 );
 
 alter table public.cost_charges enable row level security;
@@ -38,6 +46,8 @@ create index cost_charges_supplier_idx on public.cost_charges(supplier_id) where
 create index cost_charges_stage_idx on public.cost_charges(stage);
 create index cost_charges_category_idx on public.cost_charges(category);
 create index cost_charges_created_by_idx on public.cost_charges(created_by) where created_by is not null;
+create index cost_charges_posted_by_idx on public.cost_charges(posted_by) where posted_by is not null;
+create index cost_charges_voided_by_idx on public.cost_charges(voided_by) where voided_by is not null;
 
 create trigger cost_charges_set_updated_at
 before update on public.cost_charges
@@ -89,11 +99,24 @@ set search_path = public
 as $function$
 declare
   v_business_changed boolean;
+  v_allocation_total numeric;
+  v_transition text;
 begin
-  if tg_op = 'DELETE' then raise exception 'COST_CHARGE_DELETE_FORBIDDEN'; end if;
+  if tg_op = 'DELETE' then
+    raise exception 'COST_CHARGE_DELETE_FORBIDDEN';
+  end if;
+
   if tg_op = 'INSERT' then
     if new.status <> 'draft' then raise exception 'COST_CHARGE_MUST_START_DRAFT'; end if;
+    if new.posted_at is not null or new.posted_by is not null
+       or new.voided_at is not null or new.voided_by is not null then
+      raise exception 'COST_CHARGE_LIFECYCLE_FIELDS_FORBIDDEN_ON_CREATE';
+    end if;
     return new;
+  end if;
+
+  if new.created_by is distinct from old.created_by then
+    raise exception 'COST_CHARGE_CREATED_BY_IMMUTABLE';
   end if;
 
   v_business_changed :=
@@ -106,27 +129,72 @@ begin
     new.reference is distinct from old.reference or
     new.notes is distinct from old.notes;
 
-  if old.status <> 'draft' and v_business_changed then raise exception 'COST_CHARGE_HEADER_LOCKED'; end if;
-
-  if new.status is distinct from old.status then
-    if v_business_changed then raise exception 'COST_CHARGE_TRANSITION_WITH_HEADER_CHANGE'; end if;
-    if current_setting('export_mca.cost_charge_transition', true) is distinct from lower(new.status) then
-      raise exception 'COST_CHARGE_STATUS_TRANSITION_FORBIDDEN';
-    end if;
-    if old.status = 'void' then raise exception 'COST_CHARGE_STATUS_FINAL'; end if;
-    if old.status = 'draft' and new.status = 'posted' then
-      if not exists (select 1 from public.cost_charge_allocations where cost_charge_id = old.id) then
-        raise exception 'COST_CHARGE_HAS_NO_ALLOCATIONS';
-      end if;
-      if (select coalesce(sum(amount),0) from public.cost_charge_allocations where cost_charge_id = old.id) <> old.amount then
-        raise exception 'COST_CHARGE_NOT_FULLY_ALLOCATED';
-      end if;
-      return new;
-    end if;
-    if old.status in ('draft','posted') and new.status = 'void' then return new; end if;
-    raise exception 'COST_CHARGE_STATUS_TRANSITION_INVALID';
+  if old.status <> 'draft' and v_business_changed then
+    raise exception 'COST_CHARGE_HEADER_LOCKED';
   end if;
-  return new;
+
+  if new.status is not distinct from old.status then
+    if new.posted_at is distinct from old.posted_at
+       or new.posted_by is distinct from old.posted_by
+       or new.voided_at is distinct from old.voided_at
+       or new.voided_by is distinct from old.voided_by then
+      raise exception 'COST_CHARGE_LIFECYCLE_FIELDS_LOCKED';
+    end if;
+
+    if old.status = 'draft' and new.amount is distinct from old.amount then
+      select coalesce(sum(amount),0)
+        into v_allocation_total
+      from public.cost_charge_allocations
+      where cost_charge_id = old.id;
+
+      if v_allocation_total > new.amount then
+        raise exception 'COST_CHARGE_TOTAL_BELOW_ALLOCATIONS';
+      end if;
+    end if;
+
+    return new;
+  end if;
+
+  if v_business_changed then
+    raise exception 'COST_CHARGE_TRANSITION_WITH_HEADER_CHANGE';
+  end if;
+
+  if old.status = 'void' then
+    raise exception 'COST_CHARGE_STATUS_FINAL';
+  end if;
+
+  v_transition := current_setting('export_mca.cost_charge_transition', true);
+
+  if old.status = 'draft' and new.status = 'posted' and v_transition = 'post' then
+    select coalesce(sum(amount),0)
+      into v_allocation_total
+    from public.cost_charge_allocations
+    where cost_charge_id = old.id;
+
+    if v_allocation_total = 0 then raise exception 'COST_CHARGE_HAS_NO_ALLOCATIONS'; end if;
+    if v_allocation_total <> old.amount then raise exception 'COST_CHARGE_NOT_FULLY_ALLOCATED'; end if;
+    if new.posted_at is null then raise exception 'COST_CHARGE_POSTED_AT_REQUIRED'; end if;
+    if new.voided_at is not null or new.voided_by is not null then
+      raise exception 'COST_CHARGE_VOID_FIELDS_INVALID';
+    end if;
+    return new;
+  end if;
+
+  if old.status in ('draft','posted') and new.status = 'void' and v_transition = 'void' then
+    if new.voided_at is null then raise exception 'COST_CHARGE_VOIDED_AT_REQUIRED'; end if;
+    if old.status = 'draft' and (new.posted_at is not null or new.posted_by is not null) then
+      raise exception 'COST_CHARGE_POST_FIELDS_INVALID';
+    end if;
+    if old.status = 'posted' and (
+      new.posted_at is distinct from old.posted_at
+      or new.posted_by is distinct from old.posted_by
+    ) then
+      raise exception 'COST_CHARGE_POST_FIELDS_IMMUTABLE';
+    end if;
+    return new;
+  end if;
+
+  raise exception 'COST_CHARGE_STATUS_TRANSITION_INVALID';
 end;
 $function$;
 
@@ -143,15 +211,34 @@ declare
   v_charge public.cost_charges;
   v_other numeric;
 begin
-  select * into v_charge from public.cost_charges where id = new.cost_charge_id for update;
+  if tg_op = 'UPDATE' then
+    if new.cost_charge_id is distinct from old.cost_charge_id then
+      raise exception 'COST_CHARGE_ALLOCATION_PARENT_IMMUTABLE';
+    end if;
+    if new.created_by is distinct from old.created_by then
+      raise exception 'COST_CHARGE_ALLOCATION_CREATED_BY_IMMUTABLE';
+    end if;
+  end if;
+
+  select *
+    into v_charge
+  from public.cost_charges
+  where id = new.cost_charge_id
+  for update;
+
   if not found then raise exception 'COST_CHARGE_NOT_FOUND'; end if;
   if v_charge.status <> 'draft' then raise exception 'COST_CHARGE_ALLOCATIONS_LOCKED'; end if;
 
-  select coalesce(sum(amount),0) into v_other
+  select coalesce(sum(amount),0)
+    into v_other
   from public.cost_charge_allocations
-  where cost_charge_id = new.cost_charge_id and id <> new.id;
+  where cost_charge_id = new.cost_charge_id
+    and id <> new.id;
 
-  if v_other + new.amount > v_charge.amount then raise exception 'COST_CHARGE_ALLOCATION_EXCEEDS_TOTAL'; end if;
+  if v_other + new.amount > v_charge.amount then
+    raise exception 'COST_CHARGE_ALLOCATION_EXCEEDS_TOTAL';
+  end if;
+
   return new;
 end;
 $function$;
@@ -165,9 +252,16 @@ returns trigger
 language plpgsql
 set search_path = public
 as $function$
-declare v_status text;
+declare
+  v_status text;
 begin
-  select status into v_status from public.cost_charges where id = old.cost_charge_id for update;
+  select status
+    into v_status
+  from public.cost_charges
+  where id = old.cost_charge_id
+  for update;
+
+  if not found then raise exception 'COST_CHARGE_NOT_FOUND'; end if;
   if v_status is distinct from 'draft' then raise exception 'COST_CHARGE_ALLOCATIONS_LOCKED'; end if;
   return old;
 end;
@@ -225,61 +319,135 @@ select
   poi.currency,
   coalesce(a.billed_quantity,0)::numeric as actual_billed_quantity,
   coalesce(a.billed_cost,0)::numeric as actual_billed_cost,
-  case when coalesce(a.billed_quantity,0) > 0 then a.billed_cost / a.billed_quantity else null end::numeric as actual_unit_cost,
+  greatest(poi.ordered_quantity - coalesce(a.billed_quantity,0),0)::numeric as estimated_remaining_quantity,
   case
-    when coalesce(a.billed_quantity,0) >= poi.ordered_quantity and coalesce(a.billed_quantity,0) > 0 then a.billed_cost / a.billed_quantity
-    when coalesce(a.billed_quantity,0) > 0 and poi.unit_cost is not null and poi.ordered_quantity > 0 then
-      (a.billed_cost + greatest(poi.ordered_quantity - a.billed_quantity,0) * poi.unit_cost) / poi.ordered_quantity
     when coalesce(a.billed_quantity,0) > 0 then a.billed_cost / a.billed_quantity
-    else poi.unit_cost
+    else null
+  end::numeric as actual_unit_cost,
+  case
+    when poi.ordered_quantity > 0
+         and coalesce(a.billed_quantity,0) >= poi.ordered_quantity
+         and coalesce(a.billed_quantity,0) > 0 then a.billed_cost
+    when coalesce(a.billed_quantity,0) > 0
+         and poi.unit_cost is not null
+         and poi.ordered_quantity > 0 then
+      a.billed_cost + greatest(poi.ordered_quantity - a.billed_quantity,0) * poi.unit_cost
+    when coalesce(a.billed_quantity,0) = 0
+         and poi.unit_cost is not null
+         and poi.ordered_quantity > 0 then poi.ordered_quantity * poi.unit_cost
+    else null
+  end::numeric as recognized_merchandise_cost,
+  case
+    when poi.ordered_quantity > 0
+         and coalesce(a.billed_quantity,0) >= poi.ordered_quantity
+         and coalesce(a.billed_quantity,0) > 0 then a.billed_cost / a.billed_quantity
+    when coalesce(a.billed_quantity,0) > 0
+         and poi.unit_cost is not null
+         and poi.ordered_quantity > 0 then
+      (a.billed_cost + greatest(poi.ordered_quantity - a.billed_quantity,0) * poi.unit_cost) / poi.ordered_quantity
+    when coalesce(a.billed_quantity,0) = 0 and poi.unit_cost is not null then poi.unit_cost
+    else null
   end::numeric as recognized_unit_cost,
   case
-    when coalesce(a.billed_quantity,0) >= poi.ordered_quantity and coalesce(a.billed_quantity,0) > 0 then 'actual'
-    when coalesce(a.billed_quantity,0) > 0 then 'partial_actual'
-    when poi.unit_cost is not null then 'estimated'
-    else 'missing'
-  end as cost_status
+    when poi.ordered_quantity > 0
+         and coalesce(a.billed_quantity,0) >= poi.ordered_quantity
+         and coalesce(a.billed_quantity,0) > 0 then 'actual'
+    when coalesce(a.billed_quantity,0) > 0
+         and poi.unit_cost is not null
+         and poi.ordered_quantity > 0 then 'partial_actual'
+    when coalesce(a.billed_quantity,0) = 0 and poi.unit_cost is not null then 'estimated'
+    else 'incomplete_allocation'
+  end as cost_coverage
 from public.purchase_order_items poi
 left join actual a on a.purchase_order_item_id = poi.id;
 
 create or replace view public.warehouse_receipt_item_merchandise_cost
 with (security_invoker = true)
 as
+with link_costs as (
+  select
+    pra.id as purchase_receipt_allocation_id,
+    pra.receipt_item_id,
+    pra.purchase_order_item_id,
+    pra.received_quantity,
+    cb.currency,
+    cb.recognized_unit_cost,
+    cb.cost_coverage
+  from public.purchase_receipt_allocations pra
+  join public.purchase_order_item_merchandise_cost_basis cb
+    on cb.purchase_order_item_id = pra.purchase_order_item_id
+), aggregated as (
+  select
+    lc.receipt_item_id,
+    count(lc.purchase_receipt_allocation_id)::integer as allocation_count,
+    count(distinct lc.purchase_order_item_id)::integer as purchase_order_line_count,
+    coalesce(sum(lc.received_quantity),0)::numeric as linked_quantity,
+    coalesce(sum(lc.received_quantity) filter (where lc.recognized_unit_cost is not null),0)::numeric as costed_quantity,
+    count(distinct lc.currency)::integer as source_currency_count,
+    min(lc.currency) as single_currency,
+    sum(lc.received_quantity * lc.recognized_unit_cost)
+      filter (where lc.recognized_unit_cost is not null)::numeric as single_currency_cost_candidate,
+    bool_or(lc.cost_coverage = 'incomplete_allocation') as has_incomplete_source,
+    bool_and(lc.cost_coverage = 'actual') as all_actual,
+    bool_and(lc.cost_coverage = 'estimated') as all_estimated
+  from link_costs lc
+  group by lc.receipt_item_id
+)
 select
   wri.id as receipt_item_id,
   wri.receipt_id,
+  wr.status as warehouse_receipt_status,
   wri.product_id,
   wri.quantity as physical_quantity,
   wri.unit,
-  coalesce(sum(pra.received_quantity),0)::numeric as linked_quantity,
-  greatest(wri.quantity - coalesce(sum(pra.received_quantity),0),0)::numeric as unlinked_quantity,
-  sum(pra.received_quantity * cb.recognized_unit_cost) filter (where cb.recognized_unit_cost is not null)::numeric as recognized_merchandise_cost,
+  coalesce(a.linked_quantity,0)::numeric as linked_quantity,
+  greatest(wri.quantity - coalesce(a.linked_quantity,0),0)::numeric as unlinked_quantity,
+  coalesce(a.costed_quantity,0)::numeric as costed_quantity,
+  coalesce(a.purchase_order_line_count,0)::integer as purchase_order_line_count,
+  coalesce(a.source_currency_count,0)::integer as source_currency_count,
+  case when a.source_currency_count = 1 then a.single_currency else null end as currency,
   case
-    when coalesce(sum(pra.received_quantity) filter (where cb.recognized_unit_cost is not null),0) > 0 then
-      sum(pra.received_quantity * cb.recognized_unit_cost) filter (where cb.recognized_unit_cost is not null)
-      / sum(pra.received_quantity) filter (where cb.recognized_unit_cost is not null)
+    when coalesce(a.allocation_count,0) > 0
+         and a.source_currency_count = 1
+         and a.linked_quantity = wri.quantity
+         and a.costed_quantity = a.linked_quantity
+         and coalesce(a.has_incomplete_source,false) is false
+      then a.single_currency_cost_candidate
+    else null
+  end::numeric as recognized_merchandise_cost,
+  case
+    when coalesce(a.allocation_count,0) > 0
+         and a.source_currency_count = 1
+         and a.linked_quantity = wri.quantity
+         and a.costed_quantity = a.linked_quantity
+         and coalesce(a.has_incomplete_source,false) is false
+         and wri.quantity > 0
+      then a.single_currency_cost_candidate / wri.quantity
     else null
   end::numeric as recognized_unit_cost,
-  count(distinct pra.purchase_order_item_id)::integer as purchase_order_line_count,
   case
-    when count(pra.id) = 0 then 'unlinked'
-    when bool_or(cb.cost_status = 'missing') then 'incomplete'
-    when greatest(wri.quantity - coalesce(sum(pra.received_quantity),0),0) > 0 then 'partial_link'
-    when bool_and(cb.cost_status = 'actual') then 'actual'
-    when bool_or(cb.cost_status = 'partial_actual') then 'partial_actual'
-    else 'estimated'
-  end as cost_status
+    when coalesce(a.allocation_count,0) = 0 then 'incomplete_allocation'
+    when a.source_currency_count <> 1 then 'incomplete_allocation'
+    when a.linked_quantity <> wri.quantity then 'incomplete_allocation'
+    when a.costed_quantity <> a.linked_quantity then 'incomplete_allocation'
+    when coalesce(a.has_incomplete_source,false) then 'incomplete_allocation'
+    when coalesce(a.all_actual,false) then 'actual'
+    when coalesce(a.all_estimated,false) then 'estimated'
+    else 'partial_actual'
+  end as cost_coverage
 from public.warehouse_receipt_items wri
-left join public.purchase_receipt_allocations pra on pra.receipt_item_id = wri.id
-left join public.purchase_order_item_merchandise_cost_basis cb on cb.purchase_order_item_id = pra.purchase_order_item_id
-group by wri.id;
+join public.warehouse_receipts wr on wr.id = wri.receipt_id
+left join aggregated a on a.receipt_item_id = wri.id;
 
 -- Backend-only data surfaces. B6.2 will expose guarded RPCs for mutations.
 revoke all on table public.cost_charges from anon, authenticated;
 revoke all on table public.cost_charge_allocations from anon, authenticated;
+revoke all on table public.cost_charge_progress from anon, authenticated;
+revoke all on table public.purchase_order_item_merchandise_cost_basis from anon, authenticated;
+revoke all on table public.warehouse_receipt_item_merchandise_cost from anon, authenticated;
 revoke insert, update, delete on table public.cost_charges from service_role;
 revoke insert, update, delete on table public.cost_charge_allocations from service_role;
-revoke all on sequence public.cost_charges_cost_serial_seq from service_role;
+revoke all on sequence public.cost_charges_cost_serial_seq from anon, authenticated, service_role;
 grant select on table public.cost_charges to service_role;
 grant select on table public.cost_charge_allocations to service_role;
 grant select on table public.cost_charge_progress to service_role;
@@ -292,5 +460,6 @@ revoke all on function public.guard_cost_charge_allocation_delete() from public,
 
 comment on table public.cost_charges is 'Costo adicional reconocido una sola vez. No crea inventario ni duplica Supplier Bills de mercancía.';
 comment on table public.cost_charge_allocations is 'Distribución de un Cost Charge hacia contextos operativos. Los cargos posted deben quedar 100% asignados.';
-comment on view public.purchase_order_item_merchandise_cost_basis is 'Costo estimado/actual/reconocido por línea de PO desde PO + Supplier Bills posted.';
-comment on view public.warehouse_receipt_item_merchandise_cost is 'Costo reconocido de mercancía por lote físico WR usando purchase_receipt_allocations.';
+comment on view public.cost_charge_progress is 'Estado derivado de asignación de Cost Charges; void conserva historia y no implica costo activo.';
+comment on view public.purchase_order_item_merchandise_cost_basis is 'Costo estimado/actual/reconocido por línea de PO desde PO + Supplier Bills posted. partial_actual solo se reconoce si existe estimado para la parte aún no facturada.';
+comment on view public.warehouse_receipt_item_merchandise_cost is 'Costo reconocido por línea física WR usando purchase_receipt_allocations; nunca suma monedas distintas ni usa warehouse_receipt_items.unit_cost como fuente.';
