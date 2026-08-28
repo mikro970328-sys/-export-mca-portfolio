@@ -9,6 +9,7 @@
   const EMBEDDED_OPERATIONS = [
     { id:'warehouseSection', label:'Almacén', icon:'▥', src:'/admin/warehouse.html?embedded=1' },
     { id:'suppliersSection', label:'Proveedores', icon:'◫', src:'/admin/suppliers.html?embedded=1' },
+    { id:'productsSection', label:'Productos', icon:'◩', src:'/admin/products.html?embedded=1' },
     { id:'purchasesSection', label:'Compras', icon:'▤', src:'/admin/purchases.html?embedded=1' },
     { id:'salesSection', label:'Ventas', icon:'▧', src:'/admin/sales.html?embedded=1' },
     { id:'invoicesSection', label:'Facturación', icon:'▨', src:'/admin/invoices.html?embedded=1' },
@@ -75,6 +76,39 @@
     return openEmbeddedSection(embeddedById(id));
   }
 
+  function applyWarehouseCatalogBoundary(frame) {
+    try {
+      const doc = frame?.contentDocument;
+      if (!doc?.body) return;
+      const apply = () => {
+        const productTab = doc.querySelector('.tab[data-tab="products"]');
+        if (productTab) {
+          productTab.style.display = 'none';
+          productTab.setAttribute('aria-hidden', 'true');
+          productTab.tabIndex = -1;
+        }
+        doc.getElementById('productsPane')?.classList.add('hidden');
+        doc.getElementById('quickProductModal')?.classList.add('hidden');
+        doc.querySelectorAll('.product-picker button').forEach(button => {
+          button.style.display = 'none';
+          button.disabled = true;
+          button.setAttribute('aria-hidden', 'true');
+        });
+        doc.querySelectorAll('.muted').forEach(node => {
+          if (node.textContent?.includes('Recepciones físicas, productos y ubicaciones.')) node.textContent = 'Recepciones físicas y ubicaciones de almacén.';
+          if (node.textContent?.includes('Selecciona un producto existente o créalo aquí')) node.textContent = 'Selecciona un producto existente del catálogo maestro. Los productos se administran en Operaciones → Productos.';
+        });
+      };
+      apply();
+      frame.__warehouseCatalogObserver?.disconnect?.();
+      const Observer = frame.contentWindow?.MutationObserver || MutationObserver;
+      frame.__warehouseCatalogObserver = new Observer(apply);
+      frame.__warehouseCatalogObserver.observe(doc.body, { childList:true, subtree:true });
+    } catch (error) {
+      console.warn('[navigation-shell] warehouse catalog boundary', error);
+    }
+  }
+
   function ensureEmbeddedOperations() {
     const operations = document.querySelector('.nav-group[data-nav-group="operations"] .submenu');
     const main = document.querySelector('.main-shell main');
@@ -96,6 +130,8 @@
         section.className = 'app-section hidden';
         section.innerHTML = `<iframe src="${config.src}" title="${config.label}" style="width:100%;height:calc(100vh - 120px);min-height:760px;border:0;border-radius:14px;background:#f4f7fb"></iframe>`;
         main.appendChild(section);
+        const frame = section.querySelector('iframe');
+        if (config.id === 'warehouseSection' && frame) frame.addEventListener('load', () => applyWarehouseCatalogBoundary(frame));
       }
     }
     const saved = localStorage.getItem('export_mca_current_section');
@@ -237,6 +273,7 @@
       closeMobile: closeMobileMenu,
       openWarehouse: () => openEmbeddedById('warehouseSection'),
       openSuppliers: () => openEmbeddedById('suppliersSection'),
+      openProducts: () => openEmbeddedById('productsSection'),
       openPurchases: () => openEmbeddedById('purchasesSection'),
       openSales: () => openEmbeddedById('salesSection'),
       openInvoices: () => openEmbeddedById('invoicesSection'),
