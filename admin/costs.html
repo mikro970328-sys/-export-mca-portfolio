@@ -5,28 +5,31 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Costos / Landed Cost · Export MCA</title>
 <link rel="stylesheet" href="/admin/costs.css">
+<link rel="stylesheet" href="/admin/profitability.css">
 </head>
 <body>
 <main class="wrap">
   <div class="head">
     <div>
       <h1>Costos / Landed Cost</h1>
-      <div class="muted">Cargos adicionales, costo reconocido de mercancía y COGS derivados desde PostgreSQL. Sin conversión FX automática.</div>
+      <div class="muted">Cargos adicionales, costo reconocido de mercancía, COGS y rentabilidad derivados desde PostgreSQL. Sin conversión FX automática.</div>
     </div>
     <div class="actions"><button id="newCharge" class="btn orange">+ Cargo de costo</button></div>
   </div>
   <div id="metrics" class="metrics"></div>
   <section class="panel">
     <div class="toolbar">
-      <input id="search" class="search" placeholder="Buscar CC, referencia, PO, WR, Cargue, contenedor u operación">
+      <input id="search" class="search" placeholder="Buscar CC, referencia, PO, WR, Cargue, contenedor, operación, SO o factura">
       <div class="tabs">
         <button class="btn active" data-view="charges">Cargos</button>
         <button class="btn" data-view="landed">Landed / WR</button>
         <button class="btn" data-view="cogs">COGS / Cargues</button>
+        <button id="profitabilityTab" class="btn" type="button">Rentabilidad</button>
       </div>
       <button id="refresh" class="btn">↻</button>
     </div>
     <div id="content"></div>
+    <div id="profitabilityContent" class="hidden"></div>
   </section>
 </main>
 
@@ -72,6 +75,17 @@
   </div>
 </div>
 
+<div id="profitTraceModal" class="modal hidden">
+  <div class="dialog">
+    <div class="dialog-head">
+      <div><h2 id="profitTraceTitle">Trazabilidad de costo</h2><div id="profitTraceSubtitle" class="muted"></div></div>
+      <button id="closeProfitTrace" class="btn" type="button">✕</button>
+    </div>
+    <div id="profitTraceBody"></div>
+  </div>
+</div>
+
 <script src="/admin/costs.js"></script>
+<script src="/admin/profitability.js"></script>
 </body>
 </html>
