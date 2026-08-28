@@ -15,13 +15,18 @@
     return data;
   }
 
-  function notice(message, document = null, error = false) {
-    document?.getElementById?.('b7InvoiceNotice')?.remove?.();
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[char]));
+  }
+
+  function notice(message, generatedDocument = null, error = false) {
+    window.document.getElementById('b7InvoiceNotice')?.remove();
     const box = window.document.createElement('div');
     box.id = 'b7InvoiceNotice';
     box.style.cssText = `position:fixed;right:18px;bottom:18px;z-index:1000;max-width:390px;padding:12px 14px;border-radius:10px;background:${error ? '#fff0f0' : '#f0f7ff'};border:1px solid ${error ? '#efc0bc' : '#bfd1e8'};box-shadow:0 12px 32px rgba(6,32,74,.18);font:12px Arial;color:#152238`;
-    const link = document?.signed_url ? `<a href="${String(document.signed_url).replace(/"/g,'&quot;')}" target="_blank" rel="noopener" style="display:inline-block;margin-top:7px;color:#06204a;font-weight:800">Ver PDF</a>` : '';
-    box.innerHTML = `<b>${error ? 'No se pudo generar' : 'Documento actualizado'}</b><div style="margin-top:4px">${String(message).replace(/[&<>]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[char]))}</div>${link}`;
+    const safeUrl = String(generatedDocument?.signed_url || '').replace(/"/g, '&quot;');
+    const link = safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:7px;color:#06204a;font-weight:800">Ver PDF</a>` : '';
+    box.innerHTML = `<b>${error ? 'No se pudo generar' : 'Documento actualizado'}</b><div style="margin-top:4px">${escapeHtml(message)}</div>${link}`;
     window.document.body.appendChild(box);
     setTimeout(() => box.remove(), 9000);
   }
