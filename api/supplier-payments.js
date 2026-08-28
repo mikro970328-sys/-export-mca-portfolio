@@ -17,9 +17,11 @@ function translatedError(raw) {
     ['SUPPLIER_PAYMENT_BILL_REQUIRED','Selecciona una factura de proveedor.'],
     ['SUPPLIER_PAYMENT_APPLICATION_AMOUNT_INVALID','El monto aplicado debe ser mayor que cero.'],
     ['SUPPLIER_PAYMENT_APPLICATION_EXCEEDS_PAYMENT','La distribución supera el monto disponible del pago.'],
-    ['SUPPLIER_PAYMENT_APPLICATION_EXCEEDS_BILL','La distribución supera el saldo de la factura.'],
+    ['SUPPLIER_PAYMENT_APPLICATION_EXCEEDS_BILL','El pago supera el saldo pendiente de la factura.'],
     ['SUPPLIER_PAYMENT_APPLICATION_CONTEXT_MISMATCH','El pago y la factura deben pertenecer a la misma Purchase Order, proveedor y moneda.'],
-    ['SUPPLIER_BILL_NOT_POSTED','Solo se puede aplicar dinero a facturas contabilizadas.']
+    ['SUPPLIER_BILL_ALREADY_PAID','Esta factura ya está completamente pagada.'],
+    ['SUPPLIER_BILL_NOT_FOUND','Factura de proveedor no encontrada.'],
+    ['SUPPLIER_BILL_NOT_POSTED','Solo se puede pagar una factura contabilizada.']
   ];
   return messages.find(([key]) => raw.includes(key))?.[1] || raw;
 }
@@ -89,6 +91,31 @@ export default async function handler(req, res) {
 
     const body = await readJson(req);
     const action = text(body.action,60).toLowerCase();
+
+    if (action === 'pay_bill') {
+      const billId = text(body.supplier_bill_id,80);
+      if (!billId) throw new Error('Selecciona una factura de proveedor');
+      const amount = Number(body.amount || 0);
+      if (!(amount > 0)) throw new Error('El monto del pago debe ser mayor que cero');
+      const result = await supabase('rpc/pay_supplier_bill', { method:'POST', body:{
+        p_supplier_bill_id:billId,
+        p_amount:amount,
+        p_payment_date:text(body.payment_date,40) || null,
+        p_method:text(body.method,100) || null,
+        p_reference:text(body.reference,300) || null,
+        p_notes:text(body.notes,2000) || null,
+        p_actor:admin.admin_id || null
+      }});
+      const payment = rpcRow(result);
+      if (!payment?.id) throw new Error('No se pudo registrar el pago de la factura');
+      await writeAudit(admin,'supplier_bill_paid','supplier_payment',payment.id,{
+        payment_number:payment.payment_number,
+        supplier_bill_id:billId,
+        purchase_order_id:payment.purchase_order_id,
+        amount
+      });
+      return ok(res,{ payment:(await loadPayments()).find(row => row.id === payment.id) || payment });
+    }
 
     if (action === 'register') {
       const poId = text(body.purchase_order_id,80);
