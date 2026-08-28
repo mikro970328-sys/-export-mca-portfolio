@@ -15,6 +15,17 @@
     return data;
   }
 
+  function getLoadState() {
+    try { return typeof state !== 'undefined' ? state : null; } catch { return null; }
+  }
+
+  async function refreshLoads() {
+    try {
+      if (typeof refresh === 'function') return await refresh();
+      if (typeof window.refresh === 'function') return await window.refresh();
+    } catch {}
+  }
+
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[char]));
   }
@@ -42,7 +53,7 @@
       button.textContent = 'Generando…';
       const result = await request('/api/commercial-documents', { method:'POST', body:JSON.stringify({ action:'generate_packing_list', load_id:loadId }) });
       notice(`Packing List v${result.document?.version || 1} generado y guardado en el expediente documental.`, result.document);
-      if (typeof window.refresh === 'function') await window.refresh();
+      await refreshLoads();
     } catch (error) {
       notice(error.message || 'No se pudo generar el Packing List.', null, true);
     } finally {
@@ -52,10 +63,11 @@
   }
 
   function enhanceRows() {
+    const loadState = getLoadState();
     window.document.querySelectorAll('#loadRows tr[data-id]').forEach(row => {
       if (row.dataset.b7PackingList === '1') return;
       const loadId = row.dataset.id;
-      const load = window.state?.loads?.find?.(item => String(item.id) === String(loadId));
+      const load = loadState?.loads?.find?.(item => String(item.id) === String(loadId));
       if (!load || !['loaded','dispatched'].includes(load.status)) return;
       const firstCell = row.querySelector('td');
       if (!firstCell) return;
