@@ -1,4 +1,5 @@
 import { fail, ok, requireAdmin, supabase } from './_lib.js';
+import { loadExecutiveDashboard } from './_executive-dashboard.js';
 
 // UX-B projection owner: 'api/dashboard.js'.
 function normalize(value) {
@@ -100,7 +101,7 @@ export default async function handler(req,res) {
   if (req.method !== 'GET') return fail(res,405,'Método no permitido');
 
   try {
-    const [clients, shipments, operations, receipts, loads, warehouses, inventorySources, documents] = await Promise.all([
+    const [clients, shipments, operations, receipts, loads, warehouses, inventorySources, documents, executive] = await Promise.all([
       supabase('clients',{ query:'?select=id,active' }),
       supabase('shipments',{ query:'?select=id,client_id,operation_id,container_number,active,operational_status,last_status,last_event_at,updated_at,created_at,released_at,delivered_at,clients(id,name)' }),
       supabase('operations',{ query:'?select=id,status,updated_at,closed_at' }),
@@ -108,7 +109,8 @@ export default async function handler(req,res) {
       supabase('loads',{ query:'?select=id,status' }),
       supabase('warehouses',{ query:'?select=id,active' }),
       supabase('inventory_source_balances',{ query:'?select=receipt_id,product_id,physical_quantity,physical_pallets,reserved_quantity,reserved_pallets,warehouse_active' }),
-      supabase('documents',{ query:'?select=id' })
+      supabase('documents',{ query:'?select=id' }),
+      loadExecutiveDashboard(req.query || {})
     ]);
 
     const shipmentRows = shipments || [];
@@ -135,7 +137,8 @@ export default async function handler(req,res) {
         active:(warehouses || []).filter(row => row.active !== false).length
       },
       documents:{ total:(documents || []).length },
-      recent_activity:recentActivity(shipmentRows)
+      recent_activity:recentActivity(shipmentRows),
+      executive
     });
   } catch (error) {
     console.error('[dashboard]',error);
