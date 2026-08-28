@@ -46,6 +46,17 @@
     ['/api/payables','payables'],
     ['/api/costs','costs']
   ];
+  const OP_CONTEXT_SECTION = {
+    tracking:'containersSection',
+    load:'loadsSection',
+    wr:'inventorySection',
+    receipt:'warehouseSection',
+    po:'purchasesSection',
+    so:'salesSection',
+    supplier:'suppliersSection',
+    client:'clientsSection',
+    expediente:'newOperationsSection'
+  };
 
   const state = new WeakMap();
 
@@ -67,6 +78,29 @@
 
   function visibleModal(doc) {
     return Boolean(doc?.querySelector('.modal:not(.hidden), [role="dialog"]:not(.hidden)'));
+  }
+
+  function visibleSectionId() {
+    return document.querySelector('.app-section:not(.hidden)')?.id || null;
+  }
+
+  function frameSectionId(frame) {
+    return frame?.closest?.('.app-section')?.id || null;
+  }
+
+  function clearStaleOperationalContext(sectionId = visibleSectionId()) {
+    if (!sectionId || !location.hash) return false;
+    const params = new URLSearchParams(location.hash.slice(1));
+    const type = params.get('opnav');
+    const id = params.get('id');
+    if (!type || !id) return false;
+    const expectedSection = OP_CONTEXT_SECTION[type];
+    if (!expectedSection || expectedSection === sectionId) return false;
+
+    const nextState = { ...(history.state || {}) };
+    delete nextState.operationalContext;
+    history.replaceState(nextState, '', `${location.pathname}${location.search}`);
+    return true;
   }
 
   function refreshFrame(frame, reason = 'auto') {
@@ -101,6 +135,7 @@
 
   function announceMutation(scope, sourceFrame) {
     if (!scope) return;
+    clearStaleOperationalContext(frameSectionId(sourceFrame));
     refreshSections(RELATED[scope] || [], sourceFrame, `mutation:${scope}`);
     refreshFrame(sourceFrame, `mutation:${scope}:self`);
   }
@@ -147,6 +182,7 @@
   }
 
   function installAll() {
+    clearStaleOperationalContext();
     document.querySelectorAll('.app-section iframe').forEach(frame => {
       if (frame.contentDocument?.readyState === 'complete') installFrame(frame);
       if (!frame.__exportMcaAutoRefreshLoadBound) {
@@ -158,13 +194,15 @@
 
   function onSectionOpened(sectionId) {
     if (!sectionId) return;
+    clearStaleOperationalContext(sectionId);
     const frame = document.querySelector(`#${CSS.escape(sectionId)} iframe`);
     if (frame) refreshFrame(frame, 'section-open');
   }
 
+  window.addEventListener('export-mca:data-loaded', () => clearStaleOperationalContext(), true);
   window.addEventListener('export-mca:section-changed', event => onSectionOpened(event.detail?.id));
   window.addEventListener('pageshow', installAll);
-  window.ExportMcaEmbeddedAutoRefresh = Object.freeze({ installAll, onSectionOpened, refreshFrame });
+  window.ExportMcaEmbeddedAutoRefresh = Object.freeze({ installAll, onSectionOpened, refreshFrame, clearStaleOperationalContext });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installAll, { once:true });
   else installAll();
 })();
