@@ -11,6 +11,8 @@ function translatedError(raw) {
     ['SUPPLIER_BILL_PO_ITEM_REQUIRED','Falta una línea de Purchase Order.'],
     ['SUPPLIER_BILL_QUANTITY_INVALID','La cantidad facturada debe ser mayor que cero.'],
     ['SUPPLIER_BILL_UNIT_COST_INVALID','El costo unitario no es válido.'],
+    ['SUPPLIER_BILL_LINE_TOTAL_INVALID','El total facturado no es válido.'],
+    ['SUPPLIER_BILL_COST_REQUIRED','Indica el costo unitario o el total facturado de la línea.'],
     ['SUPPLIER_BILL_EXCEEDS_PO_QUANTITY','La cantidad supera lo disponible por facturar en la Purchase Order.'],
     ['SUPPLIER_BILL_NOT_FOUND','Factura de proveedor no encontrada.'],
     ['SUPPLIER_BILL_NOT_DRAFT','Solo una factura en borrador puede editarse o contabilizarse.'],
@@ -30,23 +32,35 @@ function cleanLines(lines) {
     const purchaseOrderItemId = text(line.purchase_order_item_id, 80);
     const billedQuantity = text(line.billed_quantity, 80);
     const unitCost = text(line.unit_cost, 80);
+    const lineTotal = text(line.line_total, 80);
     if (!purchaseOrderItemId) throw new Error(`Falta la línea ${index + 1} de la Purchase Order`);
     if (!billedQuantity || Number(billedQuantity) <= 0) throw new Error(`Indica una cantidad válida en la línea ${index + 1}`);
-    if (unitCost === '' || Number(unitCost) < 0) throw new Error(`Indica un costo válido en la línea ${index + 1}`);
-    return { purchase_order_item_id:purchaseOrderItemId, billed_quantity:billedQuantity, unit_cost:unitCost, notes:text(line.notes,1000) || null };
+    if (lineTotal !== '' && Number(lineTotal) < 0) throw new Error(`Indica un total facturado válido en la línea ${index + 1}`);
+    if (lineTotal === '' && (unitCost === '' || Number(unitCost) < 0)) throw new Error(`Indica costo unitario o total facturado en la línea ${index + 1}`);
+    return {
+      purchase_order_item_id:purchaseOrderItemId,
+      billed_quantity:billedQuantity,
+      unit_cost:lineTotal === '' ? unitCost : null,
+      line_total:lineTotal === '' ? null : lineTotal,
+      notes:text(line.notes,1000) || null
+    };
   });
 }
 
 async function loadBills() {
   const [bills, items, financial] = await Promise.all([
     supabase('supplier_bills', { query:'?select=id,bill_number,purchase_order_id,supplier_id,supplier_invoice_number,bill_date,due_date,currency,status,notes,posted_at,voided_at,created_at,updated_at,supplier:suppliers(id,name,legal_name),purchase_order:purchase_orders(id,po_number,status,supplier_reference)&order=created_at.desc&limit=1000' }),
-    supabase('supplier_bill_items', { query:'?select=id,supplier_bill_id,purchase_order_item_id,product_id,unit,billed_quantity,po_unit_cost_snapshot,unit_cost,currency,line_total,notes,product:products(id,sku,name,brand)&order=created_at.asc&limit=5000' }),
+    supabase('supplier_bill_items', { query:'?select=id,supplier_bill_id,purchase_order_item_id,product_id,unit,billed_quantity,po_unit_cost_snapshot,unit_cost,entered_line_total,currency,line_total,notes,product:products(id,sku,name,brand)&order=created_at.asc&limit=5000' }),
     supabase('supplier_bill_financial_progress', { query:'?select=*&order=bill_date.desc&limit=1000' })
   ]);
   const itemsByBill = new Map();
   for (const item of items || []) {
     if (!itemsByBill.has(item.supplier_bill_id)) itemsByBill.set(item.supplier_bill_id, []);
-    itemsByBill.get(item.supplier_bill_id).push(item);
+    itemsByBill.get(item.supplier_bill_id).push({
+      ...item,
+      line_total:item.entered_line_total ?? item.line_total,
+      pricing_mode:item.entered_line_total == null ? 'unit' : 'total'
+    });
   }
   const financialByBill = new Map((financial || []).map(row => [row.supplier_bill_id,row]));
   return (bills || []).map(bill => ({ ...bill, items:itemsByBill.get(bill.id) || [], financial:financialByBill.get(bill.id) || null }));

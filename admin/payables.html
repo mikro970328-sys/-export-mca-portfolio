@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cuentas por pagar · Export MCA</title>
-<link rel="stylesheet" href="/admin/purchases.css">
+<link rel="stylesheet" href="/admin/purchases.css?v=20260828-3">
 </head>
 <body>
 <main class="wrap">
@@ -16,7 +16,7 @@
 <div id="billModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="billTitle">Nueva factura de proveedor</h2><div class="muted">La factura toma proveedor, moneda, producto y unidad desde la Purchase Order.</div></div><button class="btn" data-close="bill">✕</button></div>
 <div class="grid3"><div><label>Purchase Order *</label><select id="bPO"></select></div><div><label>Nº factura proveedor</label><input id="bSupplierInvoice" placeholder="Número del proveedor"></div><div><label>Fecha factura</label><input id="bDate" type="date"></div></div>
 <div class="grid"><div><label>Vencimiento</label><input id="bDue" type="date"></div><div><label>Notas</label><input id="bNotes"></div></div>
-<div class="toolbar" style="padding:12px 0 0;border:0"><div><b>Líneas a facturar</b><div class="muted">Los borradores también reservan capacidad de la PO.</div></div></div><div id="billLines" class="detail-items"></div>
+<div class="toolbar" style="padding:12px 0 0;border:0"><div><b>Líneas a facturar</b><div class="muted">En cada producto puedes usar costo unitario o escribir directamente el total facturado.</div></div><div id="billCalculatedTotal" class="po">Total factura: USD 0.00</div></div><div id="billLines" class="detail-items"></div>
 <div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="bill">Cancelar</button><button id="saveBill" class="btn orange">Guardar factura</button></div><div id="billMsg" class="msg"></div></div></div>
 
 <div id="paymentModal" class="modal hidden"><div class="dialog compact"><div class="dialog-head"><div><h2>Registrar pago / anticipo</h2><div class="muted">Puede registrarse antes de existir la factura final del proveedor.</div></div><button class="btn" data-close="payment">✕</button></div>
@@ -31,6 +31,6 @@
 <div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div><div id="detailMsg" class="msg"></div></div></div>
 <script src="/admin/ap-traceability-bootstrap.js"></script>
 <script src="/admin/payables-payment-ux.js?v=20260828-2"></script>
-<script src="/admin/payables.js"></script>
+<script src="/admin/payables.js?v=20260828-3"></script>
 </body>
 </html>

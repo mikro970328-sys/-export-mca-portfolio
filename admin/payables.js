@@ -4,6 +4,11 @@
   const esc = value => String(value ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const num = value => Number(value || 0);
   const money = (value, currency='USD') => `${currency} ${num(value).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  const inputNumber = (value, decimals=8) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return '';
+    return String(Number(parsed.toFixed(decimals)));
+  };
   const date = value => value ? new Date(`${String(value).slice(0,10)}T00:00:00`).toLocaleDateString() : '—';
   const supplierName = row => row?.supplier?.legal_name || row?.supplier?.name || 'Proveedor';
   const token = () => localStorage.getItem('export_mca_token') || '';
@@ -129,9 +134,45 @@
     $('bPO').innerHTML = '<option value="">Selecciona una Purchase Order</option>' + eligiblePOs(editingBill).map(po => `<option value="${esc(po.id)}">${esc(po.po_number)} · ${esc(supplierName(po))}</option>`).join('');
   }
 
+  function updateBillPreview() {
+    const po = state.purchaseOrders.find(row => String(row.id) === String($('bPO').value));
+    const preview = $('billCalculatedTotal');
+    if (!preview) return;
+    const total = [...document.querySelectorAll('[data-bill-line]')].reduce((sum,node) => {
+      const qty = num(node.querySelector('[data-qty]')?.value);
+      if (!(qty > 0)) return sum;
+      if (node.dataset.pricingMode === 'total') return sum + num(node.querySelector('[data-total]')?.value);
+      return sum + qty * num(node.querySelector('[data-cost]')?.value);
+    },0);
+    preview.textContent = `Total factura: ${money(total,po?.currency || 'USD')}`;
+  }
+
+  function syncBillLine(node, source='qty') {
+    if (!node) return;
+    const qtyInput = node.querySelector('[data-qty]');
+    const costInput = node.querySelector('[data-cost]');
+    const totalInput = node.querySelector('[data-total]');
+    const hint = node.querySelector('[data-price-hint]');
+    const qty = num(qtyInput?.value);
+
+    if (source === 'total') node.dataset.pricingMode = 'total';
+    if (source === 'cost') node.dataset.pricingMode = 'unit';
+
+    if (node.dataset.pricingMode === 'total') {
+      const total = num(totalInput?.value);
+      if (costInput) costInput.value = qty > 0 && totalInput?.value !== '' ? inputNumber(total / qty) : '';
+      if (hint) hint.textContent = 'Importe exacto: Total facturado';
+    } else {
+      const cost = num(costInput?.value);
+      if (totalInput) totalInput.value = qty > 0 && costInput?.value !== '' ? inputNumber(qty * cost, 6) : '';
+      if (hint) hint.textContent = 'Importe calculado: Cantidad × costo unitario';
+    }
+    updateBillPreview();
+  }
+
   function renderBillLines(editingBill=null) {
     const po = state.purchaseOrders.find(row => String(row.id) === String($('bPO').value));
-    if (!po) { $('billLines').innerHTML='<div class="empty">Selecciona una Purchase Order.</div>'; return; }
+    if (!po) { $('billLines').innerHTML='<div class="empty">Selecciona una Purchase Order.</div>'; updateBillPreview(); return; }
     const rows = (po.items || []).map(item => {
       const own = editingBill?.items?.find(line => line.purchase_order_item_id === item.id);
       const available = num(item.ap_progress?.available_to_bill_quantity) + num(own?.billed_quantity);
@@ -140,14 +181,18 @@
       const label = product.sku ? `${product.sku} · ${product.name || ''}` : (product.name || 'Producto');
       const qty = own ? num(own.billed_quantity) : available;
       const cost = own ? num(own.unit_cost) : num(item.unit_cost);
-      return `<div class="line" data-bill-line="${esc(item.id)}"><div class="line-head"><div><div class="line-title">${esc(label)}</div><div class="small">Ordenado ${esc(item.ordered_quantity)} ${esc(item.unit)} · Disponible ${esc(available)} · Costo PO ${esc(money(item.unit_cost,po.currency))}</div></div></div><div class="grid3"><div><label>Cantidad</label><input data-qty type="number" min="0" max="${esc(available)}" step="any" value="${esc(qty)}"></div><div><label>Costo facturado</label><input data-cost type="number" min="0" step="any" value="${esc(cost)}"></div><div><label>Nota</label><input data-note value="${esc(own?.notes || '')}"></div></div></div>`;
+      const pricingMode = own?.pricing_mode === 'total' ? 'total' : 'unit';
+      const lineTotal = own ? num(own.line_total) : qty * cost;
+      const hint = pricingMode === 'total' ? 'Importe exacto: Total facturado' : 'Importe calculado: Cantidad × costo unitario';
+      return `<div class="line" data-bill-line="${esc(item.id)}" data-pricing-mode="${pricingMode}"><div class="line-head"><div><div class="line-title">${esc(label)}</div><div class="small">Ordenado ${esc(item.ordered_quantity)} ${esc(item.unit)} · Disponible ${esc(available)} · Costo PO ${esc(money(item.unit_cost,po.currency))}</div><div class="small" data-price-hint>${esc(hint)}</div></div></div><div class="grid4"><div><label>Cantidad</label><input data-qty type="number" min="0" max="${esc(available)}" step="any" value="${esc(qty)}"></div><div><label>Costo unitario</label><input data-cost type="number" min="0" step="any" value="${esc(inputNumber(cost))}"></div><div><label>Total facturado</label><input data-total type="number" min="0" step="0.01" value="${esc(inputNumber(lineTotal,6))}"></div><div><label>Nota</label><input data-note value="${esc(own?.notes || '')}"></div></div></div>`;
     }).filter(Boolean);
     $('billLines').innerHTML = rows.length ? rows.join('') : '<div class="empty">Esta PO no tiene saldo disponible para facturar.</div>';
+    updateBillPreview();
   }
 
   function openBillCreate() {
     state.editingBillId=null; $('billTitle').textContent='Nueva factura de proveedor'; fillBillPOs(); $('bPO').disabled=false;
-    $('bPO').value=''; $('bSupplierInvoice').value=''; $('bDate').value=new Date().toISOString().slice(0,10); $('bDue').value=''; $('bNotes').value=''; $('billLines').innerHTML='<div class="empty">Selecciona una Purchase Order.</div>'; message('billMsg',''); setModal('billModal',true);
+    $('bPO').value=''; $('bSupplierInvoice').value=''; $('bDate').value=new Date().toISOString().slice(0,10); $('bDue').value=''; $('bNotes').value=''; $('billLines').innerHTML='<div class="empty">Selecciona una Purchase Order.</div>'; message('billMsg',''); updateBillPreview(); setModal('billModal',true);
   }
 
   function openBillEdit(id) {
@@ -157,12 +202,24 @@
   }
 
   function collectBillLines() {
-    return [...document.querySelectorAll('[data-bill-line]')].map(node => ({ purchase_order_item_id:node.dataset.billLine,billed_quantity:node.querySelector('[data-qty]')?.value||'',unit_cost:node.querySelector('[data-cost]')?.value||'',notes:node.querySelector('[data-note]')?.value||'' })).filter(row=>num(row.billed_quantity)>0);
+    return [...document.querySelectorAll('[data-bill-line]')].map(node => {
+      const mode = node.dataset.pricingMode === 'total' ? 'total' : 'unit';
+      return {
+        purchase_order_item_id:node.dataset.billLine,
+        billed_quantity:node.querySelector('[data-qty]')?.value||'',
+        unit_cost:mode === 'unit' ? (node.querySelector('[data-cost]')?.value||'') : '',
+        line_total:mode === 'total' ? (node.querySelector('[data-total]')?.value||'') : '',
+        notes:node.querySelector('[data-note]')?.value||''
+      };
+    }).filter(row=>num(row.billed_quantity)>0);
   }
 
   async function saveBill() {
     const poId=$('bPO').value, lines=collectBillLines(); message('billMsg','');
-    if (!poId) return message('billMsg','Selecciona una Purchase Order.'); if (!lines.length) return message('billMsg','Indica al menos una cantidad a facturar.');
+    if (!poId) return message('billMsg','Selecciona una Purchase Order.');
+    if (!lines.length) return message('billMsg','Indica al menos una cantidad a facturar.');
+    const missingCost = lines.find(row => row.unit_cost === '' && row.line_total === '');
+    if (missingCost) return message('billMsg','Indica costo unitario o total facturado para cada producto.');
     $('saveBill').disabled=true;
     try { await request('/api/payables',{method:'POST',body:JSON.stringify({action:state.editingBillId?'replace_plan':'create_plan',supplier_bill_id:state.editingBillId,purchase_order_id:poId,supplier_invoice_number:$('bSupplierInvoice').value||null,bill_date:$('bDate').value||null,due_date:$('bDue').value||null,notes:$('bNotes').value||null,lines})}); setModal('billModal',false); await refresh(); }
     catch(error){ message('billMsg',error.message); } finally { $('saveBill').disabled=false; }
@@ -208,7 +265,7 @@
   function openBillDetail(id) {
     const bill=state.bills.find(row=>String(row.id)===String(id)); if(!bill)return; const f=bill.financial||{};
     $('detailTitle').textContent=bill.bill_number; $('detailSubtitle').textContent=`${supplierName(bill)} · ${bill.purchase_order?.po_number||'Sin PO'} · ${date(bill.bill_date)}`;
-    const items=(bill.items||[]).map(item=>`<div class="detail-item"><div class="line-head"><div><b>${esc(item.product?.name||'Producto')}</b><div class="small">${esc(item.billed_quantity)} ${esc(item.unit)} × ${esc(money(item.unit_cost,bill.currency))} · PO ${esc(money(item.po_unit_cost_snapshot,bill.currency))}</div></div><b>${esc(money(item.line_total,bill.currency))}</b></div></div>`).join('');
+    const items=(bill.items||[]).map(item=>`<div class="detail-item"><div class="line-head"><div><b>${esc(item.product?.name||'Producto')}</b><div class="small">${esc(item.billed_quantity)} ${esc(item.unit)} × ${esc(money(item.unit_cost,bill.currency))} · PO ${esc(money(item.po_unit_cost_snapshot,bill.currency))}${item.pricing_mode==='total'?' · Total capturado':''}</div></div><b>${esc(money(item.line_total,bill.currency))}</b></div></div>`).join('');
     $('detailBody').innerHTML=`<div class="summary"><div><b>Total</b>${esc(money(f.bill_total,bill.currency))}</div><div><b>Pagado</b>${esc(money(f.paid_amount,bill.currency))}</div><div><b>Saldo</b>${esc(money(f.balance_due,bill.currency))}</div><div><b>Estado</b>${billPill(bill)}</div></div><div class="detail-items"><b>Líneas</b>${items||'<div class="empty">Sin líneas.</div>'}</div>${bill.notes?`<div class="line"><b>Notas</b><div class="small">${esc(bill.notes)}</div></div>`:''}`;
     const actions=[]; if(bill.status==='draft')actions.push(`<button class="btn" data-bill-edit="${esc(bill.id)}">Editar</button>`,`<button class="btn primary" data-bill-post="${esc(bill.id)}">Contabilizar</button>`); if(bill.status==='draft'||bill.status==='posted')actions.push(`<button class="btn danger" data-bill-void="${esc(bill.id)}">Anular</button>`); $('detailActions').innerHTML=actions.join(''); message('detailMsg',''); setModal('detailModal',true);
   }
@@ -239,6 +296,12 @@
 
   $('newBill').onclick=openBillCreate; $('newPayment').onclick=openPaymentCreate; $('refresh').onclick=refresh; $('saveBill').onclick=saveBill; $('savePayment').onclick=savePayment; $('saveAllocation').onclick=saveAllocation; $('saveReverse').onclick=saveReverse;
   $('bPO').addEventListener('change',()=>renderBillLines(state.editingBillId?state.bills.find(b=>b.id===state.editingBillId):null));
+  $('billLines').addEventListener('input',event=>{
+    const line=event.target.closest('[data-bill-line]'); if(!line)return;
+    if(event.target.matches('[data-total]')) return syncBillLine(line,'total');
+    if(event.target.matches('[data-cost]')) return syncBillLine(line,'cost');
+    if(event.target.matches('[data-qty]')) return syncBillLine(line,'qty');
+  });
   $('search').addEventListener('input',event=>{state.search=event.target.value||'';render();});
   document.querySelectorAll('.modal').forEach(modal=>modal.addEventListener('click',event=>{if(event.target===modal)modal.classList.add('hidden');}));
   document.addEventListener('keydown',event=>{if(event.key==='Escape')document.querySelectorAll('.modal').forEach(m=>m.classList.add('hidden'));});
