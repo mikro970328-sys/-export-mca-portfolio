@@ -2,6 +2,7 @@ import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.j
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
+const num = value => Number(value || 0);
 
 function translatedError(raw) {
   const messages = [
@@ -63,8 +64,20 @@ async function loadPurchaseOrders() {
 }
 
 async function bootstrap() {
-  const [payments, bills, purchase_orders] = await Promise.all([loadPayments(), loadBills(), loadPurchaseOrders()]);
-  return { payments, bills, purchase_orders };
+  const [payments, bills, allPurchaseOrders] = await Promise.all([loadPayments(), loadBills(), loadPurchaseOrders()]);
+  const balances = new Map();
+  for (const bill of bills) {
+    const balance = num(bill?.financial?.balance_due);
+    if (!(balance > 0) || !bill.purchase_order_id) continue;
+    balances.set(bill.purchase_order_id, (balances.get(bill.purchase_order_id) || 0) + balance);
+  }
+
+  const purchase_orders = (allPurchaseOrders || [])
+    .filter(po => num(balances.get(po.id)) > 0)
+    .map(po => ({ ...po, open_balance:num(balances.get(po.id)) }));
+  const advance_purchase_orders = (allPurchaseOrders || []).filter(po => ['issued','confirmed'].includes(po.status));
+
+  return { payments, bills, purchase_orders, advance_purchase_orders };
 }
 
 export default async function handler(req, res) {

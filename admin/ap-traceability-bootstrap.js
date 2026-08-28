@@ -1,14 +1,5 @@
 (() => {
   try {
-    if (!document.querySelector('script[data-payables-payment-ux]')) {
-      const ux = document.createElement('script');
-      ux.src = '/admin/payables-payment-ux.js?v=20260828-1';
-      ux.dataset.payablesPaymentUx = 'true';
-      ux.async = false;
-      ux.onerror = () => console.error('[ap payment UX bootstrap] No se pudo cargar la mejora de pagos.');
-      (document.head || document.documentElement).appendChild(ux);
-    }
-
     if (parent === window || parent.APTraceability) return;
     const doc = parent.document;
     if (doc.querySelector('script[data-ap-traceability]')) return;

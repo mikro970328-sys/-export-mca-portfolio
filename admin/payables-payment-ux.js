@@ -3,7 +3,7 @@
   window.__payablesPaymentUXInstalled = true;
 
   const nativeFetch = window.fetch.bind(window);
-  const state = { mode:'bill', balances:new Map(), purchaseOrders:[] };
+  const state = { mode:'bill', balances:new Map(), billPurchaseOrders:[], advancePurchaseOrders:[] };
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num = value => Number(value || 0);
   const money = (value, currency='USD') => `${currency} ${num(value).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -15,14 +15,13 @@
     return { url, method };
   }
 
-  function transformedResponse(response, data) {
-    const headers = new Headers(response.headers);
-    headers.set('Content-Type','application/json; charset=utf-8');
-    return new Response(JSON.stringify(data), {
-      status: response.status,
-      statusText: response.statusText,
-      headers
-    });
+  function syncPaymentButton() {
+    const button = document.getElementById('newPayment');
+    if (!button) return;
+    const hasOpenBills = state.billPurchaseOrders.length > 0;
+    button.disabled = !hasOpenBills;
+    button.title = hasOpenBills ? 'Registrar pago de una factura pendiente' : 'No hay facturas de proveedor con saldo pendiente';
+    button.setAttribute('aria-disabled', String(!hasOpenBills));
   }
 
   window.fetch = async (input, init={}) => {
@@ -39,17 +38,18 @@
         balances.set(bill.purchase_order_id, (balances.get(bill.purchase_order_id) || 0) + balance);
       }
       state.balances = balances;
-      state.purchaseOrders = Array.isArray(data?.purchase_orders) ? data.purchase_orders : [];
-      window.__payablesPaymentUXData = { balances, purchaseOrders:state.purchaseOrders };
-
-      return transformedResponse(response, {
-        ...data,
-        purchase_orders:state.purchaseOrders.filter(po => num(balances.get(po.id)) > 0)
-      });
+      state.billPurchaseOrders = Array.isArray(data?.purchase_orders) ? data.purchase_orders : [];
+      state.advancePurchaseOrders = Array.isArray(data?.advance_purchase_orders) ? data.advance_purchase_orders : [];
+      window.__payablesPaymentUXData = {
+        balances,
+        billPurchaseOrders:state.billPurchaseOrders,
+        advancePurchaseOrders:state.advancePurchaseOrders
+      };
+      queueMicrotask(syncPaymentButton);
     } catch (error) {
-      console.warn('[payables payment UX] No se pudo enriquecer la lista de pagos.', error);
-      return response;
+      console.warn('[payables payment UX] No se pudo leer el contexto de pagos.', error);
     }
+    return response;
   };
 
   function setPaymentCopy(mode) {
@@ -77,9 +77,12 @@
     if (!select || state.mode !== 'bill') return;
     [...select.options].forEach(option => {
       if (!option.value) return;
-      const po = state.purchaseOrders.find(row => String(row.id) === String(option.value));
-      const balance = num(state.balances.get(option.value));
-      if (!po || !(balance > 0)) return;
+      const po = state.billPurchaseOrders.find(row => String(row.id) === String(option.value));
+      const balance = num(po?.open_balance || state.balances.get(option.value));
+      if (!po || !(balance > 0)) {
+        option.remove();
+        return;
+      }
       option.textContent = `${po.po_number} · ${supplierName(po)} · Saldo ${money(balance,po.currency)}`;
     });
     updatePaymentHint();
@@ -88,7 +91,7 @@
   function fillAdvanceOptions() {
     const select = document.getElementById('pPO');
     if (!select) return;
-    const rows = state.purchaseOrders.filter(po => ['issued','confirmed'].includes(po.status));
+    const rows = state.advancePurchaseOrders;
     select.innerHTML = '<option value="">Selecciona una Purchase Order para anticipo</option>' + rows.map(po =>
       `<option value="${esc(po.id)}">${esc(po.po_number)} · ${esc(supplierName(po))} · ${esc(po.currency || 'USD')}</option>`
     ).join('');
@@ -109,12 +112,12 @@
       return;
     }
 
-    const po = state.purchaseOrders.find(row => String(row.id) === String(select.value));
-    const balance = num(state.balances.get(select.value));
+    const po = state.billPurchaseOrders.find(row => String(row.id) === String(select.value));
+    const balance = num(po?.open_balance || state.balances.get(select.value));
     if (!select.value) {
-      hint.textContent = state.balances.size
+      hint.textContent = state.billPurchaseOrders.length
         ? 'Selecciona una PO con saldo pendiente.'
-        : 'No hay facturas de proveedor con saldo pendiente. Usa Anticipo solo si vas a pagar antes de recibir la factura.';
+        : 'No hay facturas de proveedor con saldo pendiente.';
       return;
     }
     hint.textContent = `Saldo pendiente de esta PO: ${money(balance,po?.currency || 'USD')}.`;
@@ -174,6 +177,7 @@
   function install() {
     ensureAdvanceButton();
     ensureBalanceHint();
+    syncPaymentButton();
 
     document.addEventListener('click', event => {
       if (event.target.closest('#newPayment')) {
@@ -188,9 +192,7 @@
     document.getElementById('pPO')?.addEventListener('change', updatePaymentHint);
 
     const allocationTarget = document.getElementById('allocationBills');
-    if (allocationTarget) {
-      new MutationObserver(hideSettledAllocationRows).observe(allocationTarget,{ childList:true,subtree:true });
-    }
+    if (allocationTarget) new MutationObserver(hideSettledAllocationRows).observe(allocationTarget,{ childList:true,subtree:true });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once:true });
