@@ -2,7 +2,11 @@
   if (window.parent !== window) {
     try {
       const parentWindow = window.parent;
-      if (parentWindow.location.origin === window.location.origin && !parentWindow.__exportMcaAutoRefreshBootstrapping) {
+      if (
+        parentWindow.location.origin === window.location.origin &&
+        !parentWindow.__exportMcaEmbeddedAutoRefreshLoaded &&
+        !parentWindow.__exportMcaAutoRefreshBootstrapping
+      ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
         script.src = '/admin/embedded-auto-refresh.js';
@@ -118,11 +122,13 @@
 
   function installModalObserver(frame) {
     const current = state.get(frame);
+    const win = frame.contentWindow;
     const doc = frame.contentDocument;
-    if (!current || !doc?.body) return;
+    if (!current || !win || !doc?.body) return;
     current.wasBusy = visibleModal(doc);
     current.observer?.disconnect?.();
-    current.observer = new MutationObserver(() => {
+    const Observer = win.MutationObserver || MutationObserver;
+    current.observer = new Observer(() => {
       const busy = visibleModal(doc);
       if (current.wasBusy && !busy) refreshFrame(frame, current.pending ? 'close-after-change' : 'modal-close');
       current.wasBusy = busy;
