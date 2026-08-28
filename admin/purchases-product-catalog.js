@@ -1,4 +1,12 @@
 (() => {
+  if (!window.__exportMcaAutoRefreshChildBootstrapped) {
+    window.__exportMcaAutoRefreshChildBootstrapped = true;
+    const coordinator = document.createElement('script');
+    coordinator.src = '/admin/embedded-auto-refresh.js';
+    coordinator.async = true;
+    document.head.appendChild(coordinator);
+  }
+
   if (typeof addLine !== 'function' || typeof api !== 'function' || typeof productOptions !== 'function') return;
 
   let targetLine = null;
