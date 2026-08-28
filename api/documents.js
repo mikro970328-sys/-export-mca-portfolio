@@ -234,9 +234,10 @@ async function deleteStorageObject(storagePath) {
 }
 
 const DOCUMENT_SELECT = [
-  'id', 'operation_id', 'client_id', 'shipment_id', 'bol_number', 'shared_bl',
+  'id', 'operation_id', 'client_id', 'shipment_id', 'load_id', 'bol_number', 'shared_bl',
   'document_type', 'file_name', 'storage_bucket', 'storage_path',
   'mime_type', 'file_size_bytes', 'version', 'notes',
+  'generated', 'source_type', 'source_id', 'content_sha256', 'generated_at',
   'uploaded_by_admin_id', 'uploaded_by_username', 'created_at'
 ].join(',');
 
@@ -406,6 +407,7 @@ async function discardUpload(body) {
 
 async function deleteDocument(admin, documentId) {
   const document = await getDocument(documentId);
+  if (document.generated) throw new Error('Las versiones generadas son inmutables. Genera una nueva versión en lugar de eliminarla.');
   if (document.storage_bucket !== BUCKET) throw new Error('Almacenamiento de documento inválido');
 
   const operation = document.operation_id ? await getOperation(document.operation_id) : null;
