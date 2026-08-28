@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Costos / Landed Cost · Export MCA</title>
+<link rel="stylesheet" href="/admin/costs.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="head">
+    <div>
+      <h1>Costos / Landed Cost</h1>
+      <div class="muted">Cargos adicionales, costo reconocido de mercancía y COGS derivados desde PostgreSQL. Sin conversión FX automática.</div>
+    </div>
+    <div class="actions"><button id="newCharge" class="btn orange">+ Cargo de costo</button></div>
+  </div>
+  <div id="metrics" class="metrics"></div>
+  <section class="panel">
+    <div class="toolbar">
+      <input id="search" class="search" placeholder="Buscar CC, referencia, PO, WR, Cargue, contenedor u operación">
+      <div class="tabs">
+        <button class="btn active" data-view="charges">Cargos</button>
+        <button class="btn" data-view="landed">Landed / WR</button>
+        <button class="btn" data-view="cogs">COGS / Cargues</button>
+      </div>
+      <button id="refresh" class="btn">↻</button>
+    </div>
+    <div id="content"></div>
+  </section>
+</main>
+
+<div id="chargeModal" class="modal hidden">
+  <div class="dialog">
+    <div class="dialog-head">
+      <div><h2 id="chargeTitle">Nuevo cargo de costo</h2><div class="muted">El cargo es independiente del Supplier Bill de mercancía y debe distribuirse al 100% antes de contabilizar.</div></div>
+      <button class="btn" data-close="charge">✕</button>
+    </div>
+    <div class="grid3">
+      <div><label>Categoría *</label><select id="cCategory"></select></div>
+      <div><label>Etapa *</label><select id="cStage"></select></div>
+      <div><label>Fecha incurrida</label><input id="cDate" type="date"></div>
+    </div>
+    <div class="grid3">
+      <div><label>Monto *</label><input id="cAmount" type="number" min="0" step="0.01"></div>
+      <div><label>Moneda *</label><input id="cCurrency" maxlength="3" value="USD"></div>
+      <div><label>Proveedor opcional</label><select id="cSupplier"></select></div>
+    </div>
+    <div class="grid">
+      <div><label>Referencia externa</label><input id="cReference" maxlength="300"></div>
+      <div><label>Notas</label><input id="cNotes" maxlength="2000"></div>
+    </div>
+    <div class="toolbar" style="padding:14px 0 0;border:0">
+      <div><b>Distribución</b><div class="muted">Cada línea apunta exactamente a una PO, WR, Cargue, Shipment u Operación. La base es informativa.</div></div>
+      <button id="addAllocation" class="btn" type="button">+ Distribución</button>
+    </div>
+    <div id="allocationEditor" class="allocation-editor"></div>
+    <div class="actions" style="justify-content:flex-end;margin-top:14px">
+      <button class="btn" data-close="charge">Cancelar</button>
+      <button id="saveCharge" class="btn orange">Guardar cargo</button>
+    </div>
+    <div id="chargeMsg" class="msg"></div>
+  </div>
+</div>
+
+<div id="detailModal" class="modal hidden">
+  <div class="dialog compact">
+    <div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div>
+    <div id="detailBody"></div>
+    <div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div>
+    <div id="detailMsg" class="msg"></div>
+  </div>
+</div>
+
+<script src="/admin/costs.js"></script>
+</body>
+</html>
