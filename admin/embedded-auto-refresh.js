@@ -1,4 +1,19 @@
 (() => {
+  if (window.parent !== window) {
+    try {
+      const parentWindow = window.parent;
+      if (parentWindow.location.origin === window.location.origin && !parentWindow.__exportMcaAutoRefreshBootstrapping) {
+        parentWindow.__exportMcaAutoRefreshBootstrapping = true;
+        const script = parentWindow.document.createElement('script');
+        script.src = '/admin/embedded-auto-refresh.js';
+        script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
+        script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
+        parentWindow.document.head.appendChild(script);
+      }
+    } catch {}
+    return;
+  }
+
   if (window.__exportMcaEmbeddedAutoRefreshLoaded) return;
   window.__exportMcaEmbeddedAutoRefreshLoaded = true;
 
@@ -65,7 +80,7 @@
     current.timer = setTimeout(async () => {
       try {
         if (typeof win.load === 'function') await win.load();
-        win.dispatchEvent(new CustomEvent('export-mca:auto-refreshed', { detail:{ reason } }));
+        win.dispatchEvent(new win.CustomEvent('export-mca:auto-refreshed', { detail:{ reason } }));
       } catch (error) {
         console.warn('[auto-refresh] refresh failed', frame.title || frame.src, error);
       }
@@ -83,8 +98,7 @@
   function announceMutation(scope, sourceFrame) {
     if (!scope) return;
     refreshSections(RELATED[scope] || [], sourceFrame, `mutation:${scope}`);
-    const sourceState = state.get(sourceFrame);
-    if (sourceState) sourceState.pending = true;
+    refreshFrame(sourceFrame, `mutation:${scope}:self`);
   }
 
   function installFetchObserver(frame) {
@@ -137,10 +151,13 @@
   }
 
   function onSectionOpened(sectionId) {
+    if (!sectionId) return;
     const frame = document.querySelector(`#${CSS.escape(sectionId)} iframe`);
     if (frame) refreshFrame(frame, 'section-open');
   }
 
+  window.addEventListener('export-mca:section-changed', event => onSectionOpened(event.detail?.id));
+  window.addEventListener('pageshow', installAll);
   window.ExportMcaEmbeddedAutoRefresh = Object.freeze({ installAll, onSectionOpened, refreshFrame });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installAll, { once:true });
   else installAll();
