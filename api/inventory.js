@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       const reservedPallets = n(row.reserved_pallets);
       const availableQuantity = physicalQuantity - reservedQuantity;
       const availablePallets = physicalPallets - reservedPallets;
-      const unit = cleanUnit(row.receipt_unit || row.product_unit);
+      const unit = cleanUnit(row.product_unit || row.receipt_unit);
 
       const source = {
         receipt_item_id:row.receipt_item_id,
