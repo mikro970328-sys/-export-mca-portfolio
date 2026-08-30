@@ -112,17 +112,26 @@ async function updateOperationalNotification(admin, row, action, body) {
 }
 
 export default async function handler(req, res) {
-  const mode = String(req.query?.mode || '').trim().toLowerCase();
-  let permission;
-  if (mode === 'notifications') permission = req.method === 'GET' ? 'notifications.read' : 'notifications.manage';
-  else if (String(req.query?.shipment_id || '').trim()) permission = 'logistics.read';
-  else if (String(req.query?.client_id || '').trim()) permission = 'clients.read';
-  else permission = 'administration.audit.read';
-
-  const admin = await authorizeAdmin(req, res, permission);
-  if (!admin) return;
-
   try {
+    const mode = String(req.query?.mode || '').trim().toLowerCase();
+    let notificationPatchBody = null;
+    let permission;
+
+    if (mode === 'notifications') {
+      if (req.method === 'PATCH') {
+        notificationPatchBody = await readJson(req);
+        const action = String(notificationPatchBody.action || '').trim().toLowerCase();
+        permission = action === 'mark_read' ? 'notifications.read' : 'notifications.manage';
+      } else {
+        permission = 'notifications.read';
+      }
+    } else if (String(req.query?.shipment_id || '').trim()) permission = 'logistics.read';
+    else if (String(req.query?.client_id || '').trim()) permission = 'clients.read';
+    else permission = 'administration.audit.read';
+
+    const admin = await authorizeAdmin(req, res, permission);
+    if (!admin) return;
+
     if (mode === 'notifications') {
       if (req.method === 'GET') {
         const status = String(req.query?.status || '').trim().toLowerCase();
@@ -152,7 +161,7 @@ export default async function handler(req, res) {
       }
 
       if (req.method === 'PATCH') {
-        const body = await readJson(req);
+        const body = notificationPatchBody || {};
         const id = String(body.id || '').trim();
         const action = String(body.action || '').trim().toLowerCase();
         if (!id) return fail(res, 400, 'Falta el identificador de la notificación');
