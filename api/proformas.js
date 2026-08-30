@@ -15,7 +15,7 @@ function friendly(error){
 
 async function loadProformas(salesOrderId){
   const [rows,totals]=await Promise.all([
-    supabase('proformas',{query:`?select=id,proforma_number,sales_order_id,client_id,importer_id,issue_date,valid_until,currency,customer_reference,status,notes,created_at,issued_at,voided_at,void_reason&sales_order_id=eq.${encodeURIComponent(salesOrderId)}&order=created_at.desc&limit=1000`}),
+    supabase('proformas',{query:`?select=id,proforma_number,sales_order_id,client_id,importer_id,issue_date,valid_until,currency,customer_reference,status,notes,created_at,issued_at,voided_at,void_reason,client:clients(id,name,company,mipyme_name,email,phone),importer:importers(id,name,legal_name,address,country,email,phone)&sales_order_id=eq.${encodeURIComponent(salesOrderId)}&order=created_at.desc&limit=1000`}),
     supabase('proforma_financial_totals',{query:`?select=*&sales_order_id=eq.${encodeURIComponent(salesOrderId)}&order=issue_date.desc&limit=1000`})
   ]);
   const ids=(rows||[]).map(row=>row.id);
