@@ -168,11 +168,13 @@
       tasks.push(loadScript('/admin/module-export-controls.js', 'data-module-export-controls'));
     }
     if (accessCan('notifications.read')) {
-      let alertChain = loadScript('/admin/operational-alert-center.js?v=20260830-p3', 'data-operational-alert-center');
+      let alertChain = loadScript('/admin/operational-alert-center.js?v=20260830-p9', 'data-operational-alert-center');
       if (accessCan('notifications.manage')) {
-        alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
+        alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260830-p9', 'data-alert-phase2-stability'));
       }
-      tasks.push(alertChain);
+      const inboxChain = loadStylesheet('/admin/notification-inbox.css?v=20260830-p10', 'data-notification-inbox-style')
+        .then(() => loadScript('/admin/notification-inbox.js?v=20260830-p10', 'data-notification-inbox'));
+      tasks.push(Promise.all([alertChain,inboxChain]));
     }
 
     await Promise.all(tasks);
