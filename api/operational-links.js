@@ -222,6 +222,34 @@ async function loadSalesLinks(loadLinks) {
   return { sales, links:enrichedLinks };
 }
 
+async function loadFinanceLinks() {
+  const [invoices,bills] = await Promise.all([
+    paged('invoices','?select=id,invoice_number,sales_order_id,status,issue_date,due_date,created_at&order=created_at.desc'),
+    paged('supplier_bills','?select=id,bill_number,purchase_order_id,supplier_id,status,bill_date,due_date,created_at&order=created_at.desc')
+  ]);
+  return {
+    invoices:invoices.map(row=>({
+      invoice_id:row.id,
+      invoice_number:row.invoice_number,
+      sales_order_id:row.sales_order_id,
+      status:row.status,
+      issue_date:row.issue_date || null,
+      due_date:row.due_date || null,
+      created_at:row.created_at || null
+    })),
+    supplier_bills:bills.map(row=>({
+      supplier_bill_id:row.id,
+      bill_number:row.bill_number,
+      purchase_order_id:row.purchase_order_id,
+      supplier_id:row.supplier_id,
+      status:row.status,
+      bill_date:row.bill_date || null,
+      due_date:row.due_date || null,
+      created_at:row.created_at || null
+    }))
+  };
+}
+
 export default async function handler(req, res) {
   const admin = await authenticateAdmin(req,res);
   if (!admin) return;
@@ -235,15 +263,17 @@ export default async function handler(req, res) {
     const canWarehouse = can('warehouse.read');
     const canProcurement = can('procurement.read');
     const canSales = can('sales.read');
+    const canFinance = can('finance.read');
 
-    if (!canLogistics && !canWarehouse && !canProcurement && !canSales) {
-      return ok(res,{ links:[],purchases:[],receipts:[],sales:[] });
+    if (!canLogistics && !canWarehouse && !canProcurement && !canSales && !canFinance) {
+      return ok(res,{ links:[],purchases:[],receipts:[],sales:[],invoices:[],supplier_bills:[] });
     }
 
     const needLoads = canLogistics || canWarehouse || canSales;
-    const [baseLinks,purchaseData] = await Promise.all([
+    const [baseLinks,purchaseData,financeData] = await Promise.all([
       needLoads ? loadLoadLinks() : Promise.resolve([]),
-      (canProcurement || canWarehouse) ? loadPurchaseLinks() : Promise.resolve({purchases:[],receipts:[]})
+      (canProcurement || canWarehouse) ? loadPurchaseLinks() : Promise.resolve({purchases:[],receipts:[]}),
+      canFinance ? loadFinanceLinks() : Promise.resolve({invoices:[],supplier_bills:[]})
     ]);
     const salesData = canSales
       ? await loadSalesLinks(baseLinks)
@@ -253,7 +283,9 @@ export default async function handler(req, res) {
       links:salesData.links,
       purchases:purchaseData.purchases,
       receipts:purchaseData.receipts,
-      sales:salesData.sales
+      sales:salesData.sales,
+      invoices:financeData.invoices,
+      supplier_bills:financeData.supplier_bills
     });
   } catch (error) {
     console.error('[operational-links]',error);
