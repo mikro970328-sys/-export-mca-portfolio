@@ -12,7 +12,7 @@
   async function request(path, options={}) {
     const response = await fetch(path, {
       ...options,
-      headers:{'Content-Type':'application/json',...(token() ? {Authorization:`Bearer ${token}`} : {}),...(options.headers || {})}
+      headers:{'Content-Type':'application/json',...(token() ? {Authorization:`Bearer ${token()}`} : {}),...(options.headers || {})}
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'No se pudo procesar la vinculación');
