@@ -4,21 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ventas · Export MCA</title>
-<link rel="stylesheet" href="/admin/purchases.css">
+<link rel="stylesheet" href="/admin/purchases.css?v=20260830-ux2d">
 <link rel="stylesheet" href="/admin/sales-order-ux.css?v=20260829-1">
 <link rel="stylesheet" href="/admin/sales-workspace.css?v=20260830-ux2c">
 <script>
-// Ownership boundary: SalesWorkspace renders the complete Sales detail.
-// Legacy parent financial traceability must not inject blocks into this document.
 document.__salesWorkspaceOwnsDetail = true;
 document.__financialSalesContextInstalled = true;
 </script>
 </head>
 <body>
 <main class="wrap">
-  <div class="head"><div><h1>Ventas</h1><div class="muted">Cada venta reúne cliente, mercancía, logística, facturación, cobros, costos y documentos relacionados sin duplicar sus fuentes.</div></div><button id="newOrder" class="btn orange">+ Nueva venta</button></div>
+  <div class="head"><div><h1>Ventas</h1><div class="muted">Cada venta reúne cliente, mercancía, logística, facturación, cobros, costos y documentos del contenedor sin duplicar sus fuentes.</div></div><button id="newOrder" class="btn orange">+ Nueva venta</button></div>
   <div id="metrics" class="metrics"></div>
-  <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar venta, cliente, referencia o producto"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="closed">Cerradas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="orderList" class="orders"></div></section>
+  <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar venta, cliente, referencia o producto"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="closed">Cerradas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="orderList" class="orders has-explicit-count"></div></section>
 </main>
 
 <div id="orderModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="orderTitle">Nueva venta</h2><div class="muted">Aquí defines qué vendiste, a quién, cuánto y por qué valor. El inventario se reserva después al preparar el Cargue.</div></div><button class="btn" data-close="order">✕</button></div>
@@ -37,9 +35,9 @@ document.__financialSalesContextInstalled = true;
 <div id="loadLines" class="detail-items"></div>
 <div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="load">Cancelar</button><button id="saveLoad" class="btn orange">Crear Cargue</button></div><div id="loadMsg" class="msg"></div></div></div>
 
-<script src="/admin/sales.js?v=20260830-ux2c"></script>
+<script src="/admin/sales.js?v=20260830-ux2d"></script>
 <script src="/admin/sales-order-ux.js?v=20260829-1"></script>
-<script src="/admin/sales-workspace.js?v=20260830-ux2c"></script>
+<script src="/admin/sales-workspace.js?v=20260830-ux2d"></script>
 <script src="/admin/sales-controller.js?v=20260830-ux2c"></script>
 <script src="/admin/sales-existing-load-link-v2.js?v=20260830-ux2c"></script>
 </body>

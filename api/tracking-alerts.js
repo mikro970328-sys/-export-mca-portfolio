@@ -249,6 +249,87 @@ async function processTrackingAlerts(activeAlerts, now, nowMs) {
   return { checked: (shipments || []).length, changed };
 }
 
+function sameMissingDocuments(previous, nextMissing) {
+  const before = Array.isArray(previous?.payload?.missing_documents) ? [...previous.payload.missing_documents].sort() : [];
+  const after = Array.isArray(nextMissing) ? [...nextMissing].sort() : [];
+  return before.length === after.length && before.every((value,index) => value === after[index]);
+}
+
+async function processCustomsDocumentAlerts(activeAlerts, now, nowMs) {
+  const readinessRows = await supabase('shipment_customs_document_readiness', {
+    query: '?select=shipment_id,container_number,client_id,active,documentation_required,has_packing_list_cuba,has_commercial_invoice_cuba,document_status,missing_documents&order=container_number.asc&limit=5000'
+  }) || [];
+  const eligibleKeys = new Set();
+  const changed = [];
+
+  for (const row of readinessRows) {
+    const key = activeAlertKey('shipment_customs_documents_missing', row.shipment_id);
+    const previous = activeAlerts.get(key);
+    const missing = Array.isArray(row.missing_documents) ? row.missing_documents : [];
+    const pending = row.documentation_required === true && row.document_status !== 'ready' && missing.length > 0;
+
+    if (!pending) {
+      if (previous) changed.push(await resolveAlert(previous, row.document_status === 'ready' ? 'documents_complete' : 'documentation_not_required', now));
+      continue;
+    }
+
+    eligibleKeys.add(key);
+    const friendlyMissing = missing.map(value => value === 'Commercial Invoice Cuba' ? 'Factura comercial Cuba' : value);
+    const title = 'Documentos Cuba pendientes';
+    const message = `El contenedor ${row.container_number} está enviado y todavía falta: ${friendlyMissing.join(' y ')}.`;
+    const payload = {
+      container_number: row.container_number,
+      missing_documents: missing,
+      has_packing_list_cuba: Boolean(row.has_packing_list_cuba),
+      has_commercial_invoice_cuba: Boolean(row.has_commercial_invoice_cuba),
+      document_status: row.document_status,
+      required_action: 'upload_cuba_customs_documents'
+    };
+
+    if (!previous) {
+      const created = await createAlert({
+        client_id: row.client_id,
+        shipment_id: row.shipment_id,
+        event_type: 'shipment_customs_documents_missing',
+        entity_type: 'shipment',
+        entity_id: row.shipment_id,
+        severity: 'warning',
+        title,
+        message,
+        dedupe_key: key,
+        payload,
+        now
+      });
+      if (created) changed.push(created);
+      continue;
+    }
+
+    if (isSnoozed(previous, nowMs)) continue;
+    if (!sameMissingDocuments(previous,missing) || previous.alert_status === 'snoozed' || previous.title !== title || previous.message !== message) {
+      changed.push(await updateAlert(previous, {
+        alert_status: 'pending',
+        severity: 'warning',
+        event_status: 'warning',
+        title,
+        message,
+        payload,
+        snoozed_until: null,
+        last_triggered_at: now,
+        occurrence_count: Number(previous.occurrence_count || 1) + 1
+      }));
+    }
+  }
+
+  for (const [key,row] of activeAlerts) {
+    if (row.event_type === 'shipment_customs_documents_missing' && !eligibleKeys.has(key) && !row.resolved_at) {
+      const alreadyChanged = changed.some(item => item?.id === row.id);
+      if (!alreadyChanged) changed.push(await resolveAlert(row,'condition_cleared',now));
+    }
+  }
+
+  return { checked: readinessRows.length, changed };
+}
+
 async function resolveLegacyTrackingAlerts(now) {
   const rows = await supabase('notifications', {
     query: '?select=id&event_type=eq.tracking_stale&status=eq.pending&limit=1000'
@@ -265,16 +346,19 @@ async function runCheck() {
   const now = new Date().toISOString();
   const nowMs = Date.now();
   const activeAlerts = await loadActiveOperationalAlerts();
-  const [clients, tracking, legacyResolved] = await Promise.all([
+  const [clients, tracking, customsDocuments, legacyResolved] = await Promise.all([
     processClientAlerts(activeAlerts, now, nowMs),
     processTrackingAlerts(activeAlerts, now, nowMs),
+    processCustomsDocumentAlerts(activeAlerts, now, nowMs),
     resolveLegacyTrackingAlerts(now)
   ]);
   return {
     clients_checked: clients.checked,
     tracking_checked: tracking.checked,
+    customs_documents_checked: customsDocuments.checked,
     client_alerts_changed: clients.changed.length,
     tracking_alerts_changed: tracking.changed.length,
+    customs_document_alerts_changed: customsDocuments.changed.length,
     legacy_tracking_alerts_resolved: legacyResolved
   };
 }

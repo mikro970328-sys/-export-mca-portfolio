@@ -88,6 +88,7 @@
     document.getElementById('trackingAlertBell')?.remove();
     document.getElementById('trackingAlertPopover')?.remove();
     document.getElementById('dashboardTrackingAlerts')?.remove();
+    document.querySelector('[data-section="newOperationsSection"]')?.remove();
   };
 
   const loadScript = (src, marker) => new Promise((resolve, reject) => {
@@ -150,9 +151,8 @@
   };
 
   const hydrateSecondaryModules = async () => {
-    const clientsModule = loadScript('/admin/clients-module.js?v=20260817-importers1', 'data-clients-module');
-
-    const alertChain = loadScript('/admin/operational-alert-center.js?v=20260817-uxa1', 'data-operational-alert-center')
+    const clientsModule = loadScript('/admin/clients-module.js?v=20260830-ux2d', 'data-clients-module');
+    const alertChain = loadScript('/admin/operational-alert-center.js?v=20260830-ux2d', 'data-operational-alert-center')
       .then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
 
     await Promise.all([
@@ -173,14 +173,8 @@
     removeLegacyAdminControls();
 
     bootPromise = (async () => {
-      await loadScript('/admin/expedientes-module.js?v=20260816-documents1', 'data-expedientes-module');
-      if (typeof window.ExpedientesModule?.init !== 'function') {
-        throw new Error('El módulo de Expedientes no está disponible.');
-      }
-      await window.ExpedientesModule.init();
-
       await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
-      await loadScript('/admin/containers-module.js?v=20260817-importers1', 'data-containers-module');
+      await loadScript('/admin/containers-module.js?v=20260830-ux2d', 'data-containers-module');
       await loadScript('/admin/registration-form-shell.js?v=20260817-uxc1', 'data-registration-form-shell');
       await loadScript('/admin/shipment-editor.js?v=20260817-importers1', 'data-shipment-editor');
       await loadScript('/admin/modal-dismissal.js?v=20260817-uxc2', 'data-modal-dismissal');
@@ -190,7 +184,7 @@
       await navigationStylesPromise;
       await loadScript('/admin/navigation-shell.js?v=20260830-ux1', 'data-navigation-shell');
       await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
-      await loadScript('/admin/operational-navigation.js?v=20260819-b11', 'data-operational-navigation');
+      await loadScript('/admin/operational-navigation.js?v=20260830-ux2d', 'data-operational-navigation');
 
       if (typeof window.loadAll !== 'function') {
         throw new Error('El cargador inicial de datos no está disponible.');

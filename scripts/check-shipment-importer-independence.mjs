@@ -4,7 +4,6 @@ import { spawnSync } from 'node:child_process';
 const files = {
   containers: 'admin/containers-module.js',
   editor: 'admin/shipment-editor.js',
-  expedientes: 'admin/expedientes-module.js',
   api: 'api/importers.js'
 };
 
@@ -23,14 +22,13 @@ for (const file of Object.values(files)) {
 
 const containers = read(files.containers);
 const editor = read(files.editor);
-const expedientes = read(files.expedientes);
 const api = read(files.api);
 
 for (const fragment of [
   '<input id="shipmentImporter"',
   'shipmentImporterOptions',
   'importer_name:',
-  'No depende de las importadoras registradas para el cliente'
+  'Escribe la importadora concreta de este contenedor'
 ]) {
   if (!containers.includes(fragment)) errors.push(`Registro de contenedor no refleja importadora independiente: ${fragment}`);
 }
@@ -77,18 +75,13 @@ if (assignmentBlock.includes('no está registrada para este cliente')) errors.pu
 
 for (const fragment of [
   'function importerForShipment(shipment)',
-  "api('/api/importers')",
-  'Importadora: ${esc(importer?.name || \'Sin definir\')}',
-  "importerForShipment(shipment)?.name",
-  '<th>Importadora</th>',
+  '/api/importers',
   "export-mca:importers-changed"
 ]) {
-  if (!expedientes.includes(fragment)) errors.push(`Expedientes no propaga la importadora del contenedor: ${fragment}`);
+  if (!containers.includes(fragment)) errors.push(`Tracking no resuelve la importadora desde el contenedor: ${fragment}`);
 }
 
-if (!expedientes.includes('shipment.product, importerForShipment(shipment)?.name')) {
-  errors.push('La búsqueda de Expedientes no incluye la importadora del contenedor.');
-}
+if (/Expediente/i.test(files.containers)) errors.push('El contrato UX-E5 no debe depender de Expedientes.');
 
 if (errors.length) {
   console.error('Validación UX-E5 fallida:');
@@ -99,5 +92,5 @@ if (errors.length) {
 console.log('Validación UX-E5 superada.');
 console.log('- Cliente e importadoras registradas permanecen como relación de referencia.');
 console.log('- Cada contenedor acepta una sola importadora operativa independiente.');
-console.log('- Tracking, editor y Expedientes resuelven la importadora desde el contenedor.');
-console.log('- Expedientes permite localizar operaciones por la importadora de sus contenedores.');
+console.log('- Tracking y editor resuelven la importadora desde el contenedor.');
+console.log('- UX-E5 ya no depende del módulo Expedientes.');
