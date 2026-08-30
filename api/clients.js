@@ -1,4 +1,4 @@
-import { fail, normalizePhone, ok, readJson, requireAdmin, sendWhatsApp, supabase } from './_lib.js';
+import { authorizeAdmin, fail, normalizePhone, ok, readJson, sendWhatsApp, supabase } from './_lib.js';
 
 async function audit(action, entityId, details = {}) {
   try { await supabase('audit_log', { method: 'POST', body: [{ action, entity_type: 'client', entity_id: entityId, details }] }); } catch {}
@@ -69,7 +69,8 @@ async function findDuplicate({ phone, email, excludeId = null }) {
 }
 
 export default async function handler(req, res) {
-  if (!requireAdmin(req, res)) return;
+  const admin = await authorizeAdmin(req, res, req.method === 'GET' ? 'clients.read' : 'clients.write');
+  if (!admin) return;
   try {
     if (req.method === 'GET') {
       const data = await supabase('clients', { query: '?select=*&order=created_at.desc' });
