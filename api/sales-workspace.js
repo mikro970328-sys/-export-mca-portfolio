@@ -16,6 +16,17 @@ async function rows(path, query) {
   return Array.isArray(result) ? result : [];
 }
 
+function normalizeSummary(row) {
+  if (!row) return null;
+  if (!row.billing_currency_comparable) return row;
+  return {
+    ...row,
+    issued_invoice_total:row.issued_invoice_total ?? 0,
+    collected_amount:row.collected_amount ?? 0,
+    balance_due:row.balance_due ?? 0
+  };
+}
+
 function mergeItems(items, fulfillmentProgress, invoiceProgress) {
   const fulfillmentById = new Map(fulfillmentProgress.map(row => [String(row.sales_order_item_id), row]));
   const invoiceById = new Map(invoiceProgress.map(row => [String(row.sales_order_item_id), row]));
@@ -43,7 +54,7 @@ function mergeInvoices(invoices, financialProgress, invoiceItems) {
 
 async function workspace(salesOrderId) {
   const summaryRows = await rows('sales_order_workspace_summary', `?select=*&sales_order_id=eq.${salesOrderId}&limit=1`);
-  const summary = summaryRows[0] || null;
+  const summary = normalizeSummary(summaryRows[0] || null);
   if (!summary) return null;
 
   const [itemRows, itemProgress, itemInvoiceProgress, logistics, documents, invoices, invoiceFinancial] = await Promise.all([
