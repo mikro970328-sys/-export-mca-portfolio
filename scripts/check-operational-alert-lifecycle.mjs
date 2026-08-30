@@ -6,6 +6,7 @@ const failures=[];
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const required=[
   'supabase/migrations/20260830211500_p9_operational_alert_condition_registry.sql',
+  'supabase/migrations/20260830211600_p9_alert_cycle_seed_normalization.sql',
   'api/_alert-lifecycle.js',
   'api/tracking-alerts.js',
   'api/manual-tracking-alerts.js',
@@ -19,7 +20,7 @@ const required=[
 for(const file of required)if(!fs.existsSync(path.join(root,file)))failures.push(`${file}: falta archivo P9`);
 
 if(!failures.length){
-  const migration=read(required[0]),helper=read(required[1]),tracking=read(required[2]),history=read(required[7]),center=read(required[8]),stability=read(required[9]);
+  const migration=read(required[0]),normalization=read(required[1]),helper=read(required[2]),tracking=read(required[3]),history=read(required[8]),center=read(required[9]),stability=read(required[10]);
   for(const requiredText of [
     'create table public.operational_alert_conditions',
     'dedupe_key text primary key',
@@ -38,6 +39,13 @@ if(!failures.length){
     "raise exception 'ALERT_CONDITION_CLOSED'"
   ])if(!migration.includes(requiredText))failures.push(`migración P9: falta ${requiredText}`);
 
+  for(const requiredText of [
+    'set condition_cycle_count=1',
+    "n.resolved_source='manual'",
+    'condition_active=true',
+    'condition_closed_at=null'
+  ])if(!normalization.includes(requiredText))failures.push(`normalización P9: falta ${requiredText}`);
+
   for(const signature of [
     'public.reconcile_operational_alert_condition(text,boolean,text,uuid,uuid,text,uuid,text,text,text,timestamptz,jsonb,boolean,text,timestamptz)',
     'public.act_on_operational_alert(uuid,uuid,text,text,timestamptz,timestamptz)'
@@ -48,7 +56,7 @@ if(!failures.length){
 
   for(const text of ['operational_alert_condition_state','rpc/reconcile_operational_alert_condition','closeCondition','changedAction'])if(!helper.includes(text))failures.push(`helper P9: falta ${text}`);
 
-  const checkerFiles=required.slice(2,7);
+  const checkerFiles=required.slice(3,8);
   for(const file of checkerFiles){
     const code=read(file);
     if(!code.includes("from './_alert-lifecycle.js'"))failures.push(`${file}: no usa lifecycle común`);
