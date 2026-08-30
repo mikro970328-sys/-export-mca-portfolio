@@ -78,9 +78,29 @@ async function loadSalesOrders() {
   return (orders || []).map(order => ({ ...order, items:itemsByOrder.get(order.id) || [] }));
 }
 
+function buildMetrics(invoices) {
+  const active = invoices.filter(invoice => invoice.status !== 'void');
+  const issued = active.filter(invoice => invoice.status === 'issued');
+  const receivableByCurrency = new Map();
+  for (const invoice of issued) {
+    const balance = Number(invoice.financial?.balance_due || 0);
+    if (!Number.isFinite(balance) || balance === 0) continue;
+    const currency = text(invoice.currency || invoice.financial?.currency || '', 3).toUpperCase();
+    if (!currency) continue;
+    receivableByCurrency.set(currency, (receivableByCurrency.get(currency) || 0) + balance);
+  }
+  return {
+    invoice_count:active.length,
+    draft_count:active.filter(invoice => invoice.status === 'draft').length,
+    paid_count:issued.filter(invoice => invoice.financial?.payment_status === 'paid').length,
+    overdue_count:issued.filter(invoice => invoice.financial?.payment_status === 'overdue').length,
+    receivable_by_currency:[...receivableByCurrency.entries()].sort(([a],[b]) => a.localeCompare(b)).map(([currency,amount]) => ({ currency, amount }))
+  };
+}
+
 async function bootstrap() {
   const [invoices, sales_orders] = await Promise.all([loadInvoices(), loadSalesOrders()]);
-  return { invoices, sales_orders };
+  return { invoices, sales_orders, metrics:buildMetrics(invoices) };
 }
 
 export default async function handler(req, res) {
@@ -93,7 +113,7 @@ export default async function handler(req, res) {
       if (!id) return ok(res,data);
       const invoice = data.invoices.find(row => String(row.id) === id);
       if (!invoice) return fail(res,404,'Factura no encontrada');
-      return ok(res,{ invoice, sales_orders:data.sales_orders });
+      return ok(res,{ invoice, sales_orders:data.sales_orders, metrics:data.metrics });
     }
 
     if (req.method !== 'POST') return fail(res,405,'Método no permitido');

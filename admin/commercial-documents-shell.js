@@ -1,29 +1,11 @@
 (() => {
-  const inject = (doc, id, src) => {
-    if (!doc?.head || doc.getElementById(id)) return;
-    const script = doc.createElement('script');
-    script.id = id;
-    script.src = src;
-    doc.head.appendChild(script);
-  };
-
-  function installDirect(win = window) {
-    const path = win.location?.pathname || '';
-    if (path.endsWith('/invoices.html')) {
-      inject(win.document, 'b7-invoice-expediente', '/admin/invoice-expediente.js');
-      inject(win.document, 'b7-invoice-documents', '/admin/commercial-documents-invoices.js');
-    }
-    if (path.endsWith('/loads.html')) inject(win.document, 'b7-load-documents', '/admin/commercial-documents-loads.js');
-  }
-
   if (window.parent !== window) {
-    installDirect(window);
     try {
       const parentWindow = window.parent;
       if (parentWindow.location.origin === window.location.origin && !parentWindow.document.getElementById('b7-commercial-documents-shell')) {
         const script = parentWindow.document.createElement('script');
         script.id = 'b7-commercial-documents-shell';
-        script.src = '/admin/commercial-documents-shell.js';
+        script.src = '/admin/commercial-documents-shell.js?v=20260830-ux2c-root';
         parentWindow.document.head.appendChild(script);
       }
     } catch {}
@@ -32,25 +14,6 @@
 
   if (window.__b7CommercialDocumentsShellInstalled) return;
   window.__b7CommercialDocumentsShellInstalled = true;
-
-  const configs = [
-    ['invoicesSection', 'b7-invoice-expediente', '/admin/invoice-expediente.js'],
-    ['invoicesSection', 'b7-invoice-documents', '/admin/commercial-documents-invoices.js'],
-    ['loadsSection', 'b7-load-documents', '/admin/commercial-documents-loads.js']
-  ];
-
-  function installFrame(sectionId, scriptId, src) {
-    const frame = window.document.querySelector(`#${CSS.escape(sectionId)} iframe`);
-    if (!frame) return;
-    const install = () => {
-      try { inject(frame.contentDocument, scriptId, src); } catch {}
-    };
-    if (frame.contentDocument?.readyState === 'complete') install();
-    if (!frame.dataset.b7DocumentsLoadBound) {
-      frame.dataset.b7DocumentsLoadBound = '1';
-      frame.addEventListener('load', install);
-    }
-  }
 
   function installGeneratedStyles() {
     if (document.getElementById('b7-generated-document-styles')) return;
@@ -81,22 +44,17 @@
         const badge = document.createElement('span');
         badge.className = 'exp-doc-generated';
         badge.textContent = 'GENERADO';
-        badge.title = item.content_sha256 ? `Documento automático · SHA-256 ${item.content_sha256}` : 'Documento automático e inmutable';
+        badge.title = item.content_sha256 ? `Documento interno generado · SHA-256 ${item.content_sha256}` : 'Documento interno generado e inmutable';
         title.appendChild(badge);
       }
       deleteButton?.remove();
     });
   }
 
-  function installAll() {
-    configs.forEach(config => installFrame(...config));
-    enhanceGeneratedDocuments();
-  }
-
-  installAll();
-  const observer = new MutationObserver(() => enhanceGeneratedDocuments());
+  enhanceGeneratedDocuments();
+  const observer = new MutationObserver(enhanceGeneratedDocuments);
   observer.observe(document.body, { childList:true, subtree:true });
-  window.addEventListener('pageshow', installAll);
-  window.addEventListener('export-mca:section-changed', installAll);
+  window.addEventListener('pageshow', enhanceGeneratedDocuments);
+  window.addEventListener('export-mca:section-changed', enhanceGeneratedDocuments);
   window.addEventListener('export-mca:data-loaded', enhanceGeneratedDocuments);
 })();

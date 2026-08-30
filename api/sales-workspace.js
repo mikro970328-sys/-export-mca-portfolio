@@ -16,6 +16,17 @@ async function rows(path, query) {
   return Array.isArray(result) ? result : [];
 }
 
+function normalizeSummary(row) {
+  if (!row) return null;
+  if (!row.billing_currency_comparable) return row;
+  return {
+    ...row,
+    issued_invoice_total:row.issued_invoice_total ?? 0,
+    collected_amount:row.collected_amount ?? 0,
+    balance_due:row.balance_due ?? 0
+  };
+}
+
 function mergeItems(items, fulfillmentProgress, invoiceProgress) {
   const fulfillmentById = new Map(fulfillmentProgress.map(row => [String(row.sales_order_item_id), row]));
   const invoiceById = new Map(invoiceProgress.map(row => [String(row.sales_order_item_id), row]));
@@ -43,7 +54,7 @@ function mergeInvoices(invoices, financialProgress, invoiceItems) {
 
 async function workspace(salesOrderId) {
   const summaryRows = await rows('sales_order_workspace_summary', `?select=*&sales_order_id=eq.${salesOrderId}&limit=1`);
-  const summary = summaryRows[0] || null;
+  const summary = normalizeSummary(summaryRows[0] || null);
   if (!summary) return null;
 
   const [itemRows, itemProgress, itemInvoiceProgress, logistics, documents, invoices, invoiceFinancial] = await Promise.all([
@@ -110,6 +121,11 @@ async function workspace(salesOrderId) {
     ? await rows('audit_log', `?select=id,action,entity_type,entity_id,details,created_at,actor_admin_id,actor_username&entity_id=in.(${inFilter(auditEntityIds)})&order=created_at.desc&limit=1000`)
     : [];
 
+  // Customs completeness is based only on real/manual uploads. Generated ERP documents
+  // remain available as context but never satisfy the official customs-document checklist.
+  const manualDocuments = documents.filter(row => row.generated !== true);
+  const generatedDocuments = documents.filter(row => row.generated === true);
+
   return {
     summary,
     items:mergeItems(itemRows, itemProgress, itemInvoiceProgress),
@@ -121,7 +137,8 @@ async function workspace(salesOrderId) {
       contextual_operation_payments:contextualOperationPayments
     },
     costs:{ allocations:directCosts },
-    documents,
+    documents:manualDocuments,
+    generated_documents:generatedDocuments,
     history
   };
 }
