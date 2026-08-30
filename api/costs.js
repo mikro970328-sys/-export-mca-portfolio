@@ -127,7 +127,7 @@ export default async function handler(req, res) {
     const action = text(body.action, 60).toLowerCase();
     const actor = admin.admin_id || null;
 
-    if (action === 'create' || action === 'replace') {
+    if (action === 'create' || action === 'replace' || action === 'create_posted') {
       const category = text(body.category, 60).toLowerCase();
       const stage = text(body.stage, 60).toLowerCase();
       const amount = Number(body.amount);
@@ -138,7 +138,11 @@ export default async function handler(req, res) {
       if (!Number.isFinite(amount) || amount <= 0) throw new Error('El monto debe ser mayor que cero');
       if (!/^[A-Z]{3}$/.test(currency)) throw new Error('La moneda debe tener tres letras');
 
-      const rpc = action === 'create' ? 'rpc/create_cost_charge' : 'rpc/replace_cost_charge';
+      const rpc = action === 'replace'
+        ? 'rpc/replace_cost_charge'
+        : action === 'create_posted'
+          ? 'rpc/create_posted_cost_charge'
+          : 'rpc/create_cost_charge';
       const payload = {
         ...(action === 'replace' ? { p_cost_charge_id:text(body.cost_charge_id, 80) } : {}),
         p_category:category,
@@ -155,7 +159,19 @@ export default async function handler(req, res) {
       if (action === 'replace' && !payload.p_cost_charge_id) throw new Error('Falta el cargo a modificar');
       const result = rpcRow(await supabase(rpc, { method:'POST', body:payload }));
       if (!result?.id) throw new Error('No se pudo guardar el cargo');
-      await writeAudit(admin, action === 'create' ? 'cost_charge_created' : 'cost_charge_updated', 'cost_charge', result.id, { cost_number:result.cost_number, category, stage, amount, currency });
+      const auditAction = action === 'replace'
+        ? 'cost_charge_updated'
+        : action === 'create_posted'
+          ? 'cost_charge_created_and_posted'
+          : 'cost_charge_created';
+      await writeAudit(admin, auditAction, 'cost_charge', result.id, {
+        cost_number:result.cost_number,
+        category,
+        stage,
+        amount,
+        currency,
+        status:result.status || null
+      });
       return ok(res, { charge:result });
     }
 
