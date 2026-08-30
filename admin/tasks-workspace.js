@@ -3,15 +3,7 @@
   if (window.__tasksWorkspaceInstalled) return;
   window.__tasksWorkspaceInstalled = true;
 
-  const state = {
-    tasks:[],
-    context:null,
-    loaded:false,
-    loading:false,
-    activeFilter:'pending',
-    selectedTaskId:null
-  };
-
+  const state = { tasks:[], context:null, loaded:false, loading:false, activeFilter:'pending', selectedTaskId:null };
   const byId = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const can = permission => window.ExportMcaAccessControl?.can?.(permission) !== false;
@@ -98,13 +90,7 @@
 
   function activeCounts() {
     const tasks=state.tasks;
-    return {
-      pending:tasks.filter(t=>t.status==='pending').length,
-      in_progress:tasks.filter(t=>t.status==='in_progress').length,
-      blocked:tasks.filter(t=>t.status==='blocked').length,
-      overdue:tasks.filter(t=>t.is_overdue).length,
-      completed:tasks.filter(t=>t.status==='completed').length
-    };
+    return { pending:tasks.filter(t=>t.status==='pending').length, in_progress:tasks.filter(t=>t.status==='in_progress').length, blocked:tasks.filter(t=>t.status==='blocked').length, overdue:tasks.filter(t=>t.is_overdue).length, completed:tasks.filter(t=>t.status==='completed').length };
   }
 
   function renderSummary() {
@@ -115,14 +101,9 @@
 
   function populateFilters() {
     const team=byId('tasksTeamFilter');
-    if(team && team.options.length<=1) {
-      const teams=state.context?.teams || [];
-      team.insertAdjacentHTML('beforeend',teams.map(row=>`<option value="${esc(row.id)}">${esc(row.name)}</option>`).join(''));
-    }
+    if(team && team.options.length<=1) team.insertAdjacentHTML('beforeend',(state.context?.teams || []).map(row=>`<option value="${esc(row.id)}">${esc(row.name)}</option>`).join(''));
     const assignee=byId('tasksAssigneeFilter');
-    if(assignee && assignee.options.length<=2) {
-      assignee.insertAdjacentHTML('beforeend',(state.context?.users || []).map(row=>`<option value="${esc(row.id)}">${esc(row.full_name || row.username)}</option>`).join(''));
-    }
+    if(assignee && assignee.options.length<=2) assignee.insertAdjacentHTML('beforeend',(state.context?.users || []).map(row=>`<option value="${esc(row.id)}">${esc(row.full_name || row.username)}</option>`).join(''));
   }
 
   function filteredTasks() {
@@ -146,14 +127,12 @@
 
   function formatDate(value) {
     if(!value)return '—';
-    const date=new Date(value);
-    if(Number.isNaN(date.getTime()))return '—';
+    const date=new Date(value);if(Number.isNaN(date.getTime()))return '—';
     return date.toLocaleString('es-US',{month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'});
   }
 
   function assignmentLabel(task) {
-    const person=task.assigned_admin_name || task.assigned_admin_username;
-    const team=task.assigned_team_name;
+    const person=task.assigned_admin_name || task.assigned_admin_username, team=task.assigned_team_name;
     if(person && team)return `${esc(person)}<small>${esc(team)}</small>`;
     if(person)return esc(person);
     if(team)return `${esc(team)}<small>Equipo</small>`;
@@ -166,33 +145,22 @@
   }
 
   function renderTable() {
-    const rows=filteredTasks();
-    const wrap=byId('tasksTableWrap');
+    const rows=filteredTasks(), wrap=byId('tasksTableWrap');
     if(!wrap)return;
-    if(!rows.length) {
-      wrap.innerHTML='<div class="tasks-empty">No hay tareas para este filtro.</div><div class="tasks-footer">0 tareas</div>';
-      return;
-    }
+    if(!rows.length) { wrap.innerHTML='<div class="tasks-empty">No hay tareas para este filtro.</div><div class="tasks-footer">0 tareas</div>';return; }
     wrap.innerHTML=`<table class="tasks-table"><thead><tr><th>Tarea</th><th>Estado</th><th>Prioridad</th><th>Responsable</th><th>Vence</th><th>Entidad</th><th></th></tr></thead><tbody>${rows.map(task=>`<tr data-task-open="${esc(task.id)}"><td><div class="tasks-title">${esc(task.title)}</div><div class="tasks-sub">${esc((task.description||'').slice(0,110))}${task.open_dependency_count?` · ${task.open_dependency_count} dependencia${Number(task.open_dependency_count)===1?'':'s'} pendiente${Number(task.open_dependency_count)===1?'':'s'}`:''}</div></td><td><span class="tasks-status ${esc(task.status)}">${esc(statusLabels[task.status]||task.status)}</span></td><td><span class="tasks-priority ${esc(task.priority)}">${esc(priorityLabels[task.priority]||task.priority)}</span></td><td class="tasks-assignee">${assignmentLabel(task)}</td><td class="${task.is_overdue?'tasks-overdue':''}">${task.is_overdue?'Vencida · ':''}${esc(formatDate(task.due_at))}</td><td>${entityLabel(task)}</td><td><div class="tasks-row-actions"><button type="button" class="alt" data-task-action="open" data-id="${esc(task.id)}">Abrir</button></div></td></tr>`).join('')}</tbody></table><div class="tasks-footer">${rows.length} tarea${rows.length===1?'':'s'} visibles · ${state.tasks.length} en tu cola</div>`;
   }
 
-  function render() {
-    renderSummary();
-    populateFilters();
-    renderTable();
-  }
+  function render() { renderSummary();populateFilters();renderTable(); }
 
   async function load() {
     if(state.loading)return;
-    state.loading=true;
-    setMessage('Cargando tareas...');
+    state.loading=true;setMessage('Cargando tareas...');
     try {
       const [tasksResult,contextResult]=await Promise.all([request('/api/tasks'),request('/api/tasks?action=context')]);
       state.tasks=tasksResult.tasks || [];
       state.context=contextResult.context || { manage:false,teams:[],users:[],memberships:[] };
-      state.loaded=true;
-      setMessage('');
-      render();
+      state.loaded=true;setMessage('');render();
     } catch(error) {
       setMessage(error.message || 'No se pudieron cargar las tareas.',false);
       const wrap=byId('tasksTableWrap');if(wrap)wrap.innerHTML='<div class="tasks-empty">No se pudo cargar la cola de trabajo.</div>';
@@ -207,39 +175,32 @@
   }
 
   function openModal(title,body,actions=[]) {
-    byId('tasksModalTitle').textContent=title;
-    byId('tasksModalBody').innerHTML=body;
+    byId('tasksModalTitle').textContent=title;byId('tasksModalBody').innerHTML=body;
     const foot=byId('tasksModalActions');foot.innerHTML='';
-    actions.forEach(action=>{
-      const button=document.createElement('button');button.type='button';button.textContent=action.label;button.className=action.className||'';button.addEventListener('click',action.onClick);foot.appendChild(button);
-    });
+    actions.forEach(action=>{const button=document.createElement('button');button.type='button';button.textContent=action.label;button.className=action.className||'';button.addEventListener('click',action.onClick);foot.appendChild(button);});
     byId('tasksModal').classList.remove('hidden');
   }
 
   function option(value,label,selected='') { return `<option value="${esc(value)}" ${String(value)===String(selected)?'selected':''}>${esc(label)}</option>`; }
-  function localDateInput(value) {
-    if(!value)return '';
-    const date=new Date(value);if(Number.isNaN(date.getTime()))return '';
-    const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);
-    return local.toISOString().slice(0,16);
-  }
-
-  function assignmentOptions(teamId='',adminId='') {
-    const teams=(state.context?.teams||[]).map(row=>option(row.id,row.name,teamId)).join('');
-    const users=eligibleUsers(teamId).map(row=>option(row.id,row.full_name||row.username,adminId)).join('');
-    return { teams,users };
-  }
+  function localDateInput(value) { if(!value)return '';const date=new Date(value);if(Number.isNaN(date.getTime()))return '';const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);return local.toISOString().slice(0,16); }
 
   function eligibleUsers(teamId) {
     const users=state.context?.users || [];
-    if(!teamId)return users;
-    const membershipIds=new Set((state.context?.memberships||[]).filter(row=>row.team_id===teamId).map(row=>row.admin_user_id));
+    const memberships=state.context?.memberships || [];
+    if(!teamId || !memberships.length)return users;
+    const membershipIds=new Set(memberships.filter(row=>row.team_id===teamId).map(row=>row.admin_user_id));
     return users.filter(row=>membershipIds.has(row.id));
   }
 
+  function assignmentOptions(teamId='',adminId='') {
+    return {
+      teams:(state.context?.teams||[]).map(row=>option(row.id,row.name,teamId)).join(''),
+      users:eligibleUsers(teamId).map(row=>option(row.id,row.full_name||row.username,adminId)).join('')
+    };
+  }
+
   function taskForm(task=null) {
-    const current=task || {};
-    const assignments=assignmentOptions(current.assigned_team_id||'',current.assigned_admin_id||'');
+    const current=task || {}, assignments=assignmentOptions(current.assigned_team_id||'',current.assigned_admin_id||'');
     return `<form id="tasksEditForm" class="tasks-form">
       <div class="full"><label>Título</label><input name="title" maxlength="180" value="${esc(current.title||'')}" required></div>
       <div class="full"><label>Descripción</label><textarea name="description" rows="4">${esc(current.description||'')}</textarea></div>
@@ -253,58 +214,34 @@
   }
 
   function bindAssignmentFilter() {
-    const team=byId('tasksFormTeam'),assignee=byId('tasksFormAssignee');
-    if(!team||!assignee)return;
-    team.addEventListener('change',()=>{
-      const current=assignee.value;
-      const users=eligibleUsers(team.value);
-      assignee.innerHTML='<option value="">Sin responsable</option>'+users.map(row=>option(row.id,row.full_name||row.username,current)).join('');
-      if(current && !users.some(row=>row.id===current))assignee.value='';
-    });
+    const team=byId('tasksFormTeam'),assignee=byId('tasksFormAssignee');if(!team||!assignee)return;
+    team.addEventListener('change',()=>{const current=assignee.value,users=eligibleUsers(team.value);assignee.innerHTML='<option value="">Sin responsable</option>'+users.map(row=>option(row.id,row.full_name||row.username,current)).join('');if(current&&!users.some(row=>row.id===current))assignee.value='';});
   }
 
   function formPayload() {
-    const form=byId('tasksEditForm');
-    const data=new FormData(form);
-    const due=data.get('due_at');
-    return {
-      title:String(data.get('title')||'').trim(),
-      description:String(data.get('description')||'').trim() || null,
-      priority:data.get('priority'),
-      due_at:due ? new Date(String(due)).toISOString() : null,
-      assigned_team_id:data.get('assigned_team_id') || null,
-      assigned_admin_id:data.get('assigned_admin_id') || null,
-      entity_type:data.get('entity_type') || null,
-      entity_id:String(data.get('entity_id')||'').trim() || null
-    };
+    const data=new FormData(byId('tasksEditForm')),due=data.get('due_at');
+    return { title:String(data.get('title')||'').trim(),description:String(data.get('description')||'').trim()||null,priority:data.get('priority'),due_at:due?new Date(String(due)).toISOString():null,assigned_team_id:data.get('assigned_team_id')||null,assigned_admin_id:data.get('assigned_admin_id')||null,entity_type:data.get('entity_type')||null,entity_id:String(data.get('entity_id')||'').trim()||null };
+  }
+
+  function setInlineModalError(message) {
+    let node=byId('tasksModalError');if(!node){node=document.createElement('div');node.id='tasksModalError';node.className='tasks-message bad';byId('tasksModalBody')?.prepend(node);}node.textContent=message||'No se pudo completar la operación.';
   }
 
   function openCreate() {
     openModal('Nueva tarea',taskForm(),[
       {label:'Cancelar',className:'alt',onClick:closeModal},
-      {label:'Crear tarea',onClick:async()=>{try{const payload=formPayload();await request('/api/tasks',{method:'POST',body:JSON.stringify({action:'create',...payload})});closeModal();setMessage('Tarea creada.',true);await load();}catch(error){setInlineModalError(error.message);}}}
-    ]);
-    bindAssignmentFilter();
+      {label:'Crear tarea',onClick:async()=>{try{await request('/api/tasks',{method:'POST',body:JSON.stringify({action:'create',...formPayload()})});closeModal();setMessage('Tarea creada.',true);await load();}catch(error){setInlineModalError(error.message);}}}
+    ]);bindAssignmentFilter();
   }
 
-  function setInlineModalError(message) {
-    let node=byId('tasksModalError');
-    if(!node){node=document.createElement('div');node.id='tasksModalError';node.className='tasks-message bad';byId('tasksModalBody')?.prepend(node);}
-    node.textContent=message||'No se pudo completar la operación.';
-  }
-
-  function historyLabel(row) {
-    return ({created:'Tarea creada',updated:'Tarea actualizada',transitioned:'Cambio de estado',commented:'Comentario agregado',dependencies_changed:'Dependencias actualizadas'})[row.event_type] || row.event_type;
-  }
+  function historyLabel(row) { return ({created:'Tarea creada',updated:'Tarea actualizada',transitioned:'Cambio de estado',commented:'Comentario agregado',dependencies_changed:'Dependencias actualizadas'})[row.event_type] || row.event_type; }
 
   function detailMarkup(task) {
-    const writable=task.capabilities?.write && canWrite();
-    const manageable=task.capabilities?.manage && canManage();
-    const actions=[];
-    if(writable && task.status==='pending')actions.push(['in_progress','Iniciar'],['blocked','Bloquear'],['completed','Completar']);
-    if(writable && task.status==='in_progress')actions.push(['pending','Volver a pendiente'],['blocked','Bloquear'],['completed','Completar']);
-    if(writable && task.status==='blocked')actions.push(['in_progress','Reanudar'],['pending','Volver a pendiente'],['completed','Completar']);
-    if(manageable && ['completed','cancelled'].includes(task.status))actions.push(['pending','Reabrir']);
+    const writable=task.capabilities?.write&&canWrite(),manageable=task.capabilities?.manage&&canManage(),actions=[];
+    if(writable&&task.status==='pending')actions.push(['in_progress','Iniciar'],['blocked','Bloquear'],['completed','Completar']);
+    if(writable&&task.status==='in_progress')actions.push(['pending','Volver a pendiente'],['blocked','Bloquear'],['completed','Completar']);
+    if(writable&&task.status==='blocked')actions.push(['in_progress','Reanudar'],['pending','Volver a pendiente'],['completed','Completar']);
+    if(manageable&&['completed','cancelled'].includes(task.status))actions.push(['pending','Reabrir']);
     return `<div class="tasks-kicker">${esc(entityLabels[task.entity_type]||'Tarea operativa')}${task.entity_label?` · ${esc(task.entity_label)}`:''}</div><div class="tasks-action-strip">${actions.map(([status,label])=>`<button type="button" class="${status==='completed'?'success':'alt'}" data-task-transition="${status}" data-id="${esc(task.id)}">${esc(label)}</button>`).join('')}${manageable&&!['completed','cancelled'].includes(task.status)?`<button type="button" class="danger" data-task-transition="cancelled" data-id="${esc(task.id)}">Cancelar tarea</button>`:''}${manageable?`<button type="button" class="alt" data-task-action="edit-detail" data-id="${esc(task.id)}">Editar</button><button type="button" class="alt" data-task-action="dependencies" data-id="${esc(task.id)}">Dependencias</button>`:''}</div>
       <div class="tasks-detail-grid"><div><div class="tasks-detail-meta"><div class="tasks-meta-item"><span>Estado</span><b>${esc(statusLabels[task.status]||task.status)}</b></div><div class="tasks-meta-item"><span>Prioridad</span><b>${esc(priorityLabels[task.priority]||task.priority)}</b></div><div class="tasks-meta-item"><span>Responsable</span><b>${esc(task.assigned_admin_name||task.assigned_admin_username||'Sin responsable')}</b></div><div class="tasks-meta-item"><span>Equipo</span><b>${esc(task.assigned_team_name||'Sin equipo')}</b></div><div class="tasks-meta-item"><span>Vence</span><b class="${task.is_overdue?'tasks-overdue':''}">${esc(formatDate(task.due_at))}${task.is_overdue?' · Vencida':''}</b></div><div class="tasks-meta-item"><span>Origen</span><b>${task.origin==='workflow'?'Workflow':'Manual'}</b></div></div>
       <div class="tasks-detail-section"><h4>Descripción</h4><div class="tasks-description">${esc(task.description||'Sin descripción.')}</div></div>
@@ -315,24 +252,17 @@
 
   async function openDetail(id) {
     try {
-      state.selectedTaskId=id;
-      openModal('Cargando tarea...','<div class="tasks-empty">Cargando...</div>');
-      const result=await request(`/api/tasks?id=${encodeURIComponent(id)}`);
-      const task=result.task;
-      byId('tasksModalTitle').textContent=task.title;
-      byId('tasksModalBody').innerHTML=detailMarkup(task);
-      byId('tasksModalActions').innerHTML='<button type="button" class="alt" data-task-modal-close>Cerrar</button>';
+      state.selectedTaskId=id;openModal('Cargando tarea...','<div class="tasks-empty">Cargando...</div>');
+      const result=await request(`/api/tasks?id=${encodeURIComponent(id)}`),task=result.task;
+      byId('tasksModalTitle').textContent=task.title;byId('tasksModalBody').innerHTML=detailMarkup(task);byId('tasksModalActions').innerHTML='<button type="button" class="alt" data-task-modal-close>Cerrar</button>';
       byId('tasksCommentForm')?.addEventListener('submit',async event=>{event.preventDefault();const text=new FormData(event.currentTarget).get('body');try{await request('/api/tasks',{method:'POST',body:JSON.stringify({action:'comment',task_id:id,body:text})});await load();await openDetail(id);}catch(error){setInlineModalError(error.message);}});
     } catch(error) { openModal('Tarea','<div class="tasks-message bad">'+esc(error.message)+'</div>',[{label:'Cerrar',className:'alt',onClick:closeModal}]); }
   }
 
   async function openEdit(id) {
     try {
-      const result=await request(`/api/tasks?id=${encodeURIComponent(id)}`);const task=result.task;
-      openModal('Editar tarea',taskForm(task),[
-        {label:'Cancelar',className:'alt',onClick:()=>openDetail(id)},
-        {label:'Guardar cambios',onClick:async()=>{try{await request('/api/tasks',{method:'PATCH',body:JSON.stringify({id,...formPayload()})});await load();await openDetail(id);}catch(error){setInlineModalError(error.message);}}}
-      ]);bindAssignmentFilter();
+      const result=await request(`/api/tasks?id=${encodeURIComponent(id)}`),task=result.task;
+      openModal('Editar tarea',taskForm(task),[{label:'Cancelar',className:'alt',onClick:()=>openDetail(id)},{label:'Guardar cambios',onClick:async()=>{try{await request('/api/tasks',{method:'PATCH',body:JSON.stringify({id,...formPayload()})});await load();await openDetail(id);}catch(error){setInlineModalError(error.message);}}}]);bindAssignmentFilter();
     } catch(error){setMessage(error.message,false);}
   }
 
@@ -340,20 +270,15 @@
     const label=status==='blocked'?'Bloquear tarea':'Cancelar tarea';
     openModal(label,`<form id="tasksReasonForm"><label>Motivo</label><textarea name="reason" rows="4" required></textarea><div id="tasksModalError" class="tasks-message bad"></div></form>`,[
       {label:'Volver',className:'alt',onClick:()=>openDetail(id)},
-      {label,status==='cancelled'?className:'danger':className:'',onClick:async()=>{const reason=String(new FormData(byId('tasksReasonForm')).get('reason')||'').trim();if(!reason)return setInlineModalError('Escribe el motivo.');try{await transition(id,status,reason);}catch(error){setInlineModalError(error.message);}}}
+      {label,className:status==='cancelled'?'danger':'',onClick:async()=>{const reason=String(new FormData(byId('tasksReasonForm')).get('reason')||'').trim();if(!reason)return setInlineModalError('Escribe el motivo.');try{await transition(id,status,reason);}catch(error){setInlineModalError(error.message);}}}
     ]);
   }
 
-  async function transition(id,status,reason=null) {
-    await request('/api/tasks',{method:'POST',body:JSON.stringify({action:'transition',task_id:id,status,reason})});
-    await load();
-    await openDetail(id);
-  }
+  async function transition(id,status,reason=null) { await request('/api/tasks',{method:'POST',body:JSON.stringify({action:'transition',task_id:id,status,reason})});await load();await openDetail(id); }
 
   async function openDependencies(id) {
     try {
-      const result=await request(`/api/tasks?id=${encodeURIComponent(id)}`);const task=result.task;const chosen=new Set((task.dependencies||[]).map(row=>row.id));
-      const choices=state.tasks.filter(row=>row.id!==id);
+      const result=await request(`/api/tasks?id=${encodeURIComponent(id)}`),task=result.task,chosen=new Set((task.dependencies||[]).map(row=>row.id)),choices=state.tasks.filter(row=>row.id!==id);
       openModal('Dependencias',`<div class="muted" style="margin-bottom:8px">Marca las tareas que deben completarse antes de esta.</div><div class="tasks-dependency-picker">${choices.length?choices.map(row=>`<label class="tasks-dependency-option"><input type="checkbox" name="task_dependency" value="${esc(row.id)}" ${chosen.has(row.id)?'checked':''}><span><strong>${esc(row.title)}</strong><br><small>${esc(statusLabels[row.status]||row.status)}${row.entity_label?' · '+esc(row.entity_label):''}</small></span></label>`).join(''):'<div class="muted">No hay otras tareas.</div>'}</div><div id="tasksModalError" class="tasks-message bad"></div>`,[
         {label:'Cancelar',className:'alt',onClick:()=>openDetail(id)},
         {label:'Guardar',onClick:async()=>{const ids=[...byId('tasksModalBody').querySelectorAll('input[name="task_dependency"]:checked')].map(node=>node.value);try{await request('/api/tasks',{method:'POST',body:JSON.stringify({action:'set_dependencies',task_id:id,dependency_ids:ids})});await load();await openDetail(id);}catch(error){setInlineModalError(error.message);}}}
@@ -372,9 +297,7 @@
   }
 
   async function mount() {
-    if(!ensureSurface())return;
-    renderBase();
-    await load();
+    if(!ensureSurface())return;renderBase();await load();
     window.addEventListener('export-mca:section-changed',event=>{if(event.detail?.id==='tasksSection'&&!state.loaded)load();});
   }
 
