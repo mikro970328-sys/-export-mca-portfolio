@@ -5,6 +5,7 @@ on:
     paths:
       - 'api/**'
       - 'scripts/audit-b9-api-boundaries.mjs'
+      - 'docs/security/B9_SECURITY_AUDIT.md'
       - '.github/workflows/p14-b9-security-audit.yml'
   workflow_dispatch:
 
