@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="/admin/purchases.css?v=20260830-ux2d">
 <link rel="stylesheet" href="/admin/sales-order-ux.css?v=20260829-1">
 <link rel="stylesheet" href="/admin/sales-workspace.css?v=20260830-ux2c">
+<link rel="stylesheet" href="/admin/sales-supply-workspace.css?v=20260830-p1">
 <script>
 document.__salesWorkspaceOwnsDetail = true;
 document.__financialSalesContextInstalled = true;
@@ -27,7 +28,7 @@ document.__financialSalesContextInstalled = true;
 <div id="orderLines"></div>
 <div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="order">Cancelar</button><button id="saveOrder" class="btn orange">Guardar venta</button></div><div id="orderMsg" class="msg"></div></div></div>
 
-<div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div><div id="detailMsg" class="msg"></div></div></div>
+<div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><div class="actions" style="margin:0"><button id="openSupplyWorkspace" type="button" class="btn hidden">Abastecimiento</button><button class="btn" data-close="detail">✕</button></div></div><div id="detailBody"></div><div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div><div id="detailMsg" class="msg"></div></div></div>
 
 <div id="loadModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="loadTitle">Preparar Cargue</h2><div class="muted">Selecciona cantidades por WR. La reserva física y la trazabilidad Venta → Cargue → WR se guardan juntas.</div></div><button class="btn" data-close="load">✕</button></div>
 <div class="grid"><div><label>Almacén *</label><select id="lWarehouse"></select></div><div><label>Fecha programada</label><input id="lScheduled" type="datetime-local"></div></div>
@@ -38,6 +39,7 @@ document.__financialSalesContextInstalled = true;
 <script src="/admin/sales.js?v=20260830-ux2d"></script>
 <script src="/admin/sales-order-ux.js?v=20260829-1"></script>
 <script src="/admin/sales-workspace.js?v=20260830-ux2d"></script>
+<script src="/admin/sales-supply-workspace.js?v=20260830-p1"></script>
 <script src="/admin/sales-controller.js?v=20260830-ux2c"></script>
 <script src="/admin/sales-existing-load-link-v2.js?v=20260830-ux2c"></script>
 </body>
