@@ -1,4 +1,4 @@
-import { fail, ok, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase, writeAudit } from './_lib.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const EVENT_TYPE = 'shipment_stagnant_status';
@@ -147,8 +147,6 @@ async function runCheck() {
     const previous = activeAlerts.get(key);
     const status = normalizedStatus(shipment);
 
-    // Manual tracking has its own 3/5-day alert. Discharged has its own
-    // five-day release alert. Delivered/inactive shipments are excluded.
     if (shipment.shipsgo_status === 'manual' || status.includes('descargado') || status.includes('discharged') || shipment.delivered_at) {
       if (previous) {
         await resolveAlert(previous, now, 'covered_by_specific_rule_or_completed');
@@ -216,7 +214,7 @@ async function runCheck() {
 
 export default async function handler(req, res) {
   const isCron = cronAuthorized(req);
-  const admin = isCron ? { username: 'vercel-cron', admin_id: null } : requireAdmin(req, res);
+  const admin = isCron ? { username: 'vercel-cron', admin_id: null } : await authorizeAdmin(req, res, 'notifications.manage');
   if (!admin) return;
   if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
 
