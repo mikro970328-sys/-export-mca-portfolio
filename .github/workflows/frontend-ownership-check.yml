@@ -22,8 +22,10 @@ on:
       - 'admin/client-actions-menu.js'
       - 'admin/mobile-interaction-core.js'
       - 'admin/sales.html'
+      - 'admin/sales-workspace.js'
       - 'admin/sales-supply-workspace.js'
       - 'admin/sales-supply-workspace.css'
+      - 'api/sales-workspace.js'
       - 'api/sales-supply.js'
       - 'api/direct-shipment-dispatch.js'
       - 'supabase/migrations/20260830053000_p1_direct_shipment_dispatch_lifecycle.sql'
@@ -56,6 +58,10 @@ on:
       - 'admin/operational-navigation.js'
       - 'admin/operational-context-bridge.js'
       - 'api/operational-links.js'
+      - 'api/shipment-documents.js'
+      - 'api/shipment-document-readiness.js'
+      - 'supabase/migrations/20260830183000_p7_cuba_document_version_lifecycle.sql'
+      - 'supabase/migrations/20260830183500_p7_cuba_document_version_rpc_fix.sql'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
@@ -64,6 +70,7 @@ on:
       - 'scripts/check-task-engine.mjs'
       - 'scripts/check-workflow-handoffs.mjs'
       - 'scripts/check-contextual-sync.mjs'
+      - 'scripts/check-cuba-documentation.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -128,3 +135,11 @@ jobs:
           node --check admin/operational-context-bridge.js
           node --check admin/tasks-navigation.js
           node --check api/operational-links.js
+      - name: Validate P7 Cuba documentation
+        run: node scripts/check-cuba-documentation.mjs
+      - name: Validate P7 JavaScript syntax
+        run: |
+          node --check admin/containers-module.js
+          node --check api/shipment-documents.js
+          node --check api/shipment-document-readiness.js
+          node --check api/sales-workspace.js
