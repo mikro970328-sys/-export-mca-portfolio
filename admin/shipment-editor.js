@@ -111,7 +111,7 @@
     return `<div id="shipmentEditorMessage"></div>
       <div class="shipment-editor-grid">
         <div><label>Cliente</label><select id="editorClient">${clientOptions(shipment.client_id)}</select><div class="shipment-editor-help">Si el contenedor proviene de una venta/cargue, el cliente debe heredarse de esa operación.</div></div>
-        <div><label>Importadora cubana</label><input id="editorImporter" list="editorImporterOptions" value="${esc(importerName)}" placeholder="Ej. Quimimport, Servoven"><datalist id="editorImporterOptions">${importerSuggestions()}</datalist><div class="shipment-editor-help">Puede completarse o corregirse posteriormente.</div></div>
+        <div><label>Importadora cubana</label><input id="editorImporter" list="editorImporterOptions" value="${esc(importerName)}" placeholder="Ej. Quimimport, Servoven"><datalist id="editorImporterOptions">${importerSuggestions()}</datalist><div class="shipment-editor-help">No depende de las importadoras donde esté registrado el cliente. Se hereda como valor inicial desde la venta/cargue y puede corregirse después.</div></div>
         <div><label>Referencia / Nº contenedor *</label><input id="editorContainer" value="${esc(shipment.container_number)}" maxlength="40"><div class="shipment-editor-help">${esc(referenceHelp)}</div></div>
         <div><label>Producto</label><input id="editorProduct" value="${esc(shipment.product || '')}"></div>
         <div><label>Cantidad</label><input id="editorQuantity" type="number" min="0" step="0.001" value="${esc(shipment.quantity ?? '')}"></div>
