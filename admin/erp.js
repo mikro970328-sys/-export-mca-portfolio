@@ -139,7 +139,7 @@
     console.error('[platform theme]', error);
     return false;
   });
-  const navigationStylesPromise = loadStylesheet('/admin/navigation-shell.css?v=20260817-uxa2', 'data-navigation-shell-style');
+  const navigationStylesPromise = loadStylesheet('/admin/navigation-shell.css?v=20260830-ux1', 'data-navigation-shell-style');
   const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260817-e1', 'data-ui-icon-system');
 
   const revealAdminShell = () => {
@@ -188,7 +188,7 @@
       await iconSystemPromise;
       await loadScript('/admin/account-administration.js?v=20260817-e2', 'data-account-administration');
       await navigationStylesPromise;
-      await loadScript('/admin/navigation-shell.js?v=20260817-uxa2', 'data-navigation-shell');
+      await loadScript('/admin/navigation-shell.js?v=20260830-ux1', 'data-navigation-shell');
       await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
       await loadScript('/admin/operational-navigation.js?v=20260819-b11', 'data-operational-navigation');
 
