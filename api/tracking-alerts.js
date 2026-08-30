@@ -81,7 +81,7 @@ async function processTaskExceptionAlerts(conditions,now,nowMs){
   for(const task of tasks||[]){
     const blockedKey=alertKey(EVENT_TASK_BLOCKED,task.id),overdueKey=alertKey(EVENT_TASK_OVERDUE,task.id);
     const blockedPrevious=conditions.get(blockedKey),overduePrevious=conditions.get(overdueKey);
-    if(task.attention_state==='blocked'){
+    if(task.status==='blocked'){
       seenBlocked.add(blockedKey);
       const result=await reconcileAlert({
         dedupeKey:blockedKey,conditionActive:true,eventType:EVENT_TASK_BLOCKED,entityType:'operational_task',entityId:task.id,
@@ -93,7 +93,7 @@ async function processTaskExceptionAlerts(conditions,now,nowMs){
       });changed+=countChanged(result);
     }else if(blockedPrevious){changed+=countChanged(await closeCondition(blockedPrevious,'task_unblocked_or_closed',now));}
 
-    if(task.attention_state==='overdue'){
+    if(task.is_overdue_attention===true){
       seenOverdue.add(overdueKey);
       const result=await reconcileAlert({
         dedupeKey:overdueKey,conditionActive:true,eventType:EVENT_TASK_OVERDUE,entityType:'operational_task',entityId:task.id,
