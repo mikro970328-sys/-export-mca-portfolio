@@ -14,6 +14,7 @@ const advancesApi = read('api/customer-advances.js');
 const proformasApi = read('api/proformas.js');
 const foundation = read('supabase/migrations/20260830054000_p2_customer_advances_proformas.sql');
 const integrity = read('supabase/migrations/20260830054800_p2_customer_financial_integrity.sql');
+const indexes = read('supabase/migrations/20260830055500_p2_fk_index_hardening.sql');
 
 for (const needle of [
   '/admin/sales-customer-finance.css',
@@ -91,5 +92,20 @@ for (const needle of [
   'INVOICE_HAS_POSTED_ADVANCE_APPLICATIONS',
   'SO_HAS_ACTIVE_CUSTOMER_ADVANCE'
 ]) requireText(integrity, needle, 'P2 integrity migration');
+
+for (const needle of [
+  'customer_advances_created_by_idx',
+  'customer_advances_reversed_by_idx',
+  'customer_advance_applications_created_by_idx',
+  'customer_advance_applications_reversed_by_idx',
+  'customer_advance_refunds_created_by_idx',
+  'customer_advance_refunds_reversed_by_idx',
+  'proformas_importer_id_idx',
+  'proformas_created_by_idx',
+  'proformas_issued_by_idx',
+  'proformas_voided_by_idx',
+  'proforma_items_sales_order_item_id_idx',
+  'proforma_items_product_id_idx'
+]) requireText(indexes, needle, 'P2 FK index migration');
 
 console.log('P2 customer advances/proformas ownership and integrity checks passed.');
