@@ -1,0 +1,30 @@
+.sales-supply-modal .dialog{width:min(1120px,96vw);max-height:92vh;overflow:hidden;display:flex;flex-direction:column;padding:0}
+.sales-supply-modal .dialog-head{padding:16px 18px 13px;border-bottom:1px solid #e4e9f0;flex:0 0 auto}
+.sales-supply-body{padding:16px 18px 22px;overflow:auto;min-height:280px;background:#fff}
+.sales-supply-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:11px 12px;border:1px solid #cfd9e6;background:#f7f9fc;border-radius:8px;margin-bottom:12px;font-size:12px;line-height:1.45;color:#344054}
+.sales-supply-intro strong{color:#06204a}
+.sales-supply-items{display:grid;gap:12px}
+.sales-supply-item{border:1px solid #dfe5ed;border-radius:9px;background:#fff;overflow:hidden}
+.sales-supply-item-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 13px;border-bottom:1px solid #edf1f5;background:#fbfcfd}
+.sales-supply-item-title{font-weight:800;color:#102a4c;font-size:13px}.sales-supply-item-sub{font-size:11px;color:#667085;margin-top:3px}
+.sales-supply-metrics{display:grid;grid-template-columns:repeat(5,minmax(105px,1fr));gap:1px;background:#e7ebf0;border-bottom:1px solid #e7ebf0}
+.sales-supply-metric{background:#fff;padding:9px 11px;min-width:0}.sales-supply-metric span{display:block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#667085}.sales-supply-metric b{display:block;margin-top:4px;color:#1d2939;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sales-supply-metric.pending b{color:#9a6700}
+.sales-supply-plan-list{display:grid;gap:8px;padding:11px 12px}
+.sales-supply-plan{border:1px solid #e1e7ef;border-radius:8px;padding:10px 11px;background:#fff}
+.sales-supply-plan-head,.sales-supply-proc-head,.sales-supply-direct-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.sales-supply-route{display:inline-flex;align-items:center;border:1px solid #d5dde8;border-radius:999px;padding:4px 7px;font-size:10px;font-weight:800;color:#344054;background:#f8fafc}
+.sales-supply-route.direct{border-color:#bfd0e5;color:#244a83;background:#f3f7fd}.sales-supply-route.purchase{border-color:#e5d4ad;color:#805b12;background:#fffaf0}
+.sales-supply-detail{font-size:11px;color:#667085;margin-top:4px;line-height:1.45}
+.sales-supply-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.sales-supply-actions .btn{font-size:10px!important;padding:6px 8px!important;min-height:30px}
+.sales-supply-proc{margin-top:8px;padding:9px 10px;border-left:3px solid #d9e2ed;background:#fafbfd;border-radius:0 7px 7px 0}
+.sales-supply-proc-title{font-weight:800;font-size:11px;color:#253b5a}
+.sales-supply-direct-list{display:grid;gap:6px;margin-top:7px}.sales-supply-direct{padding:8px 9px;border:1px solid #e0e6ee;border-radius:7px;background:#fff}
+.sales-supply-empty{padding:12px;border:1px dashed #cfd6df;border-radius:8px;text-align:center;color:#667085;font-size:11px;background:#fcfdfe}
+.sales-supply-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.sales-supply-form .full{grid-column:1/-1}.sales-supply-form label{display:block;font-size:11px;font-weight:800;color:#344054;margin-bottom:5px}.sales-supply-form input,.sales-supply-form select,.sales-supply-form textarea{width:100%}
+.sales-supply-helper{font-size:10px;color:#667085;line-height:1.45;margin-top:4px}
+.sales-supply-form-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:14px;flex-wrap:wrap}
+.sales-supply-confirm-copy{font-size:12px;line-height:1.5;color:#344054;padding:2px 0 6px}
+.sales-supply-direct-augment{margin-top:12px;padding-top:12px;border-top:1px solid #e6ebf1}.sales-supply-direct-augment h3{margin:0 0 8px;color:#06204a;font-size:13px}
+.sales-supply-status{display:inline-flex;align-items:center;border-radius:999px;padding:4px 7px;font-size:9px;font-weight:800;background:#eef2f6;color:#475467}.sales-supply-status.ok{background:#edf8f0;color:#176b33}.sales-supply-status.warn{background:#fff7e5;color:#8a5700}
+@media(max-width:850px){.sales-supply-metrics{grid-template-columns:repeat(2,1fr)}.sales-supply-metric:last-child{grid-column:1/-1}}
+@media(max-width:700px){.sales-supply-modal .dialog{width:100%;height:100%;max-height:100vh;border-radius:0}.sales-supply-body{padding:13px}.sales-supply-intro,.sales-supply-item-head,.sales-supply-plan-head,.sales-supply-proc-head,.sales-supply-direct-head{flex-direction:column}.sales-supply-actions{justify-content:flex-start}.sales-supply-form{grid-template-columns:1fr}.sales-supply-form .full{grid-column:auto}}
