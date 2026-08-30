@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { fail, ok, readJson, requireAdmin } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson } from './_lib.js';
 
 const BUCKET = 'publication-images';
 const MAX_BYTES = 1572864;
@@ -20,7 +20,7 @@ function storagePathFromUrl(value, baseUrl) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, 'publications.write');
   if (!admin) return;
   try {
     const { url, key } = config();
