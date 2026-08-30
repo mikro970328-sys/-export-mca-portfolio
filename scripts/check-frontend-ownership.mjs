@@ -14,6 +14,7 @@ const files = {
   dashboardApi: 'api/dashboard.js',
   shipmentDocumentReadiness: 'api/shipment-document-readiness.js',
   shipmentDocuments: 'api/shipment-documents.js',
+  shipmentReadinessMigration: 'supabase/migrations/20260830031800_ux2d_container_customs_document_readiness.sql',
   loader: 'admin/erp.js',
   index: 'admin/index.html',
   alerts: 'admin/operational-alert-center.js'
@@ -35,7 +36,7 @@ const retiredOwners = [
 
 const errors = [];
 const read = file => fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-const hasOwner = (source, owner) => new RegExp(`owner\\s*:\\s*['\"]${owner.replaceAll('.', '\\.') }['\"]`).test(source);
+const hasOwner = (source, owner) => new RegExp(`owner\\s*:\\s*['\"]${owner.replaceAll('.', '\\.')}['\"]`).test(source);
 
 for (const file of Object.values(files)) {
   if (!fs.existsSync(file)) errors.push(`Falta el archivo requerido: ${file}`);
@@ -76,6 +77,7 @@ const dashboard = read(files.dashboard);
 const dashboardApi = read(files.dashboardApi);
 const shipmentDocumentReadiness = read(files.shipmentDocumentReadiness);
 const shipmentDocuments = read(files.shipmentDocuments);
+const shipmentReadinessMigration = read(files.shipmentReadinessMigration);
 const loader = read(files.loader);
 const index = read(files.index);
 const alerts = read(files.alerts);
@@ -149,8 +151,11 @@ for (const forbidden of [
   if (modalDismissal.includes(forbidden)) errors.push(`modal-dismissal.js invade apertura/contenido del modal: ${forbidden}`);
 }
 
-for (const fragment of ['shipment_id', 'document_status', 'missing_documents']) {
+for (const fragment of ['shipment_customs_document_readiness', 'shipment_id', 'readiness:']) {
   if (!shipmentDocumentReadiness.includes(fragment)) errors.push(`Falta read-model documental por contenedor: ${fragment}`);
+}
+for (const fragment of ['document_status', 'missing_documents', 'Packing List Cuba', 'Commercial Invoice Cuba']) {
+  if (!shipmentReadinessMigration.includes(fragment)) errors.push(`La fuente autoritativa de readiness perdió su contrato: ${fragment}`);
 }
 for (const fragment of ['Packing List Cuba', 'Commercial Invoice Cuba', 'shipment_id', 'prepare_upload', 'finalize_upload']) {
   if (!shipmentDocuments.includes(fragment)) errors.push(`Falta propiedad de documentos Cuba por contenedor: ${fragment}`);
