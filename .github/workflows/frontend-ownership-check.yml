@@ -45,6 +45,8 @@ on:
       - 'admin/tasks-workspace.css'
       - 'admin/tasks-navigation.js'
       - 'supabase/migrations/20260830154000_p4_task_engine.sql'
+      - 'supabase/migrations/20260830160500_p4_task_engine_index_hardening.sql'
+      - 'supabase/migrations/20260830161000_p4_task_dependency_completion_guard.sql'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
