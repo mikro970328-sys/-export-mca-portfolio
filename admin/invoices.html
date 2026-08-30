@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Facturación y cobros · Export MCA</title>
 <link rel="stylesheet" href="/admin/purchases.css">
+<script>
+// Legacy B7 invoice injections are retired from the operational flow.
+// invoice-expediente-v2 owns the current Expediente boundary.
+window.__b7InvoiceExpedienteInstalled = true;
+window.__b7InvoiceDocumentsInstalled = true;
+</script>
 </head>
 <body>
 <main class="wrap">
