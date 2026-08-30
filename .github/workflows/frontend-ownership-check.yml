@@ -18,6 +18,7 @@ on:
       - 'admin/erp.js'
       - 'admin/index.html'
       - 'admin/operational-alert-center.js'
+      - 'admin/alert-phase2-stability.js'
       - 'admin/client-extra-fields.js'
       - 'admin/client-actions-menu.js'
       - 'admin/mobile-interaction-core.js'
@@ -66,6 +67,14 @@ on:
       - 'admin/task-supervisor-queue.js'
       - 'admin/task-supervisor-queue.css'
       - 'supabase/migrations/20260830203500_p8_operational_task_attention.sql'
+      - 'api/_alert-lifecycle.js'
+      - 'api/tracking-alerts.js'
+      - 'api/manual-tracking-alerts.js'
+      - 'api/discharge-release-alerts.js'
+      - 'api/shipsgo-error-alerts.js'
+      - 'api/stagnant-shipment-alerts.js'
+      - 'api/history.js'
+      - 'supabase/migrations/20260830211500_p9_operational_alert_condition_registry.sql'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
@@ -76,6 +85,7 @@ on:
       - 'scripts/check-contextual-sync.mjs'
       - 'scripts/check-cuba-documentation.mjs'
       - 'scripts/check-operational-queues.mjs'
+      - 'scripts/check-operational-alert-lifecycle.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -155,3 +165,16 @@ jobs:
           node --check api/task-supervisor-queue.js
           node --check admin/task-supervisor-queue.js
           node --check admin/erp.js
+      - name: Validate P9 operational alert lifecycle
+        run: node scripts/check-operational-alert-lifecycle.mjs
+      - name: Validate P9 JavaScript syntax
+        run: |
+          node --check api/_alert-lifecycle.js
+          node --check api/tracking-alerts.js
+          node --check api/manual-tracking-alerts.js
+          node --check api/discharge-release-alerts.js
+          node --check api/shipsgo-error-alerts.js
+          node --check api/stagnant-shipment-alerts.js
+          node --check api/history.js
+          node --check admin/operational-alert-center.js
+          node --check admin/alert-phase2-stability.js

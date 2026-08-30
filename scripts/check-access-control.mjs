@@ -47,7 +47,8 @@ const frontendFiles = [
   'admin/account-administration.js',
   'admin/erp.js',
   'admin/navigation-shell.js',
-  'admin/operational-alert-center.js'
+  'admin/operational-alert-center.js',
+  'admin/alert-phase2-stability.js'
 ];
 for (const file of frontendFiles) {
   if (!fs.existsSync(path.join(root,file))) failures.push(`${file}: falta superficie frontend P3`);
@@ -60,6 +61,7 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
   const accessCss = fs.readFileSync(path.join(root,'admin/access-control.css'),'utf8');
   const navigation = fs.readFileSync(path.join(root,'admin/navigation-shell.js'),'utf8');
   const alertCenter = fs.readFileSync(path.join(root,'admin/operational-alert-center.js'),'utf8');
+  const alertStability = fs.readFileSync(path.join(root,'admin/alert-phase2-stability.js'),'utf8');
   const history = fs.readFileSync(path.join(root,'api/history.js'),'utf8');
 
   for (const required of [
@@ -99,7 +101,7 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
   if (!accessCss.includes('[data-message-retry]') || !accessCss.includes('[data-alert-action="mark_read"]')) {
     failures.push('admin/access-control.css: faltan límites visuales read/manage de notificaciones');
   }
-  if (!history.includes("action === 'mark_read' ? 'notifications.read' : 'notifications.manage'")) {
+  if (!/action\s*===\s*['"]mark_read['"]\s*\?\s*['"]notifications\.read['"]\s*:\s*['"]notifications\.manage['"]/.test(history)) {
     failures.push('api/history.js: mark_read debe requerir notifications.read y las demás mutaciones notifications.manage');
   }
 
@@ -113,11 +115,20 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
     failures.push('admin/navigation-shell.js: no debe depender del proxy legacy de administración');
   }
 
-  if (!alertCenter.includes("canManageNotifications=()=>window.ExportMcaAccessControl?.can?.('notifications.manage')!==false")) {
-    failures.push('admin/operational-alert-center.js: falta guard frontend de notifications.manage');
+  if (!alertCenter.includes('window.loadNotifications=loadNotifications')) {
+    failures.push('admin/operational-alert-center.js: debe conservar el owner de lectura/render de alertas');
   }
-  if (!alertCenter.includes('if(!canManageNotifications()||checking)return')) {
-    failures.push('admin/operational-alert-center.js: el checker derivado no debe ejecutarse en modo solo lectura');
+  if (alertCenter.includes('/api/tracking-alerts?action=check') || alertCenter.includes('setInterval(')) {
+    failures.push('admin/operational-alert-center.js: no debe ejecutar ni programar el checker P9');
+  }
+  const readGate = loader.indexOf("if (accessCan('notifications.read'))");
+  const manageGate = loader.indexOf("if (accessCan('notifications.manage'))", readGate);
+  const stabilityLoad = loader.indexOf('/admin/alert-phase2-stability.js', readGate);
+  if (readGate < 0 || manageGate < 0 || stabilityLoad < 0 || !(readGate < manageGate && manageGate < stabilityLoad)) {
+    failures.push('admin/erp.js: el scheduler de alertas debe cargarse solo dentro de notifications.manage');
+  }
+  if (!alertStability.includes('/api/tracking-alerts?action=check')) {
+    failures.push('admin/alert-phase2-stability.js: falta checker canónico protegido por el loader notifications.manage');
   }
 }
 
