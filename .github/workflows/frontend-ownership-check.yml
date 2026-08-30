@@ -33,6 +33,7 @@ on:
       - 'api/proformas.js'
       - 'supabase/migrations/20260830054000_p2_customer_advances_proformas.sql'
       - 'supabase/migrations/20260830054800_p2_customer_financial_integrity.sql'
+      - 'supabase/migrations/20260830055500_p2_fk_index_hardening.sql'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
