@@ -164,14 +164,26 @@ async function loadContext(admin, manage) {
       manage:false,
       account:{ id:admin.admin_id, username:admin.username, full_name:admin.full_name },
       teams:(teams || []).map(row=>({ id:row.team_id,name:row.team_name,description:row.team_description,is_active:row.team_active })),
-      users:[]
+      users:[],
+      memberships:[]
     };
   }
-  const [teams,users] = await Promise.all([
+
+  const [teams,users,memberships] = await Promise.all([
     supabase('teams',{ query:'?select=id,name,description,is_active&is_active=eq.true&order=name.asc' }),
-    supabase('admin_users',{ query:'?select=id,full_name,username,role,is_active&is_active=eq.true&order=full_name.asc' })
+    supabase('admin_users',{ query:'?select=id,full_name,username,role,is_active&is_active=eq.true&order=full_name.asc' }),
+    supabase('team_memberships',{ query:'?select=team_id,admin_user_id' })
   ]);
-  return { manage:true, account:{ id:admin.admin_id, username:admin.username, full_name:admin.full_name }, teams:teams || [], users:users || [] };
+  const activeTeamIdsSet = new Set((teams || []).map(row=>row.id));
+  const activeUserIdsSet = new Set((users || []).map(row=>row.id));
+
+  return {
+    manage:true,
+    account:{ id:admin.admin_id, username:admin.username, full_name:admin.full_name },
+    teams:teams || [],
+    users:users || [],
+    memberships:(memberships || []).filter(row=>activeTeamIdsSet.has(row.team_id) && activeUserIdsSet.has(row.admin_user_id))
+  };
 }
 
 async function rpc(name, body) {
@@ -184,8 +196,9 @@ function errorResponse(res, error) {
   const clientErrors = new Set([
     'TASK_NOT_FOUND','TASK_TEAM_INVALID','TASK_ASSIGNEE_INVALID','TASK_ASSIGNEE_NOT_TEAM_MEMBER','TASK_ACTOR_INVALID',
     'TASK_STATUS_INVALID','TASK_TRANSITION_INVALID','TASK_REASON_REQUIRED','TASK_COMMENT_REQUIRED','TASK_DEPENDENCY_SELF_FORBIDDEN',
-    'TASK_DEPENDENCY_INVALID','TASK_DEPENDENCY_CYCLE','TASK_ACTOR_REQUIRED'
+    'TASK_DEPENDENCY_INVALID','TASK_DEPENDENCY_CYCLE','TASK_ACTOR_REQUIRED','TASK_OPEN_DEPENDENCIES'
   ]);
+  if (known === 'TASK_OPEN_DEPENDENCIES') return fail(res,400,'Completa primero las dependencias pendientes de esta tarea');
   if (known && clientErrors.has(known)) return fail(res,400,known);
   console.error('TASK_API_ERROR',message);
   return fail(res,500,'No se pudo completar la operación de tareas');
