@@ -19,6 +19,8 @@ on:
       - 'admin/index.html'
       - 'admin/operational-alert-center.js'
       - 'admin/alert-phase2-stability.js'
+      - 'admin/notification-inbox.js'
+      - 'admin/notification-inbox.css'
       - 'admin/client-extra-fields.js'
       - 'admin/client-actions-menu.js'
       - 'admin/mobile-interaction-core.js'
@@ -75,6 +77,11 @@ on:
       - 'api/stagnant-shipment-alerts.js'
       - 'api/history.js'
       - 'supabase/migrations/20260830211500_p9_operational_alert_condition_registry.sql'
+      - 'api/notification-inbox.js'
+      - 'api/notification-reconcile.js'
+      - 'supabase/migrations/20260830215500_p10_user_notification_inbox.sql'
+      - 'supabase/migrations/20260830220500_p10_notification_source_version_integrity.sql'
+      - 'vercel.json'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
@@ -86,6 +93,7 @@ on:
       - 'scripts/check-cuba-documentation.mjs'
       - 'scripts/check-operational-queues.mjs'
       - 'scripts/check-operational-alert-lifecycle.mjs'
+      - 'scripts/check-user-notifications.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -178,3 +186,11 @@ jobs:
           node --check api/history.js
           node --check admin/operational-alert-center.js
           node --check admin/alert-phase2-stability.js
+      - name: Validate P10 user notifications
+        run: node scripts/check-user-notifications.mjs
+      - name: Validate P10 JavaScript syntax
+        run: |
+          node --check api/notification-inbox.js
+          node --check api/notification-reconcile.js
+          node --check admin/notification-inbox.js
+          node --check admin/erp.js
