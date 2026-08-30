@@ -56,6 +56,10 @@
     return true;
   }
 
+  // Public entry point used by the list, Cargues and OperationalNavigation.
+  // The mutation logic remains in sales.js; only the detail owner changes.
+  window.openDetail = open;
+
   window.SalesOrderController = Object.freeze({
     getOrder,
     hasUnallocated,
