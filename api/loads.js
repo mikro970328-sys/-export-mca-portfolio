@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 import { registerShipsGo } from './_shipsgo.js';
 
 const text = value => String(value ?? '').trim() || null;
@@ -132,7 +132,7 @@ async function runLifecycle(action, loadId, admin) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, req.method === 'GET' ? 'logistics.read' : 'logistics.write');
   if (!admin) return;
 
   try {
