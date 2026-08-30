@@ -2,8 +2,10 @@
   if (window.ShipmentEditor) return;
 
   const byId = id => document.getElementById(id);
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-  const norm = value => String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot', "'":'&#39;' }[c]));
+  const norm = value => String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  const validReference = value => Boolean(value) && value.length <= 40 && /^[A-Z0-9][A-Z0-9 ._/-]*$/.test(value);
+  const isIso = value => /^[A-Z]{4}\d{7}$/.test(value);
   let current = null;
   let saving = false;
 
@@ -58,7 +60,7 @@
   }
 
   function clientOptions(selected) {
-    return `<option value="">Sin cliente / Disponible para venta</option>${clientRows().map(client => `<option value="${esc(client.id)}" ${String(client.id) === String(selected || '') ? 'selected' : ''}>${esc(client.name)}${client.company ? ' · ' + esc(client.company) : ''}</option>`).join('')}`;
+    return `<option value="">Sin cliente</option>${clientRows().map(client => `<option value="${esc(client.id)}" ${String(client.id) === String(selected || '') ? 'selected' : ''}>${esc(client.name)}${client.company ? ' · ' + esc(client.company) : ''}</option>`).join('')}`;
   }
 
   function importerIdForShipment(shipmentId) {
@@ -102,18 +104,22 @@
   function html(shipment) {
     const status = shipment.operational_status || shipment.last_status || 'Registrado';
     const importerName = importerNameForShipment(shipment.id);
+    const reference = norm(shipment.container_number);
+    const referenceHelp = isIso(reference)
+      ? 'Número ISO válido para tracking automático.'
+      : 'Referencia provisional. Puedes reemplazarla por el número ISO real cuando la naviera lo entregue.';
     return `<div id="shipmentEditorMessage"></div>
       <div class="shipment-editor-grid">
-        <div><label>Cliente</label><select id="editorClient">${clientOptions(shipment.client_id)}</select><div class="shipment-editor-help">Puede quedar sin cliente hasta que el contenedor sea vendido.</div></div>
-        <div><label>Importadora cubana</label><input id="editorImporter" list="editorImporterOptions" value="${esc(importerName)}" placeholder="Ej. Quimimport, Servoven"><datalist id="editorImporterOptions">${importerSuggestions()}</datalist><div class="shipment-editor-help">Es la importadora concreta de este contenedor. No depende de las importadoras donde esté registrado el cliente.</div></div>
-        <div><label>Número de contenedor *</label><input id="editorContainer" value="${esc(shipment.container_number)}" maxlength="11"></div>
+        <div><label>Cliente</label><select id="editorClient">${clientOptions(shipment.client_id)}</select><div class="shipment-editor-help">Si el contenedor proviene de una venta/cargue, el cliente debe heredarse de esa operación.</div></div>
+        <div><label>Importadora cubana</label><input id="editorImporter" list="editorImporterOptions" value="${esc(importerName)}" placeholder="Ej. Quimimport, Servoven"><datalist id="editorImporterOptions">${importerSuggestions()}</datalist><div class="shipment-editor-help">Puede completarse o corregirse posteriormente.</div></div>
+        <div><label>Referencia / Nº contenedor *</label><input id="editorContainer" value="${esc(shipment.container_number)}" maxlength="40"><div class="shipment-editor-help">${esc(referenceHelp)}</div></div>
         <div><label>Producto</label><input id="editorProduct" value="${esc(shipment.product || '')}"></div>
         <div><label>Cantidad</label><input id="editorQuantity" type="number" min="0" step="0.001" value="${esc(shipment.quantity ?? '')}"></div>
         <div><label>Unidad</label><input id="editorQuantityUnit" value="${esc(shipment.quantity_unit || '')}" placeholder="paneles, cajas, galones, unidades"></div>
         <div><label>Fecha de salida</label><input id="editorDepartureDate" type="date" value="${esc(shipment.departure_date || '')}"><div class="shipment-editor-help">Fecha manual indicada por Export MCA.</div></div>
         <div><label>Naviera</label><input id="editorCarrier" value="${esc(shipment.carrier || '')}"></div>
         <div><label>Booking</label><input id="editorBooking" value="${esc(shipment.booking_number || '')}"></div>
-        <div><label>B/L</label><input id="editorBol" value="${esc(shipment.bol_number || '')}"></div>
+        <div><label>B/L</label><input id="editorBol" value="${esc(shipment.bol_number || '')}"><div class="shipment-editor-help">Puede quedar vacío hasta que la naviera lo emita.</div></div>
         <div><label>Estado operativo</label><select id="editorStatus">${statuses(status)}</select></div>
       </div>
       <section class="shipment-editor-section"><h3>Tracking</h3><div class="shipment-editor-info">
@@ -135,9 +141,9 @@
   }
 
   function validate() {
-    const container = norm(byId('editorContainer')?.value || '');
-    if (!/^[A-Z]{4}\d{7}$/.test(container)) return 'El contenedor debe tener 4 letras y 7 números.';
-    if (rows().some(item => item.id !== current.id && item.active !== false && norm(item.container_number) === container)) return 'Ese número de contenedor ya está registrado en otra operación activa.';
+    const reference = norm(byId('editorContainer')?.value || '');
+    if (!validReference(reference)) return 'La referencia no es válida. Usa letras/números y, si necesitas, espacios, guion, punto, slash o underscore.';
+    if (rows().some(item => item.id !== current.id && item.active !== false && norm(item.container_number) === reference)) return 'Esa referencia ya está registrada en otra operación activa.';
     const quantity = String(byId('editorQuantity')?.value || '').trim();
     if (quantity && (!Number.isFinite(Number(quantity)) || Number(quantity) < 0)) return 'La cantidad no es válida.';
     return '';
@@ -170,14 +176,10 @@
     button.textContent = 'Guardando...';
     setError('');
     try {
-      await request('/api/shipments', { method: 'PATCH', body: JSON.stringify(payload()) });
+      await request('/api/shipments', { method:'PATCH', body:JSON.stringify(payload()) });
       const importerResult = await request('/api/importers', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          action: 'assign_shipment',
-          shipment_id: current.id,
-          importer_name: String(byId('editorImporter')?.value || '').trim()
-        })
+        method:'PATCH',
+        body:JSON.stringify({ action:'assign_shipment', shipment_id:current.id, importer_name:String(byId('editorImporter')?.value || '').trim() })
       });
       if (importerResult.state) window.importerState = importerResult.state;
       if (typeof window.loadAll === 'function') await window.loadAll();
@@ -208,5 +210,5 @@
     else byId('editorContainer')?.focus();
   }
 
-  window.ShipmentEditor = Object.freeze({ open, owner: 'containers-module.js' });
+  window.ShipmentEditor = Object.freeze({ open, owner:'containers-module.js' });
 })();
