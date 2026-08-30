@@ -1,4 +1,4 @@
-import { fail, requireAdmin, supabase } from './_lib.js';
+import { authorizeAdmin, fail, supabase } from './_lib.js';
 
 const csv = value => `"${String(value ?? '').replaceAll('"','""')}"`;
 const dateStamp = () => new Date().toISOString().slice(0,10);
@@ -13,7 +13,8 @@ function sendCsv(res, filename, headers, rows) {
 }
 
 export default async function handler(req, res) {
-  if (!requireAdmin(req, res)) return;
+  const admin = await authorizeAdmin(req, res, 'reports.read');
+  if (!admin) return;
   if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
 
   try {
