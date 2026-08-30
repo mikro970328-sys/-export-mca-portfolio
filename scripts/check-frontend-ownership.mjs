@@ -7,12 +7,13 @@ const files = {
   shipmentEditor: 'admin/shipment-editor.js',
   registrationShell: 'admin/registration-form-shell.js',
   modalDismissal: 'admin/modal-dismissal.js',
-  expedientes: 'admin/expedientes-module.js',
   navigation: 'admin/navigation-shell.js',
   navigationCss: 'admin/navigation-shell.css',
   sectionState: 'admin/section-state.js',
   dashboard: 'admin/dashboard-operational-state.js',
   dashboardApi: 'api/dashboard.js',
+  shipmentDocumentReadiness: 'api/shipment-document-readiness.js',
+  shipmentDocuments: 'api/shipment-documents.js',
   loader: 'admin/erp.js',
   index: 'admin/index.html',
   alerts: 'admin/operational-alert-center.js'
@@ -34,6 +35,7 @@ const retiredOwners = [
 
 const errors = [];
 const read = file => fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+const hasOwner = (source, owner) => new RegExp(`owner\\s*:\\s*['\"]${owner.replaceAll('.', '\\.') }['\"]`).test(source);
 
 for (const file of Object.values(files)) {
   if (!fs.existsSync(file)) errors.push(`Falta el archivo requerido: ${file}`);
@@ -45,11 +47,12 @@ for (const file of [
   files.shipmentEditor,
   files.registrationShell,
   files.modalDismissal,
-  files.expedientes,
   files.navigation,
   files.sectionState,
   files.dashboard,
   files.dashboardApi,
+  files.shipmentDocumentReadiness,
+  files.shipmentDocuments,
   files.loader,
   files.alerts
 ]) {
@@ -66,12 +69,13 @@ const clients = read(files.clients);
 const containers = read(files.containers);
 const registrationShell = read(files.registrationShell);
 const modalDismissal = read(files.modalDismissal);
-const expedientes = read(files.expedientes);
 const navigation = read(files.navigation);
 const navigationCss = read(files.navigationCss);
 const sectionState = read(files.sectionState);
 const dashboard = read(files.dashboard);
 const dashboardApi = read(files.dashboardApi);
+const shipmentDocumentReadiness = read(files.shipmentDocumentReadiness);
+const shipmentDocuments = read(files.shipmentDocuments);
 const loader = read(files.loader);
 const index = read(files.index);
 const alerts = read(files.alerts);
@@ -79,7 +83,7 @@ const alerts = read(files.alerts);
 for (const fragment of [
   'window.__clientsModuleInstalled',
   'clientImporters',
-  'syncClientImporters',
+  'syncImporters',
   'export-mca:clients-changed'
 ]) {
   if (!clients.includes(fragment)) errors.push(`Falta propiedad consolidada de Clientes: ${fragment}`);
@@ -93,11 +97,15 @@ for (const fragment of [
   'window.__containersModuleInstalled',
   'Array.isArray(window.shipments)',
   'Array.isArray(window.clients)',
-  'Ver expediente',
-  "owner: 'containers-module.js'"
+  '/api/shipment-document-readiness',
+  'Packing List Cuba',
+  'Factura comercial Cuba',
+  'window.ContainersModule=Object.freeze'
 ]) {
   if (!containers.includes(fragment)) errors.push(`Falta propiedad consolidada de Tracking: ${fragment}`);
 }
+if (!hasOwner(containers, 'containers-module.js')) errors.push('Falta propiedad consolidada de Tracking: owner containers-module.js');
+if (/Ver expediente/i.test(containers)) errors.push('Tracking todavía expone Expediente en su flujo visual.');
 
 for (const fragment of [
   'window.__registrationFormShellInstalled',
@@ -141,14 +149,11 @@ for (const forbidden of [
   if (modalDismissal.includes(forbidden)) errors.push(`modal-dismissal.js invade apertura/contenido del modal: ${forbidden}`);
 }
 
-for (const fragment of [
-  'Array.isArray(window.clients)',
-  'Array.isArray(window.shipments)',
-  "window.addEventListener('export-mca:clients-changed', loadData)",
-  "window.addEventListener('export-mca:data-loaded', loadData)",
-  'window.ExpedientesModule = Object.freeze'
-]) {
-  if (!expedientes.includes(fragment)) errors.push(`Falta propiedad consolidada de Expedientes: ${fragment}`);
+for (const fragment of ['shipment_id', 'document_status', 'missing_documents']) {
+  if (!shipmentDocumentReadiness.includes(fragment)) errors.push(`Falta read-model documental por contenedor: ${fragment}`);
+}
+for (const fragment of ['Packing List Cuba', 'Commercial Invoice Cuba', 'shipment_id', 'prepare_upload', 'finalize_upload']) {
+  if (!shipmentDocuments.includes(fragment)) errors.push(`Falta propiedad de documentos Cuba por contenedor: ${fragment}`);
 }
 
 for (const fragment of [
@@ -224,7 +229,6 @@ for (const fragment of [
   '/admin/containers-module.js',
   '/admin/registration-form-shell.js',
   '/admin/modal-dismissal.js',
-  '/admin/expedientes-module.js',
   '/admin/dashboard-operational-state.js',
   '/admin/navigation-shell.js',
   '/admin/section-state.js',
@@ -232,6 +236,7 @@ for (const fragment of [
 ]) {
   if (!loader.includes(fragment)) errors.push(`El loader no carga el propietario requerido: ${fragment}`);
 }
+if (loader.includes('/admin/expedientes-module.js')) errors.push('El loader todavía carga Expedientes, que UX-2D retiró del flujo operativo.');
 
 for (const retired of retiredOwners) {
   if (loader.includes(retired.replace('admin/', '/admin/'))) {
@@ -262,9 +267,10 @@ for (const forbidden of [
 if (alerts.includes('nav.innerHTML')) {
   errors.push('Centro de alertas no puede reemplazar el DOM completo del botón de navegación.');
 }
-for (const fragment of ["nav.querySelector('.nav-icon')", "nav.querySelector('.nav-label')", "const target = $('alerts')"]) {
-  if (!alerts.includes(fragment)) errors.push(`Centro de alertas no preserva su propiedad visual: ${fragment}`);
+for (const fragment of ["nav.querySelector('.nav-icon')", "nav.querySelector('.nav-label')", 'shipment_customs_documents_missing']) {
+  if (!alerts.includes(fragment)) errors.push(`Centro de alertas no preserva su propiedad visual/documental: ${fragment}`);
 }
+if (!/const\s+target\s*=\s*\$\(['\"]alerts['\"]\)/.test(alerts)) errors.push('Centro de alertas no preserva la superficie de alertas de Inicio.');
 
 if (!loader.includes('decodeURIComponent(')) errors.push('El loader no contiene decodeURIComponent() válido.');
 if (/\bdeURIComponent\s*\(/.test(loader)) errors.push('El loader contiene el error tipográfico deURIComponent().');
@@ -276,7 +282,9 @@ if (errors.length) {
 }
 
 console.log('Validación de propiedad frontend superada.');
-console.log('- Clientes, Tracking, Expedientes, navegación, dashboard, UX-C y estado de secciones tienen propietarios explícitos.');
+console.log('- Clientes, Tracking, documentos Cuba, navegación, dashboard, UX-C y estado de secciones tienen propietarios explícitos.');
+console.log('- Expedientes está retirado del loader y del flujo operativo normal.');
+console.log('- Tracking es dueño del readiness y carga manual de Packing List Cuba / Commercial Invoice Cuba.');
 console.log('- Los propietarios/parches retirados no existen ni se cargan.');
 console.log('- navigation-shell.js no contiene llamadas de negocio ni wrappers de datos.');
 console.log('- UX-B usa api/dashboard.js como única proyección operativa; el frontend solo presenta esa proyección.');
