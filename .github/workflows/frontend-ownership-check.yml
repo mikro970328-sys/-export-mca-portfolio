@@ -62,6 +62,10 @@ on:
       - 'api/shipment-document-readiness.js'
       - 'supabase/migrations/20260830183000_p7_cuba_document_version_lifecycle.sql'
       - 'supabase/migrations/20260830183500_p7_cuba_document_version_rpc_fix.sql'
+      - 'api/task-supervisor-queue.js'
+      - 'admin/task-supervisor-queue.js'
+      - 'admin/task-supervisor-queue.css'
+      - 'supabase/migrations/20260830203500_p8_operational_task_attention.sql'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
@@ -71,6 +75,7 @@ on:
       - 'scripts/check-workflow-handoffs.mjs'
       - 'scripts/check-contextual-sync.mjs'
       - 'scripts/check-cuba-documentation.mjs'
+      - 'scripts/check-operational-queues.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -143,3 +148,10 @@ jobs:
           node --check api/shipment-documents.js
           node --check api/shipment-document-readiness.js
           node --check api/sales-workspace.js
+      - name: Validate P8 operational queues
+        run: node scripts/check-operational-queues.mjs
+      - name: Validate P8 JavaScript syntax
+        run: |
+          node --check api/task-supervisor-queue.js
+          node --check admin/task-supervisor-queue.js
+          node --check admin/erp.js

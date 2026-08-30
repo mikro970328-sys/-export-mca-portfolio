@@ -217,6 +217,8 @@
         if (accessCan('tasks.manage')) {
           await loadStylesheet('/admin/workflow-route-settings.css?v=20260830-p5', 'data-workflow-route-settings-style');
           await loadScript('/admin/workflow-route-settings.js?v=20260830-p5', 'data-workflow-route-settings');
+          await loadStylesheet('/admin/task-supervisor-queue.css?v=20260830-p8', 'data-task-supervisor-queue-style');
+          await loadScript('/admin/task-supervisor-queue.js?v=20260830-p8', 'data-task-supervisor-queue');
         }
       }
 
