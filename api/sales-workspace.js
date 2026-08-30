@@ -46,8 +46,8 @@ async function workspace(salesOrderId) {
   const summary = summaryRows[0] || null;
   if (!summary) return null;
 
-  const [items, itemProgress, itemInvoiceProgress, logistics, documents, invoices, invoiceFinancial] = await Promise.all([
-    rows('sales_order_items', { toString:null }),
+  const [itemRows, itemProgress, itemInvoiceProgress, logistics, documents, invoices, invoiceFinancial] = await Promise.all([
+    rows('sales_order_items', `?select=id,sales_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_price,entered_line_total,notes,created_at,updated_at,product:products(id,sku,name,brand,category,unit,package_format,default_units_per_pallet)&sales_order_id=eq.${salesOrderId}&order=created_at.asc&limit=5000`),
     rows('sales_order_item_progress', `?select=*&sales_order_id=eq.${salesOrderId}&order=sales_order_item_id.asc&limit=5000`),
     rows('sales_order_item_invoice_progress', `?select=*&sales_order_id=eq.${salesOrderId}&order=sales_order_item_id.asc&limit=5000`),
     rows('sales_order_workspace_logistics', `?select=*&sales_order_id=eq.${salesOrderId}&order=load_number.asc&limit=5000`),
@@ -56,7 +56,6 @@ async function workspace(salesOrderId) {
     rows('invoice_financial_progress', `?select=*&sales_order_id=eq.${salesOrderId}&order=issue_date.asc&limit=1000`)
   ]);
 
-  const itemRows = await rows('sales_order_items', `?select=id,sales_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_price,entered_line_total,notes,created_at,updated_at,product:products(id,sku,name,brand,category,unit,package_format,default_units_per_pallet)&sales_order_id=eq.${salesOrderId}&order=created_at.asc&limit=5000`);
   const itemIds = unique(itemRows.map(row => row.id));
   const invoiceIds = unique(invoices.map(row => row.id));
   const operationIds = unique([
@@ -72,44 +71,40 @@ async function workspace(salesOrderId) {
     ? rows('payments', `?select=id,operation_id,invoice_id,client_id,amount,currency,payment_date,method,reference_number,status,notes,created_at&invoice_id=in.(${inFilter(invoiceIds)})&order=payment_date.desc,created_at.desc&limit=5000`)
     : Promise.resolve([]);
 
+  // Operation-only payments are contextual. They are never counted as collected sales cash
+  // unless an invoice explicitly owns them through invoice_id.
   const contextualOperationPaymentsPromise = operationIds.length
     ? rows('payments', `?select=id,operation_id,invoice_id,client_id,amount,currency,payment_date,method,reference_number,status,notes,created_at&invoice_id=is.null&operation_id=in.(${inFilter(operationIds)})&order=payment_date.desc,created_at.desc&limit=5000`)
     : Promise.resolve([]);
 
-  let directCostsPromise = Promise.resolve([]);
-  if (itemIds.length) {
-    directCostsPromise = rows(
-      'cost_charge_allocations',
-      `?select=id,cost_charge_id,amount,basis,sales_order_id,sales_order_item_id,notes,created_at,cost_charge:cost_charges(id,cost_number,category,stage,amount,currency,incurred_date,supplier_id,reference,status,notes,posted_at,voided_at)&or=(sales_order_id.eq.${salesOrderId},sales_order_item_id.in.(${inFilter(itemIds)}))&order=created_at.asc&limit=5000`
-    );
-  } else {
-    directCostsPromise = rows(
-      'cost_charge_allocations',
-      `?select=id,cost_charge_id,amount,basis,sales_order_id,sales_order_item_id,notes,created_at,cost_charge:cost_charges(id,cost_number,category,stage,amount,currency,incurred_date,supplier_id,reference,status,notes,posted_at,voided_at)&sales_order_id=eq.${salesOrderId}&order=created_at.asc&limit=5000`
-    );
-  }
+  const directCostsPromise = itemIds.length
+    ? rows(
+        'cost_charge_allocations',
+        `?select=id,cost_charge_id,amount,basis,sales_order_id,sales_order_item_id,notes,created_at,cost_charge:cost_charges(id,cost_number,category,stage,amount,currency,incurred_date,supplier_id,reference,status,notes,posted_at,voided_at)&or=(sales_order_id.eq.${salesOrderId},sales_order_item_id.in.(${inFilter(itemIds)}))&order=created_at.asc&limit=5000`
+      )
+    : rows(
+        'cost_charge_allocations',
+        `?select=id,cost_charge_id,amount,basis,sales_order_id,sales_order_item_id,notes,created_at,cost_charge:cost_charges(id,cost_number,category,stage,amount,currency,incurred_date,supplier_id,reference,status,notes,posted_at,voided_at)&sales_order_id=eq.${salesOrderId}&order=created_at.asc&limit=5000`
+      );
 
   const operationDetailsPromise = operationIds.length
-    ? rows('operations', `?select=id,operation_code,client_id,importer_id,operation_type,status,incoterm,currency,origin_port,destination_port,vessel_name,voyage_number,booking_number,bol_number,container_number,seal_number,etd,eta,notes,created_at,updated_at&delete=never&limit=1`)
+    ? rows('operations', `?select=id,operation_code,client_id,importer_id,operation_type,status,incoterm,currency,origin_port,destination_port,vessel_name,voyage_number,booking_number,bol_number,container_number,seal_number,etd,eta,notes,created_at,updated_at&id=in.(${inFilter(operationIds)})&order=created_at.asc&limit=1000`)
     : Promise.resolve([]);
 
-  const [invoiceItems, invoicePayments, contextualOperationPayments, directCosts] = await Promise.all([
+  const [invoiceItems, invoicePayments, contextualOperationPayments, directCosts, operationDetails] = await Promise.all([
     invoiceItemsPromise,
     invoicePaymentsPromise,
     contextualOperationPaymentsPromise,
-    directCostsPromise
+    directCostsPromise,
+    operationDetailsPromise
   ]);
-
-  const operationDetails = operationIds.length
-    ? await rows('operations', `?select=id,operation_code,client_id,importer_id,operation_type,status,incoterm,currency,origin_port,destination_port,vessel_name,voyage_number,booking_number,bol_number,container_number,seal_number,etd,eta,notes,created_at,updated_at&id=in.(${inFilter(operationIds)})&order=created_at.asc&limit=1000`)
-    : [];
 
   const auditEntityIds = unique([
     salesOrderId,
     ...itemIds,
     ...logistics.flatMap(row => [row.load_id, row.shipment_id, row.operation_id]),
     ...invoiceIds,
-    ...directCosts.flatMap(row => [row.cost_charge_id])
+    ...directCosts.map(row => row.cost_charge_id)
   ]);
   const history = auditEntityIds.length
     ? await rows('audit_log', `?select=id,action,entity_type,entity_id,details,created_at,actor_admin_id,actor_username&entity_id=in.(${inFilter(auditEntityIds)})&order=created_at.desc&limit=1000`)
@@ -125,9 +120,7 @@ async function workspace(salesOrderId) {
       invoice_payments:invoicePayments,
       contextual_operation_payments:contextualOperationPayments
     },
-    costs:{
-      allocations:directCosts
-    },
+    costs:{ allocations:directCosts },
     documents,
     history
   };
