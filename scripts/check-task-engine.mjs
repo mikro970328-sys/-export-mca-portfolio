@@ -11,6 +11,7 @@ const files=[
   'api/tasks.js',
   'admin/tasks-workspace.js',
   'admin/tasks-workspace.css',
+  'admin/tasks-navigation.js',
   'admin/erp.js'
 ];
 files.forEach(requireFile);
@@ -20,7 +21,8 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))) {
   const api=read(files[1]);
   const ui=read(files[2]);
   const css=read(files[3]);
-  const loader=read(files[4]);
+  const navigation=read(files[4]);
+  const loader=read(files[5]);
 
   for(const permission of ['tasks.read','tasks.write','tasks.manage']) {
     if(!migration.includes(`'${permission}'`))failures.push(`migración P4: falta ${permission}`);
@@ -63,20 +65,25 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))) {
     if(ui.includes(forbidden))failures.push(`admin/tasks-workspace.js: diálogo nativo prohibido ${forbidden}`);
   }
   if(!ui.includes(".nav-group[data-nav-group=\"home\"] .submenu"))failures.push('admin/tasks-workspace.js: Mis tareas no se monta en Inicio');
-  if(!ui.includes("showSection('tasksSection')") && !ui.includes('showSection("tasksSection")'))failures.push('admin/tasks-workspace.js: el botón dinámico no navega explícitamente a tasksSection');
   if(!css.includes('@media(max-width:720px)'))failures.push('admin/tasks-workspace.css: falta adaptación móvil');
+
+  for(const required of ['tasksSection',"window.showSection('tasksSection')",'data-section="tasksSection"']) {
+    if(!navigation.includes(required))failures.push(`admin/tasks-navigation.js: falta ${required}`);
+  }
 
   for(const required of [
     "accessCan('tasks.read')",
     '/admin/tasks-workspace.css?v=20260830-p4',
     '/admin/tasks-workspace.js?v=20260830-p4',
+    '/admin/tasks-navigation.js?v=20260830-p4',
     '/admin/navigation-shell.js?v=20260830-p3',
     '/admin/section-state.js?v=20260817-nav1'
   ]) if(!loader.includes(required))failures.push(`admin/erp.js: falta ${required}`);
   const navIndex=loader.indexOf('/admin/navigation-shell.js?v=20260830-p3');
   const taskIndex=loader.indexOf('/admin/tasks-workspace.js?v=20260830-p4');
+  const taskNavIndex=loader.indexOf('/admin/tasks-navigation.js?v=20260830-p4');
   const stateIndex=loader.indexOf('/admin/section-state.js?v=20260817-nav1');
-  if(navIndex<0||taskIndex<0||stateIndex<0||!(navIndex<taskIndex&&taskIndex<stateIndex))failures.push('admin/erp.js: orden requerido Navigation Shell → Mis tareas → section-state');
+  if(navIndex<0||taskIndex<0||taskNavIndex<0||stateIndex<0||!(navIndex<taskIndex&&taskIndex<taskNavIndex&&taskNavIndex<stateIndex))failures.push('admin/erp.js: orden requerido Navigation Shell → Mis tareas → navegación tareas → section-state');
 }
 
 if(failures.length){console.error('P4 task-engine check failed:\n'+failures.map(item=>`- ${item}`).join('\n'));process.exit(1);}
