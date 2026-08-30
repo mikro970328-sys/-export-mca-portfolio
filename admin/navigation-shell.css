@@ -159,6 +159,19 @@
   .nav-group>.submenu{margin-left:14px}
 }
 
+@media(hover:none),(pointer:coarse){
+  .sidebar-nav .nav-item:not(.active):hover,
+  .sidebar-nav .nav-group-btn:hover,
+  .sidebar-nav .submenu button:not(.active):hover{
+    background:transparent!important;
+    transform:none!important;
+    box-shadow:none!important;
+  }
+  .sidebar-nav .nav-group.has-active-section>.nav-group-btn:hover{
+    background:rgba(255,255,255,.08)!important;
+  }
+}
+
 @media(prefers-reduced-motion:reduce){
   .sidebar,.main-shell,.sidebar-brand,.nav-chevron{transition:none!important}
 }
