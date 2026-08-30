@@ -36,7 +36,7 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))){
     'with (security_invoker=true)',
     'create or replace function public.sync_workflow_task',
     "v_dedupe := 'workflow:' || p_workflow_key",
-    "origin,workflow_key,source_event_key,dedupe_key",
+    'origin,workflow_key,source_event_key,dedupe_key',
     "'workflow_created'",
     "'workflow_reopened'",
     "'workflow_completed'",
@@ -64,13 +64,18 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))){
   ]) if(!rules.includes(required))failures.push(`rules: falta ${required}`);
   if(rules.includes("for r in select id from public.shipments where active=false"))failures.push('rules: bootstrap no debe backfillear shipments históricos inactivos');
 
-  for(const required of ['TASK_OPEN_DEPENDENCIES','workflow_dependency_reconcile','sync_workflow_task']){
-    if(!dependencies.includes(required))failures.push(`dependency hardening: falta ${required}`);
-  }
+  for(const required of [
+    'v_has_open_dependencies',
+    "dependency.status<>'completed'",
+    "'workflow_waiting_dependencies'",
+    'reconcile_workflow_task_by_task_id',
+    'workflow_tasks_reconcile_dependents',
+    'sync_workflow_task'
+  ]) if(!dependencies.includes(required))failures.push(`dependency hardening: falta ${required}`);
 
   for(const required of [
     "authorizeAdmin(req,res,'tasks.manage')",
-    "action:'reconcile_current'",
+    "'reconcile_current'",
     "rpc('update_workflow_task_route'",
     "rpc('reconcile_current_workflow_tasks'"
   ]) if(!api.includes(required))failures.push(`api/workflow-routes.js: falta ${required}`);
