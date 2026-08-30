@@ -4,17 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Facturación y cobros · Export MCA</title>
-<link rel="stylesheet" href="/admin/purchases.css">
-<script>
-window.__b7InvoiceExpedienteInstalled = true;
-window.__b7InvoiceDocumentsInstalled = true;
-</script>
+<link rel="stylesheet" href="/admin/purchases.css?v=20260830-ux2d">
 </head>
 <body>
 <main class="wrap">
   <div class="head"><div><h1>Facturación y cobros</h1><div class="muted">Facturas de cobro al cliente y dinero recibido. Los documentos oficiales de Cuba se controlan por contenedor en Tracking.</div></div><button id="newInvoice" class="btn orange">+ Nueva factura</button></div>
   <div id="metrics" class="metrics"></div>
-  <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar factura, venta o cliente"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="paid">Pagadas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="invoiceList" class="orders"></div></section>
+  <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar factura, venta o cliente"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="paid">Pagadas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="invoiceList" class="orders has-explicit-count"></div></section>
 </main>
 
 <div id="invoiceModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="invoiceTitle">Nueva factura de cobro</h2><div class="muted">Selecciona la venta y las cantidades a facturar. Esta factura financiera es independiente de los documentos aduanales del contenedor.</div></div><button class="btn" data-close="invoice">✕</button></div>
