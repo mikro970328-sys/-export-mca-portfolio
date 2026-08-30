@@ -4,7 +4,8 @@ import path from 'node:path';
 const root=process.cwd();
 const failures=[];
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-const correction='supabase/migrations/20260830211700_p9_alert_reconcile_column_qualification.sql';
+const reconcileCorrection='supabase/migrations/20260830211700_p9_alert_reconcile_column_qualification.sql';
+const actionCorrection='supabase/migrations/20260830211800_p9_alert_action_column_qualification.sql';
 const required=[
   'supabase/migrations/20260830211500_p9_operational_alert_condition_registry.sql',
   'supabase/migrations/20260830211600_p9_alert_cycle_seed_normalization.sql',
@@ -18,10 +19,10 @@ const required=[
   'admin/operational-alert-center.js',
   'admin/alert-phase2-stability.js'
 ];
-for(const file of [...required,correction])if(!fs.existsSync(path.join(root,file)))failures.push(`${file}: falta archivo P9`);
+for(const file of [...required,reconcileCorrection,actionCorrection])if(!fs.existsSync(path.join(root,file)))failures.push(`${file}: falta archivo P9`);
 
 if(!failures.length){
-  const migration=read(required[0]),normalization=read(required[1]),qualification=read(correction),helper=read(required[2]),tracking=read(required[3]),history=read(required[8]),center=read(required[9]),stability=read(required[10]);
+  const migration=read(required[0]),normalization=read(required[1]),qualification=read(reconcileCorrection),actionQualification=read(actionCorrection),helper=read(required[2]),tracking=read(required[3]),history=read(required[8]),center=read(required[9]),stability=read(required[10]);
   for(const requiredText of [
     'create table public.operational_alert_conditions',
     'dedupe_key text primary key',
@@ -54,8 +55,17 @@ if(!failures.length){
     'else n.occurrence_count end',
     'else n.last_triggered_at end',
     'else n.read_at end'
-  ])if(!qualification.includes(requiredText))failures.push(`calificación P9: falta ${requiredText}`);
-  if(/coalesce\(occurrence_count,0\)|else occurrence_count end/.test(qualification))failures.push('calificación P9: occurrence_count sigue sin calificar');
+  ])if(!qualification.includes(requiredText))failures.push(`calificación reconcile P9: falta ${requiredText}`);
+  if(/coalesce\(occurrence_count,0\)|else occurrence_count end/.test(qualification))failures.push('calificación reconcile P9: occurrence_count sigue sin calificar');
+
+  for(const requiredText of [
+    'create or replace function public.act_on_operational_alert',
+    'from public.operational_alert_conditions c',
+    'where c.notification_id=p_notification_id',
+    'from public.notifications n',
+    'where n.id=p_notification_id'
+  ])if(!actionQualification.includes(requiredText))failures.push(`calificación action P9: falta ${requiredText}`);
+  if(/where\s+notification_id\s*=\s*p_notification_id/.test(actionQualification))failures.push('calificación action P9: notification_id sigue sin calificar');
 
   const reconcileSignature='public.reconcile_operational_alert_condition(text,boolean,text,uuid,uuid,text,uuid,text,text,text,timestamptz,jsonb,boolean,text,timestamptz)';
   const actionSignature='public.act_on_operational_alert(uuid,uuid,text,text,timestamptz,timestamptz)';
@@ -63,8 +73,10 @@ if(!failures.length){
     if(!migration.includes(`revoke execute on function ${signature} from public,anon,authenticated`))failures.push(`P9: falta revoke ${signature}`);
     if(!migration.includes(`grant execute on function ${signature} to service_role`))failures.push(`P9: falta grant service_role ${signature}`);
   }
-  if(!qualification.includes(`revoke execute on function ${reconcileSignature} from public,anon,authenticated`))failures.push('P9: migración correctiva debe conservar revoke del reconciliador');
-  if(!qualification.includes(`grant execute on function ${reconcileSignature} to service_role`))failures.push('P9: migración correctiva debe conservar grant service_role del reconciliador');
+  if(!qualification.includes(`revoke execute on function ${reconcileSignature} from public,anon,authenticated`))failures.push('P9: migración reconcile correctiva debe conservar revoke');
+  if(!qualification.includes(`grant execute on function ${reconcileSignature} to service_role`))failures.push('P9: migración reconcile correctiva debe conservar grant service_role');
+  if(!actionQualification.includes(`revoke execute on function ${actionSignature} from public,anon,authenticated`))failures.push('P9: migración action correctiva debe conservar revoke');
+  if(!actionQualification.includes(`grant execute on function ${actionSignature} to service_role`))failures.push('P9: migración action correctiva debe conservar grant service_role');
 
   for(const text of ['operational_alert_condition_state','rpc/reconcile_operational_alert_condition','closeCondition','changedAction'])if(!helper.includes(text))failures.push(`helper P9: falta ${text}`);
 
