@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 import { buildCommercialInvoicePdf, buildPackingListPdf } from './_commercial-pdf.js';
 
 const BUCKET = 'erp-documents';
@@ -35,13 +35,7 @@ async function uploadPdf(path, buffer) {
   const { root, key } = storageConfig();
   const response = await fetch(`${root}/object/${BUCKET}/${storagePath(path)}`, {
     method:'POST',
-    headers:{
-      apikey:key,
-      Authorization:`Bearer ${key}`,
-      'Content-Type':'application/pdf',
-      'cache-control':'3600',
-      'x-upsert':'false'
-    },
+    headers:{ apikey:key, Authorization:`Bearer ${key}`, 'Content-Type':'application/pdf', 'cache-control':'3600', 'x-upsert':'false' },
     body:buffer
   });
   const data = await response.json().catch(() => ({}));
@@ -50,19 +44,14 @@ async function uploadPdf(path, buffer) {
 
 async function deletePdf(path) {
   const { root, key } = storageConfig();
-  const response = await fetch(`${root}/object/${BUCKET}/${storagePath(path)}`, {
-    method:'DELETE',
-    headers:{ apikey:key, Authorization:`Bearer ${key}` }
-  });
+  const response = await fetch(`${root}/object/${BUCKET}/${storagePath(path)}`, { method:'DELETE', headers:{ apikey:key, Authorization:`Bearer ${key}` } });
   if (!response.ok && response.status !== 404) throw new Error(`STORAGE_GENERATED_DELETE_${response.status}`);
 }
 
 async function signedPreview(path) {
   const { root, key } = storageConfig();
   const response = await fetch(`${root}/object/sign/${BUCKET}/${storagePath(path)}`, {
-    method:'POST',
-    headers:{ apikey:key, Authorization:`Bearer ${key}`, 'Content-Type':'application/json' },
-    body:JSON.stringify({ expiresIn:3600 })
+    method:'POST', headers:{ apikey:key, Authorization:`Bearer ${key}`, 'Content-Type':'application/json' }, body:JSON.stringify({ expiresIn:3600 })
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data?.signedURL) return null;
@@ -106,9 +95,7 @@ async function getInvoiceSource(invoiceId) {
   ]);
 
   if (!items?.length) throw new Error('La factura emitida no tiene líneas.');
-  if (items.some(item => numeric(item.line_total) == null || numeric(item.unit_price) == null || numeric(item.quantity) == null)) {
-    throw new Error('La factura tiene una línea sin importe consolidado.');
-  }
+  if (items.some(item => numeric(item.line_total) == null || numeric(item.unit_price) == null || numeric(item.quantity) == null)) throw new Error('La factura tiene una línea sin importe consolidado.');
   if (text(financial.currency, 3) !== text(invoice.currency, 3)) throw new Error('La moneda consolidada de la factura no coincide.');
   if (numeric(financial.total) == null) throw new Error('La factura no tiene total consolidado.');
 
@@ -122,37 +109,13 @@ async function getInvoiceSource(invoiceId) {
   const importerAddress = [importer?.address, importer?.country].filter(Boolean).join(', ') || null;
 
   return {
-    source_type:'invoice',
-    source_id:invoice.id,
-    document_type:'Factura comercial',
-    fileBase:`Commercial-Invoice-${safeFilePart(invoice.invoice_number)}`,
+    source_type:'invoice', source_id:invoice.id, document_type:'Factura comercial', fileBase:`Commercial-Invoice-${safeFilePart(invoice.invoice_number)}`,
     scope:{ operation_id:invoice.operation_id || null, client_id:invoice.client_id, shipment_id:null, load_id:null, bol_number:null, shared_bl:false },
     audit_action:'commercial_invoice_generated',
-    pdfData:{
-      invoice_number:invoice.invoice_number,
-      issue_date:String(invoice.issue_date || '').slice(0, 10),
-      currency:invoice.currency,
-      customer_reference:order.customer_reference || null,
-      client_name:clientName,
-      client_email:client.email || null,
-      client_phone:client.phone || null,
-      importer_name:importerName,
-      importer_address:importerAddress,
-      operation_code:operation?.operation_code || null,
-      incoterm:operation?.incoterm || null,
-      origin_port:operation?.origin_port || null,
-      destination_port:operation?.destination_port || null,
-      items:items.map(item => ({
-        sku:item.product?.sku || null,
-        description:item.description || item.product?.name || 'Producto',
-        quantity:item.quantity,
-        unit:item.unit,
-        unit_price:item.unit_price,
-        line_total:item.line_total
-      })),
-      total:financial.total,
-      notes:invoice.notes || null
-    }
+    pdfData:{ invoice_number:invoice.invoice_number, issue_date:String(invoice.issue_date || '').slice(0, 10), currency:invoice.currency, customer_reference:order.customer_reference || null,
+      client_name:clientName, client_email:client.email || null, client_phone:client.phone || null, importer_name:importerName, importer_address:importerAddress,
+      operation_code:operation?.operation_code || null, incoterm:operation?.incoterm || null, origin_port:operation?.origin_port || null, destination_port:operation?.destination_port || null,
+      items:items.map(item => ({ sku:item.product?.sku || null, description:item.description || item.product?.name || 'Producto', quantity:item.quantity, unit:item.unit, unit_price:item.unit_price, line_total:item.line_total })), total:financial.total, notes:invoice.notes || null }
   };
 }
 
@@ -160,11 +123,9 @@ async function getPackingSource(loadId) {
   const load = await one('loads', `?select=id,load_number,client_id,importer_id,shipment_id,status,loaded_at,dispatched_at,notes&id=eq.${encodeURIComponent(loadId)}&limit=1`, 'Cargue no encontrado');
   if (!['loaded','dispatched'].includes(load.status)) throw new Error('El Packing List final requiere un Cargue marcado como Loaded o Dispatched.');
   if (!load.shipment_id) throw new Error('Asigna un contenedor al Cargue antes de generar el Packing List.');
-
   const shipment = await one('shipments', `?select=id,client_id,importer_id,operation_id,container_number,booking_number,bol_number,carrier,departure_date&id=eq.${encodeURIComponent(load.shipment_id)}&limit=1`, 'Contenedor del Cargue no encontrado');
   const clientId = load.client_id || shipment.client_id || null;
   const importerId = load.importer_id || shipment.importer_id || null;
-
   const [client, importer, operation, items, trace] = await Promise.all([
     clientId ? optionalOne('clients', `?select=id,name,company,mipyme_name,email,phone&id=eq.${encodeURIComponent(clientId)}&limit=1`) : null,
     importerId ? optionalOne('importers', `?select=id,name,legal_name,address,country,email,phone&id=eq.${encodeURIComponent(importerId)}&limit=1`) : null,
@@ -172,7 +133,6 @@ async function getPackingSource(loadId) {
     supabase('load_items', { query:`?select=id,product_id,planned_quantity,planned_pallets,unit,notes,product:products(id,sku,name,brand,hs_code,country_of_origin,unit_weight_kg,package_format)&load_id=eq.${encodeURIComponent(load.id)}&order=created_at.asc&limit=1000` }),
     supabase('load_traceability_sources', { query:`?select=load_item_id,lot_number,receipt_number,allocated_quantity,allocated_pallets&load_id=eq.${encodeURIComponent(load.id)}&order=receipt_number.asc&limit=5000` })
   ]);
-
   if (!items?.length) throw new Error('El Cargue no tiene mercancía.');
   const lotsByItem = new Map();
   for (const row of trace || []) {
@@ -180,104 +140,43 @@ async function getPackingSource(loadId) {
     if (!lotsByItem.has(row.load_item_id)) lotsByItem.set(row.load_item_id, new Set());
     lotsByItem.get(row.load_item_id).add(text(row.lot_number, 100));
   }
-
   const pdfItems = items.map(item => {
     const quantityValue = numeric(item.planned_quantity);
     const unitWeight = numeric(item.product?.unit_weight_kg);
     const lots = [...(lotsByItem.get(item.id) || [])];
     const baseDescription = [item.product?.brand, item.product?.name].filter(Boolean).join(' ') || 'Producto';
     const details = [item.product?.hs_code ? `HS ${item.product.hs_code}` : null, item.product?.country_of_origin ? `Origin ${item.product.country_of_origin}` : null, lots.length ? `Lot ${lots.join(', ')}` : null].filter(Boolean);
-    return {
-      sku:item.product?.sku || null,
-      description:details.length ? `${baseDescription} - ${details.join(' - ')}` : baseDescription,
-      quantity:item.planned_quantity,
-      pallets:item.planned_pallets,
-      unit:item.unit,
-      package_format:item.product?.package_format || null,
-      net_weight_kg:quantityValue != null && unitWeight != null ? quantityValue * unitWeight : null
-    };
+    return { sku:item.product?.sku || null, description:details.length ? `${baseDescription} - ${details.join(' - ')}` : baseDescription, quantity:item.planned_quantity, pallets:item.planned_pallets, unit:item.unit, package_format:item.product?.package_format || null, net_weight_kg:quantityValue != null && unitWeight != null ? quantityValue * unitWeight : null };
   });
-
   const totalPallets = pdfItems.reduce((sum, item) => sum + (numeric(item.pallets) || 0), 0);
   const weightsComplete = pdfItems.every(item => numeric(item.quantity) === 0 || item.net_weight_kg != null);
   const totalNetWeight = weightsComplete ? pdfItems.reduce((sum, item) => sum + (numeric(item.net_weight_kg) || 0), 0) : null;
   const clientName = client ? (client.company || client.mipyme_name || client.name) : null;
   const importerName = importer?.legal_name || importer?.name || null;
   const importerAddress = [importer?.address, importer?.country].filter(Boolean).join(', ') || null;
-
   return {
-    source_type:'load',
-    source_id:load.id,
-    document_type:'Packing List',
-    fileBase:`Packing-List-${safeFilePart(load.load_number)}`,
+    source_type:'load', source_id:load.id, document_type:'Packing List', fileBase:`Packing-List-${safeFilePart(load.load_number)}`,
     scope:{ operation_id:shipment.operation_id || null, client_id:clientId, shipment_id:shipment.id, load_id:load.id, bol_number:shipment.bol_number || null, shared_bl:false },
     audit_action:'packing_list_generated',
-    pdfData:{
-      load_number:load.load_number,
-      container_number:shipment.container_number,
-      bol_number:shipment.bol_number || null,
-      client_name:clientName,
-      importer_name:importerName,
-      importer_address:importerAddress,
-      carrier:shipment.carrier || null,
-      booking_number:shipment.booking_number || operation?.booking_number || null,
-      origin_port:operation?.origin_port || null,
-      destination_port:operation?.destination_port || null,
-      items:pdfItems,
-      total_pallets:totalPallets,
-      total_net_weight_kg:totalNetWeight,
-      notes:load.notes || null
-    }
+    pdfData:{ load_number:load.load_number, container_number:shipment.container_number, bol_number:shipment.bol_number || null, client_name:clientName, importer_name:importerName, importer_address:importerAddress,
+      carrier:shipment.carrier || null, booking_number:shipment.booking_number || operation?.booking_number || null, origin_port:operation?.origin_port || null, destination_port:operation?.destination_port || null,
+      items:pdfItems, total_pallets:totalPallets, total_net_weight_kg:totalNetWeight, notes:load.notes || null }
   };
 }
 
 async function generateDocument(admin, source) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const version = await nextVersion(source.source_type, source.source_id, source.document_type);
-    const buffer = source.source_type === 'invoice'
-      ? buildCommercialInvoicePdf({ ...source.pdfData, version })
-      : buildPackingListPdf({ ...source.pdfData, version });
+    const buffer = source.source_type === 'invoice' ? buildCommercialInvoicePdf({ ...source.pdfData, version }) : buildPackingListPdf({ ...source.pdfData, version });
     const hash = crypto.createHash('sha256').update(buffer).digest('hex');
     const fileName = `${source.fileBase}-v${version}.pdf`;
     const path = `generated/${source.source_type}/${source.source_id}/${Date.now()}-${crypto.randomUUID()}.pdf`;
     await uploadPdf(path, buffer);
-
     try {
-      const created = await supabase('documents', {
-        method:'POST',
-        prefer:'return=representation',
-        body:{
-          ...source.scope,
-          document_type:source.document_type,
-          file_name:fileName,
-          storage_bucket:BUCKET,
-          storage_path:path,
-          mime_type:'application/pdf',
-          file_size_bytes:buffer.length,
-          version,
-          notes:`Generado automáticamente desde ${source.source_type === 'invoice' ? 'Factura' : 'Cargue'} ${source.source_id}.`,
-          uploaded_by_admin_id:admin.admin_id,
-          uploaded_by_username:admin.username || null,
-          generated:true,
-          source_type:source.source_type,
-          source_id:source.source_id,
-          content_sha256:hash,
-          generated_at:new Date().toISOString()
-        }
-      });
+      const created = await supabase('documents', { method:'POST', prefer:'return=representation', body:{ ...source.scope, document_type:source.document_type, file_name:fileName, storage_bucket:BUCKET, storage_path:path, mime_type:'application/pdf', file_size_bytes:buffer.length, version, notes:`Generado automáticamente desde ${source.source_type === 'invoice' ? 'Factura' : 'Cargue'} ${source.source_id}.`, uploaded_by_admin_id:admin.admin_id, uploaded_by_username:admin.username || null, generated:true, source_type:source.source_type, source_id:source.source_id, content_sha256:hash, generated_at:new Date().toISOString() } });
       const document = created?.[0];
       if (!document?.id) throw new Error('No se pudo registrar el documento generado.');
-      await writeAudit(admin, source.audit_action, 'document', document.id, {
-        source_type:source.source_type,
-        source_id:source.source_id,
-        document_type:source.document_type,
-        version,
-        file_name:fileName,
-        content_sha256:hash,
-        operation_id:source.scope.operation_id || null,
-        shipment_id:source.scope.shipment_id || null,
-        load_id:source.scope.load_id || null
-      });
+      await writeAudit(admin, source.audit_action, 'document', document.id, { source_type:source.source_type, source_id:source.source_id, document_type:source.document_type, version, file_name:fileName, content_sha256:hash, operation_id:source.scope.operation_id || null, shipment_id:source.scope.shipment_id || null, load_id:source.scope.load_id || null });
       return { ...document, signed_url:await signedPreview(path) };
     } catch (error) {
       try { await deletePdf(path); } catch {}
@@ -290,9 +189,8 @@ async function generateDocument(admin, source) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, req.method === 'GET' ? 'documents.read' : 'documents.write');
   if (!admin) return;
-
   try {
     if (req.method === 'GET') {
       const sourceType = text(req.query?.source_type, 20).toLowerCase();
@@ -300,28 +198,22 @@ export default async function handler(req, res) {
       if (!['invoice','load'].includes(sourceType)) return fail(res, 400, 'Tipo de fuente inválido');
       return ok(res, { documents:await sourceDocuments(sourceType, sourceId) });
     }
-
     if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
     const body = await readJson(req);
     const action = text(body.action, 40).toLowerCase();
-
     if (action === 'generate_invoice') {
       const source = await getInvoiceSource(cleanUuid(body.invoice_id, 'Factura'));
       return ok(res, { document:await generateDocument(admin, source) });
     }
-
     if (action === 'generate_packing_list') {
       const source = await getPackingSource(cleanUuid(body.load_id, 'Cargue'));
       return ok(res, { document:await generateDocument(admin, source) });
     }
-
     return fail(res, 400, 'Acción de documento comercial inválida');
   } catch (error) {
     const raw = String(error?.message || 'No se pudo generar el documento comercial');
     console.error('[commercial-documents]', error);
-    const translated = raw.includes('GENERATED_DOCUMENT_IMMUTABLE')
-      ? 'Los documentos generados son inmutables; genera una nueva versión.'
-      : raw;
+    const translated = raw.includes('GENERATED_DOCUMENT_IMMUTABLE') ? 'Los documentos generados son inmutables; genera una nueva versión.' : raw;
     return fail(res, 400, translated);
   }
 }
