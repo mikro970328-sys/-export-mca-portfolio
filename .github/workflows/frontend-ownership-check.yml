@@ -53,6 +53,9 @@ on:
       - 'supabase/migrations/20260830170000_p5_workflow_routing_foundation.sql'
       - 'supabase/migrations/20260830172000_p5_workflow_handoff_rules.sql'
       - 'supabase/migrations/20260830174500_p5_workflow_dependency_integrity.sql'
+      - 'admin/operational-navigation.js'
+      - 'admin/operational-context-bridge.js'
+      - 'api/operational-links.js'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
@@ -60,6 +63,7 @@ on:
       - 'scripts/check-access-control.mjs'
       - 'scripts/check-task-engine.mjs'
       - 'scripts/check-workflow-handoffs.mjs'
+      - 'scripts/check-contextual-sync.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -116,3 +120,11 @@ jobs:
         run: |
           node --check api/workflow-routes.js
           node --check admin/workflow-route-settings.js
+      - name: Validate P6 contextual sync
+        run: node scripts/check-contextual-sync.mjs
+      - name: Validate P6 JavaScript syntax
+        run: |
+          node --check admin/operational-navigation.js
+          node --check admin/operational-context-bridge.js
+          node --check admin/tasks-navigation.js
+          node --check api/operational-links.js
