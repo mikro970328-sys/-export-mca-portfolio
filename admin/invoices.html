@@ -6,8 +6,7 @@
 <title>Facturación y cobros · Export MCA</title>
 <link rel="stylesheet" href="/admin/purchases.css">
 <script>
-// Legacy B7 invoice injections are retired from the operational flow.
-// invoice-expediente-v2 owns the current Expediente boundary.
+// Legacy B7 invoice injections are retired. invoices.js owns this screen.
 window.__b7InvoiceExpedienteInstalled = true;
 window.__b7InvoiceDocumentsInstalled = true;
 </script>
@@ -21,6 +20,7 @@ window.__b7InvoiceDocumentsInstalled = true;
 
 <div id="invoiceModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="invoiceTitle">Nueva factura de cobro</h2><div class="muted">Toma cliente, moneda, producto y precio desde la venta. Puede guardarse como borrador antes de tener Expediente.</div></div><button class="btn" data-close="invoice">✕</button></div>
 <div class="grid3"><div><label>Venta *</label><select id="iSalesOrder"></select></div><div><label>Fecha de factura</label><input id="iIssueDate" type="date"></div><div><label>Fecha vencimiento</label><input id="iDueDate" type="date"></div></div>
+<div style="margin-top:10px"><label>Expediente <span class="muted">(requerido antes de emitir)</span></label><select id="iOperation" disabled><option value="">Selecciona una venta primero</option></select><div id="iOperationHelp" class="muted" style="margin-top:5px">Puedes guardar el borrador sin Expediente. Antes de emitir debes asignar uno del mismo cliente.</div></div>
 <label>Notas</label><textarea id="iNotes"></textarea>
 <div class="toolbar" style="padding:12px 0 0;border:0"><div><b>Líneas a facturar</b><div class="muted">Solo cantidades todavía disponibles para facturar.</div></div></div>
 <div id="invoiceLines" class="detail-items"></div>
@@ -34,7 +34,7 @@ window.__b7InvoiceDocumentsInstalled = true;
 <label>Notas</label><textarea id="pNotes"></textarea>
 <div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="payment">Cancelar</button><button id="savePayment" class="btn orange">Registrar cobro</button></div><div id="paymentMsg" class="msg"></div></div></div>
 
-<script src="/admin/invoices.js?v=20260830-ux2c"></script>
-<script src="/admin/commercial-documents-shell.js?v=20260830-ux2c"></script>
+<script src="/admin/invoices.js?v=20260830-ux2c-root"></script>
+<script src="/admin/commercial-documents-shell.js?v=20260830-ux2c-root"></script>
 </body>
 </html>
