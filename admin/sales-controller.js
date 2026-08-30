@@ -56,9 +56,14 @@
     return true;
   }
 
-  // Public entry point used by the list, Cargues and OperationalNavigation.
-  // The mutation logic remains in sales.js; only the detail owner changes.
+  // Public entry points used by the list, Cargues and parent navigation.
   window.openDetail = open;
+  window.openOperationalSale = open;
+
+  // Sales supplies its own operational navigation surface. This prevents the generic
+  // context bridge from injecting duplicate Client/Cargue/WR blocks into the Workspace.
+  window.OperationalContextBridge = Object.freeze({ ready:true, owner:'sales-controller.js' });
+  window.dispatchEvent(new CustomEvent('export-mca:context-bridge-ready'));
 
   window.SalesOrderController = Object.freeze({
     getOrder,
