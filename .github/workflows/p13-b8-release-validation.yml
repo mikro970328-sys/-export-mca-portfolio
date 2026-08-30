@@ -1,0 +1,27 @@
+name: P13 B8 Release Validation
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/tests/b8_release_validation.sql'
+      - 'scripts/check-b8-release-validation.mjs'
+      - 'api/dashboard.js'
+      - 'api/_executive-dashboard.js'
+      - 'api/reports.js'
+      - 'admin/dashboard-operational-state.js'
+      - 'admin/reports.js'
+      - 'supabase/migrations/20260830223000_p11_executive_dashboard_profitability.sql'
+      - 'supabase/migrations/20260830225000_p12_executive_report_datasets.sql'
+      - '.github/workflows/p13-b8-release-validation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-b8-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate P13 B8.5 release contract
+        run: node scripts/check-b8-release-validation.mjs
