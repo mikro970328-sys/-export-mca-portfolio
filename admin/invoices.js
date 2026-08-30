@@ -1,6 +1,6 @@
 (() => {
   const $ = id => document.getElementById(id);
-  const state = { invoices:[], salesOrders:[], view:'open', search:'', editingId:null, paymentInvoiceId:null };
+  const state = { invoices:[], salesOrders:[], metrics:null, view:'open', search:'', editingId:null, paymentInvoiceId:null, operationSequence:0 };
   const esc = value => String(value ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
   const num = value => Number(value || 0);
   const money = (value, currency='USD') => `${currency} ${num(value).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -22,6 +22,7 @@
     const data = await request();
     state.invoices = Array.isArray(data.invoices) ? data.invoices : [];
     state.salesOrders = Array.isArray(data.sales_orders) ? data.sales_orders : [];
+    state.metrics = data.metrics || null;
     render();
     parent?.dispatchEvent?.(new CustomEvent('export-mca:data-loaded'));
   }
@@ -37,15 +38,20 @@
     return '<span class="pill">Emitida</span>';
   }
 
+  function receivableLabel() {
+    const rows = Array.isArray(state.metrics?.receivable_by_currency) ? state.metrics.receivable_by_currency : [];
+    if (!rows.length) return '—';
+    return rows.map(row => money(row.amount,row.currency)).join(' · ');
+  }
+
   function renderMetrics() {
-    const active = state.invoices.filter(i => i.status !== 'void');
-    const drafts = active.filter(i => i.status === 'draft').length;
-    const issued = active.filter(i => i.status === 'issued');
-    const paid = issued.filter(i => i.financial?.payment_status === 'paid').length;
-    const overdue = issued.filter(i => i.financial?.payment_status === 'overdue').length;
-    const receivable = issued.reduce((sum,i) => sum + num(i.financial?.balance_due),0);
+    const metrics = state.metrics || {};
     $('metrics').innerHTML = [
-      ['Facturas',active.length],['Borradores',drafts],['Pagadas',paid],['Vencidas',overdue],['Por cobrar',money(receivable)]
+      ['Facturas',metrics.invoice_count ?? '—'],
+      ['Borradores',metrics.draft_count ?? '—'],
+      ['Pagadas',metrics.paid_count ?? '—'],
+      ['Vencidas',metrics.overdue_count ?? '—'],
+      ['Por cobrar',receivableLabel()]
     ].map(([label,value]) => `<div class="metric"><b>${esc(value)}</b><span>${esc(label)}</span></div>`).join('');
   }
 
@@ -94,6 +100,70 @@
 
   function setModal(id, open) { $(id)?.classList.toggle('hidden', !open); }
   function message(id, value, ok=false) { const node=$(id); if (!node) return; node.textContent=value || ''; node.classList.toggle('ok',Boolean(ok)); }
+  function setOperationHelp(value, bad=false) {
+    const node = $('iOperationHelp');
+    if (!node) return;
+    node.textContent = value || '';
+    node.style.color = bad ? '#b42318' : '';
+  }
+  function resetOperationOptions(label='Selecciona una venta primero') {
+    const select = $('iOperation');
+    if (!select) return;
+    select.disabled = true;
+    select.innerHTML = `<option value="">${esc(label)}</option>`;
+    setOperationHelp('Puedes guardar el borrador sin Expediente. Antes de emitir debes asignar uno del mismo cliente.');
+  }
+  function operationLabel(operation) {
+    const route = [operation.origin_port,operation.destination_port].filter(Boolean).join(' → ');
+    const reference = operation.booking_number || operation.bol_number || operation.container_number || '';
+    return [operation.operation_code || 'Expediente',route,reference].filter(Boolean).join(' · ');
+  }
+  function renderOperationOptions(context, preferredId=null) {
+    const select = $('iOperation');
+    if (!select) return;
+    const operations = Array.isArray(context?.operations) ? context.operations : [];
+    if (!operations.length) {
+      select.disabled = true;
+      select.innerHTML = '<option value="">Sin Expediente todavía</option>';
+      setOperationHelp('El borrador es válido. Crea el Expediente antes de emitir la factura de cobro.');
+      return;
+    }
+    select.disabled = false;
+    select.innerHTML = '<option value="">Expediente pendiente</option>' + operations.map(operation => `<option value="${esc(operation.id)}">${esc(operationLabel(operation))}</option>`).join('');
+    const selected = preferredId || context?.selected_operation_id || '';
+    if (selected && operations.some(operation => String(operation.id) === String(selected))) select.value = selected;
+    setOperationHelp('Solo aparecen Expedientes del mismo cliente. Puedes dejarlo pendiente mientras la factura siga en borrador.');
+  }
+  async function loadOperationContext(params, preferredId=null) {
+    const sequence = ++state.operationSequence;
+    const select = $('iOperation');
+    if (select) {
+      select.disabled = true;
+      select.innerHTML = '<option value="">Cargando Expedientes…</option>';
+    }
+    try {
+      const query = new URLSearchParams(params);
+      const data = await request(`/api/invoice-expediente-context?${query.toString()}`);
+      if (sequence !== state.operationSequence) return;
+      renderOperationOptions(data,preferredId);
+    } catch (error) {
+      if (sequence !== state.operationSequence) return;
+      resetOperationOptions('No se pudieron cargar los Expedientes');
+      setOperationHelp(error.message || 'No se pudieron cargar los Expedientes.',true);
+    }
+  }
+  function loadOperationsForSalesOrder(salesOrderId, preferredId=null) {
+    if (!salesOrderId) {
+      state.operationSequence += 1;
+      resetOperationOptions();
+      return Promise.resolve();
+    }
+    return loadOperationContext({ sales_order_id:salesOrderId },preferredId);
+  }
+  function loadOperationsForInvoice(invoice) {
+    if (!invoice?.id) return Promise.resolve();
+    return loadOperationContext({ invoice_id:invoice.id },invoice.operation_id || null);
+  }
 
   function eligibleOrders(editingInvoice=null) {
     return state.salesOrders.filter(order => order.items?.some(item => {
@@ -104,12 +174,12 @@
 
   function fillSalesOrderOptions(editingInvoice=null) {
     const orders = eligibleOrders(editingInvoice);
-    $('iSalesOrder').innerHTML = '<option value="">Selecciona una Sales Order</option>' + orders.map(order => `<option value="${esc(order.id)}">${esc(order.so_number)} · ${esc(clientName(order))}</option>`).join('');
+    $('iSalesOrder').innerHTML = '<option value="">Selecciona una venta</option>' + orders.map(order => `<option value="${esc(order.id)}">${esc(order.so_number)} · ${esc(clientName(order))}</option>`).join('');
   }
 
   function renderInvoiceLines(editingInvoice=null) {
     const order = state.salesOrders.find(row => String(row.id) === String($('iSalesOrder').value));
-    if (!order) { $('invoiceLines').innerHTML = '<div class="empty">Selecciona una Sales Order.</div>'; return; }
+    if (!order) { $('invoiceLines').innerHTML = '<div class="empty">Selecciona una venta.</div>'; return; }
     const rows = (order.items || []).map(item => {
       const own = editingInvoice?.items?.find(line => line.sales_order_item_id === item.id);
       const available = num(item.invoice_progress?.available_to_invoice_quantity) + num(own?.quantity);
@@ -119,18 +189,21 @@
       const quantity = own ? num(own.quantity) : available;
       return `<div class="line" data-invoice-line="${esc(item.id)}"><div class="line-head"><div><div class="line-title">${esc(label)}</div><div class="small">Ordenado ${esc(item.ordered_quantity)} ${esc(item.unit)} · Disponible ${esc(available)} · Precio ${esc(money(item.unit_price,order.currency))}</div></div></div><div class="grid"><div><label>Cantidad a facturar</label><input data-qty type="number" min="0" max="${esc(available)}" step="any" value="${esc(quantity)}"></div><div><label>Nota</label><input data-note value="${esc(own?.notes || '')}"></div></div></div>`;
     }).filter(Boolean);
-    $('invoiceLines').innerHTML = rows.length ? rows.join('') : '<div class="empty">Esta Sales Order no tiene saldo disponible para facturar.</div>';
+    $('invoiceLines').innerHTML = rows.length ? rows.join('') : '<div class="empty">Esta venta no tiene saldo disponible para facturar.</div>';
   }
 
   function openCreate() {
     state.editingId = null;
-    $('invoiceTitle').textContent = 'Nueva factura';
+    $('invoiceTitle').textContent = 'Nueva factura de cobro';
     fillSalesOrderOptions();
     $('iSalesOrder').disabled = false;
+    $('iSalesOrder').value = '';
     $('iIssueDate').value = new Date().toISOString().slice(0,10);
     $('iDueDate').value = '';
     $('iNotes').value = '';
-    $('invoiceLines').innerHTML = '<div class="empty">Selecciona una Sales Order.</div>';
+    $('invoiceLines').innerHTML = '<div class="empty">Selecciona una venta.</div>';
+    state.operationSequence += 1;
+    resetOperationOptions();
     message('invoiceMsg','');
     setModal('invoiceModal',true);
   }
@@ -147,6 +220,7 @@
     $('iDueDate').value = String(invoice.due_date || '').slice(0,10);
     $('iNotes').value = invoice.notes || '';
     renderInvoiceLines(invoice);
+    loadOperationsForInvoice(invoice);
     message('invoiceMsg','');
     setModal('invoiceModal',true);
   }
@@ -163,7 +237,7 @@
     message('invoiceMsg','');
     const salesOrderId = $('iSalesOrder').value;
     const lines = collectLines();
-    if (!salesOrderId) return message('invoiceMsg','Selecciona una Sales Order.');
+    if (!salesOrderId) return message('invoiceMsg','Selecciona una venta.');
     if (!lines.length) return message('invoiceMsg','Indica al menos una cantidad a facturar.');
     $('saveInvoice').disabled = true;
     try {
@@ -171,6 +245,7 @@
         action:state.editingId ? 'replace_plan' : 'create_plan',
         invoice_id:state.editingId,
         sales_order_id:salesOrderId,
+        operation_id:$('iOperation').value || null,
         issue_date:$('iIssueDate').value || null,
         due_date:$('iDueDate').value || null,
         notes:$('iNotes').value || null,
@@ -197,7 +272,7 @@
     $('detailSubtitle').textContent = `${clientName(invoice)} · ${invoice.sales_order?.so_number || 'Sin SO'} · ${date(invoice.issue_date)}`;
     const items = (invoice.items || []).map(item => `<div class="detail-item"><div class="line-head"><b>${esc(item.description)}</b><b>${esc(money(item.line_total,invoice.currency))}</b></div><div class="small">${esc(item.quantity)} ${esc(item.unit)} × ${esc(money(item.unit_price,invoice.currency))}</div></div>`).join('');
     const payments = paymentRows(invoice);
-    $('detailBody').innerHTML = `<div class="summary"><div><b>Total</b>${esc(money(f.total,invoice.currency))}</div><div><b>Cobrado</b>${esc(money(f.paid_amount,invoice.currency))}</div><div><b>Saldo</b>${esc(money(f.balance_due,invoice.currency))}</div><div><b>Estado</b>${statusPill(invoice)}</div></div><div class="detail-items"><b>Líneas</b>${items || '<div class="empty">Sin líneas.</div>'}</div><div class="detail-items"><b>Cobros</b>${payments || '<div class="empty">Todavía no hay cobros registrados.</div>'}</div>${invoice.notes ? `<div class="line"><b>Notas</b><div class="small">${esc(invoice.notes)}</div></div>` : ''}`;
+    $('detailBody').innerHTML = `<div class="summary"><div><b>Total</b>${esc(money(f.total,invoice.currency))}</div><div><b>Cobrado</b>${esc(money(f.paid_amount,invoice.currency))}</div><div><b>Saldo</b>${esc(money(f.balance_due,invoice.currency))}</div><div><b>Estado</b>${statusPill(invoice)}</div></div><div class="line"><b>Expediente</b><div class="small">${invoice.operation_id ? 'Asignado' : 'Pendiente'}</div></div><div class="detail-items"><b>Líneas</b>${items || '<div class="empty">Sin líneas.</div>'}</div><div class="detail-items"><b>Cobros</b>${payments || '<div class="empty">Todavía no hay cobros registrados.</div>'}</div>${invoice.notes ? `<div class="line"><b>Notas</b><div class="small">${esc(invoice.notes)}</div></div>` : ''}`;
     const actions = [];
     if (invoice.status === 'issued' && num(f.balance_due) > 0) actions.push(`<button class="btn orange" data-payment="${esc(invoice.id)}">Registrar cobro</button>`);
     if (invoice.status === 'draft') actions.push(`<button class="btn" data-edit="${esc(invoice.id)}">Editar</button>`,`<button class="btn primary" data-issue="${esc(invoice.id)}">Emitir</button>`);
@@ -262,6 +337,14 @@
   }
 
   async function transition(id, action) {
+    const invoice = state.invoices.find(row => String(row.id) === String(id));
+    if (!invoice) return;
+    if (action === 'issue' && !invoice.operation_id) {
+      alert('Antes de emitir esta factura de cobro debes asignarle un Expediente del mismo cliente. El borrador puede mantenerse sin Expediente.');
+      setModal('detailModal',false);
+      openEdit(invoice.id);
+      return;
+    }
     const verb = action === 'issue' ? 'emitir' : 'anular';
     if (!confirm(`¿Confirmas ${verb} esta factura?`)) return;
     try {
@@ -296,7 +379,11 @@
   $('newInvoice').onclick = openCreate;
   $('refresh').onclick = () => refresh().catch(error => alert(error.message));
   $('search').oninput = event => { state.search = event.target.value || ''; renderList(); };
-  $('iSalesOrder').onchange = () => renderInvoiceLines(state.editingId ? state.invoices.find(row => row.id === state.editingId) : null);
+  $('iSalesOrder').onchange = () => {
+    const editing = state.editingId ? state.invoices.find(row => row.id === state.editingId) : null;
+    renderInvoiceLines(editing);
+    loadOperationsForSalesOrder($('iSalesOrder').value || null, editing && String(editing.sales_order_id) === String($('iSalesOrder').value) ? editing.operation_id : null);
+  };
   $('saveInvoice').onclick = saveInvoice;
   $('savePayment').onclick = savePayment;
   ['invoiceModal','detailModal','paymentModal'].forEach(id => $(id)?.addEventListener('click',event => { if (event.target === $(id)) setModal(id,false); }));
