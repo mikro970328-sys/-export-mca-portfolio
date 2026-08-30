@@ -10,7 +10,9 @@ on:
       - 'admin/modal-dismissal.js'
       - 'admin/expedientes-module.js'
       - 'admin/dashboard-operational-state.js'
+      - 'admin/dashboard-executive.css'
       - 'api/dashboard.js'
+      - 'api/_executive-dashboard.js'
       - 'api/importers.js'
       - 'admin/navigation-shell.js'
       - 'admin/navigation-shell.css'
@@ -81,6 +83,7 @@ on:
       - 'api/notification-reconcile.js'
       - 'supabase/migrations/20260830215500_p10_user_notification_inbox.sql'
       - 'supabase/migrations/20260830220500_p10_notification_source_version_integrity.sql'
+      - 'supabase/migrations/20260830223000_p11_executive_dashboard_profitability.sql'
       - 'vercel.json'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
@@ -94,6 +97,7 @@ on:
       - 'scripts/check-operational-queues.mjs'
       - 'scripts/check-operational-alert-lifecycle.mjs'
       - 'scripts/check-user-notifications.mjs'
+      - 'scripts/check-executive-dashboard.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -193,4 +197,12 @@ jobs:
           node --check api/notification-inbox.js
           node --check api/notification-reconcile.js
           node --check admin/notification-inbox.js
+          node --check admin/erp.js
+      - name: Validate P11 executive dashboard
+        run: node scripts/check-executive-dashboard.mjs
+      - name: Validate P11 JavaScript syntax
+        run: |
+          node --check api/dashboard.js
+          node --check api/_executive-dashboard.js
+          node --check admin/dashboard-operational-state.js
           node --check admin/erp.js
