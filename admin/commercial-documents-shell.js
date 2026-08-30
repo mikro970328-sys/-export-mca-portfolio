@@ -11,9 +11,7 @@
     const path = win.location?.pathname || '';
     if (path.endsWith('/invoices.html')) {
       inject(win.document, 'b7-invoice-expediente-v2', '/admin/invoice-expediente-v2.js?v=20260830-ux2c');
-      inject(win.document, 'b7-invoice-documents', '/admin/commercial-documents-invoices.js');
     }
-    if (path.endsWith('/loads.html')) inject(win.document, 'b7-load-documents', '/admin/commercial-documents-loads.js');
   }
 
   if (window.parent !== window) {
@@ -34,9 +32,7 @@
   window.__b7CommercialDocumentsShellInstalled = true;
 
   const configs = [
-    ['invoicesSection', 'b7-invoice-expediente-v2', '/admin/invoice-expediente-v2.js?v=20260830-ux2c'],
-    ['invoicesSection', 'b7-invoice-documents', '/admin/commercial-documents-invoices.js'],
-    ['loadsSection', 'b7-load-documents', '/admin/commercial-documents-loads.js']
+    ['invoicesSection', 'b7-invoice-expediente-v2', '/admin/invoice-expediente-v2.js?v=20260830-ux2c']
   ];
 
   function installFrame(sectionId, scriptId, src) {
@@ -81,7 +77,7 @@
         const badge = document.createElement('span');
         badge.className = 'exp-doc-generated';
         badge.textContent = 'GENERADO';
-        badge.title = item.content_sha256 ? `Documento automático · SHA-256 ${item.content_sha256}` : 'Documento automático e inmutable';
+        badge.title = item.content_sha256 ? `Documento interno generado · SHA-256 ${item.content_sha256}` : 'Documento interno generado e inmutable';
         title.appendChild(badge);
       }
       deleteButton?.remove();
