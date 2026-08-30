@@ -7,10 +7,45 @@
   if (!modal || !closeButton) return;
 
   let dirty = false;
+  let scrollLocked = false;
+  let previousHtmlOverflow = '';
+  let previousBodyOverflow = '';
 
   const isOpen = () => !modal.classList.contains('hidden');
+
+  const lockBackgroundScroll = () => {
+    if (scrollLocked) return;
+    previousHtmlOverflow = document.documentElement.style.overflow;
+    previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    modal.style.overscrollBehavior = 'contain';
+    const modalBox = modal.querySelector('.modalbox');
+    if (modalBox) modalBox.style.overscrollBehavior = 'contain';
+    scrollLocked = true;
+  };
+
+  const unlockBackgroundScroll = () => {
+    if (!scrollLocked) return;
+    document.documentElement.style.overflow = previousHtmlOverflow;
+    document.body.style.overflow = previousBodyOverflow;
+    scrollLocked = false;
+  };
+
+  const syncModalState = () => {
+    if (isOpen()) {
+      lockBackgroundScroll();
+      return;
+    }
+    dirty = false;
+    unlockBackgroundScroll();
+  };
+
   const resetIfClosed = () => {
-    if (!isOpen()) dirty = false;
+    if (!isOpen()) {
+      dirty = false;
+      unlockBackgroundScroll();
+    }
   };
 
   const requestClose = () => {
@@ -22,6 +57,7 @@
     dirty = false;
     const closeExistingModal = window.closeModal;
     if (typeof closeExistingModal === 'function') closeExistingModal();
+    syncModalState();
   };
 
   closeButton.textContent = '×';
@@ -30,6 +66,10 @@
   closeButton.style.fontSize = '24px';
   closeButton.style.lineHeight = '1';
   closeButton.style.minWidth = '42px';
+
+  const modalStateObserver = new MutationObserver(syncModalState);
+  modalStateObserver.observe(modal, { attributes: true, attributeFilter: ['class'] });
+  syncModalState();
 
   document.addEventListener('input', event => {
     resetIfClosed();
