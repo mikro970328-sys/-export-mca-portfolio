@@ -6,7 +6,8 @@
   const DESKTOP_QUERY = '(min-width:901px)';
   const COLLAPSE_KEY = 'export_mca_sidebar_collapsed';
   const GROUP_STATE_KEY = 'export_mca_nav_groups';
-  const EMBEDDED_OPERATIONS = [
+
+  const EMBEDDED_SECTIONS = [
     { id:'warehouseSection', label:'Almacén', icon:'▥', src:'/admin/warehouse.html?embedded=1' },
     { id:'suppliersSection', label:'Proveedores', icon:'◫', src:'/admin/suppliers.html?embedded=1' },
     { id:'productsSection', label:'Productos', icon:'◩', src:'/admin/products.html?embedded=1' },
@@ -14,13 +15,46 @@
     { id:'salesSection', label:'Ventas', icon:'▧', src:'/admin/sales.html?embedded=1' },
     { id:'invoicesSection', label:'Facturación', icon:'▨', src:'/admin/invoices.html?embedded=1' },
     { id:'payablesSection', label:'Cuentas por pagar', icon:'▩', src:'/admin/payables.html?embedded=1' },
-    { id:'costsSection', label:'Costos', icon:'◇', src:'/admin/costs.html?embedded=1' },
+    { id:'costsSection', label:'Costos y rentabilidad', icon:'◇', src:'/admin/costs.html?embedded=1' },
     { id:'inventorySection', label:'Inventario', icon:'▦', src:'/admin/inventory.html?embedded=1' },
     { id:'loadsSection', label:'Cargues', icon:'⇄', src:'/admin/loads.html?embedded=1' }
   ];
 
+  const NAV_GROUPS = [
+    {
+      key:'home',
+      label:'Inicio',
+      icon:'⌂',
+      sections:['dashboardSection','notificationsSection']
+    },
+    {
+      key:'commercial',
+      label:'Comercial',
+      icon:'▧',
+      sections:['clientsSection','salesSection','invoicesSection','publicationsSection']
+    },
+    {
+      key:'operations',
+      label:'Operaciones',
+      icon:'▣',
+      sections:['purchasesSection','warehouseSection','inventorySection','loadsSection','containersSection','newOperationsSection','registerContainerSection']
+    },
+    {
+      key:'finance',
+      label:'Finanzas',
+      icon:'◇',
+      sections:['payablesSection','costsSection']
+    },
+    {
+      key:'administration',
+      label:'Administración',
+      icon:'◉',
+      sections:['suppliersSection','productsSection','workersSection']
+    }
+  ];
+
   const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
-  const embeddedById = id => EMBEDDED_OPERATIONS.find(item => item.id === id) || null;
+  const embeddedById = id => EMBEDDED_SECTIONS.find(item => item.id === id) || null;
 
   function readBoolean(key, fallback = false) {
     const value = localStorage.getItem(key);
@@ -66,7 +100,7 @@
     }
     const title = byId('pageTitle');
     if (title) title.textContent = config.label;
-    syncActiveGroup();
+    syncActiveGroup(true);
     closeMobileMenu();
     window.dispatchEvent(new CustomEvent('export-mca:section-changed', { detail:{ id } }));
     return true;
@@ -96,7 +130,7 @@
         });
         doc.querySelectorAll('.muted').forEach(node => {
           if (node.textContent?.includes('Recepciones físicas, productos y ubicaciones.')) node.textContent = 'Recepciones físicas y ubicaciones de almacén.';
-          if (node.textContent?.includes('Selecciona un producto existente o créalo aquí')) node.textContent = 'Selecciona un producto existente del catálogo maestro. Los productos se administran en Operaciones → Productos.';
+          if (node.textContent?.includes('Selecciona un producto existente o créalo aquí')) node.textContent = 'Selecciona un producto existente del catálogo maestro. Los productos se administran en Administración → Productos.';
         });
       };
       apply();
@@ -109,21 +143,26 @@
     }
   }
 
-  function ensureEmbeddedOperations() {
-    const operations = document.querySelector('.nav-group[data-nav-group="operations"] .submenu');
+  function createEmbeddedButton(config, staging) {
+    let button = document.querySelector(`[data-section="${config.id}"]`);
+    if (button) return button;
+    button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.section = config.id;
+    button.dataset.navLabel = config.label;
+    button.innerHTML = `<span class="nav-icon" aria-hidden="true">${config.icon}</span><span class="nav-label">${config.label}</span>`;
+    button.setAttribute('aria-label', config.label);
+    button.title = config.label;
+    button.onclick = event => { event.preventDefault(); openEmbeddedSection(config); };
+    staging?.appendChild(button);
+    return button;
+  }
+
+  function ensureEmbeddedSections() {
+    const staging = document.querySelector('.nav-group[data-nav-group="operations"] .submenu') || document.querySelector('.sidebar-nav');
     const main = document.querySelector('.main-shell main');
-    for (const config of EMBEDDED_OPERATIONS) {
-      if (operations && !operations.querySelector(`[data-section="${config.id}"]`)) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.dataset.section = config.id;
-        button.dataset.navLabel = config.label;
-        button.innerHTML = `<span class="nav-icon" aria-hidden="true">${config.icon}</span><span class="nav-label">${config.label}</span>`;
-        button.setAttribute('aria-label', config.label);
-        button.title = config.label;
-        button.onclick = event => { event.preventDefault(); openEmbeddedSection(config); };
-        operations.appendChild(button);
-      }
+    for (const config of EMBEDDED_SECTIONS) {
+      createEmbeddedButton(config, staging);
       if (main && !byId(config.id)) {
         const section = document.createElement('section');
         section.id = config.id;
@@ -134,18 +173,72 @@
         if (config.id === 'warehouseSection' && frame) frame.addEventListener('load', () => applyWarehouseCatalogBoundary(frame));
       }
     }
-    const saved = localStorage.getItem('export_mca_current_section');
-    const config = embeddedById(saved);
-    if (config) openEmbeddedSection(config);
+  }
+
+  function normalizeSubmenuButton(button) {
+    if (!button) return null;
+    button.classList.remove('nav-item');
+    const label = button.dataset.navLabel || button.querySelector('.nav-label')?.textContent?.trim() || '';
+    if (label) {
+      button.dataset.navLabel = label;
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    }
+    return button;
+  }
+
+  function makeNavGroup(config) {
+    const group = document.createElement('div');
+    group.className = 'nav-group';
+    group.dataset.navGroup = config.key;
+    group.innerHTML = `<button class="nav-group-btn" type="button" data-nav-label="${config.label}" aria-expanded="false"><span class="nav-icon" aria-hidden="true">${config.icon}</span><span class="nav-label">${config.label}</span><span class="nav-chevron" aria-hidden="true">⌃</span></button><div class="submenu"></div>`;
+    return group;
+  }
+
+  function buildNavigationHierarchy() {
+    const nav = document.querySelector('.sidebar-nav');
+    if (!nav) return;
+
+    const legacyAdmin = byId('adminNav');
+    const adminButton = legacyAdmin?.querySelector('[data-section="adminsSection"]') || null;
+    const sectionButtons = new Map();
+    nav.querySelectorAll('[data-section]').forEach(button => sectionButtons.set(button.dataset.section, button));
+
+    const fragment = document.createDocumentFragment();
+    for (const config of NAV_GROUPS) {
+      const group = makeNavGroup(config);
+      const submenu = group.querySelector('.submenu');
+      config.sections.forEach(sectionId => {
+        const button = normalizeSubmenuButton(sectionButtons.get(sectionId));
+        if (button) submenu.appendChild(button);
+      });
+
+      if (config.key === 'administration' && adminButton && legacyAdmin && !legacyAdmin.classList.contains('hidden')) {
+        submenu.appendChild(normalizeSubmenuButton(adminButton));
+      }
+
+      fragment.appendChild(group);
+    }
+
+    nav.replaceChildren(fragment);
+
+    if (legacyAdmin) {
+      legacyAdmin.classList.remove('nav-group', 'open');
+      legacyAdmin.classList.add('nav-role-proxy');
+      legacyAdmin.removeAttribute('data-nav-group');
+      nav.appendChild(legacyAdmin);
+    }
   }
 
   function initializeGroups() {
     const state = readGroupState();
     document.querySelectorAll('.nav-group').forEach((group, index) => {
       const saved = state[groupKey(group, index)];
-      setGroupOpen(group, typeof saved === 'boolean' ? saved : isDesktop(), false);
+      const isActive = Boolean(group.querySelector('.submenu [data-section].active'));
+      const defaultOpen = group.dataset.navGroup === 'home' || isActive;
+      setGroupOpen(group, typeof saved === 'boolean' ? saved : defaultOpen, false);
     });
-    syncActiveGroup();
+    syncActiveGroup(true);
   }
 
   function setDesktopCollapsed(collapsed, persist = true) {
@@ -208,9 +301,11 @@
     setGroupOpen(group, !group.classList.contains('open'));
   }
 
-  function syncActiveGroup() {
+  function syncActiveGroup(openActive = false) {
     document.querySelectorAll('.nav-group').forEach(group => {
-      group.classList.toggle('has-active-section', Boolean(group.querySelector('.submenu [data-section].active')));
+      const active = Boolean(group.querySelector('.submenu [data-section].active'));
+      group.classList.toggle('has-active-section', active);
+      if (active && openActive && !group.classList.contains('open')) setGroupOpen(group, true, false);
     });
   }
 
@@ -247,13 +342,21 @@
     initializeGroups();
   }
 
+  function restoreSavedEmbeddedSection() {
+    const saved = localStorage.getItem('export_mca_current_section');
+    const config = embeddedById(saved);
+    if (config) openEmbeddedSection(config);
+  }
+
   function mount() {
     const sidebar = byId('sidebar');
     if (!sidebar) return;
-    ensureEmbeddedOperations();
+    ensureEmbeddedSections();
+    buildNavigationHierarchy();
     installAccessibleLabels();
     initializeGroups();
     initializeDesktopState();
+    restoreSavedEmbeddedSection();
     document.addEventListener('click', handleClick);
     document.addEventListener('keydown', handleKeydown);
     window.addEventListener('resize', handleViewportChange);
@@ -263,7 +366,7 @@
       initializeDesktopState();
     });
     window.addEventListener('export-mca:section-changed', () => {
-      syncActiveGroup();
+      syncActiveGroup(true);
       closeMobileMenu();
     });
     window.NavigationShell = Object.freeze({
