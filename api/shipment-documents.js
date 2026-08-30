@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 
 const BUCKET = 'erp-documents';
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -200,7 +200,7 @@ async function remove(admin, id) {
 }
 
 export default async function handler(req,res) {
-  const admin = requireAdmin(req,res);
+  const admin = await authorizeAdmin(req,res,req.method === 'GET' ? 'documents.read' : 'documents.write');
   if (!admin) return;
   try {
     if (req.method === 'GET') {
