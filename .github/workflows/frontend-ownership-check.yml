@@ -86,3 +86,5 @@ jobs:
           node --check admin/access-control-administration.js
           node --check admin/account-administration.js
           node --check admin/erp.js
+          node --check admin/navigation-shell.js
+          node --check admin/operational-alert-center.js
