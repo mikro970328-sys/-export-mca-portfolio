@@ -1,0 +1,21 @@
+name: P14 B9 Security Audit
+
+on:
+  pull_request:
+    paths:
+      - 'api/**'
+      - 'scripts/audit-b9-api-boundaries.mjs'
+      - 'docs/security/B9_SECURITY_AUDIT.md'
+      - '.github/workflows/p14-b9-security-audit.yml'
+  workflow_dispatch:
+
+jobs:
+  audit-api-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Inventory API authorization boundaries
+        run: node scripts/audit-b9-api-boundaries.mjs
