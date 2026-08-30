@@ -8,6 +8,8 @@ const requireFile=file=>{if(!fs.existsSync(path.join(root,file)))failures.push(`
 
 const files=[
   'supabase/migrations/20260830154000_p4_task_engine.sql',
+  'supabase/migrations/20260830160500_p4_task_engine_index_hardening.sql',
+  'supabase/migrations/20260830161000_p4_task_dependency_completion_guard.sql',
   'api/tasks.js',
   'admin/tasks-workspace.js',
   'admin/tasks-workspace.css',
@@ -18,11 +20,13 @@ files.forEach(requireFile);
 
 if(files.every(file=>fs.existsSync(path.join(root,file)))) {
   const migration=read(files[0]);
-  const api=read(files[1]);
-  const ui=read(files[2]);
-  const css=read(files[3]);
-  const navigation=read(files[4]);
-  const loader=read(files[5]);
+  const indexMigration=read(files[1]);
+  const dependencyGuard=read(files[2]);
+  const api=read(files[3]);
+  const ui=read(files[4]);
+  const css=read(files[5]);
+  const navigation=read(files[6]);
+  const loader=read(files[7]);
 
   for(const permission of ['tasks.read','tasks.write','tasks.manage']) {
     if(!migration.includes(`'${permission}'`))failures.push(`migración P4: falta ${permission}`);
@@ -48,11 +52,28 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))) {
   }
 
   for(const required of [
+    'operational_task_comments_author_admin_idx',
+    'operational_task_history_actor_admin_idx',
+    'operational_task_dependencies_created_by_idx'
+  ]) if(!indexMigration.includes(required))failures.push(`hardening P4: falta índice ${required}`);
+
+  for(const required of [
+    'TASK_OPEN_DEPENDENCIES',
+    "p_to_status='completed'",
+    'dependency.status<>\'completed\'',
+    'grant execute on function public.transition_operational_task(uuid,uuid,text,text) to service_role'
+  ]) if(!dependencyGuard.includes(required))failures.push(`guard P4: falta ${required}`);
+
+  for(const required of [
     "authorizeAdmin(req,res,'tasks.read')",
     "authorizeAdmin(req,res,'tasks.write')",
     "authorizeAdmin(req,res,'tasks.manage')",
     'visibilityQuery(admin,manage)',
     'activeTeamIds(admin.admin_id)',
+    "supabase('team_memberships'",
+    'memberships:(memberships || []).filter',
+    'TASK_OPEN_DEPENDENCIES',
+    'Completa primero las dependencias pendientes de esta tarea',
     "bodyAction === 'set_dependencies'",
     "bodyAction === 'transition'"
   ]) if(!api.includes(required))failures.push(`api/tasks.js: falta ${required}`);
