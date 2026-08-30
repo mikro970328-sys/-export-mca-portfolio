@@ -27,9 +27,17 @@ on:
       - 'api/sales-supply.js'
       - 'api/direct-shipment-dispatch.js'
       - 'supabase/migrations/20260830053000_p1_direct_shipment_dispatch_lifecycle.sql'
+      - 'admin/sales-customer-finance.js'
+      - 'admin/sales-customer-finance.css'
+      - 'api/customer-advances.js'
+      - 'api/proformas.js'
+      - 'supabase/migrations/20260830054000_p2_customer_advances_proformas.sql'
+      - 'supabase/migrations/20260830054800_p2_customer_financial_integrity.sql'
+      - 'supabase/migrations/20260830055500_p2_fk_index_hardening.sql'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
+      - 'scripts/check-sales-customer-finance.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -52,3 +60,10 @@ jobs:
           node --check admin/sales-supply-workspace.js
           node --check api/sales-supply.js
           node --check api/direct-shipment-dispatch.js
+      - name: Validate P2 customer advances and Proformas
+        run: node scripts/check-sales-customer-finance.mjs
+      - name: Validate P2 JavaScript syntax
+        run: |
+          node --check admin/sales-customer-finance.js
+          node --check api/customer-advances.js
+          node --check api/proformas.js
