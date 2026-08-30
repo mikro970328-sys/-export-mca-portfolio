@@ -23,6 +23,13 @@
     return user?.role === 'master_admin' || MANAGEMENT_KEYS.some(key => Array.isArray(user?.permissions) && user.permissions.includes(key));
   }
 
+  function syncAccessUiState() {
+    const access = window.ExportMcaAccessControl;
+    const notificationsReadOnly = Boolean(access?.can?.('notifications.read') && !access?.can?.('notifications.manage'));
+    document.body.classList.toggle('access-notifications-readonly', notificationsReadOnly);
+    ensureAdministrationNavigation();
+  }
+
   async function request(path, options = {}) {
     if (typeof window.api === 'function') return window.api(path, options);
     const token = localStorage.getItem('export_mca_token') || '';
@@ -176,6 +183,7 @@
     const account = window.ExportMcaAccessControl?.refreshAccount
       ? await window.ExportMcaAccessControl.refreshAccount()
       : (await request('/api/account')).account || {};
+    syncAccessUiState();
     renderAccount(account || {});
     return account || {};
   }
@@ -232,6 +240,7 @@
     installStyles();
     ensureAccountSection();
     ensureAdministrationNavigation();
+    syncAccessUiState();
     cleanSidebarFooter();
     bindAccountForm();
 
@@ -240,10 +249,13 @@
       updatePageTitle(id);
       if (id === 'accountSection') loadAccount().catch(error => setStatus(error.message, false));
     });
+    window.addEventListener('export-mca:navigation-shell-changed', syncAccessUiState);
+    window.addEventListener('export-mca:admin-ready', syncAccessUiState);
 
     window.ExportMcaAccountAdministration = Object.freeze({
       owner: 'account-administration.js',
-      refresh: loadAccount
+      refresh: loadAccount,
+      syncNavigation: syncAccessUiState
     });
   }
 
