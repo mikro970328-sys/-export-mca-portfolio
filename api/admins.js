@@ -25,19 +25,21 @@ async function setUserTeams(userId, teamIds, actorId) {
 }
 
 async function loadUsers() {
-  const [admins, teams, roles] = await Promise.all([
+  const [admins, memberships, roles, teamsCatalog] = await Promise.all([
     supabase('admin_users', { query: `?select=${publicFields},access_roles:access_role_id(id,name,description,is_system,is_active)&order=created_at.asc` }),
     supabase('admin_team_directory', { query: '?select=admin_user_id,team_id,team_name,team_description,team_active&order=team_name.asc' }),
-    supabase('access_roles', { query: '?select=id,name,description,is_system,is_active&order=is_system.desc,name.asc' })
+    supabase('access_roles', { query: '?select=id,name,description,is_system,is_active&order=is_system.desc,name.asc' }),
+    supabase('teams', { query: '?select=id,name,description,is_active&order=name.asc' })
   ]);
   const teamMap = new Map();
-  for (const row of teams || []) {
+  for (const row of memberships || []) {
     if (!teamMap.has(row.admin_user_id)) teamMap.set(row.admin_user_id, []);
     teamMap.get(row.admin_user_id).push({ id:row.team_id, name:row.team_name, description:row.team_description, is_active:row.team_active });
   }
   return {
     admins:(admins || []).map(row => ({ ...row, teams:teamMap.get(row.id) || [] })),
-    roles:roles || []
+    roles:roles || [],
+    teams:teamsCatalog || []
   };
 }
 
