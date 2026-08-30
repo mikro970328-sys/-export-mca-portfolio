@@ -209,6 +209,13 @@
       await loadScript('/admin/account-administration.js?v=20260830-p3', 'data-account-administration');
       await navigationStylesPromise;
       await loadScript('/admin/navigation-shell.js?v=20260830-p3', 'data-navigation-shell');
+
+      if (accessCan('tasks.read')) {
+        await loadStylesheet('/admin/tasks-workspace.css?v=20260830-p4', 'data-tasks-workspace-style');
+        await loadScript('/admin/tasks-workspace.js?v=20260830-p4', 'data-tasks-workspace');
+        await loadScript('/admin/tasks-navigation.js?v=20260830-p4', 'data-tasks-navigation');
+      }
+
       window.ExportMcaAccessControl?.applyNavigation?.();
       await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
       await loadScript('/admin/operational-navigation.js?v=20260830-ux2d', 'data-operational-navigation');
