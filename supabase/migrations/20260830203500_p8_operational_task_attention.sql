@@ -260,6 +260,8 @@ with (security_invoker=true)
 as
 select
   w.*,
+  base.blocked_at,
+  base.assignment_state_changed_at,
   route.label as workflow_label,
   route.default_due_hours as workflow_default_due_hours,
   coalesce(route.due_soon_minutes,120) as due_soon_minutes,
@@ -275,8 +277,8 @@ select
     and w.due_at<=now()+make_interval(mins=>coalesce(route.due_soon_minutes,120))) as is_due_soon,
   greatest(floor(extract(epoch from (now()-w.created_at))/60),0)::bigint as age_minutes,
   case when w.due_at is null then null else floor(extract(epoch from (w.due_at-now()))/60)::bigint end as due_in_minutes,
-  case when w.blocked_at is null then null else greatest(floor(extract(epoch from (now()-w.blocked_at))/60),0)::bigint end as blocked_minutes,
-  greatest(floor(extract(epoch from (now()-w.assignment_state_changed_at))/60),0)::bigint as assignment_state_minutes,
+  case when base.blocked_at is null then null else greatest(floor(extract(epoch from (now()-base.blocked_at))/60),0)::bigint end as blocked_minutes,
+  greatest(floor(extract(epoch from (now()-base.assignment_state_changed_at))/60),0)::bigint as assignment_state_minutes,
   case
     when w.status in ('completed','cancelled') then 'closed'
     when w.status='blocked' then 'blocked'
@@ -291,6 +293,7 @@ select
      or route.routing_access_compatible is false
    )) as needs_routing_attention
 from public.operational_task_workspace w
+join public.operational_tasks base on base.id=w.id
 left join public.workflow_task_route_health route on route.workflow_key=w.workflow_key;
 
 revoke all on public.operational_task_attention from public,anon,authenticated;
