@@ -1,4 +1,4 @@
-import { fail, ok, requireAdmin, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
 
 async function paged(path, baseQuery, pageSize = 1000) {
   const rows = [];
@@ -15,7 +15,7 @@ async function paged(path, baseQuery, pageSize = 1000) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, 'finance.read');
   if (!admin) return;
   if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
 
