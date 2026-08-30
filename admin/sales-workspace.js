@@ -32,7 +32,7 @@
     ['commission','Comisión'],['gifts','Regalos'],['documentation','Documentación'],['bank_fee','Cargo bancario'],['other','Otro']
   ];
   const COST_STAGES = [
-    ['fulfillment','Embarque / cumplimiento'],['destination','Destino'],['inbound','Entrada / compra'],['overhead','Gasto general']
+    ['fulfillment','Embarque / cumplimiento'],['destination','Destino'],['inbound','Entrada / compra']
   ];
 
   async function request(path, options={}) {
@@ -106,6 +106,10 @@
     return [...map.values()];
   }
 
+  function realContainerShipments() {
+    return uniqueShipments().filter(row => String(row.container_number || '').trim());
+  }
+
   function normalizeDocType(value) {
     return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
   }
@@ -113,6 +117,7 @@
     const docs = Array.isArray(state.data?.documents) ? state.data.documents : [];
     const bol = String(shipment?.bol_number || '').trim().toUpperCase();
     return docs.filter(doc => {
+      if (doc.generated === true) return false;
       if (!shipment?.operation_id || String(doc.operation_id || '') !== String(shipment.operation_id)) return false;
       if (doc.shipment_id) return String(doc.shipment_id) === String(shipment.shipment_id);
       if (doc.bol_number) return Boolean(bol) && String(doc.bol_number).trim().toUpperCase() === bol;
@@ -179,15 +184,15 @@
     if (!s) return { text:'Operación no disponible', actions:[] };
     const c = controller();
     const order = c?.getOrder?.(state.salesOrderId) || null;
-    const shipments = uniqueShipments();
+    const shipments = realContainerShipments();
     const missingExp = shipments.find(row => !row.operation_id);
     const invoices = state.data?.billing?.invoices || [];
     const draft = invoices.find(invoice => invoice.status === 'draft');
     const issuedOpen = invoices.find(invoice => invoice.status === 'issued' && num(invoice.financial?.balance_due) > 0);
 
     if (s.commercial_status === 'draft') return { text:'Confirma la venta para iniciar su cumplimiento.', actions:[['Confirmar venta','confirm','primary']] };
+    if (missingExp) return { text:`El contenedor ${missingExp.container_number} ya está asignado y todavía no tiene Expediente.`, actions:[['Crear Expediente','create_expediente','orange',missingExp.shipment_id]] };
     if (order && c?.hasUnallocated?.(order)) return { text:'La venta tiene mercancía pendiente de asignar a un Cargue.', actions:[['Preparar Cargue','create_load','orange'],['Vincular Cargue existente','link_load','']] };
-    if (missingExp) return { text:`El contenedor ${missingExp.container_number || 'asignado'} todavía no tiene Expediente.`, actions:[['Crear Expediente','create_expediente','orange',missingExp.shipment_id]] };
     if (s.billing_status === 'not_invoiced' && num(s.available_to_invoice_value) > 0) return { text:'La venta está lista para crear su factura de cobro al cliente.', actions:[['Crear factura de cobro','new_invoice','primary']] };
     if (draft && !draft.operation_id) return { text:'La factura está en borrador. Asigna un Expediente antes de emitirla.', actions:[['Facturación y cobros','tab_billing','']] };
     if (draft?.operation_id) return { text:`${draft.invoice_number} está lista para emitir.`, actions:[['Emitir factura','issue_invoice','primary',draft.id]] };
@@ -218,7 +223,7 @@
           ${kpi('Venta',money(s.order_total,s.sales_currency))}
           ${kpi('Costo mercancía',financialValue(s.recognized_merchandise_cogs,s.cogs_currency || s.sales_currency,cogsComparable))}
           ${kpi('Gastos directos',financialValue(s.direct_cost_amount,s.direct_cost_currency || s.sales_currency,s.direct_cost_currency_count === 0 || s.direct_cost_currency === s.sales_currency))}
-          ${kpi('Ganancia actual',financialValue(s.contribution_margin,s.sales_currency,contributionComparable),contributionComparable ? 'good' : 'warn')}
+          ${kpi('Contribución',financialValue(s.contribution_margin,s.sales_currency,contributionComparable),contributionComparable ? 'good' : 'warn')}
           ${kpi('Facturado',financialValue(s.issued_invoice_total,s.issued_currency || s.sales_currency,invoiceComparable))}
           ${kpi('Cobrado',financialValue(s.collected_amount,s.issued_currency || s.sales_currency,invoiceComparable))}
         </div>
@@ -258,14 +263,15 @@
           <div class="sales-ws-money-row"><span>Costo real de mercancía</span><strong>${financialValue(s.recognized_merchandise_cogs,s.cogs_currency || s.sales_currency,s.profitability_status==='comparable')}</strong></div>
           <div class="sales-ws-money-row"><span>Margen bruto</span><strong>${financialValue(s.gross_margin,s.sales_currency,s.profitability_status==='comparable')}</strong></div>
           <div class="sales-ws-money-row"><span>Gastos directos</span><strong>${financialValue(s.direct_cost_amount,s.direct_cost_currency || s.sales_currency,s.direct_cost_currency_count===0 || s.direct_cost_currency===s.sales_currency)}</strong></div>
-          <div class="sales-ws-money-row total"><span>Ganancia actual</span><strong>${financialValue(s.contribution_margin,s.sales_currency,s.contribution_status==='comparable')}</strong></div>
+          <div class="sales-ws-money-row total"><span>Contribución de la venta</span><strong>${financialValue(s.contribution_margin,s.sales_currency,s.contribution_status==='comparable')}</strong></div>
         </div>
-        ${s.contribution_status !== 'comparable' ? '<div class="sales-ws-callout" style="margin-top:9px">La ganancia no se suma porque las monedas o el COGS no son comparables. El ERP no aplica FX automático.</div>' : ''}
+        ${s.contribution_status !== 'comparable' ? '<div class="sales-ws-callout" style="margin-top:9px">La contribución no se presenta porque las monedas o el COGS no son comparables. El ERP no aplica FX automático.</div>' : ''}
+        <div class="sales-ws-meta" style="margin-top:9px">Los gastos generales de la compañía se controlan por separado. Esta contribución no es flujo de caja.</div>
       </div>
     </div>
     <div class="sales-ws-card" style="margin-top:12px"><div class="sales-ws-row-head"><h3>Mercancía vendida</h3><span class="sales-ws-status">${items.length} línea${items.length===1?'':'s'}</span></div><div class="sales-ws-list">${items.map(item => {
       const product = item.product || {};
-      const lineTotal = item.entered_line_total ?? (num(item.ordered_quantity) * num(item.unit_price));
+      const lineTotal = item.entered_line_total;
       return `<div class="sales-ws-row"><div class="sales-ws-row-head"><div><div class="sales-ws-row-title">${esc(product.sku ? product.sku+' · ' : '')}${esc(product.name || 'Producto')}</div><div class="sales-ws-meta">${fmt(item.ordered_quantity)} ${esc(item.unit)}${num(item.ordered_pallets)>0 ? ` · ${fmt(item.ordered_pallets)} pallets` : ''}</div></div><b>${money(lineTotal,s.sales_currency)}</b></div><div class="sales-ws-meta">Despachado: ${fmt(item.fulfillment?.dispatched_quantity || 0)} · Pendiente: ${fmt(item.fulfillment?.remaining_to_dispatch_quantity || 0)} · Disponible para facturar: ${fmt(item.invoicing?.available_to_invoice_quantity || 0)}</div></div>`;
     }).join('')}</div></div>`;
   }
@@ -315,24 +321,24 @@
     const allocations = (state.data.costs?.allocations || []).filter(row => row.cost_charge?.status === 'posted');
     const comparable = s.contribution_status === 'comparable';
     return `<div class="sales-ws-grid">
-      <div class="sales-ws-card soft"><h3>Ganancia de esta venta</h3><div class="sales-ws-money-table">
+      <div class="sales-ws-card soft"><h3>Contribución de esta venta</h3><div class="sales-ws-money-table">
         <div class="sales-ws-money-row"><span>Venta atribuida</span><strong>${financialValue(s.attributed_sales_revenue,s.sales_currency,s.profitability_status==='comparable')}</strong></div>
         <div class="sales-ws-money-row"><span>− Costo mercancía</span><strong>${financialValue(s.recognized_merchandise_cogs,s.cogs_currency || s.sales_currency,s.profitability_status==='comparable')}</strong></div>
         <div class="sales-ws-money-row"><span>= Margen bruto</span><strong>${financialValue(s.gross_margin,s.sales_currency,s.profitability_status==='comparable')}</strong></div>
         <div class="sales-ws-money-row"><span>− Gastos directos</span><strong>${financialValue(s.direct_cost_amount,s.direct_cost_currency || s.sales_currency,s.direct_cost_currency_count===0 || s.direct_cost_currency===s.sales_currency)}</strong></div>
-        <div class="sales-ws-money-row total"><span>= Ganancia actual</span><strong>${financialValue(s.contribution_margin,s.sales_currency,comparable)}</strong></div>
-      </div>${!comparable ? '<div class="sales-ws-callout" style="margin-top:9px">No se fuerza una ganancia si los costos no son comparables en moneda o falta COGS real.</div>' : ''}</div>
-      <div class="sales-ws-card"><div class="sales-ws-row-head"><div><h3>Gastos directos</h3><div class="sales-ws-meta">Transporte, flete, seguro, comisión, regalos, documentación y otros gastos que pertenecen a esta venta.</div></div><button class="btn orange" data-ws-action="new_cost">+ Agregar gasto</button></div><div class="sales-ws-list" style="margin-top:10px">${allocations.length ? allocations.map(row => `<div class="sales-ws-row"><div class="sales-ws-row-head"><div><div class="sales-ws-row-title">${esc(costLabel(row))}</div><div class="sales-ws-meta">${esc(row.cost_charge?.cost_number || '')} · ${esc(date(row.cost_charge?.incurred_date))}${row.sales_order_item_id ? ' · Producto específico' : ' · Toda la venta'}</div></div><b>${money(row.amount,row.cost_charge?.currency || s.sales_currency)}</b></div>${row.cost_charge?.reference ? `<div class="sales-ws-meta">Ref: ${esc(row.cost_charge.reference)}</div>` : ''}</div>`).join('') : '<div class="sales-ws-empty">No hay gastos directos contabilizados en esta venta.</div>'}</div></div>
+        <div class="sales-ws-money-row total"><span>= Contribución</span><strong>${financialValue(s.contribution_margin,s.sales_currency,comparable)}</strong></div>
+      </div>${!comparable ? '<div class="sales-ws-callout" style="margin-top:9px">No se presenta contribución si los costos no son comparables en moneda o falta COGS real.</div>' : ''}<div class="sales-ws-meta" style="margin-top:9px">No incluye gastos generales de la compañía y no representa flujo de caja.</div></div>
+      <div class="sales-ws-card"><div class="sales-ws-row-head"><div><h3>Gastos directos</h3><div class="sales-ws-meta">Transporte, flete, seguro, comisión, regalos, documentación y otros gastos que pertenecen directamente a esta venta. Los gastos generales van fuera de esta ficha.</div></div><button class="btn orange" data-ws-action="new_cost">+ Agregar gasto</button></div><div class="sales-ws-list" style="margin-top:10px">${allocations.length ? allocations.map(row => `<div class="sales-ws-row"><div class="sales-ws-row-head"><div><div class="sales-ws-row-title">${esc(costLabel(row))}</div><div class="sales-ws-meta">${esc(row.cost_charge?.cost_number || '')} · ${esc(date(row.cost_charge?.incurred_date))}${row.sales_order_item_id ? ' · Producto específico' : ' · Toda la venta'}</div></div><b>${money(row.amount,row.cost_charge?.currency || s.sales_currency)}</b></div>${row.cost_charge?.reference ? `<div class="sales-ws-meta">Ref: ${esc(row.cost_charge.reference)}</div>` : ''}</div>`).join('') : '<div class="sales-ws-empty">No hay gastos directos contabilizados en esta venta.</div>'}</div></div>
     </div>`;
   }
 
   function renderDocuments() {
-    const shipments = uniqueShipments();
-    if (!shipments.length) return '<div class="sales-ws-empty">Todavía no hay contenedor asignado. El control documental se activa cuando exista un contenedor.</div>';
-    return `<div class="sales-ws-callout info">Aquí se controla la documentación <b>aduanal</b>. El Packing List y la Commercial Invoice se crean/suben manualmente en el Expediente; el ERP solo los marca completos cuando existe el archivo real.</div><div class="sales-ws-list" style="margin-top:12px">${shipments.map(shipment => {
+    const shipments = realContainerShipments();
+    if (!shipments.length) return '<div class="sales-ws-empty">Todavía no hay un contenedor real asignado. El control documental se activa cuando exista un número de contenedor.</div>';
+    return `<div class="sales-ws-callout info">Aquí se controla la documentación <b>aduanal</b>. El Packing List y la Commercial Invoice se crean/suben manualmente en el Expediente; el ERP solo los marca completos cuando existe el archivo oficial cargado.</div><div class="sales-ws-list" style="margin-top:12px">${shipments.map(shipment => {
       const status = customsStatus(shipment);
       const op = state.data.operations?.find(row => String(row.id) === String(shipment.operation_id || ''));
-      return `<div class="sales-ws-row"><div class="sales-ws-row-head"><div><div class="sales-ws-row-title">${esc(shipment.container_number || 'Contenedor')}</div><div class="sales-ws-meta">${esc(shipment.carrier || 'Naviera pendiente')} · ${esc(shipment.bol_number ? `B/L ${shipment.bol_number}` : 'B/L pendiente')} · ${esc(shipment.shipment_last_status || shipment.shipment_operational_status || 'Tracking activo')}</div></div>${shipment.operation_id ? pill('Expediente creado','confirmed') : pill('Expediente pendiente','warn')}</div>
+      return `<div class="sales-ws-row"><div class="sales-ws-row-head"><div><div class="sales-ws-row-title">${esc(shipment.container_number)}</div><div class="sales-ws-meta">${esc(shipment.carrier || 'Naviera pendiente')} · ${esc(shipment.bol_number ? `B/L ${shipment.bol_number}` : 'B/L pendiente')} · ${esc(shipment.shipment_last_status || shipment.shipment_operational_status || 'Tracking activo')}</div></div>${shipment.operation_id ? pill('Expediente creado','confirmed') : pill('Expediente pendiente','warn')}</div>
         <div class="sales-ws-doc-checks">
           <div class="sales-ws-doc-check"><span>Expediente</span>${shipment.operation_id ? pill(op?.operation_code || 'Creado','confirmed') : pill('Pendiente','warn')}</div>
           <div class="sales-ws-doc-check"><span>Packing List aduanal</span>${shipment.operation_id && status.hasPackingList ? pill('Cargado','confirmed') : pill('Pendiente','warn')}</div>
@@ -404,13 +410,13 @@
   }
 
   async function createExpediente(shipmentId) {
-    const shipment = uniqueShipments().find(row => String(row.shipment_id) === String(shipmentId));
+    const shipment = realContainerShipments().find(row => String(row.shipment_id) === String(shipmentId));
     const s = state.data.summary;
-    if (!shipment) throw new Error('Contenedor no encontrado en esta venta.');
+    if (!shipment) throw new Error('No hay un contenedor real asignado para crear el Expediente.');
     if (shipment.operation_id) return parentNavigation()?.openExpediente?.(shipment.operation_id);
     const existingOps = state.data.operations || [];
     if (existingOps.length) return openOperationChooser(shipment);
-    if (!confirm(`¿Crear un Expediente para el contenedor ${shipment.container_number || ''}?`)) return;
+    if (!confirm(`¿Crear un Expediente para el contenedor ${shipment.container_number}?`)) return;
     const result = await request('/api/operations',{method:'POST',body:JSON.stringify({client_id:s.client_id,shipment_id:shipment.shipment_id,notes:`Creado desde ${s.so_number}`})});
     if (!result.operation?.id) throw new Error('No se pudo crear el Expediente.');
     await reload();
@@ -541,7 +547,7 @@
   function ensureCostModal() {
     if(byId('salesWorkspaceCostModal'))return;
     const modal=document.createElement('div');modal.id='salesWorkspaceCostModal';modal.className='modal hidden';
-    modal.innerHTML=`<div class="dialog"><div class="dialog-head"><div><h2>Agregar gasto directo</h2><div class="muted">Este gasto quedará contabilizado y vinculado explícitamente a esta venta o a uno de sus productos.</div></div><button class="btn" data-ws-cost-close>✕</button></div><div class="sales-ws-modal-grid"><div><label>Tipo de gasto</label><select id="wsCostCategory">${COST_CATEGORIES.map(([key,label])=>`<option value="${key}">${esc(label)}</option>`).join('')}</select></div><div><label>Etapa</label><select id="wsCostStage">${COST_STAGES.map(([key,label])=>`<option value="${key}">${esc(label)}</option>`).join('')}</select></div><div><label>Monto</label><input id="wsCostAmount" type="number" min="0" step="0.01"></div><div><label>Moneda</label><input id="wsCostCurrency" maxlength="3"></div><div><label>Fecha</label><input id="wsCostDate" type="date"></div><div><label>Aplicar a</label><select id="wsCostTarget"></select></div><div class="full"><label>Referencia</label><input id="wsCostReference" placeholder="Factura, wire, proveedor o referencia"></div><div class="full"><label>Nota opcional</label><input id="wsCostNotes"></div></div><div class="sales-ws-helper">Si registras una moneda diferente a la venta, el ERP la conserva pero no inventará un tipo de cambio; la ganancia quedará “no comparable” hasta que exista una regla de FX explícita.</div><div class="sales-ws-form-actions"><button class="btn" data-ws-cost-close>Cancelar</button><button id="wsSaveCost" class="btn orange">Guardar gasto</button></div><div id="wsCostMsg" class="msg"></div></div>`;
+    modal.innerHTML=`<div class="dialog"><div class="dialog-head"><div><h2>Agregar gasto directo</h2><div class="muted">Este gasto quedará contabilizado y vinculado explícitamente a esta venta o a uno de sus productos. Los gastos generales de la compañía no se registran aquí.</div></div><button class="btn" data-ws-cost-close>✕</button></div><div class="sales-ws-modal-grid"><div><label>Tipo de gasto</label><select id="wsCostCategory">${COST_CATEGORIES.map(([key,label])=>`<option value="${key}">${esc(label)}</option>`).join('')}</select></div><div><label>Etapa</label><select id="wsCostStage">${COST_STAGES.map(([key,label])=>`<option value="${key}">${esc(label)}</option>`).join('')}</select></div><div><label>Monto</label><input id="wsCostAmount" type="number" min="0" step="0.01"></div><div><label>Moneda</label><input id="wsCostCurrency" maxlength="3"></div><div><label>Fecha</label><input id="wsCostDate" type="date"></div><div><label>Aplicar a</label><select id="wsCostTarget"></select></div><div class="full"><label>Referencia</label><input id="wsCostReference" placeholder="Factura, wire, proveedor o referencia"></div><div class="full"><label>Nota opcional</label><input id="wsCostNotes"></div></div><div class="sales-ws-helper">Si registras una moneda diferente a la venta, el ERP la conserva pero no inventará un tipo de cambio; la contribución quedará “no comparable” hasta que exista una regla de FX explícita.</div><div class="sales-ws-form-actions"><button class="btn" data-ws-cost-close>Cancelar</button><button id="wsSaveCost" class="btn orange">Guardar gasto</button></div><div id="wsCostMsg" class="msg"></div></div>`;
     document.body.appendChild(modal);modal.querySelectorAll('[data-ws-cost-close]').forEach(button=>button.onclick=()=>modal.classList.add('hidden'));modal.addEventListener('click',event=>{if(event.target===modal)modal.classList.add('hidden')});byId('wsSaveCost').onclick=saveCost;
   }
 
