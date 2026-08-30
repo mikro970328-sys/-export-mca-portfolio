@@ -201,13 +201,13 @@ for (const fragment of [
 }
 
 for (const fragment of [
-  "owner: 'dashboard-operational-state.js'",
-  "source: 'api/dashboard.js'",
-  'payload.stats',
-  'payload.operations',
-  'payload.recent_activity'
+  "owner:'dashboard-operational-state.js'",
+  'data.stats',
+  'data.executive',
+  'data.recent_activity',
+  'window.ExecutiveDashboard=Object.freeze'
 ]) {
-  if (!dashboard.includes(fragment)) errors.push(`Falta propiedad de presentación UX-B en dashboard: ${fragment}`);
+  if (!dashboard.includes(fragment)) errors.push(`Falta propiedad de presentación UX-B/P11 en dashboard: ${fragment}`);
 }
 
 for (const forbidden of [
@@ -220,7 +220,7 @@ for (const forbidden of [
 }
 
 for (const fragment of [
-  "owner: 'api/dashboard.js'",
+  "owner:'api/dashboard.js'",
   'function classifyShipment',
   'function buildShipmentStats',
   'function buildOperationStats',
@@ -302,7 +302,7 @@ console.log('- Expedientes está retirado del loader y del shell estático del f
 console.log('- Tracking es dueño del readiness y carga manual de Packing List Cuba / Commercial Invoice Cuba.');
 console.log('- Los propietarios/parches retirados no existen ni se cargan.');
 console.log('- navigation-shell.js no contiene llamadas de negocio ni wrappers de datos.');
-console.log('- UX-B usa api/dashboard.js como única proyección operativa; el frontend solo presenta esa proyección.');
+console.log('- UX-B/P11 usa api/dashboard.js como proyección operativa; el frontend solo presenta la proyección ejecutiva recibida.');
 console.log('- UX-C mantiene registration-form-shell.js limitado a guía visual; containers-module.js conserva guardado y validación de negocio.');
 console.log('- UX-C mantiene modal-dismissal.js limitado a política de cierre; index.html conserva apertura y contenido del modal.');
 console.log('- Centro de alertas conserva la propiedad de las alertas mostradas en Inicio.');
