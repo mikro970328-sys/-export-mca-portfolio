@@ -45,7 +45,9 @@ const frontendFiles = [
   'admin/access-control-administration.js',
   'admin/access-control.css',
   'admin/account-administration.js',
-  'admin/erp.js'
+  'admin/erp.js',
+  'admin/navigation-shell.js',
+  'admin/operational-alert-center.js'
 ];
 for (const file of frontendFiles) {
   if (!fs.existsSync(path.join(root,file))) failures.push(`${file}: falta superficie frontend P3`);
@@ -56,6 +58,8 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
   const accountUi = fs.readFileSync(path.join(root,'admin/account-administration.js'),'utf8');
   const loader = fs.readFileSync(path.join(root,'admin/erp.js'),'utf8');
   const accessCss = fs.readFileSync(path.join(root,'admin/access-control.css'),'utf8');
+  const navigation = fs.readFileSync(path.join(root,'admin/navigation-shell.js'),'utf8');
+  const alertCenter = fs.readFileSync(path.join(root,'admin/operational-alert-center.js'),'utf8');
   const history = fs.readFileSync(path.join(root,'api/history.js'),'utf8');
 
   for (const required of [
@@ -97,6 +101,23 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
   }
   if (!history.includes("action === 'mark_read' ? 'notifications.read' : 'notifications.manage'")) {
     failures.push('api/history.js: mark_read debe requerir notifications.read y las demás mutaciones notifications.manage');
+  }
+
+  if (navigation.includes('newOperationsSection')) {
+    failures.push('admin/navigation-shell.js: no debe conservar newOperationsSection en la navegación activa');
+  }
+  for (const required of ["'adminsSection'","'accountSection'"]) {
+    if (!navigation.includes(required)) failures.push(`admin/navigation-shell.js: Administración debe incluir ${required}`);
+  }
+  if (navigation.includes('nav-role-proxy') || navigation.includes('legacyAdmin')) {
+    failures.push('admin/navigation-shell.js: no debe depender del proxy legacy de administración');
+  }
+
+  if (!alertCenter.includes("canManageNotifications=()=>window.ExportMcaAccessControl?.can?.('notifications.manage')!==false")) {
+    failures.push('admin/operational-alert-center.js: falta guard frontend de notifications.manage');
+  }
+  if (!alertCenter.includes('if(!canManageNotifications()||checking)return')) {
+    failures.push('admin/operational-alert-center.js: el checker derivado no debe ejecutarse en modo solo lectura');
   }
 }
 
