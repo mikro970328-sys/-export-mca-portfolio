@@ -213,6 +213,7 @@
       if (accessCan('tasks.read')) {
         await loadStylesheet('/admin/tasks-workspace.css?v=20260830-p4', 'data-tasks-workspace-style');
         await loadScript('/admin/tasks-workspace.js?v=20260830-p4', 'data-tasks-workspace');
+        await loadScript('/admin/tasks-navigation.js?v=20260830-p4', 'data-tasks-navigation');
       }
 
       window.ExportMcaAccessControl?.applyNavigation?.();
