@@ -21,8 +21,15 @@ on:
       - 'admin/client-extra-fields.js'
       - 'admin/client-actions-menu.js'
       - 'admin/mobile-interaction-core.js'
+      - 'admin/sales.html'
+      - 'admin/sales-supply-workspace.js'
+      - 'admin/sales-supply-workspace.css'
+      - 'api/sales-supply.js'
+      - 'api/direct-shipment-dispatch.js'
+      - 'supabase/migrations/20260830053000_p1_direct_shipment_dispatch_lifecycle.sql'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
+      - 'scripts/check-sales-supply-workspace.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -38,3 +45,10 @@ jobs:
         run: node scripts/check-frontend-ownership.mjs
       - name: Validate UX-E5 shipment importer independence
         run: node scripts/check-shipment-importer-independence.mjs
+      - name: Validate P1 sales supply workspace
+        run: node scripts/check-sales-supply-workspace.mjs
+      - name: Validate P1 JavaScript syntax
+        run: |
+          node --check admin/sales-supply-workspace.js
+          node --check api/sales-supply.js
+          node --check api/direct-shipment-dispatch.js
