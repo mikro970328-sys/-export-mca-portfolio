@@ -65,6 +65,9 @@ if(!failures.length){
   }
 
   for(const text of ['task_blocked','task_overdue','workflow_route_invalid','operational_task_attention','workflow_task_route_directory'])if(!tracking.includes(text))failures.push(`tracking-alerts P9: falta política ${text}`);
+  if(!tracking.includes("task.status==='blocked'"))failures.push('P9: bloqueo debe evaluarse por estado real de la tarea');
+  if(!tracking.includes('task.is_overdue_attention===true'))failures.push('P9: vencimiento debe evaluarse independientemente del attention_state');
+  if(/task\.attention_state===['"]overdue['"]/.test(tracking))failures.push('P9: attention_state no debe ocultar vencimiento cuando la tarea también está bloqueada');
   if(tracking.includes('processCustomsDocumentAlerts'))failures.push('tracking-alerts P9: documentos Cuba no deben seguir como alerta inmediata');
   if(/EVENT_TASK_UNASSIGNED|task_unassigned/.test(tracking))failures.push('P9: unassigned no genera alerta individual');
   if(/due_soon/.test(tracking)&&/EVENT_TASK/.test(tracking))failures.push('P9: due_soon no genera alerta individual');
