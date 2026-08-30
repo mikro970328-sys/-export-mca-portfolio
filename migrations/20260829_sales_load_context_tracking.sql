@@ -109,7 +109,6 @@ declare
   v_product text;
   v_quantity numeric;
   v_unit text;
-  v_unit_count integer;
 begin
   select * into v_load from public.loads where id = p_load_id for update;
   if not found then raise exception 'LOAD_NOT_FOUND'; end if;
@@ -135,9 +134,8 @@ begin
   select
     string_agg(distinct p.name, ', ' order by p.name),
     case when count(distinct nullif(btrim(li.unit),'')) <= 1 then sum(li.planned_quantity) else null end,
-    case when count(distinct nullif(btrim(li.unit),'')) <= 1 then max(nullif(btrim(li.unit),'')) else null end,
-    count(distinct nullif(btrim(li.unit),''))
-  into v_product, v_quantity, v_unit, v_unit_count
+    case when count(distinct nullif(btrim(li.unit),'')) <= 1 then max(nullif(btrim(li.unit),'')) else null end
+  into v_product, v_quantity, v_unit
   from public.load_items li
   join public.products p on p.id = li.product_id
   where li.load_id = p_load_id;
@@ -163,25 +161,3 @@ begin
   return v_shipment;
 end;
 $function$;
-
--- Deterministic repair for display-only merchandise fields on shipments already linked to a load.
-with load_merchandise as (
-  select
-    l.shipment_id,
-    string_agg(distinct p.name, ', ' order by p.name) as product,
-    case when count(distinct nullif(btrim(li.unit),'')) <= 1 then sum(li.planned_quantity) else null end as quantity,
-    case when count(distinct nullif(btrim(li.unit),'')) <= 1 then max(nullif(btrim(li.unit),'')) else null end as quantity_unit
-  from public.loads l
-  join public.load_items li on li.load_id = l.id
-  join public.products p on p.id = li.product_id
-  where l.shipment_id is not null
-  group by l.shipment_id
-)
-update public.shipments s
-set product = coalesce(s.product, lm.product),
-    quantity = coalesce(s.quantity, lm.quantity),
-    quantity_unit = coalesce(s.quantity_unit, lm.quantity_unit),
-    updated_at = now()
-from load_merchandise lm
-where s.id = lm.shipment_id
-  and (s.product is null or s.quantity is null or s.quantity_unit is null);
