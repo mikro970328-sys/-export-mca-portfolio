@@ -1,178 +1,230 @@
 (() => {
-  if (window.__dashboardOperationalStateInstalled) return;
-  window.__dashboardOperationalStateInstalled = true;
+  'use strict';
+  if (window.__executiveDashboardInstalled) return;
+  window.__executiveDashboardInstalled = true;
 
-  // UX-B contract markers: presentation owner: 'dashboard-operational-state.js'; source: 'api/dashboard.js'.
-  const byId = id => document.getElementById(id);
-  const escHtml = value => String(value ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[c]));
+  const $ = id => document.getElementById(id);
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const state = { data:null, loading:false, filters:{ start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:'' } };
 
-  function openSection(sectionId) {
-    if (typeof window.showSection === 'function') window.showSection(sectionId);
+  const number = value => new Intl.NumberFormat('es-US',{maximumFractionDigits:2}).format(Number(value || 0));
+  const integer = value => new Intl.NumberFormat('es-US',{maximumFractionDigits:0}).format(Number(value || 0));
+  const percent = value => value === null || value === undefined ? '—' : `${new Intl.NumberFormat('es-US',{minimumFractionDigits:1,maximumFractionDigits:2}).format(Number(value))}%`;
+  const money = (value,currency) => {
+    const amount=Number(value || 0);
+    try { return new Intl.NumberFormat('es-US',{style:'currency',currency:String(currency||'USD').toUpperCase(),maximumFractionDigits:2}).format(amount); }
+    catch { return `${number(amount)} ${String(currency||'').toUpperCase()}`.trim(); }
+  };
+  const dateLabel = value => {
+    if(!value)return '—';
+    const date=new Date(value);
+    return Number.isNaN(date.getTime())?'—':date.toLocaleString('es-US',{dateStyle:'medium',timeStyle:'short'});
+  };
+
+  function currentPeriodLabel(executive={}) {
+    const period=executive.period||{};
+    if(period.start_date && period.end_date)return `${period.start_date} → ${period.end_date}`;
+    if(period.start_date)return `Desde ${period.start_date}`;
+    if(period.end_date)return `Hasta ${period.end_date}`;
+    return 'Todo el histórico de actividad';
   }
 
-  function openTracking(filter = null, search = '') {
-    openSection('containersSection');
-    if (filter) document.querySelector(`[data-container-filter="${filter}"]`)?.click();
-    const searchInput = byId('shipmentSearch');
-    if (searchInput) {
-      searchInput.value = search;
-      searchInput.dispatchEvent(new Event('input', { bubbles:true }));
-      if (search) searchInput.focus({ preventScroll:true });
+  function optionRows(rows,labeler) {
+    return (rows||[]).map(row=>`<option value="${esc(row.id)}">${esc(labeler(row))}</option>`).join('');
+  }
+
+  function filterBar(data) {
+    const options=data.filter_options||{};
+    const selected=state.filters;
+    const capabilities=options.capabilities||{};
+    return `<section class="executive-filter-card">
+      <div class="executive-filter-head"><div><h2>Dashboard ejecutivo</h2><p>Actividad por período. AR y AP se muestran como saldos actuales.</p></div><div class="executive-filter-actions"><button type="button" class="alt" id="dashboardResetFilters">Limpiar</button><button type="button" id="dashboardApplyFilters">Aplicar filtros</button></div></div>
+      <div class="executive-filters">
+        <label>Desde<input id="dashboardStartDate" type="date" value="${esc(selected.start_date)}"></label>
+        <label>Hasta<input id="dashboardEndDate" type="date" value="${esc(selected.end_date)}"></label>
+        <label>Moneda<select id="dashboardCurrency"><option value="">Todas, separadas</option>${(options.currencies||[]).map(currency=>`<option value="${esc(currency)}" ${selected.currency===currency?'selected':''}>${esc(currency)}</option>`).join('')}</select></label>
+        ${capabilities.clients?`<label>Cliente<select id="dashboardClient"><option value="">Todos</option>${optionRows(options.clients,row=>row.company?`${row.name} · ${row.company}`:row.name)}</select></label>`:''}
+        ${capabilities.suppliers?`<label>Proveedor<select id="dashboardSupplier"><option value="">Todos</option>${optionRows(options.suppliers,row=>row.legal_name?`${row.name} · ${row.legal_name}`:row.name)}</select></label>`:''}
+        ${capabilities.products?`<label>Producto<select id="dashboardProduct"><option value="">Todos</option>${optionRows(options.products,row=>[row.sku,row.name,row.brand].filter(Boolean).join(' · '))}</select></label>`:''}
+      </div>
+      <div class="executive-filter-basis"><span>Período: <b>${esc(currentPeriodLabel(data.executive))}</b></span><span>Base AR/AP: <b>snapshot actual</b></span><span>FX: <b>no se aplica</b></span></div>
+    </section>`;
+  }
+
+  function metricCard(label,value,detail='',tone='') {
+    return `<div class="executive-metric ${tone}"><span>${esc(label)}</span><strong>${value}</strong>${detail?`<small>${detail}</small>`:''}</div>`;
+  }
+
+  function financeByCurrency(data) {
+    const executive=data.executive||{};
+    const activity=executive.activity_by_currency||[];
+    const balances=executive.balances_by_currency||[];
+    const byBalance=new Map(balances.map(row=>[String(row.currency),row]));
+    const currencies=[...new Set([...activity.map(row=>String(row.currency)),...balances.map(row=>String(row.currency))])].filter(Boolean).sort();
+    if(!currencies.length)return '<section class="executive-section"><div class="executive-section-head"><div><h3>Finanzas por moneda</h3><p>No hay actividad financiera para los filtros seleccionados.</p></div></div><div class="executive-empty">Sin datos financieros para este período.</div></section>';
+
+    const panels=currencies.map(currency=>{
+      const a=activity.find(row=>String(row.currency)===currency)||{};
+      const b=byBalance.get(currency)||{};
+      const marginReady=Number(a.margin_eligible_invoice_count||0)>0;
+      const contributionReady=Number(a.contribution_eligible_order_count||0)>0;
+      const marginDetail=marginReady?`${integer(a.margin_eligible_invoice_count)} factura(s) elegible(s) · ${percent(a.gross_margin_pct)}`:`${integer(a.margin_incomplete_invoice_count||0)} factura(s) sin rentabilidad completa`;
+      const contributionDetail=contributionReady?`${integer(a.contribution_eligible_order_count)} SO elegible(s) · ${percent(a.contribution_margin_pct)}`:`${integer(a.contribution_incomplete_order_count||0)} SO sin contribución comparable`;
+      return `<article class="executive-currency-panel">
+        <div class="executive-currency-head"><div><span>Moneda</span><h3>${esc(currency)}</h3></div><div class="executive-snapshot-chip">Sin conversión FX</div></div>
+        <div class="executive-finance-grid">
+          ${metricCard('Ventas emitidas',money(a.issued_sales,currency),`${integer(a.issued_invoice_count)} factura(s)`)}
+          ${metricCard('Ventas confirmadas',money(a.booked_sales_order_value,currency),`${integer(a.so_confirmed_count)} SO confirmada(s)`)}
+          ${metricCard('Compras comprometidas',money(a.po_committed_value,currency),`${integer(a.po_committed_count)} PO comprometida(s)`)}
+          ${metricCard('Cobrado',money(a.cash_collected,currency),`${integer(a.customer_payment_count)} cobro(s)`,'positive')}
+          ${metricCard('Pagado',money(a.cash_paid,currency),`${integer(a.supplier_payment_count)} pago(s)`)}
+          ${metricCard('Flujo neto de caja',money(a.net_cash_flow,currency),'Calculado por backend con cash posted',Number(a.net_cash_flow||0)<0?'negative':'positive')}
+          ${metricCard('AR actual',money(b.ar_balance,currency),`${integer(b.open_ar_invoice_count)} factura(s) abierta(s) · ${integer(b.overdue_ar_count)} vencida(s)`)}
+          ${metricCard('AP actual',money(b.ap_balance,currency),`${integer(b.open_ap_bill_count)} cuenta(s) abierta(s) · ${integer(b.overdue_ap_count)} vencida(s)`)}
+          ${metricCard('COGS reconocido',marginReady?money(a.recognized_cogs,currency):'No disponible',marginDetail)}
+          ${metricCard('Margen bruto',marginReady?money(a.gross_margin,currency):'No disponible',marginDetail,marginReady&&Number(a.gross_margin||0)<0?'negative':'')}
+          ${metricCard('Contribución',contributionReady?money(a.contribution_margin,currency):'No disponible',contributionDetail,contributionReady&&Number(a.contribution_margin||0)<0?'negative':'')}
+          ${metricCard('Costos directos elegibles',contributionReady?money(a.contribution_direct_cost,currency):'No disponible',contributionDetail)}
+        </div>
+      </article>`;
+    }).join('');
+    return `<section class="executive-section"><div class="executive-section-head"><div><h3>Finanzas por moneda</h3><p>Los importes nunca se suman entre monedas.</p></div><button type="button" class="alt" data-dashboard-open="costs">Costos y rentabilidad</button></div><div class="executive-currency-list">${panels}</div></section>`;
+  }
+
+  function operationalSummary(data) {
+    const task=data.work_attention?.tasks;
+    const alerts=data.work_attention?.alerts;
+    const cards=[
+      ['Clientes activos',data.stats?.clients||0,'clients','Base comercial'],
+      ['Productos activos',data.stats?.products||0,'products','Catálogo maestro'],
+      ['Proveedores activos',data.stats?.suppliers||0,'suppliers','Abastecimiento'],
+      ['Contenedores activos',data.stats?.active||0,'containers',`${integer(data.stats?.in_transit||0)} en tránsito`],
+      ['WR recibidos',data.warehouse_receipts?.received||0,'warehouse',`${integer(data.warehouse_receipts?.total||0)} históricos`],
+      ['Cargues activos',data.loads?.active||0,'loads',`${integer(data.loads?.dispatched||0)} despachados`],
+      ['Productos con stock',data.inventory?.products_with_stock||0,'inventory',`${number(data.inventory?.available_quantity||0)} unidades disponibles`],
+      ['Pallets disponibles',number(data.inventory?.available_pallets||0),'inventory',`${number(data.inventory?.reserved_pallets||0)} reservados`]
+    ];
+    if(task)cards.push(['Tareas abiertas',task.open,'tasks',`${integer(task.blocked)} bloqueadas · ${integer(task.overdue)} vencidas`]);
+    if(alerts)cards.push(['Alertas activas',alerts.active,'alerts',`${integer(alerts.critical)} críticas`]);
+    return `<section class="executive-section"><div class="executive-section-head"><div><h3>Operación actual</h3><p>Conteos derivados del estado actual del ERP.</p></div></div><div class="executive-ops-grid">${cards.map(([label,value,target,detail])=>`<button type="button" class="executive-op-card" data-dashboard-open="${target}"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(detail)}</small></button>`).join('')}</div></section>`;
+  }
+
+  function exceptionsPanel(data) {
+    const financial=data.executive?.exceptions||{};
+    const task=data.work_attention?.tasks;
+    const alerts=data.work_attention?.alerts;
+    const rows=[
+      ['AR vencido',financial.overdue_ar_count||0,'invoices'],
+      ['AP vencido',financial.overdue_ap_count||0,'payables'],
+      ['Rentabilidad de factura incompleta',financial.invoice_profitability_incomplete_count||0,'costs'],
+      ['Contribución de venta incompleta',financial.sales_order_contribution_incomplete_count||0,'costs'],
+      ['Pagos proveedor sin aplicar',financial.supplier_unapplied_payment_count||0,'payables'],
+      ['PO con exceso de recepción',financial.po_receipt_excess_count||0,'purchases'],
+      ['PO con valor incompleto',financial.po_order_value_incomplete_count||0,'purchases'],
+      ['SO con despacho parcial',financial.sales_order_partial_dispatch_count||0,'sales']
+    ];
+    if(task){ rows.push(['Tareas bloqueadas',task.blocked,'tasks'],['Tareas vencidas',task.overdue,'tasks'],['Routing incompatible',task.routing,'tasks']); }
+    if(alerts)rows.push(['Alertas críticas',alerts.critical,'alerts']);
+    const active=rows.filter(row=>Number(row[1]||0)>0);
+    return `<section class="executive-section"><div class="executive-section-head"><div><h3>Excepciones que requieren atención</h3><p>Solo desviaciones; el trabajo normal permanece en Tareas.</p></div></div>${active.length?`<div class="executive-exception-list">${active.map(([label,value,target])=>`<button type="button" data-dashboard-open="${target}"><span>${esc(label)}</span><strong>${integer(value)}</strong></button>`).join('')}</div>`:'<div class="executive-empty">No hay excepciones activas en los indicadores disponibles.</div>'}</section>`;
+  }
+
+  function activityPanel(data) {
+    const rows=data.recent_activity||[];
+    return `<section class="executive-section"><div class="executive-section-head"><div><h3>Actividad logística reciente</h3><p>Últimos movimientos de contenedores registrados.</p></div><button type="button" class="alt" data-dashboard-open="containers">Ver tracking</button></div>${rows.length?`<div class="executive-activity-list">${rows.map(row=>`<button type="button" class="executive-activity-row" data-dashboard-shipment="${esc(row.id)}"><div><strong>${esc(row.container_number||'Sin número')}</strong><span>${esc(row.client_name||'Sin cliente')}</span></div><div><span>${esc(row.operational_status||'Registrado')}</span><small>${esc(dateLabel(row.updated_at))}</small></div></button>`).join('')}</div>`:'<div class="executive-empty">No hay actividad logística reciente.</div>'}</section>`;
+  }
+
+  function renderDashboard(data) {
+    state.data=data;
+    window.__lastDashboardPayload=data;
+    const section=$('dashboardSection');
+    if(!section)return;
+    const executive=data.executive||{};
+    const period=executive.period||{};
+    state.filters={
+      start_date:period.start_date||'',
+      end_date:period.end_date||'',
+      currency:period.currency||'',
+      client_id:period.client_id||'',
+      supplier_id:period.supplier_id||'',
+      product_id:period.product_id||''
+    };
+    section.innerHTML=`<div class="executive-dashboard">${filterBar(data)}${financeByCurrency(data)}${operationalSummary(data)}${exceptionsPanel(data)}${activityPanel(data)}<div class="executive-generated">Actualizado ${esc(dateLabel(data.generated_at))} · Fuente financiera: ${esc(executive.owner||'public.executive_dashboard_rollup')}</div></div>`;
+    restoreSelect('dashboardClient',state.filters.client_id);
+    restoreSelect('dashboardSupplier',state.filters.supplier_id);
+    restoreSelect('dashboardProduct',state.filters.product_id);
+    bind();
+  }
+
+  function restoreSelect(id,value){ const node=$(id); if(node&&value)node.value=value; }
+
+  function readFilters() {
+    return {
+      start_date:$('dashboardStartDate')?.value||'',
+      end_date:$('dashboardEndDate')?.value||'',
+      currency:$('dashboardCurrency')?.value||'',
+      client_id:$('dashboardClient')?.value||'',
+      supplier_id:$('dashboardSupplier')?.value||'',
+      product_id:$('dashboardProduct')?.value||''
+    };
+  }
+
+  async function reloadDashboard(filters=readFilters()) {
+    if(state.loading)return;
+    state.loading=true;
+    const section=$('dashboardSection');
+    const button=$('dashboardApplyFilters');
+    if(button)button.disabled=true;
+    try {
+      const params=new URLSearchParams();
+      Object.entries(filters).forEach(([key,value])=>{if(value)params.set(key,value);});
+      const result=await window.api(`/api/dashboard${params.size?`?${params}`:''}`);
+      renderDashboard(result);
+    } catch(error) {
+      if(section)section.insertAdjacentHTML('afterbegin',`<div class="executive-error">${esc(error.message||'No se pudo cargar el dashboard.')}</div>`);
+    } finally {
+      state.loading=false;
+      if(button)button.disabled=false;
     }
   }
 
-  function openRecentShipment(containerNumber) {
-    if (!containerNumber) return openTracking('all');
-    openTracking('all', containerNumber);
+  function openTarget(target) {
+    const shell=window.NavigationShell;
+    const section=id=>typeof window.showSection==='function'&&window.showSection(id);
+    if(target==='clients')return section('clientsSection');
+    if(target==='products')return shell?.openProducts?.();
+    if(target==='suppliers')return shell?.openSuppliers?.();
+    if(target==='containers')return section('containersSection');
+    if(target==='warehouse')return shell?.openWarehouse?.();
+    if(target==='loads')return shell?.openLoads?.();
+    if(target==='inventory')return shell?.openInventory?.();
+    if(target==='tasks')return section('tasksSection');
+    if(target==='alerts'){section('notificationsSection');return window.loadOperationalAlertCenter?.();}
+    if(target==='sales')return shell?.openSales?.();
+    if(target==='purchases')return shell?.openPurchases?.();
+    if(target==='invoices')return shell?.openInvoices?.();
+    if(target==='payables')return shell?.openPayables?.();
+    if(target==='costs')return shell?.openCosts?.();
+    return false;
   }
 
-  function activateInteractiveElement(element, action) {
-    if (!element || typeof action !== 'function') return;
-    element.setAttribute('role','link');
-    element.setAttribute('tabindex','0');
-    element.classList.add('dashboard-context-link');
-    element.addEventListener('click', action);
-    element.addEventListener('keydown', event => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      event.preventDefault();
-      action();
-    });
+  function bind() {
+    $('dashboardApplyFilters')?.addEventListener('click',()=>reloadDashboard());
+    $('dashboardResetFilters')?.addEventListener('click',()=>reloadDashboard({start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:''}));
+    document.querySelectorAll('#dashboardSection [data-dashboard-open]').forEach(button=>button.addEventListener('click',()=>openTarget(button.dataset.dashboardOpen)));
+    document.querySelectorAll('#dashboardSection [data-dashboard-shipment]').forEach(button=>button.addEventListener('click',async()=>{
+      try { await window.OperationalNavigation?.openEntity?.({type:'shipment',id:button.dataset.dashboardShipment}); }
+      catch(error){ console.error('[dashboard shipment navigation]',error); }
+    }));
   }
 
-  function ensureCounterStyles() {
-    if (byId('dashboardCounterStyles')) return;
-    const style = document.createElement('style');
-    style.id = 'dashboardCounterStyles';
-    style.textContent = `
-      .dashboard-counter-strip{display:flex;gap:8px;overflow:auto;padding:2px 0 14px;scrollbar-width:thin}
-      .dashboard-counter{min-width:138px;flex:1;background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 12px;box-shadow:0 5px 16px rgba(6,32,74,.04);cursor:pointer;transition:.15s ease}
-      .dashboard-counter:hover{border-color:#b8c7db;transform:translateY(-1px)}
-      .dashboard-counter-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-      .dashboard-counter-label{font-size:10px;text-transform:uppercase;letter-spacing:.35px;color:var(--muted);font-weight:800;white-space:nowrap}
-      .dashboard-counter-value{font-size:20px;color:var(--navy);font-weight:900}
-      .dashboard-counter-sub{font-size:10px;color:var(--muted);margin-top:4px;white-space:nowrap}
-      @media(max-width:700px){.dashboard-counter{min-width:125px}.dashboard-counter-value{font-size:18px}}
-    `;
-    document.head.appendChild(style);
-  }
-
-  function ensureDashboardStructure() {
-    const section = byId('dashboardSection');
-    if (!section) return false;
-    if (section.dataset.dashboardOwner === 'operational-v4') return true;
-
-    section.dataset.dashboardOwner = 'operational-v4';
-    section.innerHTML = `
-      <section class="card dashboard-hero">
-        <h1>Centro de Operaciones</h1>
-        <p>Una vista rápida de todo lo que está ocurriendo en Export MCA.</p>
-        <div class="dashboard-meta">
-          <span class="dashboard-chip" id="dashboardDate"></span>
-          <span class="dashboard-chip" id="dashboardFreshness">Actualizando…</span>
-        </div>
-      </section>
-      <section id="stats" class="dashboard-counter-strip" aria-label="Resumen operativo"></section>
-      <section class="dashboard-grid">
-        <section class="card">
-          <div class="section-head"><h3>Actividad reciente</h3><button class="alt" id="dashboardOpenContainers">Ver contenedores</button></div>
-          <div id="recentActivity" class="activity-list"></div>
-        </section>
-        <section class="card">
-          <div class="section-head"><h3>Expedientes</h3><button class="alt" id="dashboardOpenOperations">Abrir expedientes</button></div>
-          <div id="dashboardOperationSummary" class="status-list"></div>
-        </section>
-      </section>
-      <section class="card">
-        <div class="section-head"><h3>Alertas que requieren atención</h3></div>
-        <div id="alerts" class="dashboard-alert-list"><div class="empty-state">Cargando alertas operativas…</div></div>
-      </section>`;
-
-    const date = byId('dashboardDate');
-    if (date) date.textContent = new Date().toLocaleDateString('es-US',{ weekday:'long',year:'numeric',month:'long',day:'numeric' });
-    byId('dashboardOpenContainers')?.addEventListener('click',() => openTracking('active'));
-    byId('dashboardOpenOperations')?.addEventListener('click',() => openSection('newOperationsSection'));
+  function initializeOperationalDashboard() {
+    if(state.data)bind();
     return true;
   }
 
-  function renderStats(payload) {
-    const target = byId('stats');
-    if (!target) return;
-    const stats = payload.stats || {};
-    const wr = payload.warehouse_receipts || {};
-    const loads = payload.loads || {};
-    const inv = payload.inventory || {};
-    const ops = payload.operations || {};
-    const warehouses = payload.warehouses || {};
-    const docs = payload.documents || {};
-
-    const counters = [
-      ['Clientes',stats.clients,`${stats.clients || 0} activos`,() => openSection('clientsSection'),'Abrir Clientes'],
-      ['Almacenes',warehouses.active,`${warehouses.total || 0} registrados`,() => openSection('warehouseSection'),'Abrir Almacén'],
-      ['WR',wr.total,`${wr.received || 0} recibidos · ${wr.cancelled || 0} cancelados`,() => openSection('warehouseSection'),'Abrir Warehouse Receipts'],
-      ['Productos con stock',inv.products_with_stock,`${inv.wr_with_stock || 0} WR con saldo`,() => openSection('inventorySection'),'Abrir Inventario'],
-      ['Cargues',loads.total,`${loads.active || 0} activos`,() => openSection('loadsSection'),'Abrir Cargues'],
-      ['Contenedores',stats.total,`${stats.active || 0} activos`,() => openTracking('all'),'Abrir Tracking'],
-      ['Expedientes',ops.total,`${ops.active || 0} activos`,() => openSection('newOperationsSection'),'Abrir Expedientes'],
-      ['Documentos',docs.total,'Expediente documental',() => openSection('newOperationsSection'),'Abrir documentos']
-    ];
-
-    target.innerHTML = counters.map((counter,index) => `
-      <div class="dashboard-counter" data-dashboard-counter="${index}" aria-label="${escHtml(counter[4])}">
-        <div class="dashboard-counter-top"><span class="dashboard-counter-label">${escHtml(counter[0])}</span><span class="dashboard-counter-value">${Number(counter[1] || 0)}</span></div>
-        <div class="dashboard-counter-sub">${escHtml(counter[2])}</div>
-      </div>`).join('');
-    counters.forEach((counter,index) => activateInteractiveElement(target.querySelector(`[data-dashboard-counter="${index}"]`),counter[3]));
-  }
-
-  function renderRecentActivity(payload) {
-    const target = byId('recentActivity');
-    if (!target) return;
-    const rows = Array.isArray(payload.recent_activity) ? payload.recent_activity : [];
-    target.innerHTML = rows.length
-      ? rows.map((item,index) => `<div class="activity-item" data-dashboard-recent="${index}" aria-label="Abrir ${escHtml(item.container_number || 'contenedor')} en Tracking"><div class="activity-icon">▣</div><div><div class="activity-title">${escHtml(item.container_number || 'Contenedor')}</div><div class="activity-sub">${escHtml(item.client_name || 'Sin cliente')} · ${escHtml(item.operational_status || 'Registrado')}</div></div><div class="activity-time">${item.updated_at ? new Date(item.updated_at).toLocaleDateString('es-US') : '-'}</div></div>`).join('')
-      : '<div class="empty-state">No hay actividad reciente.</div>';
-    rows.forEach((item,index) => activateInteractiveElement(target.querySelector(`[data-dashboard-recent="${index}"]`),() => openRecentShipment(item.container_number)));
-  }
-
-  function renderOperationSummary(payload) {
-    const target = byId('dashboardOperationSummary');
-    if (!target) return;
-    const operations = payload.operations || {};
-    const rows = [
-      ['Expedientes activos',operations.active,'En curso actualmente'],
-      ['Sin contenedores vinculados',operations.incomplete,'Conviene revisar estos expedientes'],
-      ['Expedientes finalizados',operations.closed,'Todos sus contenedores fueron entregados']
-    ];
-    target.innerHTML = rows.map((row,index) => `<div class="status-row" data-dashboard-operation="${index}" aria-label="Abrir expedientes"><div class="status-top"><b>${row[0]}</b><span>${Number(row[1] || 0)}</span></div><div class="muted" style="margin-top:6px">${row[2]}</div></div>`).join('');
-    rows.forEach((row,index) => activateInteractiveElement(target.querySelector(`[data-dashboard-operation="${index}"]`),() => openSection('newOperationsSection')));
-  }
-
-  function renderFreshness(payload) {
-    const target = byId('dashboardFreshness');
-    if (!target) return;
-    const generated = payload.generated_at ? new Date(payload.generated_at) : null;
-    target.textContent = generated && !Number.isNaN(generated.getTime())
-      ? `Actualizado ${generated.toLocaleTimeString('es-US',{ hour:'2-digit',minute:'2-digit' })}`
-      : 'Datos actualizados';
-  }
-
-  function renderUnifiedDashboard(payload = {}) {
-    ensureCounterStyles();
-    if (!ensureDashboardStructure()) return false;
-    renderStats(payload);
-    renderRecentActivity(payload);
-    renderOperationSummary(payload);
-    renderFreshness(payload);
-    return true;
-  }
-
-  window.renderDashboardDetails = () => renderUnifiedDashboard(window.__lastDashboardPayload || {});
-  window.renderStats = payload => {
-    window.__lastDashboardPayload = payload || {};
-    renderUnifiedDashboard(window.__lastDashboardPayload);
-  };
-  window.initializeOperationalDashboard = () => renderUnifiedDashboard(window.__lastDashboardPayload || {});
-  window.DashboardOperationalState = Object.freeze({ owner:'dashboard-operational-state.js',source:'api/dashboard.js',render:renderUnifiedDashboard });
-  ensureCounterStyles();
-  ensureDashboardStructure();
+  window.renderDashboardDetails = () => state.data ? renderDashboard(state.data) : false;
+  window.renderStats=renderDashboard;
+  window.initializeOperationalDashboard=initializeOperationalDashboard;
+  window.ExecutiveDashboard=Object.freeze({refresh:reloadDashboard,getState:()=>({...state}),owner:'dashboard-operational-state.js'});
 })();
