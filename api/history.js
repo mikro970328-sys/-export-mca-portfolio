@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, sendWhatsApp, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, sendWhatsApp, supabase, writeAudit } from './_lib.js';
 
 const selectFields = [
   '*',
@@ -73,7 +73,7 @@ async function updateOperationalNotification(admin, row, action, body) {
   } else if (action === 'resolve') {
     patch.alert_status = 'resolved';
     patch.resolved_at = now;
-    patch.resolved_by = admin.id || null;
+    patch.resolved_by = admin.admin_id || null;
     patch.resolved_reason = String(body.reason || 'manual').trim() || 'manual';
     patch.snoozed_until = null;
     auditAction = 'operational_notification_resolved';
@@ -112,12 +112,17 @@ async function updateOperationalNotification(admin, row, action, body) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const mode = String(req.query?.mode || '').trim().toLowerCase();
+  let permission;
+  if (mode === 'notifications') permission = req.method === 'GET' ? 'notifications.read' : 'notifications.manage';
+  else if (String(req.query?.shipment_id || '').trim()) permission = 'logistics.read';
+  else if (String(req.query?.client_id || '').trim()) permission = 'clients.read';
+  else permission = 'administration.audit.read';
+
+  const admin = await authorizeAdmin(req, res, permission);
   if (!admin) return;
 
   try {
-    const mode = String(req.query?.mode || '').trim().toLowerCase();
-
     if (mode === 'notifications') {
       if (req.method === 'GET') {
         const status = String(req.query?.status || '').trim().toLowerCase();
