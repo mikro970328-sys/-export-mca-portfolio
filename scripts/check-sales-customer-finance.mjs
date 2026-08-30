@@ -24,6 +24,7 @@ for (const needle of [
 for (const forbidden of ['prompt(', 'confirm(', 'alert(', 'MutationObserver']) {
   forbidText(ui, forbidden, 'sales-customer-finance.js');
 }
+const compactUi = ui.replace(/\s+/g,'');
 for (const needle of [
   '/api/customer-advances',
   '/api/proformas',
@@ -34,10 +35,10 @@ for (const needle of [
   "paid:'Pagada'",
   "partial:'Pago parcial'",
   "overdue:'Vencida'",
-  "activeWorkspaceTab() !== 'billing'",
+  "activeWorkspaceTab()!=='billing'",
   'row.client?.company',
   'row.importer?.legal_name'
-]) requireText(ui, needle, 'sales-customer-finance.js');
+]) requireText(compactUi, needle.replace(/\s+/g,''), 'sales-customer-finance.js');
 
 for (const needle of [
   "supabase('sales_order_customer_financial_progress'",
