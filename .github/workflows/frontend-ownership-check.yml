@@ -47,12 +47,19 @@ on:
       - 'supabase/migrations/20260830154000_p4_task_engine.sql'
       - 'supabase/migrations/20260830160500_p4_task_engine_index_hardening.sql'
       - 'supabase/migrations/20260830161000_p4_task_dependency_completion_guard.sql'
+      - 'api/workflow-routes.js'
+      - 'admin/workflow-route-settings.js'
+      - 'admin/workflow-route-settings.css'
+      - 'supabase/migrations/20260830170000_p5_workflow_routing_foundation.sql'
+      - 'supabase/migrations/20260830172000_p5_workflow_handoff_rules.sql'
+      - 'supabase/migrations/20260830174500_p5_workflow_dependency_integrity.sql'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
       - 'scripts/check-sales-customer-finance.mjs'
       - 'scripts/check-access-control.mjs'
       - 'scripts/check-task-engine.mjs'
+      - 'scripts/check-workflow-handoffs.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -103,3 +110,9 @@ jobs:
           node --check api/tasks.js
           node --check admin/tasks-workspace.js
           node --check admin/tasks-navigation.js
+      - name: Validate P5 workflow handoffs
+        run: node scripts/check-workflow-handoffs.mjs
+      - name: Validate P5 JavaScript syntax
+        run: |
+          node --check api/workflow-routes.js
+          node --check admin/workflow-route-settings.js
