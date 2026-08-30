@@ -219,13 +219,37 @@ left join public.admin_users a on a.id=r.assigned_admin_id;
 revoke all on public.workflow_task_route_health from public,anon,authenticated;
 grant select on public.workflow_task_route_health to service_role;
 
+-- Preserve the pre-P8 column contract; append P8 fields only after active_task_count.
 create or replace view public.workflow_task_route_directory
 with (security_invoker=true)
 as
-select h.*,
-       (select count(*) from public.operational_tasks ot
-        where ot.origin='workflow' and ot.workflow_key=h.workflow_key
-          and ot.status in ('pending','in_progress','blocked'))::integer as active_task_count
+select
+  h.workflow_key,
+  h.label,
+  h.description,
+  h.enabled,
+  h.default_priority,
+  h.default_due_hours,
+  h.assigned_team_id,
+  h.assigned_team_name,
+  h.assigned_admin_id,
+  h.assigned_admin_username,
+  h.assigned_admin_name,
+  h.activated_at,
+  h.is_system,
+  h.updated_by,
+  h.created_at,
+  h.updated_at,
+  (select count(*) from public.operational_tasks ot
+   where ot.origin='workflow' and ot.workflow_key=h.workflow_key
+     and ot.status in ('pending','in_progress','blocked'))::integer as active_task_count,
+  h.due_soon_minutes,
+  h.required_permissions,
+  h.required_permission_count,
+  h.assigned_admin_access_compatible,
+  h.team_member_count,
+  h.team_eligible_member_count,
+  h.routing_access_compatible
 from public.workflow_task_route_health h;
 
 revoke all on public.workflow_task_route_directory from public,anon,authenticated;
