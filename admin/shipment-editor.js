@@ -2,7 +2,7 @@
   if (window.ShipmentEditor) return;
 
   const byId = id => document.getElementById(id);
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot', "'":'&#39;' }[c]));
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   const norm = value => String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
   const validReference = value => Boolean(value) && value.length <= 40 && /^[A-Z0-9][A-Z0-9 ._/-]*$/.test(value);
   const isIso = value => /^[A-Z]{4}\d{7}$/.test(value);
@@ -209,6 +209,55 @@
     if (options.focus === 'client') byId('editorClient')?.focus();
     else byId('editorContainer')?.focus();
   }
+
+  function cleanUnassignedTrackingLabels(root = document) {
+    root.querySelectorAll?.('.container-sale-note').forEach(node => node.remove());
+    root.querySelectorAll?.('.container-client-unassigned').forEach(node => { node.textContent = 'SIN CLIENTE'; });
+    root.querySelectorAll?.('.container-detail-value').forEach(node => {
+      if (String(node.textContent || '').trim() === 'SIN CLIENTE · Disponible para venta') node.textContent = 'SIN CLIENTE';
+    });
+    const registration = root.getElementById?.('shipmentClient');
+    if (registration?.options?.length && registration.options[0]?.value === '') registration.options[0].textContent = 'Sin cliente';
+  }
+
+  function patchLoadsFrame(frame) {
+    if (!frame || !String(frame.getAttribute('src') || '').includes('/admin/loads.html')) return;
+    const apply = () => {
+      try {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+        const client = doc.getElementById('containerClient');
+        const importer = doc.getElementById('containerImporter');
+        [client, importer].forEach(field => {
+          const wrapper = field?.closest('div');
+          if (wrapper) wrapper.style.display = 'none';
+        });
+        const reference = doc.getElementById('containerNumber');
+        if (reference) {
+          reference.maxLength = 40;
+          reference.placeholder = 'Referencia o Nº contenedor';
+        }
+        const section = doc.getElementById('containerNumber')?.closest('.section-body');
+        if (section && !doc.getElementById('containerCommercialContextHelp')) {
+          const help = doc.createElement('div');
+          help.id = 'containerCommercialContextHelp';
+          help.className = 'pending-note';
+          help.textContent = 'Cliente e importadora se heredan de la Sales Order/Cargue. Si el Cargue no tiene cliente, el contenedor queda Sin cliente. Booking y B/L pueden completarse después.';
+          section.prepend(help);
+        }
+      } catch {}
+    };
+    if (frame.contentDocument?.readyState === 'complete') apply();
+    else frame.addEventListener('load', apply, { once:true });
+  }
+
+  const observer = new MutationObserver(() => {
+    cleanUnassignedTrackingLabels(document);
+    document.querySelectorAll('iframe').forEach(patchLoadsFrame);
+  });
+  observer.observe(document.documentElement, { childList:true, subtree:true });
+  cleanUnassignedTrackingLabels(document);
+  document.querySelectorAll('iframe').forEach(patchLoadsFrame);
 
   window.ShipmentEditor = Object.freeze({ open, owner:'containers-module.js' });
 })();
