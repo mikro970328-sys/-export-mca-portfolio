@@ -1,0 +1,59 @@
+import fs from 'node:fs';
+
+const read = path => fs.readFileSync(path,'utf8');
+const assert = (condition,message) => { if(!condition) throw new Error(message); };
+
+const migration=read('supabase/migrations/20260830223000_p11_executive_dashboard_profitability.sql');
+const api=read('api/dashboard.js');
+const executiveApi=read('api/_executive-dashboard.js');
+const ui=read('admin/dashboard-operational-state.js');
+const css=read('admin/dashboard-executive.css');
+const erp=read('admin/erp.js');
+
+assert(migration.includes('profitability.direct_cost_currency'), 'P11: source B8 no expone direct_cost_currency');
+assert(migration.includes('profitability.contribution_margin'), 'P11: source B8 no expone contribution_margin');
+assert(migration.includes('recognized_cogs'), 'P11: falta COGS reconocido backend');
+assert(migration.includes('net_cash_flow'), 'P11: falta cash flow neto backend');
+assert(migration.includes('coalesce(cc.cash_collected,0) - coalesce(sc.cash_paid,0) as net_cash_flow'), 'P11: net cash flow debe calcularse en DB');
+assert(migration.includes('contribution_margin_pct'), 'P11: falta porcentaje de contribución backend');
+assert(migration.includes('sales_order_contribution_incomplete_count'), 'P11: falta excepción de contribución incompleta');
+assert(migration.includes("'balance_basis', 'current_snapshot'"), 'P11: AR/AP deben conservar semántica snapshot');
+assert(migration.includes('create or replace view public.executive_operational_attention'), 'P11: falta read model de P8/P9');
+assert(migration.includes('operational_task_attention'), 'P11: tasks deben derivarse de P8');
+assert(migration.includes('operational_alert_conditions'), 'P11: alertas deben derivarse del registry P9');
+assert(migration.includes("n.alert_status in ('pending','snoozed')"), 'P11: active alerts no respetan lifecycle P9');
+assert(migration.includes('with (security_invoker = true)'), 'P11: views deben ser security_invoker');
+assert(migration.includes('revoke all on public.executive_operational_attention from public, anon, authenticated'), 'P11: view de atención no está cerrada');
+assert(migration.includes('grant select on public.executive_operational_attention to service_role'), 'P11: falta grant service_role');
+assert(migration.includes('revoke all on function public.executive_dashboard_rollup'), 'P11: RPC debe seguir cerrado');
+assert(migration.includes('grant execute on function public.executive_dashboard_rollup') && migration.includes('to service_role'), 'P11: RPC no está reservado a service_role');
+
+assert(api.includes("authorizeAdmin(req,res,'dashboard.read')"), 'P11: dashboard API debe revalidar dashboard.read');
+assert(api.includes("hasPermission(admin,'clients.read')"), 'P11: filtro cliente no es permission-aware');
+assert(api.includes("hasPermission(admin,'procurement.read')"), 'P11: filtro proveedor no es permission-aware');
+assert(api.includes("hasPermission(admin,'tasks.read')"), 'P11: supervisión tasks no es permission-aware');
+assert(api.includes("hasPermission(admin,'notifications.read')"), 'P11: alertas no son permission-aware');
+assert(api.includes("supabase('executive_operational_attention'"), 'P11: API no consume read model P8/P9');
+assert(api.includes('filter_options'), 'P11: faltan filtros backend');
+assert(api.includes('loadExecutiveDashboard(req.query || {})'), 'P11: API debe conservar el owner financiero B8');
+assert(executiveApi.includes("rpc/executive_dashboard_rollup"), 'P11: finanzas no delegan al RPC B8');
+
+assert(!/expediente/i.test(ui), 'P11: Dashboard no puede reintroducir Expedientes');
+assert(!ui.includes('newOperationsSection'), 'P11: Dashboard no puede navegar a legacy operations');
+assert(!ui.includes('MutationObserver'), 'P11: Dashboard no puede usar MutationObserver');
+assert(!ui.match(/\b(prompt|alert|confirm)\s*\(/), 'P11: Dashboard no puede usar prompt/alert/confirm');
+assert(!ui.includes("document.createElement('style')") && !ui.includes('document.createElement("style")'), 'P11: estilos deben tener owner CSS, no inyección JS');
+assert(ui.includes('a.net_cash_flow'), 'P11: UI no consume net_cash_flow backend');
+assert(ui.includes('a.recognized_cogs'), 'P11: UI no consume COGS backend');
+assert(ui.includes('a.contribution_margin'), 'P11: UI no consume contribución backend');
+assert(!/cash_collected\s*[-+]\s*.*cash_paid|cash_paid\s*[-+]\s*.*cash_collected/.test(ui), 'P11: cash flow no puede recalcularse en frontend');
+assert(!/gross_margin\s*\/|contribution_margin\s*\//.test(ui), 'P11: porcentajes financieros no pueden recalcularse en frontend');
+assert(ui.includes('OperationalNavigation?.openEntity'), 'P11: tracking debe delegar navegación a P6');
+assert(ui.includes('NavigationShell'), 'P11: módulos deben abrirse mediante owner de navegación');
+assert(ui.includes('snapshot actual'), 'P11: UI debe etiquetar AR/AP como snapshot');
+assert(ui.includes('no se aplica'), 'P11: UI debe hacer explícito que no hay FX');
+assert(css.includes('.executive-finance-grid'), 'P11: stylesheet del dashboard incompleto');
+assert(erp.includes("loadStylesheet('/admin/dashboard-executive.css?v=20260830-p11'"), 'P11: bootstrap no carga stylesheet dashboard');
+assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260830-p11'"), 'P11: bootstrap no carga owner P11');
+
+console.log('P11 executive dashboard B8.3: OK');
