@@ -2,7 +2,7 @@ import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.j
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
-const ALLOCATION_TARGETS = ['purchase_order_id','warehouse_receipt_id','load_id','shipment_id','operation_id'];
+const ALLOCATION_TARGETS = ['purchase_order_id','warehouse_receipt_id','load_id','shipment_id','operation_id','sales_order_id','sales_order_item_id'];
 const BASES = new Set(['manual','quantity','pallets','value','weight']);
 
 function translatedError(raw) {
@@ -49,9 +49,15 @@ function cleanAllocations(value) {
 }
 
 async function bootstrap() {
-  const [charges, allocations, progress, suppliers, purchaseOrders, receipts, loads, shipments, operations, products, poCosts, wrCosts, loadCogs, postedAllocations, loadDirect, shipmentDirect, operationDirect] = await Promise.all([
+  const [
+    charges, allocations, progress, suppliers,
+    purchaseOrders, receipts, loads, shipments, operations,
+    salesOrders, salesOrderItems, products,
+    poCosts, wrCosts, loadCogs, postedAllocations,
+    loadDirect, shipmentDirect, operationDirect, salesOrderDirect
+  ] = await Promise.all([
     supabase('cost_charges', { query:'?select=id,cost_number,category,stage,amount,currency,incurred_date,supplier_id,reference,status,notes,created_by,posted_by,voided_by,posted_at,voided_at,created_at,updated_at&order=created_at.desc&limit=2000' }),
-    supabase('cost_charge_allocations', { query:'?select=id,cost_charge_id,amount,basis,purchase_order_id,warehouse_receipt_id,load_id,shipment_id,operation_id,notes,created_by,created_at&order=created_at.asc&limit=10000' }),
+    supabase('cost_charge_allocations', { query:'?select=id,cost_charge_id,amount,basis,purchase_order_id,warehouse_receipt_id,load_id,shipment_id,operation_id,sales_order_id,sales_order_item_id,notes,created_by,created_at&order=created_at.asc&limit=10000' }),
     supabase('cost_charge_progress', { query:'?select=*&order=incurred_date.desc&limit=2000' }),
     supabase('suppliers', { query:'?select=id,name,legal_name&order=name.asc&limit=2000' }),
     supabase('purchase_orders', { query:'?select=id,po_number,status,currency,supplier_id&order=created_at.desc&limit=2000' }),
@@ -59,6 +65,8 @@ async function bootstrap() {
     supabase('loads', { query:'?select=id,load_number,status,shipment_id,warehouse_id&order=created_at.desc&limit=2000' }),
     supabase('shipments', { query:'?select=id,container_number,operation_id,status&order=id.desc&limit=3000' }),
     supabase('operations', { query:'?select=id,operation_code,status,currency,container_number&order=created_at.desc&limit=3000' }),
+    supabase('sales_orders', { query:'?select=id,so_number,status,currency,client_id,importer_id&order=created_at.desc&limit=3000' }),
+    supabase('sales_order_items', { query:'?select=id,sales_order_id,product_id,ordered_quantity,unit,entered_line_total&order=created_at.asc&limit=10000' }),
     supabase('products', { query:'?select=id,sku,name,brand&order=name.asc&limit=5000' }),
     supabase('purchase_order_item_merchandise_cost_basis', { query:'?select=*&limit=10000' }),
     supabase('warehouse_receipt_item_merchandise_cost', { query:'?select=*&limit=10000' }),
@@ -66,7 +74,8 @@ async function bootstrap() {
     supabase('posted_cost_charge_allocations', { query:'?select=*&order=incurred_date.desc&limit=10000' }),
     supabase('load_direct_costs', { query:'?select=*&limit=5000' }),
     supabase('shipment_direct_costs', { query:'?select=*&limit=5000' }),
-    supabase('operation_direct_costs', { query:'?select=*&limit=5000' })
+    supabase('operation_direct_costs', { query:'?select=*&limit=5000' }),
+    supabase('sales_order_direct_costs', { query:'?select=*&limit=5000' })
   ]);
 
   const allocationsByCharge = new Map();
@@ -83,7 +92,16 @@ async function bootstrap() {
 
   return {
     charges:chargesDecorated,
-    targets:{ suppliers:suppliers || [], purchase_orders:purchaseOrders || [], warehouse_receipts:receipts || [], loads:loads || [], shipments:shipments || [], operations:operations || [] },
+    targets:{
+      suppliers:suppliers || [],
+      purchase_orders:purchaseOrders || [],
+      warehouse_receipts:receipts || [],
+      loads:loads || [],
+      shipments:shipments || [],
+      operations:operations || [],
+      sales_orders:salesOrders || [],
+      sales_order_items:salesOrderItems || []
+    },
     products:products || [],
     cost_models:{
       purchase_order_items:poCosts || [],
@@ -92,7 +110,8 @@ async function bootstrap() {
       posted_allocations:postedAllocations || [],
       load_direct:loadDirect || [],
       shipment_direct:shipmentDirect || [],
-      operation_direct:operationDirect || []
+      operation_direct:operationDirect || [],
+      sales_order_direct:salesOrderDirect || []
     }
   };
 }
