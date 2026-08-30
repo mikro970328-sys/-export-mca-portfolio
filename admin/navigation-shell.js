@@ -16,6 +16,7 @@
     { id:'invoicesSection', label:'Facturación', icon:'▨', src:'/admin/invoices.html?embedded=1' },
     { id:'payablesSection', label:'Cuentas por pagar', icon:'▩', src:'/admin/payables.html?embedded=1' },
     { id:'costsSection', label:'Costos y rentabilidad', icon:'◇', src:'/admin/costs.html?embedded=1' },
+    { id:'reportsSection', label:'Reportes', icon:'▥', src:'/admin/reports.html?embedded=1', permission:'reports.read' },
     { id:'inventorySection', label:'Inventario', icon:'▦', src:'/admin/inventory.html?embedded=1' },
     { id:'loadsSection', label:'Cargues', icon:'⇄', src:'/admin/loads.html?embedded=1' }
   ];
@@ -24,12 +25,13 @@
     { key:'home', label:'Inicio', icon:'⌂', sections:['dashboardSection','notificationsSection'] },
     { key:'commercial', label:'Comercial', icon:'▧', sections:['clientsSection','salesSection','invoicesSection','publicationsSection'] },
     { key:'operations', label:'Operaciones', icon:'▣', sections:['purchasesSection','warehouseSection','inventorySection','loadsSection','containersSection','registerContainerSection'] },
-    { key:'finance', label:'Finanzas', icon:'◇', sections:['payablesSection','costsSection'] },
+    { key:'finance', label:'Finanzas', icon:'◇', sections:['payablesSection','costsSection','reportsSection'] },
     { key:'administration', label:'Administración', icon:'◉', sections:['suppliersSection','productsSection','workersSection','adminsSection','accountSection'] }
   ];
 
   const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
-  const embeddedById = id => EMBEDDED_SECTIONS.find(item => item.id === id) || null;
+  const canEmbedded = config => !config?.permission || window.ExportMcaAccessControl?.can?.(config.permission) !== false;
+  const embeddedById = id => EMBEDDED_SECTIONS.find(item => item.id === id && canEmbedded(item)) || null;
 
   function readBoolean(key, fallback = false) {
     const value = localStorage.getItem(key);
@@ -64,7 +66,7 @@
   }
 
   function openEmbeddedSection(config) {
-    if (!config) return false;
+    if (!config || !canEmbedded(config)) return false;
     const id = config.id;
     if (typeof window.showSection === 'function') window.showSection(id);
     else {
@@ -119,6 +121,7 @@
   }
 
   function createEmbeddedButton(config, staging) {
+    if (!canEmbedded(config)) return null;
     let button = document.querySelector(`[data-section="${config.id}"]`);
     if (button) return button;
     button = document.createElement('button');
@@ -137,6 +140,7 @@
     const staging = document.querySelector('.nav-group[data-nav-group="operations"] .submenu') || document.querySelector('.sidebar-nav');
     const main = document.querySelector('.main-shell main');
     for (const config of EMBEDDED_SECTIONS) {
+      if (!canEmbedded(config)) continue;
       createEmbeddedButton(config, staging);
       if (main && !byId(config.id)) {
         const section = document.createElement('section');
@@ -343,6 +347,7 @@
       openInvoices: () => openEmbeddedById('invoicesSection'),
       openPayables: () => openEmbeddedById('payablesSection'),
       openCosts: () => openEmbeddedById('costsSection'),
+      openReports: () => openEmbeddedById('reportsSection'),
       openInventory: () => openEmbeddedById('inventorySection'),
       openLoads: () => openEmbeddedById('loadsSection'),
       owner: 'navigation-shell.js'

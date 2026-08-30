@@ -84,6 +84,11 @@ on:
       - 'supabase/migrations/20260830215500_p10_user_notification_inbox.sql'
       - 'supabase/migrations/20260830220500_p10_notification_source_version_integrity.sql'
       - 'supabase/migrations/20260830223000_p11_executive_dashboard_profitability.sql'
+      - 'api/reports.js'
+      - 'admin/reports.html'
+      - 'admin/reports.js'
+      - 'admin/reports.css'
+      - 'supabase/migrations/20260830225000_p12_executive_report_datasets.sql'
       - 'vercel.json'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
@@ -98,6 +103,7 @@ on:
       - 'scripts/check-operational-alert-lifecycle.mjs'
       - 'scripts/check-user-notifications.mjs'
       - 'scripts/check-executive-dashboard.mjs'
+      - 'scripts/check-executive-reports.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -206,3 +212,10 @@ jobs:
           node --check api/_executive-dashboard.js
           node --check admin/dashboard-operational-state.js
           node --check admin/erp.js
+      - name: Validate P12 executive reports
+        run: node scripts/check-executive-reports.mjs
+      - name: Validate P12 JavaScript syntax
+        run: |
+          node --check api/reports.js
+          node --check admin/reports.js
+          node --check admin/navigation-shell.js
