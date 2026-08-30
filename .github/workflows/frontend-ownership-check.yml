@@ -36,6 +36,8 @@ on:
       - 'supabase/migrations/20260830055500_p2_fk_index_hardening.sql'
       - 'api/**'
       - 'admin/account-administration.js'
+      - 'admin/access-control-administration.js'
+      - 'admin/access-control.css'
       - 'supabase/migrations/20260830090500_p3_access_control_foundation.sql'
       - 'supabase/migrations/20260830092000_p3_access_control_setters.sql'
       - 'scripts/check-frontend-ownership.mjs'
@@ -80,3 +82,7 @@ jobs:
           node --check api/account.js
           node --check api/admins.js
           node --check api/access-control.js
+          node --check api/history.js
+          node --check admin/access-control-administration.js
+          node --check admin/account-administration.js
+          node --check admin/erp.js
