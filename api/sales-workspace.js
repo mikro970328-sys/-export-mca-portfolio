@@ -110,6 +110,11 @@ async function workspace(salesOrderId) {
     ? await rows('audit_log', `?select=id,action,entity_type,entity_id,details,created_at,actor_admin_id,actor_username&entity_id=in.(${inFilter(auditEntityIds)})&order=created_at.desc&limit=1000`)
     : [];
 
+  // Customs completeness is based only on real/manual uploads. Generated ERP documents
+  // remain available as context but never satisfy the official customs-document checklist.
+  const manualDocuments = documents.filter(row => row.generated !== true);
+  const generatedDocuments = documents.filter(row => row.generated === true);
+
   return {
     summary,
     items:mergeItems(itemRows, itemProgress, itemInvoiceProgress),
@@ -121,7 +126,8 @@ async function workspace(salesOrderId) {
       contextual_operation_payments:contextualOperationPayments
     },
     costs:{ allocations:directCosts },
-    documents,
+    documents:manualDocuments,
+    generated_documents:generatedDocuments,
     history
   };
 }
