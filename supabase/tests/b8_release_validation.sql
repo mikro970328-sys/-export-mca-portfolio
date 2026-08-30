@@ -62,7 +62,7 @@ insert into public.purchase_orders(
   '13b80000-0000-4000-8000-000000000002'::uuid,
   current_date-2,
   'EUR',
-  'confirmed',
+  'draft',
   'Reversible P13 B8.5 EUR fixture'
 ),
 (
@@ -72,7 +72,7 @@ insert into public.purchase_orders(
   '13b80000-0000-4000-8000-000000000002'::uuid,
   current_date-1,
   'GBP',
-  'confirmed',
+  'draft',
   'Reversible P13 B8.5 GBP fixture'
 );
 
@@ -91,6 +91,15 @@ insert into public.purchase_order_items(
   '13b80000-0000-4000-8000-000000000003'::uuid,
   4,0,'unit',20.00,'GBP','P13 GBP line = 80.00'
 );
+
+-- Respect the production lifecycle: draft -> issued -> confirmed.
+do $$
+begin
+  perform public.transition_purchase_order('13b80000-0000-4000-8000-000000000004'::uuid,'issue');
+  perform public.transition_purchase_order('13b80000-0000-4000-8000-000000000004'::uuid,'confirm');
+  perform public.transition_purchase_order('13b80000-0000-4000-8000-000000000006'::uuid,'issue');
+  perform public.transition_purchase_order('13b80000-0000-4000-8000-000000000006'::uuid,'confirm');
+end $$;
 
 -- Source read-model must expose exactly the two fixture POs with their own currencies.
 do $$
