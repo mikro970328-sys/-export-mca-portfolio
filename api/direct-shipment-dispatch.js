@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 import { registerShipsGo } from './_shipsgo.js';
 
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -118,7 +118,7 @@ async function listForSale(salesOrderId){
 }
 
 export default async function handler(req,res){
-  const admin=requireAdmin(req,res);if(!admin)return;
+  const admin=await authorizeAdmin(req,res,req.method==='GET'?'sales.read':'sales.write');if(!admin)return;
   try{
     if(req.method==='GET'){
       const salesOrderId=uuid(req.query?.sales_order_id,'SALES_ORDER_ID');
