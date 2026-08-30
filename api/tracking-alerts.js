@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 
 const HOUR = 60 * 60 * 1000;
 const CLIENT_ALERT_AFTER = 48 * HOUR;
@@ -365,12 +365,14 @@ async function runCheck() {
 
 export default async function handler(req, res) {
   const isCron = cronAuthorized(req);
-  const admin = isCron ? { username: 'vercel-cron', admin_id: null } : requireAdmin(req, res);
+  const action = String(req.query?.action || '').trim().toLowerCase();
+  const permission = req.method === 'GET' && !isCron && action !== 'check' ? 'notifications.read' : 'notifications.manage';
+  const admin = isCron ? { username: 'vercel-cron', admin_id: null } : await authorizeAdmin(req, res, permission);
   if (!admin) return;
 
   try {
     if (req.method === 'GET') {
-      if (isCron || String(req.query?.action || '') === 'check') {
+      if (isCron || action === 'check') {
         const result = await runCheck();
         await writeAudit(admin, 'operational_alerts_check', 'system', null, result);
         return ok(res, result);
