@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reportes · Export MCA</title>
+<link rel="stylesheet" href="/admin/reports.css?v=20260830-p12">
+</head>
+<body>
+<main class="reports-wrap">
+  <header class="reports-head">
+    <div>
+      <h1>Reportes</h1>
+      <p>Reportes ejecutivos sobre las fuentes B5/B6/B8. Monedas separadas, sin conversión FX.</p>
+    </div>
+    <div class="reports-actions">
+      <button id="refreshReport" type="button" class="btn secondary">↻ Actualizar</button>
+      <button id="exportReport" type="button" class="btn primary">Exportar CSV</button>
+    </div>
+  </header>
+
+  <section class="report-card">
+    <div id="datasetTabs" class="dataset-tabs" aria-label="Tipos de reporte"></div>
+    <div class="report-filters">
+      <label data-filter-dimension="period">Desde<input id="startDate" type="date"></label>
+      <label data-filter-dimension="period">Hasta<input id="endDate" type="date"></label>
+      <label data-filter-dimension="currency">Moneda<select id="currency"><option value="">Todas, separadas</option></select></label>
+      <label data-filter-dimension="client">Cliente<select id="clientId"><option value="">Todos</option></select></label>
+      <label data-filter-dimension="supplier">Proveedor<select id="supplierId"><option value="">Todos</option></select></label>
+      <label data-filter-dimension="product">Producto<select id="productId"><option value="">Todos</option></select></label>
+      <label>Límite<select id="rowLimit"><option value="250">250</option><option value="1000" selected>1,000</option><option value="5000">5,000</option></select></label>
+    </div>
+    <div class="filter-actions">
+      <button id="clearFilters" type="button" class="btn secondary">Limpiar filtros</button>
+      <button id="applyFilters" type="button" class="btn primary">Aplicar filtros</button>
+    </div>
+    <div id="reportMeta" class="report-meta"></div>
+  </section>
+
+  <section class="report-card report-table-card">
+    <div id="reportMessage" class="report-message"></div>
+    <div id="reportTable" class="report-table-wrap"><div class="empty">Cargando reporte…</div></div>
+  </section>
+</main>
+<script src="/admin/reports.js?v=20260830-p12"></script>
+</body>
+</html>
