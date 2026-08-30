@@ -1,4 +1,4 @@
-import { fail, normalizeContainer, ok, readJson, requireAdmin, supabase } from './_lib.js';
+import { authorizeAdmin, fail, normalizeContainer, ok, readJson, supabase } from './_lib.js';
 
 const CLOSED = ['liberado','released','descargado','discharged','entregado','delivered','cerrado','closed'];
 const isClosed = row => row.active === false || CLOSED.includes(String(row.operational_status || row.last_status || '').trim().toLowerCase());
@@ -24,7 +24,7 @@ async function shipsGoRequest(containerNumber) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, 'logistics.write');
   if (!admin) return;
   if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
 
