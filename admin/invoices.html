@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Facturación · Export MCA</title>
+<title>Facturación y cobros · Export MCA</title>
 <link rel="stylesheet" href="/admin/purchases.css">
 </head>
 <body>
 <main class="wrap">
-  <div class="head"><div><h1>Facturación</h1><div class="muted">Facturas comerciales desde Sales Orders. No modifica inventario ni Expedientes.</div></div><button id="newInvoice" class="btn orange">+ Nueva factura</button></div>
+  <div class="head"><div><h1>Facturación y cobros</h1><div class="muted">Facturas de cobro al cliente y dinero recibido. La Commercial Invoice y el Packing List aduanales se administran en Expedientes.</div></div><button id="newInvoice" class="btn orange">+ Nueva factura</button></div>
   <div id="metrics" class="metrics"></div>
-  <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar factura, SO o cliente"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="paid">Pagadas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="invoiceList" class="orders"></div></section>
+  <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar factura, venta o cliente"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="paid">Pagadas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="invoiceList" class="orders"></div></section>
 </main>
 
-<div id="invoiceModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="invoiceTitle">Nueva factura</h2><div class="muted">La factura toma cliente, moneda, producto y precio desde la Sales Order.</div></div><button class="btn" data-close="invoice">✕</button></div>
-<div class="grid3"><div><label>Sales Order *</label><select id="iSalesOrder"></select></div><div><label>Fecha emisión</label><input id="iIssueDate" type="date"></div><div><label>Fecha vencimiento</label><input id="iDueDate" type="date"></div></div>
+<div id="invoiceModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="invoiceTitle">Nueva factura de cobro</h2><div class="muted">Toma cliente, moneda, producto y precio desde la venta. Puede guardarse como borrador antes de tener Expediente.</div></div><button class="btn" data-close="invoice">✕</button></div>
+<div class="grid3"><div><label>Venta *</label><select id="iSalesOrder"></select></div><div><label>Fecha de factura</label><input id="iIssueDate" type="date"></div><div><label>Fecha vencimiento</label><input id="iDueDate" type="date"></div></div>
 <label>Notas</label><textarea id="iNotes"></textarea>
 <div class="toolbar" style="padding:12px 0 0;border:0"><div><b>Líneas a facturar</b><div class="muted">Solo cantidades todavía disponibles para facturar.</div></div></div>
 <div id="invoiceLines" class="detail-items"></div>
-<div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="invoice">Cancelar</button><button id="saveInvoice" class="btn orange">Guardar factura</button></div><div id="invoiceMsg" class="msg"></div></div></div>
+<div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="invoice">Cancelar</button><button id="saveInvoice" class="btn orange">Guardar borrador</button></div><div id="invoiceMsg" class="msg"></div></div></div>
 
 <div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div><div id="detailMsg" class="msg"></div></div></div>
 
@@ -28,8 +28,7 @@
 <label>Notas</label><textarea id="pNotes"></textarea>
 <div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="payment">Cancelar</button><button id="savePayment" class="btn orange">Registrar cobro</button></div><div id="paymentMsg" class="msg"></div></div></div>
 
-<script src="/admin/financial-traceability-loader.js"></script>
-<script src="/admin/invoices.js"></script>
-<script src="/admin/commercial-documents-shell.js"></script>
+<script src="/admin/invoices.js?v=20260830-ux2c"></script>
+<script src="/admin/commercial-documents-shell.js?v=20260830-ux2c"></script>
 </body>
 </html>
