@@ -196,7 +196,8 @@
       await window.ExportMcaAccessControl.initialize();
 
       if (accessCan('dashboard.read')) {
-        await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
+        await loadStylesheet('/admin/dashboard-executive.css?v=20260830-p11', 'data-dashboard-executive-style');
+        await loadScript('/admin/dashboard-operational-state.js?v=20260830-p11', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
         await loadScript('/admin/containers-module.js?v=20260830-ux2d', 'data-containers-module');
