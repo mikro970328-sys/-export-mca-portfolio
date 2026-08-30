@@ -261,6 +261,16 @@ for (const fragment of [
 }
 
 for (const forbidden of [
+  'data-section="newOperationsSection"',
+  'id="newOperationsSection"',
+  'newOperationsSection:',
+  'data-nav-label="Expedientes de exportación"',
+  '<span class="nav-label">Expedientes</span>'
+]) {
+  if (index.includes(forbidden)) errors.push(`Expedientes todavía aparece en el shell estático: ${forbidden}`);
+}
+
+for (const forbidden of [
   "document.querySelectorAll('.nav-group-btn').forEach",
   "$('sidebarToggle').onclick",
   "$('mobileMenuBtn').onclick",
@@ -288,7 +298,7 @@ if (errors.length) {
 
 console.log('Validación de propiedad frontend superada.');
 console.log('- Clientes, Tracking, documentos Cuba, navegación, dashboard, UX-C y estado de secciones tienen propietarios explícitos.');
-console.log('- Expedientes está retirado del loader y del flujo operativo normal.');
+console.log('- Expedientes está retirado del loader y del shell estático del flujo operativo normal.');
 console.log('- Tracking es dueño del readiness y carga manual de Packing List Cuba / Commercial Invoice Cuba.');
 console.log('- Los propietarios/parches retirados no existen ni se cargan.');
 console.log('- navigation-shell.js no contiene llamadas de negocio ni wrappers de datos.');
