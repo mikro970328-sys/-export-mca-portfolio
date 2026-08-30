@@ -40,11 +40,17 @@ on:
       - 'admin/access-control.css'
       - 'supabase/migrations/20260830090500_p3_access_control_foundation.sql'
       - 'supabase/migrations/20260830092000_p3_access_control_setters.sql'
+      - 'api/tasks.js'
+      - 'admin/tasks-workspace.js'
+      - 'admin/tasks-workspace.css'
+      - 'admin/tasks-navigation.js'
+      - 'supabase/migrations/20260830154000_p4_task_engine.sql'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
       - 'scripts/check-sales-customer-finance.mjs'
       - 'scripts/check-access-control.mjs'
+      - 'scripts/check-task-engine.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -88,3 +94,10 @@ jobs:
           node --check admin/erp.js
           node --check admin/navigation-shell.js
           node --check admin/operational-alert-center.js
+      - name: Validate P4 task engine
+        run: node scripts/check-task-engine.mjs
+      - name: Validate P4 JavaScript syntax
+        run: |
+          node --check api/tasks.js
+          node --check admin/tasks-workspace.js
+          node --check admin/tasks-navigation.js
