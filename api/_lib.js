@@ -45,9 +45,14 @@ export function verifyToken(token) {
   } catch { return null; }
 }
 
-export function requireAdmin(req, res) {
+function tokenPayload(req) {
   const auth = req.headers.authorization || '';
-  const payload = verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : '');
+  return verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : '');
+}
+
+// Legacy synchronous guard. P3 private business routes must use authenticateAdmin/authorizeAdmin.
+export function requireAdmin(req, res) {
+  const payload = tokenPayload(req);
   if (!payload?.admin || !payload?.admin_id || !['master_admin', 'admin'].includes(payload.role)) {
     fail(res, 401, 'No autorizado');
     return null;
@@ -63,6 +68,89 @@ export function requireMasterAdmin(req, res) {
     return null;
   }
   return admin;
+}
+
+export async function authenticateAdmin(req, res) {
+  const payload = tokenPayload(req);
+  if (!payload?.admin || !payload?.admin_id) {
+    fail(res, 401, 'No autorizado');
+    return null;
+  }
+
+  const rows = await supabase('admin_users', {
+    query: `?select=id,full_name,username,role,is_active,access_role_id&id=eq.${encodeURIComponent(payload.admin_id)}&limit=1`
+  });
+  const account = rows?.[0] || null;
+  if (!account || account.is_active !== true || !['master_admin', 'admin'].includes(account.role)) {
+    fail(res, 401, 'Sesión no autorizada');
+    return null;
+  }
+  if (account.role === 'admin' && !account.access_role_id) {
+    fail(res, 403, 'La cuenta no tiene un rol de acceso asignado');
+    return null;
+  }
+
+  return {
+    admin: true,
+    admin_id: account.id,
+    username: account.username,
+    full_name: account.full_name,
+    role: account.role,
+    access_role_id: account.access_role_id || null
+  };
+}
+
+export async function authorizeAdmin(req, res, permissionKey) {
+  const admin = await authenticateAdmin(req, res);
+  if (!admin) return null;
+  if (!permissionKey || admin.role === 'master_admin') return admin;
+
+  const rows = await supabase('admin_effective_permissions', {
+    query: `?select=permission_key&admin_user_id=eq.${encodeURIComponent(admin.admin_id)}&permission_key=eq.${encodeURIComponent(permissionKey)}&limit=1`
+  });
+  if (!rows?.length) {
+    fail(res, 403, 'No tienes permiso para realizar esta acción');
+    return null;
+  }
+  return admin;
+}
+
+export async function authorizeAdminAny(req, res, permissionKeys = []) {
+  const admin = await authenticateAdmin(req, res);
+  if (!admin) return null;
+  if (admin.role === 'master_admin') return admin;
+  const keys = [...new Set((permissionKeys || []).map(value => String(value || '').trim()).filter(Boolean))];
+  if (!keys.length) return admin;
+  const encoded = keys.map(value => `"${value.replace(/"/g, '\\"')}"`).join(',');
+  const rows = await supabase('admin_effective_permissions', {
+    query: `?select=permission_key&admin_user_id=eq.${encodeURIComponent(admin.admin_id)}&permission_key=in.(${encodeURIComponent(encoded)})&limit=1`
+  });
+  if (!rows?.length) {
+    fail(res, 403, 'No tienes permiso para realizar esta acción');
+    return null;
+  }
+  return admin;
+}
+
+export async function loadAdminAccessContext(adminId) {
+  const id = String(adminId || '');
+  if (!id) return { permissions: [], teams: [], access_role: null };
+  const [permissionRows, teamRows, accountRows] = await Promise.all([
+    supabase('admin_effective_permissions', {
+      query: `?select=permission_key&admin_user_id=eq.${encodeURIComponent(id)}&order=permission_key.asc`
+    }),
+    supabase('admin_team_directory', {
+      query: `?select=team_id,team_name,team_description,team_active,membership_created_at&admin_user_id=eq.${encodeURIComponent(id)}&order=team_name.asc`
+    }),
+    supabase('admin_users', {
+      query: `?select=access_role_id,access_roles:access_role_id(id,name,description,is_system,is_active)&id=eq.${encodeURIComponent(id)}&limit=1`
+    })
+  ]);
+  return {
+    permissions: (permissionRows || []).map(row => row.permission_key),
+    teams: teamRows || [],
+    access_role: accountRows?.[0]?.access_roles || null
+  };
 }
 
 export function hashPassword(password, salt = crypto.randomBytes(16).toString('base64url')) {

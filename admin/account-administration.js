@@ -6,6 +6,7 @@
 
   const byId = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const MANAGEMENT_KEYS = ['administration.users.manage','administration.roles.manage','administration.teams.manage'];
 
   function getCurrentUser() {
     try {
@@ -13,6 +14,20 @@
     } catch {}
     try { return JSON.parse(localStorage.getItem('export_mca_user') || 'null'); }
     catch { return null; }
+  }
+
+  function canManageAccess() {
+    const access = window.ExportMcaAccessControl;
+    if (access?.canAny) return access.canAny(MANAGEMENT_KEYS);
+    const user = getCurrentUser();
+    return user?.role === 'master_admin' || MANAGEMENT_KEYS.some(key => Array.isArray(user?.permissions) && user.permissions.includes(key));
+  }
+
+  function syncAccessUiState() {
+    const access = window.ExportMcaAccessControl;
+    const notificationsReadOnly = Boolean(access?.can?.('notifications.read') && !access?.can?.('notifications.manage'));
+    document.body.classList.toggle('access-notifications-readonly', notificationsReadOnly);
+    ensureAdministrationNavigation();
   }
 
   async function request(path, options = {}) {
@@ -120,9 +135,15 @@
       submenu.prepend(accountButton);
     }
 
-    const user = getCurrentUser();
     const adminsButton = submenu.querySelector('[data-section="adminsSection"]');
-    adminsButton?.classList.toggle('hidden', user?.role !== 'master_admin');
+    if (adminsButton) {
+      adminsButton.classList.toggle('hidden', !canManageAccess());
+      adminsButton.dataset.navLabel = 'Usuarios y acceso';
+      adminsButton.setAttribute('aria-label','Usuarios y acceso');
+      adminsButton.title = 'Usuarios y acceso';
+      const label = adminsButton.querySelector('.nav-label');
+      if (label) label.textContent = 'Usuarios y acceso';
+    }
 
     accountButton.onclick = event => {
       event.preventDefault();
@@ -136,8 +157,9 @@
     byId('changeOwnPassword')?.remove();
   }
 
-  function roleLabel(role) {
-    return role === 'master_admin' ? 'Administrador maestro' : role === 'admin' ? 'Administrador' : String(role || 'Usuario');
+  function roleLabel(account) {
+    if (account?.role === 'master_admin') return 'Administrador maestro';
+    return account?.access_role?.name || 'Usuario';
   }
 
   function renderAccount(account) {
@@ -145,18 +167,25 @@
     if (!target) return;
     const changed = account?.password_changed_at ? new Date(account.password_changed_at) : null;
     const lastLogin = account?.last_login_at ? new Date(account.last_login_at) : null;
+    const teams = Array.isArray(account?.teams) ? account.teams.map(team => team.team_name).filter(Boolean) : [];
+    const permissions = Array.isArray(account?.permissions) ? account.permissions.length : 0;
     target.innerHTML = `
       <div class="account-field"><div class="account-field-label">Nombre</div><div class="account-field-value">${esc(account?.full_name || 'Sin registrar')}</div></div>
       <div class="account-field"><div class="account-field-label">Usuario</div><div class="account-field-value">${esc(account?.username || '—')}</div></div>
-      <div class="account-field"><div class="account-field-label">Rol</div><div class="account-field-value"><span class="account-role-pill">${esc(roleLabel(account?.role))}</span></div></div>
+      <div class="account-field"><div class="account-field-label">Rol de acceso</div><div class="account-field-value"><span class="account-role-pill">${esc(roleLabel(account))}</span></div></div>
+      <div class="account-field"><div class="account-field-label">Equipos</div><div class="account-field-value">${esc(teams.length ? teams.join(', ') : 'Sin equipo')}</div></div>
+      <div class="account-field"><div class="account-field-label">Permisos efectivos</div><div class="account-field-value">${account?.role === 'master_admin' ? 'Acceso total del sistema' : `${permissions} permisos`}</div></div>
       <div class="account-field"><div class="account-field-label">Último acceso</div><div class="account-field-value">${lastLogin && !Number.isNaN(lastLogin.getTime()) ? esc(lastLogin.toLocaleString('es-US')) : 'No disponible'}</div></div>
       <div class="account-field"><div class="account-field-label">Último cambio de contraseña</div><div class="account-field-value">${changed && !Number.isNaN(changed.getTime()) ? esc(changed.toLocaleString('es-US')) : 'No disponible'}</div></div>`;
   }
 
   async function loadAccount() {
-    const result = await request('/api/account');
-    renderAccount(result.account || {});
-    return result.account || {};
+    const account = window.ExportMcaAccessControl?.refreshAccount
+      ? await window.ExportMcaAccessControl.refreshAccount()
+      : (await request('/api/account')).account || {};
+    syncAccessUiState();
+    renderAccount(account || {});
+    return account || {};
   }
 
   function setStatus(message, ok) {
@@ -211,6 +240,7 @@
     installStyles();
     ensureAccountSection();
     ensureAdministrationNavigation();
+    syncAccessUiState();
     cleanSidebarFooter();
     bindAccountForm();
 
@@ -219,10 +249,13 @@
       updatePageTitle(id);
       if (id === 'accountSection') loadAccount().catch(error => setStatus(error.message, false));
     });
+    window.addEventListener('export-mca:navigation-shell-changed', syncAccessUiState);
+    window.addEventListener('export-mca:admin-ready', syncAccessUiState);
 
     window.ExportMcaAccountAdministration = Object.freeze({
       owner: 'account-administration.js',
-      refresh: loadAccount
+      refresh: loadAccount,
+      syncNavigation: syncAccessUiState
     });
   }
 

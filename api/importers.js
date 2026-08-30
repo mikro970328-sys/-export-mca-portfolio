@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 
 const cleanName = value => String(value || '').trim().replace(/\s+/g, ' ').slice(0, 160);
 const normalizedName = value => cleanName(value).toUpperCase();
@@ -148,14 +148,17 @@ async function assignShipmentImporter(admin, shipmentId, { importerIdValue, impo
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
-  if (!admin) return;
-
   try {
-    if (req.method === 'GET') return ok(res, await getState());
+    if (req.method === 'GET') {
+      const admin = await authorizeAdmin(req, res, 'clients.read');
+      if (!admin) return;
+      return ok(res, await getState());
+    }
 
     const body = await readJson(req);
     if (req.method === 'POST' && body.action === 'sync_client') {
+      const admin = await authorizeAdmin(req, res, 'clients.write');
+      if (!admin) return;
       const clientId = String(body.client_id || '').trim();
       if (!clientId) return fail(res, 400, 'Falta el cliente');
       const importers = await syncClientImporters(admin, clientId, body.importer_names || []);
@@ -163,6 +166,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PATCH' && body.action === 'assign_shipment') {
+      const admin = await authorizeAdmin(req, res, 'logistics.write');
+      if (!admin) return;
       const shipmentId = String(body.shipment_id || '').trim();
       if (!shipmentId) return fail(res, 400, 'Falta el contenedor');
       const assignment = await assignShipmentImporter(admin, shipmentId, {

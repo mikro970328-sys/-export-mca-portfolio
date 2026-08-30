@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const METHODS=new Set(['inventory','purchase_warehouse','purchase_direct']);
@@ -60,7 +60,7 @@ async function loadSupply(salesOrderId){
 }
 
 export default async function handler(req,res){
-  const admin=requireAdmin(req,res);if(!admin)return;
+  const admin=await authorizeAdmin(req,res,req.method==='GET'?'sales.read':'sales.write');if(!admin)return;
   try{
     if(req.method==='GET'){const salesOrderId=uuid(req.query?.sales_order_id||req.query?.id,'SALES_ORDER_ID');return ok(res,await loadSupply(salesOrderId));}
     if(req.method!=='POST')return fail(res,405,'Método no permitido');

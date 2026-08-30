@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
@@ -110,11 +110,10 @@ function translatedError(raw) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
-  if (!admin) return;
-
   try {
     if (req.method === 'GET') {
+      const admin = await authorizeAdmin(req, res, 'procurement.read');
+      if (!admin) return;
       const data = await bootstrap();
       const id = text(req.query?.id, 80);
       if (!id) return ok(res, data);
@@ -126,6 +125,8 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
     const body = await readJson(req);
     const action = text(body.action, 60).toLowerCase();
+    const admin = await authorizeAdmin(req, res, action === 'receive' ? 'warehouse.write' : 'procurement.write');
+    if (!admin) return;
 
     if (action === 'create_plan') {
       const result = await supabase('rpc/create_purchase_order_plan', { method:'POST', body:{

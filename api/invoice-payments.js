@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
@@ -19,7 +19,7 @@ function translatedError(raw) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, 'finance.write');
   if (!admin) return;
   if (req.method !== 'POST') return fail(res,405,'Método no permitido');
 

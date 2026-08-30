@@ -1,4 +1,4 @@
-import { fail, ok, requireAdmin, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
 import { loadExecutiveDashboard } from './_executive-dashboard.js';
 
 // UX-B projection owner: 'api/dashboard.js'.
@@ -97,7 +97,8 @@ function recentActivity(shipments) {
 }
 
 export default async function handler(req,res) {
-  if (!requireAdmin(req,res)) return;
+  const admin = await authorizeAdmin(req,res,'dashboard.read');
+  if (!admin) return;
   if (req.method !== 'GET') return fail(res,405,'Método no permitido');
 
   try {

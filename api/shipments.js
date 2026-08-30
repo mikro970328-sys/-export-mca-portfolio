@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, sendWhatsApp, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, sendWhatsApp, supabase } from './_lib.js';
 import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
 import { deleteShipsGoTracking, registerShipsGo } from './_shipsgo.js';
 
@@ -117,7 +117,7 @@ async function activateTracking(shipment, actor = null) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, req.method === 'GET' ? 'logistics.read' : 'logistics.write');
   if (!admin) return;
 
   try {
@@ -152,6 +152,8 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const body = await readJson(req);
       if (body.action === 'send_test_whatsapp') {
+        const notificationAdmin = await authorizeAdmin(req, res, 'notifications.manage');
+        if (!notificationAdmin) return;
         const to = String(body.to || '').trim();
         const container = normalizeShipmentReference(body.container_number);
         const status = String(body.status || '').trim();
@@ -209,6 +211,8 @@ export default async function handler(req, res) {
       const action = body.action || 'edit';
 
       if (action === 'manual_notification') {
+        const notificationAdmin = await authorizeAdmin(req, res, 'notifications.manage');
+        if (!notificationAdmin) return;
         const type = String(body.notification_type || '').trim().toLowerCase();
         const config = templateConfig(type, shipment, body);
         if (!config) return fail(res, 400, 'Tipo de plantilla no válido');

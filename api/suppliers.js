@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const normalizedName = value => text(value, 200).toLocaleLowerCase('en-US').replace(/\s+/g, ' ');
@@ -30,7 +30,7 @@ function supplierPayload(body) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, req.method === 'GET' ? 'procurement.read' : 'procurement.write');
   if (!admin) return;
 
   try {

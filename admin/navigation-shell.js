@@ -21,36 +21,11 @@
   ];
 
   const NAV_GROUPS = [
-    {
-      key:'home',
-      label:'Inicio',
-      icon:'⌂',
-      sections:['dashboardSection','notificationsSection']
-    },
-    {
-      key:'commercial',
-      label:'Comercial',
-      icon:'▧',
-      sections:['clientsSection','salesSection','invoicesSection','publicationsSection']
-    },
-    {
-      key:'operations',
-      label:'Operaciones',
-      icon:'▣',
-      sections:['purchasesSection','warehouseSection','inventorySection','loadsSection','containersSection','newOperationsSection','registerContainerSection']
-    },
-    {
-      key:'finance',
-      label:'Finanzas',
-      icon:'◇',
-      sections:['payablesSection','costsSection']
-    },
-    {
-      key:'administration',
-      label:'Administración',
-      icon:'◉',
-      sections:['suppliersSection','productsSection','workersSection']
-    }
+    { key:'home', label:'Inicio', icon:'⌂', sections:['dashboardSection','notificationsSection'] },
+    { key:'commercial', label:'Comercial', icon:'▧', sections:['clientsSection','salesSection','invoicesSection','publicationsSection'] },
+    { key:'operations', label:'Operaciones', icon:'▣', sections:['purchasesSection','warehouseSection','inventorySection','loadsSection','containersSection','registerContainerSection'] },
+    { key:'finance', label:'Finanzas', icon:'◇', sections:['payablesSection','costsSection'] },
+    { key:'administration', label:'Administración', icon:'◉', sections:['suppliersSection','productsSection','workersSection','adminsSection','accountSection'] }
   ];
 
   const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
@@ -199,8 +174,6 @@
     const nav = document.querySelector('.sidebar-nav');
     if (!nav) return;
 
-    const legacyAdmin = byId('adminNav');
-    const adminButton = legacyAdmin?.querySelector('[data-section="adminsSection"]') || null;
     const sectionButtons = new Map();
     nav.querySelectorAll('[data-section]').forEach(button => sectionButtons.set(button.dataset.section, button));
 
@@ -212,22 +185,10 @@
         const button = normalizeSubmenuButton(sectionButtons.get(sectionId));
         if (button) submenu.appendChild(button);
       });
-
-      if (config.key === 'administration' && adminButton && legacyAdmin && !legacyAdmin.classList.contains('hidden')) {
-        submenu.appendChild(normalizeSubmenuButton(adminButton));
-      }
-
       fragment.appendChild(group);
     }
 
     nav.replaceChildren(fragment);
-
-    if (legacyAdmin) {
-      legacyAdmin.classList.remove('nav-group', 'open');
-      legacyAdmin.classList.add('nav-role-proxy');
-      legacyAdmin.removeAttribute('data-nav-group');
-      nav.appendChild(legacyAdmin);
-    }
   }
 
   function initializeGroups() {

@@ -2,6 +2,7 @@
 (() => {
   const root = document.documentElement;
   const hasStoredSession = Boolean(localStorage.getItem('export_mca_token'));
+  const ACCESS_MANAGEMENT_KEYS = ['administration.users.manage','administration.roles.manage','administration.teams.manage'];
 
   if (hasStoredSession) root.classList.add('admin-preparing');
 
@@ -19,6 +20,10 @@
       return null;
     }
   };
+
+  const storedUserCan = (user, permission) => user?.role === 'master_admin' || (Array.isArray(user?.permissions) && user.permissions.includes(permission));
+  const storedUserCanAny = (user, permissions) => user?.role === 'master_admin' || (permissions || []).some(permission => storedUserCan(user, permission));
+  const storedRoleLabel = user => user?.role === 'master_admin' ? 'Administrador maestro' : user?.access_role?.name || 'Usuario';
 
   const showLoginState = () => {
     root.classList.remove('admin-preparing', 'auth-session', 'auth-pending');
@@ -69,8 +74,8 @@
       const currentUserLabel = document.getElementById('currentUser');
       const currentRoleLabel = document.getElementById('currentRole');
       if (currentUserLabel) currentUserLabel.textContent = storedUser.username || '';
-      if (currentRoleLabel) currentRoleLabel.textContent = storedUser.role === 'master_admin' ? 'Administrador maestro' : 'Administrador';
-      document.getElementById('adminNav')?.classList.toggle('hidden', storedUser.role !== 'master_admin');
+      if (currentRoleLabel) currentRoleLabel.textContent = storedRoleLabel(storedUser);
+      document.getElementById('adminNav')?.classList.toggle('hidden', !storedUserCanAny(storedUser, ACCESS_MANAGEMENT_KEYS));
       const dashboardDate = document.getElementById('dashboardDate');
       if (dashboardDate) dashboardDate.textContent = new Date().toLocaleDateString('es-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     }
@@ -141,7 +146,10 @@
     return false;
   });
   const navigationStylesPromise = loadStylesheet('/admin/navigation-shell.css?v=20260830-ux1', 'data-navigation-shell-style');
+  const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260830-p3', 'data-access-control-style');
   const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260817-e1', 'data-ui-icon-system');
+
+  const accessCan = permission => window.ExportMcaAccessControl?.can?.(permission) !== false;
 
   const revealAdminShell = () => {
     document.getElementById('loginPage')?.classList.add('hidden');
@@ -151,16 +159,23 @@
   };
 
   const hydrateSecondaryModules = async () => {
-    const clientsModule = loadScript('/admin/clients-module.js?v=20260830-ux2d', 'data-clients-module');
-    const alertChain = loadScript('/admin/operational-alert-center.js?v=20260830-ux2d', 'data-operational-alert-center')
-      .then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
+    const tasks = [];
 
-    await Promise.all([
-      clientsModule,
-      loadScript('/admin/module-export-controls.js', 'data-module-export-controls'),
-      alertChain
-    ]);
+    if (accessCan('clients.read')) {
+      tasks.push(loadScript('/admin/clients-module.js?v=20260830-ux2d', 'data-clients-module'));
+    }
+    if (accessCan('reports.read')) {
+      tasks.push(loadScript('/admin/module-export-controls.js', 'data-module-export-controls'));
+    }
+    if (accessCan('notifications.read')) {
+      let alertChain = loadScript('/admin/operational-alert-center.js?v=20260830-p3', 'data-operational-alert-center');
+      if (accessCan('notifications.manage')) {
+        alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260730-1', 'data-alert-phase2-stability'));
+      }
+      tasks.push(alertChain);
+    }
 
+    await Promise.all(tasks);
     window.dispatchEvent(new CustomEvent('export-mca:modules-ready'));
   };
 
@@ -173,18 +188,31 @@
     removeLegacyAdminControls();
 
     bootPromise = (async () => {
-      await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
-      await loadScript('/admin/containers-module.js?v=20260830-ux2d', 'data-containers-module');
-      await loadScript('/admin/registration-form-shell.js?v=20260817-uxc1', 'data-registration-form-shell');
-      await loadScript('/admin/shipment-editor.js?v=20260817-importers1', 'data-shipment-editor');
+      await accessStylesPromise;
+      await loadScript('/admin/access-control-administration.js?v=20260830-p3', 'data-access-control-administration');
+      if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
+      await window.ExportMcaAccessControl.initialize();
+
+      if (accessCan('dashboard.read')) {
+        await loadScript('/admin/dashboard-operational-state.js?v=20260731-owner2', 'data-dashboard-operational-state');
+      }
+      if (accessCan('logistics.read')) {
+        await loadScript('/admin/containers-module.js?v=20260830-ux2d', 'data-containers-module');
+      }
+      if (accessCan('logistics.write')) {
+        await loadScript('/admin/registration-form-shell.js?v=20260817-uxc1', 'data-registration-form-shell');
+        await loadScript('/admin/shipment-editor.js?v=20260817-importers1', 'data-shipment-editor');
+      }
       await loadScript('/admin/modal-dismissal.js?v=20260817-uxc2', 'data-modal-dismissal');
       await themePromise;
       await iconSystemPromise;
-      await loadScript('/admin/account-administration.js?v=20260817-e2', 'data-account-administration');
+      await loadScript('/admin/account-administration.js?v=20260830-p3', 'data-account-administration');
       await navigationStylesPromise;
-      await loadScript('/admin/navigation-shell.js?v=20260830-ux1', 'data-navigation-shell');
+      await loadScript('/admin/navigation-shell.js?v=20260830-p3', 'data-navigation-shell');
+      window.ExportMcaAccessControl?.applyNavigation?.();
       await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
       await loadScript('/admin/operational-navigation.js?v=20260830-ux2d', 'data-operational-navigation');
+      window.ExportMcaAccessControl?.applyNavigation?.();
 
       if (typeof window.loadAll !== 'function') {
         throw new Error('El cargador inicial de datos no está disponible.');
@@ -192,7 +220,7 @@
 
       await window.loadAll();
 
-      if (typeof window.initializeOperationalDashboard === 'function') {
+      if (accessCan('dashboard.read') && typeof window.initializeOperationalDashboard === 'function') {
         window.initializeOperationalDashboard();
       }
 

@@ -34,10 +34,17 @@ on:
       - 'supabase/migrations/20260830054000_p2_customer_advances_proformas.sql'
       - 'supabase/migrations/20260830054800_p2_customer_financial_integrity.sql'
       - 'supabase/migrations/20260830055500_p2_fk_index_hardening.sql'
+      - 'api/**'
+      - 'admin/account-administration.js'
+      - 'admin/access-control-administration.js'
+      - 'admin/access-control.css'
+      - 'supabase/migrations/20260830090500_p3_access_control_foundation.sql'
+      - 'supabase/migrations/20260830092000_p3_access_control_setters.sql'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
       - 'scripts/check-sales-customer-finance.mjs'
+      - 'scripts/check-access-control.mjs'
       - '.github/workflows/frontend-ownership-check.yml'
   workflow_dispatch:
 
@@ -67,3 +74,17 @@ jobs:
           node --check admin/sales-customer-finance.js
           node --check api/customer-advances.js
           node --check api/proformas.js
+      - name: Validate P3 access control
+        run: node scripts/check-access-control.mjs
+      - name: Validate P3 JavaScript syntax
+        run: |
+          node --check api/_lib.js
+          node --check api/account.js
+          node --check api/admins.js
+          node --check api/access-control.js
+          node --check api/history.js
+          node --check admin/access-control-administration.js
+          node --check admin/account-administration.js
+          node --check admin/erp.js
+          node --check admin/navigation-shell.js
+          node --check admin/operational-alert-center.js

@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, sendWhatsApp, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, sendWhatsApp, supabase } from './_lib.js';
 import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
 
 const EVENTS = {
@@ -162,7 +162,7 @@ function correctionPatch(shipment, eventKey, event, location, admin, now) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, 'logistics.write');
   if (!admin) return;
   if (req.method !== 'PATCH') return fail(res, 405, 'Método no permitido');
 

@@ -1,8 +1,8 @@
-import { fail, requireAdmin } from './_lib.js';
+import { authorizeAdmin, fail } from './_lib.js';
 import { streamContainerDocumentBundle } from './_document-bundle.js';
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, 'documents.read');
   if (!admin) return;
 
   if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');

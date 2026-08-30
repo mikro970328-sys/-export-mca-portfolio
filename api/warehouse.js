@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase } from './_lib.js';
 
 const text = value => String(value ?? '').trim();
 const numberOrNull = value => value === '' || value === null || value === undefined ? null : Number(value);
@@ -18,7 +18,7 @@ async function audit(admin, action, entityType, entityId, details = {}) {
   try {
     await supabase('audit_log', { method:'POST', body:[{
       action, entity_type:entityType, entity_id:entityId || null, details,
-      actor_admin_id:admin.id || null, actor_username:admin.username || null
+      actor_admin_id:admin.admin_id || null, actor_username:admin.username || null
     }] });
   } catch {}
 }
@@ -54,14 +54,18 @@ async function loadAll() {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
-  if (!admin) return;
   try {
-    if (req.method === 'GET') return ok(res, await loadAll());
+    if (req.method === 'GET') {
+      const admin = await authorizeAdmin(req, res, 'warehouse.read');
+      if (!admin) return;
+      return ok(res, await loadAll());
+    }
 
     if (req.method === 'POST') {
       const body = await readJson(req);
       const action = text(body.action);
+      const admin = await authorizeAdmin(req, res, action === 'create_product' ? 'procurement.write' : 'warehouse.write');
+      if (!admin) return;
 
       if (action === 'create_warehouse') {
         const code = text(body.code).toUpperCase();
@@ -70,7 +74,7 @@ export default async function handler(req, res) {
         if (!code || !name || !country) throw new Error('Código, nombre y país son obligatorios');
         const created = await supabase('warehouses', { method:'POST', query:'?select=*', body:[{
           code, name, country, city:text(body.city) || null, address:text(body.address) || null,
-          notes:text(body.notes) || null, created_by:admin.id || null
+          notes:text(body.notes) || null, created_by:admin.admin_id || null
         }] });
         await audit(admin, 'warehouse_created', 'warehouse', created?.[0]?.id, { code, name, country });
         return ok(res, { warehouse:created?.[0] });
@@ -169,7 +173,7 @@ export default async function handler(req, res) {
           warehouse_id:warehouseId, supplier_id:supplierId, supplier_name:supplierName,
           received_at:receivedAt, truck_reference:text(body.truck_reference) || null,
           driver_name:text(body.driver_name) || null, reference_number:text(body.reference_number) || null,
-          notes:text(body.notes) || null, created_by:admin.id || null
+          notes:text(body.notes) || null, created_by:admin.admin_id || null
         }] });
         const receipt = createdHeaders?.[0];
         if (!receipt?.id) throw new Error('No se pudo crear la recepción');
@@ -193,6 +197,8 @@ export default async function handler(req, res) {
     if (req.method === 'PATCH') {
       const body = await readJson(req);
       const action = text(body.action);
+      const admin = await authorizeAdmin(req, res, action === 'set_product_active' ? 'procurement.write' : 'warehouse.write');
+      if (!admin) return;
       const id = text(body.id);
       if (!id) throw new Error('Falta el identificador');
 

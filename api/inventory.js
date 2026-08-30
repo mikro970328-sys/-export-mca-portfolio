@@ -1,4 +1,4 @@
-import { fail, ok, requireAdmin, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
 
 const n = value => Number(value || 0);
 const cleanUnit = value => {
@@ -7,7 +7,7 @@ const cleanUnit = value => {
 };
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, 'warehouse.read');
   if (!admin) return;
   if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
 

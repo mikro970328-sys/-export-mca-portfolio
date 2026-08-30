@@ -1,9 +1,9 @@
-import { fail, hashPassword, ok, readJson, requireAdmin, supabase, verifyPassword, writeAudit } from './_lib.js';
+import { authenticateAdmin, fail, hashPassword, loadAdminAccessContext, ok, readJson, supabase, verifyPassword, writeAudit } from './_lib.js';
 
-const publicFields = 'id,full_name,username,role,is_active,last_login_at,password_changed_at,created_at,updated_at';
+const publicFields = 'id,full_name,username,role,is_active,last_login_at,password_changed_at,created_at,updated_at,access_role_id';
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authenticateAdmin(req, res);
   if (!admin) return;
 
   try {
@@ -13,7 +13,8 @@ export default async function handler(req, res) {
       });
       const account = rows?.[0] || null;
       if (!account || account.is_active === false) return fail(res, 403, 'La cuenta no está disponible');
-      return ok(res, { account });
+      const access = await loadAdminAccessContext(admin.admin_id);
+      return ok(res, { account: { ...account, ...access } });
     }
 
     if (req.method === 'PATCH') {

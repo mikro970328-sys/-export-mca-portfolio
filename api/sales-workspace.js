@@ -1,4 +1,4 @@
-import { fail, ok, requireAdmin, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
 
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const text=(value,max=2000)=>String(value??'').trim().slice(0,max);
@@ -45,7 +45,7 @@ async function workspace(salesOrderId){
 }
 
 export default async function handler(req,res){
-  const admin=requireAdmin(req,res);if(!admin)return;if(req.method!=='GET')return fail(res,405,'Método no permitido');
+  const admin=await authorizeAdmin(req,res,'sales.read');if(!admin)return;if(req.method!=='GET')return fail(res,405,'Método no permitido');
   try{const salesOrderId=requiredUuid(req.query?.sales_order_id||req.query?.id),data=await workspace(salesOrderId);if(!data)return fail(res,404,'Sales Order no encontrada');return ok(res,{workspace:data});}
   catch(error){const raw=String(error.message||'No se pudo cargar el workspace de la venta');console.error('[sales-workspace]',error);if(raw.includes('SALES_WORKSPACE_ID_INVALID'))return fail(res,400,'Sales Order inválida');return fail(res,400,raw);}
 }

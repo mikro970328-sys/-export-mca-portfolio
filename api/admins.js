@@ -1,14 +1,58 @@
-import { fail, hashPassword, normalizeUsername, ok, readJson, requireMasterAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, hashPassword, normalizeUsername, ok, readJson, supabase, writeAudit } from './_lib.js';
 
-const publicFields = 'id,full_name,username,role,is_active,last_login_at,created_at,updated_at';
+const publicFields = 'id,full_name,username,role,is_active,last_login_at,created_at,updated_at,access_role_id';
 const workerFields = 'id,full_name,phone,position,is_active,deactivation_reason,deactivated_at,created_at,updated_at';
 const cleanPhone = value => String(value || '').trim().replace(/[^+\d]/g, '');
+const uniqueIds = values => [...new Set((Array.isArray(values) ? values : []).map(value => String(value || '').trim()).filter(Boolean))];
+
+async function ensureAccessRole(id) {
+  const roleId = String(id || '').trim();
+  if (!roleId) throw new Error('ACCESS_ROLE_REQUIRED');
+  const rows = await supabase('access_roles', {
+    query: `?select=id,name,is_active&id=eq.${encodeURIComponent(roleId)}&is_active=eq.true&limit=1`
+  });
+  if (!rows?.length) throw new Error('ACCESS_ROLE_INVALID');
+  return rows[0];
+}
+
+async function setUserTeams(userId, teamIds, actorId) {
+  const ids = uniqueIds(teamIds);
+  await supabase('rpc/set_admin_teams', {
+    method: 'POST',
+    body: { p_admin_user_id:userId, p_team_ids:ids, p_actor:actorId }
+  });
+  return ids;
+}
+
+async function loadUsers() {
+  const [admins, memberships, roles, teamsCatalog] = await Promise.all([
+    supabase('admin_users', { query: `?select=${publicFields},access_roles:access_role_id(id,name,description,is_system,is_active)&order=created_at.asc` }),
+    supabase('admin_team_directory', { query: '?select=admin_user_id,team_id,team_name,team_description,team_active&order=team_name.asc' }),
+    supabase('access_roles', { query: '?select=id,name,description,is_system,is_active&order=is_system.desc,name.asc' }),
+    supabase('teams', { query: '?select=id,name,description,is_active&order=name.asc' })
+  ]);
+  const teamMap = new Map();
+  for (const row of memberships || []) {
+    if (!teamMap.has(row.admin_user_id)) teamMap.set(row.admin_user_id, []);
+    teamMap.get(row.admin_user_id).push({ id:row.team_id, name:row.team_name, description:row.team_description, is_active:row.team_active });
+  }
+  return {
+    admins:(admins || []).map(row => ({ ...row, teams:teamMap.get(row.id) || [] })),
+    roles:roles || [],
+    teams:teamsCatalog || []
+  };
+}
 
 export default async function handler(req, res) {
-  const master = requireMasterAdmin(req, res);
-  if (!master) return;
-
   const resource = String(req.query?.resource || 'admins').toLowerCase();
+  const isWrite = req.method !== 'GET';
+  const permission = resource === 'worker_history'
+    ? 'administration.workers.read'
+    : resource === 'workers'
+      ? (isWrite ? 'administration.workers.write' : 'administration.workers.read')
+      : 'administration.users.manage';
+  const actor = await authorizeAdmin(req, res, permission);
+  if (!actor) return;
 
   try {
     if (resource === 'worker_history') {
@@ -38,10 +82,10 @@ export default async function handler(req, res) {
 
         const rows = await supabase('workers', {
           method: 'POST',
-          body: { full_name: fullName, phone, position: position || null, is_active: true, created_by: master.admin_id }
+          body: { full_name: fullName, phone, position: position || null, is_active: true, created_by: actor.admin_id }
         });
         const worker = rows?.[0] || null;
-        await writeAudit(master, 'create_worker', 'worker', worker?.id, { full_name: fullName, phone, position });
+        await writeAudit(actor, 'create_worker', 'worker', worker?.id, { full_name: fullName, phone, position });
         return ok(res, { worker });
       }
 
@@ -83,17 +127,12 @@ export default async function handler(req, res) {
         if (statusEvent) {
           await supabase('worker_status_history', {
             method: 'POST',
-            body: {
-              worker_id: id,
-              action: statusEvent.action,
-              reason: statusEvent.reason,
-              changed_by: master.admin_id
-            }
+            body: { worker_id:id, action:statusEvent.action, reason:statusEvent.reason, changed_by:actor.admin_id }
           });
         }
 
         await writeAudit(
-          master,
+          actor,
           patch.is_active === false ? 'deactivate_worker' : patch.is_active === true ? 'reactivate_worker' : 'update_worker',
           'worker',
           id,
@@ -110,8 +149,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
-      const admins = await supabase('admin_users', { query: `?select=${publicFields}&order=created_at.asc` });
-      return ok(res, { admins: admins || [] });
+      return ok(res, await loadUsers());
     }
 
     const body = await readJson(req);
@@ -121,6 +159,7 @@ export default async function handler(req, res) {
       const username = normalizeUsername(body.username || '');
       const password = String(body.password || '');
       if (fullName.length < 3) return fail(res, 400, 'El nombre completo es obligatorio');
+      const accessRole = await ensureAccessRole(body.access_role_id);
       const { salt, hash } = hashPassword(password);
       const rows = await supabase('admin_users', {
         method: 'POST',
@@ -130,21 +169,27 @@ export default async function handler(req, res) {
           password_salt: salt,
           password_hash: hash,
           role: 'admin',
+          access_role_id: accessRole.id,
           is_active: true,
-          created_by: master.admin_id
+          created_by: actor.admin_id
         }
       });
       const created = rows?.[0];
-      await writeAudit(master, 'create_admin', 'admin_user', created?.id, { username });
-      return ok(res, { admin: created ? { id: created.id, full_name: created.full_name, username: created.username, role: created.role, is_active: created.is_active } : null });
+      const teamIds = created ? await setUserTeams(created.id, body.team_ids, actor.admin_id) : [];
+      await writeAudit(actor, 'create_admin', 'admin_user', created?.id, { username, access_role_id:accessRole.id, access_role_name:accessRole.name, team_ids:teamIds });
+      return ok(res, { admin: created ? { id: created.id, full_name: created.full_name, username: created.username, role: created.role, access_role_id:created.access_role_id, is_active: created.is_active, team_ids:teamIds } : null });
     }
 
     if (req.method === 'PATCH') {
       const id = String(body.id || '');
       if (!id) return fail(res, 400, 'Administrador inválido');
-      if (id === master.admin_id && body.is_active === false) return fail(res, 400, 'No puedes desactivar tu propia cuenta maestra');
+      const currentRows = await supabase('admin_users', { query:`?select=id,role,is_active,access_role_id&id=eq.${encodeURIComponent(id)}&limit=1` });
+      const current = currentRows?.[0] || null;
+      if (!current) return fail(res, 404, 'Administrador no encontrado');
+      if (current.role === 'master_admin' && actor.role !== 'master_admin') return fail(res, 403, 'Solo el administrador maestro puede modificar otra cuenta maestra');
+      if (id === actor.admin_id && body.is_active === false) return fail(res, 400, 'No puedes desactivar tu propia cuenta');
 
-      const patch = {};
+      const patch = { updated_at:new Date().toISOString() };
       if (body.full_name !== undefined) {
         const fullName = String(body.full_name).trim();
         if (fullName.length < 3) return fail(res, 400, 'Nombre inválido');
@@ -152,6 +197,11 @@ export default async function handler(req, res) {
       }
       if (body.username !== undefined) patch.username = normalizeUsername(body.username);
       if (body.is_active !== undefined) patch.is_active = Boolean(body.is_active);
+      if (body.access_role_id !== undefined) {
+        if (current.role === 'master_admin') return fail(res, 400, 'La cuenta maestra no utiliza un rol configurable');
+        const accessRole = await ensureAccessRole(body.access_role_id);
+        patch.access_role_id = accessRole.id;
+      }
       if (body.password) {
         const { salt, hash } = hashPassword(String(body.password));
         patch.password_salt = salt;
@@ -160,10 +210,17 @@ export default async function handler(req, res) {
         patch.failed_attempts = 0;
         patch.locked_until = null;
       }
-      if (!Object.keys(patch).length) return fail(res, 400, 'No hay cambios para guardar');
 
-      await supabase('admin_users', { method: 'PATCH', query: `?id=eq.${id}`, body: patch });
-      await writeAudit(master, 'update_admin', 'admin_user', id, { fields: Object.keys(patch).filter(x => !x.includes('password') && x !== 'password_salt') });
+      const hasTeams = body.team_ids !== undefined;
+      if (Object.keys(patch).length === 1 && !hasTeams) return fail(res, 400, 'No hay cambios para guardar');
+      if (Object.keys(patch).length > 1) {
+        await supabase('admin_users', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}`, body: patch });
+      }
+      const teamIds = hasTeams ? await setUserTeams(id, body.team_ids, actor.admin_id) : null;
+      await writeAudit(actor, 'update_admin', 'admin_user', id, {
+        fields: Object.keys(patch).filter(x => !x.includes('password') && x !== 'password_salt'),
+        ...(teamIds ? { team_ids:teamIds } : {})
+      });
       return ok(res, { updated: true });
     }
 
@@ -171,8 +228,12 @@ export default async function handler(req, res) {
   } catch (error) {
     if (error.message === 'USERNAME_INVALID') return fail(res, 400, 'El usuario debe tener entre 4 y 32 caracteres y solo usar letras, números, punto, guion o guion bajo');
     if (error.message === 'PASSWORD_TOO_SHORT') return fail(res, 400, 'La contraseña debe tener al menos 10 caracteres');
+    if (error.message === 'ACCESS_ROLE_REQUIRED') return fail(res, 400, 'Selecciona un rol de acceso');
+    if (error.message === 'ACCESS_ROLE_INVALID') return fail(res, 400, 'El rol seleccionado no está disponible');
     if (error.message.includes('admin_users_username_unique')) return fail(res, 409, 'Ese nombre de usuario ya existe');
     if (error.message.includes('workers_phone_unique')) return fail(res, 409, 'Ese teléfono ya está registrado');
+    if (error.message.includes('TEAM_INVALID')) return fail(res, 400, 'Uno de los equipos seleccionados no está disponible');
+    if (error.message.includes('LAST_MASTER_ADMIN_REQUIRED')) return fail(res, 409, 'Debe existir al menos una cuenta maestra activa');
     return fail(res, 500, 'No se pudo completar la operación', error.message);
   }
 }

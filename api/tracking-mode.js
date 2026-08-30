@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase } from './_lib.js';
 
 async function history(shipment, eventType, title, details = null, source = 'admin') {
   try {
@@ -33,7 +33,7 @@ async function resolveTrackingAlerts(shipmentId) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, 'logistics.write');
   if (!admin) return;
   if (req.method !== 'PATCH') return fail(res, 405, 'Método no permitido');
 

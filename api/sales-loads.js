@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const number = value => {
@@ -103,7 +103,7 @@ function translatedError(raw) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, req.method === 'GET' ? 'sales.read' : 'sales.write');
   if (!admin) return;
 
   try {

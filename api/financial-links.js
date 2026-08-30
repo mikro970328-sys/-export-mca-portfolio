@@ -1,4 +1,4 @@
-import { fail, ok, requireAdmin, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
 
 async function loadInvoices() {
   const [invoices, financial, payments] = await Promise.all([
@@ -36,7 +36,7 @@ async function loadInvoices() {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, 'finance.read');
   if (!admin) return;
   if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
 

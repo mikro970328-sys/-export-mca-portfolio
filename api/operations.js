@@ -1,4 +1,4 @@
-import { fail, ok, readJson, requireAdmin, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 import { operationIsFinalized, reconcileOperationLifecycle } from './_operation-lifecycle.js';
 
 const OPERATION_SELECT = [
@@ -225,7 +225,7 @@ async function createOperation(admin, body) {
 }
 
 export default async function handler(req, res) {
-  const admin = requireAdmin(req, res);
+  const admin = await authorizeAdmin(req, res, req.method === 'GET' ? 'logistics.read' : 'logistics.write');
   if (!admin) return;
 
   try {
