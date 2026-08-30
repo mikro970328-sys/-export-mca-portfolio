@@ -44,9 +44,10 @@ for(const fragment of ['Reportes','Exportar CSV','data-filter-dimension="period"
 for(const fragment of ['/api/reports','Authorization:`Bearer ${token()}`','response.blob()','URL.createObjectURL','FX: no se aplica','snapshot actual','window.ExecutiveReports=Object.freeze']){
   if(!ui.includes(fragment))errors.push(`Comportamiento P12 incompleto: ${fragment}`);
 }
-for(const forbidden of ['token=','window.open(export','executive_dashboard_rollup','gross_margin -','cash_collected -','contribution_margin /','Expediente','newOperationsSection']){
+for(const forbidden of ['window.open(export','executive_dashboard_rollup','gross_margin -','cash_collected -','contribution_margin /','Expediente','newOperationsSection']){
   if(ui.includes(forbidden))errors.push(`Frontend P12 viola boundary: ${forbidden}`);
 }
+if(/[?&]token=|(?:searchParams|params)\.set\(\s*['"]token['"]/.test(ui))errors.push('Frontend P12 no puede exponer el token en URL/query string.');
 if(/recognized_merchandise_cogs\s*[+\-*/]|gross_margin\s*[+\-*/]|contribution_margin\s*[+\-*/]|balance_due\s*[+\-*/]/.test(ui))errors.push('Frontend P12 contiene matemática financiera sobre métricas backend.');
 
 for(const fragment of ["id:'reportsSection'","src:'/admin/reports.html?embedded=1'","permission:'reports.read'","sections:['payablesSection','costsSection','reportsSection']","openReports: () => openEmbeddedById('reportsSection')"]){
@@ -62,5 +63,6 @@ console.log('Validación P12 Reportes superada.');
 console.log('- JSON y CSV comparten api/reports.js + executive_report_dataset.');
 console.log('- Filtros y dimensiones están whitelisted; inventario se marca snapshot actual.');
 console.log('- Monedas permanecen separadas y no hay FX ni matemática financiera en frontend.');
+console.log('- La autenticación del CSV viaja por Authorization header; el gate bloquea token en URL/query string.');
 console.log('- NavigationShell muestra Reportes únicamente con reports.read.');
 console.log('- No se reutiliza Operations/Expedientes como fuente financiera P12.');
