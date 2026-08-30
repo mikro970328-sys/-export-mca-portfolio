@@ -10,7 +10,7 @@
   function installDirect(win = window) {
     const path = win.location?.pathname || '';
     if (path.endsWith('/invoices.html')) {
-      inject(win.document, 'b7-invoice-expediente', '/admin/invoice-expediente.js');
+      inject(win.document, 'b7-invoice-expediente-v2', '/admin/invoice-expediente-v2.js?v=20260830-ux2c');
       inject(win.document, 'b7-invoice-documents', '/admin/commercial-documents-invoices.js');
     }
     if (path.endsWith('/loads.html')) inject(win.document, 'b7-load-documents', '/admin/commercial-documents-loads.js');
@@ -23,7 +23,7 @@
       if (parentWindow.location.origin === window.location.origin && !parentWindow.document.getElementById('b7-commercial-documents-shell')) {
         const script = parentWindow.document.createElement('script');
         script.id = 'b7-commercial-documents-shell';
-        script.src = '/admin/commercial-documents-shell.js';
+        script.src = '/admin/commercial-documents-shell.js?v=20260830-ux2c';
         parentWindow.document.head.appendChild(script);
       }
     } catch {}
@@ -34,7 +34,7 @@
   window.__b7CommercialDocumentsShellInstalled = true;
 
   const configs = [
-    ['invoicesSection', 'b7-invoice-expediente', '/admin/invoice-expediente.js'],
+    ['invoicesSection', 'b7-invoice-expediente-v2', '/admin/invoice-expediente-v2.js?v=20260830-ux2c'],
     ['invoicesSection', 'b7-invoice-documents', '/admin/commercial-documents-invoices.js'],
     ['loadsSection', 'b7-load-documents', '/admin/commercial-documents-loads.js']
   ];
