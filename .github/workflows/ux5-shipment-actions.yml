@@ -1,0 +1,37 @@
+name: UX5 Shipment Actions
+
+on:
+  pull_request:
+    paths:
+      - 'api/_shipment-actions.js'
+      - 'api/shipments.js'
+      - 'api/manual-tracking-event.js'
+      - 'admin/admin-data-loader.js'
+      - 'admin/containers-module.js'
+      - 'supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql'
+      - 'supabase/tests/ux5_shipment_actions.sql'
+      - 'scripts/check-ux5-shipment-actions.mjs'
+      - '.github/workflows/ux5-shipment-actions.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-shipment-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate canonical action ownership
+        run: node scripts/check-ux5-shipment-actions.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/_shipment-actions.js
+          node --check api/shipments.js
+          node --check api/manual-tracking-event.js
+          node --check admin/admin-data-loader.js
+          node --check admin/containers-module.js
+          node --check scripts/check-ux5-shipment-actions.mjs
+      - name: Validate API runtime imports
+        run: |
+          node -e "Promise.all([import('./api/_shipment-actions.js'),import('./api/shipments.js'),import('./api/manual-tracking-event.js')]).then(()=>console.log('shipment ESM imports: OK'))"
