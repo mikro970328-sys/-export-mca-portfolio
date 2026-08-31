@@ -34,12 +34,8 @@
   }
 
   async function settled(key, promise) {
-    try {
-      return { key, ok:true, value:await promise };
-    } catch (error) {
-      console.error(`[admin data loader] ${key}`, error);
-      return { key, ok:false, error };
-    }
+    try { return { key, ok:true, value:await promise }; }
+    catch (error) { console.error(`[admin data loader] ${key}`, error); return { key, ok:false, error }; }
   }
 
   async function loadCore() {
@@ -50,10 +46,14 @@
 
     const results = await Promise.all(jobs);
     const byKey = new Map(results.map(result => [result.key,result]));
-    const clientRows = byKey.get('clients')?.ok ? (byKey.get('clients').value?.clients || []) : (window.clients || []);
-    const shipmentRows = byKey.get('shipments')?.ok ? (byKey.get('shipments').value?.shipments || []) : (window.shipments || []);
-    const adminRows = byKey.get('admins')?.ok ? (byKey.get('admins').value?.admins || []) : (window.admins || []);
+    const clientPayload = byKey.get('clients')?.ok ? byKey.get('clients').value : null;
+    const shipmentPayload = byKey.get('shipments')?.ok ? byKey.get('shipments').value : null;
+    const adminPayload = byKey.get('admins')?.ok ? byKey.get('admins').value : null;
+    const clientRows = clientPayload?.clients || window.clients || [];
+    const shipmentRows = shipmentPayload?.shipments || window.shipments || [];
+    const adminRows = adminPayload?.admins || window.admins || [];
 
+    window.shipmentWriteAccess = shipmentPayload ? shipmentPayload.write_access === true : window.shipmentWriteAccess === true;
     setLegacyCollection('clients', Array.isArray(clientRows) ? clientRows : []);
     setLegacyCollection('shipments', Array.isArray(shipmentRows) ? shipmentRows : []);
     setLegacyCollection('admins', Array.isArray(adminRows) ? adminRows : []);
@@ -67,10 +67,10 @@
 
     const errors = results.filter(result => !result.ok).map(result => ({ key:result.key, message:String(result.error?.message || 'No disponible') }));
     window.dispatchEvent(new CustomEvent('export-mca:data-loaded', {
-      detail: { clients:window.clients || [], shipments:window.shipments || [], errors }
+      detail: { clients:window.clients || [], shipments:window.shipments || [], shipment_write_access:window.shipmentWriteAccess === true, errors }
     }));
 
-    return { clients:window.clients || [], shipments:window.shipments || [], admins:window.admins || [], errors };
+    return { clients:window.clients || [], shipments:window.shipments || [], admins:window.admins || [], shipment_write_access:window.shipmentWriteAccess === true, errors };
   }
 
   async function loadDashboard() {
