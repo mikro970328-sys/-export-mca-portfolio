@@ -40,6 +40,10 @@ function firstShipsGoItem(response) {
   return null;
 }
 
+function trackingIdentity(item) {
+  return item?.id || item?.shipment_id || item?.tracking_id || null;
+}
+
 export async function findShipsGoTracking(containerNumber) {
   const paths = [
     process.env.SHIPSGO_SEARCH_PATH || `ocean/shipments?filters[container_number]=eq:${encodeURIComponent(containerNumber)}&take=1`,
@@ -58,22 +62,31 @@ export async function findShipsGoTracking(containerNumber) {
   return null;
 }
 
+async function requireTrackingIdentity(containerNumber, candidate, mode) {
+  const candidateId = trackingIdentity(candidate);
+  if (candidateId) return { mode, id: candidateId, raw: candidate };
+  const linked = await findShipsGoTracking(containerNumber);
+  const linkedId = trackingIdentity(linked);
+  if (linkedId) return { mode: mode === 'created' ? 'created_linked' : 'linked', id: linkedId, raw: linked };
+  throw new Error('SHIPSGO_TRACKING_ID_MISSING: ShipsGo no confirmó una identidad de tracking utilizable');
+}
+
 export async function registerShipsGo(containerNumber, knownTrackingId = null) {
   if (knownTrackingId) return { mode: 'reused', id: knownTrackingId, raw: null };
   const existing = await findShipsGoTracking(containerNumber);
-  if (existing) return { mode: 'linked', id: existing.id || existing.shipment_id || null, raw: existing };
+  if (existing) return requireTrackingIdentity(containerNumber, existing, 'linked');
 
   const createPath = process.env.SHIPSGO_CREATE_PATH || 'ocean/shipments';
   const payload = { container_number: containerNumber, reference: `EXPORT-MCA-${containerNumber}` };
   try {
     const created = await shipsGoRequest(createPath, { method: 'POST', body: payload });
     const item = created?.data || created;
-    return { mode: 'created', id: item?.id || item?.shipment_id || null, raw: item };
+    return requireTrackingIdentity(containerNumber, item, 'created');
   } catch (error) {
     if (error.status === 409 || String(error.message).includes('SHIPSGO_409')) {
       const linked = await findShipsGoTracking(containerNumber);
-      if (linked) return { mode: 'linked', id: linked.id || linked.shipment_id || null, raw: linked };
-      return { mode: 'already_exists', id: null, raw: error.data || null };
+      if (linked) return requireTrackingIdentity(containerNumber, linked, 'linked');
+      throw new Error('SHIPSGO_TRACKING_ID_MISSING: ShipsGo indicó que el tracking existe, pero no pudo confirmarse su identidad');
     }
     throw error;
   }
@@ -98,7 +111,7 @@ export async function deleteShipsGoTracking(shipment) {
   let trackingId = shipment.shipsgo_tracking_id || null;
   if (!trackingId) {
     const found = await findShipsGoTracking(shipment.container_number);
-    trackingId = found?.id || found?.shipment_id || null;
+    trackingId = trackingIdentity(found);
   }
   if (!trackingId) return { deleted: false, reason: 'not_found', tracking_id: null };
 
@@ -111,6 +124,7 @@ export async function deleteShipsGoTracking(shipment) {
     return { deleted: true, tracking_id: trackingId, response };
   } catch (error) {
     if (error.status === 404) return { deleted: true, tracking_id: trackingId, already_missing: true };
+    error.tracking_id = trackingId;
     throw error;
   }
 }
