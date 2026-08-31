@@ -74,8 +74,26 @@ requireText(shipments,"body.action === 'send_test_whatsapp') return fail(res,410
 requireText(shipments,"action === 'manual_notification') return fail(res,410",'debe bloquear plantillas manuales heredadas');
 requireText(shipments,"action === 'retry_shipsgo') return fail(res,410",'debe bloquear reconexión heredada sin llamar proveedor');
 
-const clients='api/clients.js';
-requireText(clients,'TWILIO_WELCOME_CONTENT_SID','debe conservar bienvenida Twilio');
+// Welcome is intentionally manual and repeatable. Saving a client must never send it.
+const clientsFile='api/clients.js';
+const clients=read(clientsFile);
+requireText(clientsFile,'TWILIO_WELCOME_CONTENT_SID','debe conservar plantilla de bienvenida');
+requireText(clientsFile,"body.action === 'resend_welcome'",'debe conservar acción manual y repetible de bienvenida');
+requireText(clientsFile,"return ok(res, { client, welcome: { status: 'pending' } });",'crear cliente debe dejar bienvenida pendiente sin enviarla');
+const clientPostStart=clients.indexOf("if (req.method === 'POST')");
+const clientPatchStart=clients.indexOf("if (req.method === 'PATCH')");
+const clientPost=clientPostStart>=0&&clientPatchStart>clientPostStart?clients.slice(clientPostStart,clientPatchStart):'';
+if(!clientPost)failures.push('api/clients.js: no se pudo aislar POST de creación de cliente');
+else if(/sendWelcome\s*\(|sendWhatsApp\s*\(/.test(clientPost))failures.push('api/clients.js: guardar cliente no puede enviar bienvenida automáticamente');
+
+const clientsUiFile='admin/clients-module.js';
+const clientsUi=read(clientsUiFile);
+for(const text of ["action==='welcome')welcome(id)",'Reenviar bienvenida','Enviar bienvenida'])requireText(clientsUiFile,text,'debe conservar acción manual Enviar/Reenviar bienvenida');
+const saveStart=clientsUi.indexOf('async function save()');
+const menuStart=clientsUi.indexOf('function ensureMenu()',saveStart);
+const saveBlock=saveStart>=0&&menuStart>saveStart?clientsUi.slice(saveStart,menuStart):'';
+if(!saveBlock)failures.push('admin/clients-module.js: no se pudo aislar flujo Guardar cliente');
+else if(/\bwelcome\s*\(|resend_welcome/.test(saveBlock))failures.push('admin/clients-module.js: Guardar cliente no puede disparar bienvenida');
 
 const twilio='api/twilio-status.js';
 for(const text of ['validateTwilioRequest({','rpc/reconcile_twilio_delivery_status'])requireText(twilio,text);
@@ -117,4 +135,4 @@ if(failures.length){
   console.error('P19 integration scope gate failed:\n'+failures.map(x=>`- ${x}`).join('\n'));
   process.exit(1);
 }
-console.log('P19 integration scope gate passed: ShipsGo retired; WhatsApp limited to welcome, departure and release.');
+console.log('P19 integration scope gate passed: ShipsGo retired; WhatsApp limited to manual/repeatable welcome plus automatic departure and release.');
