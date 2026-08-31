@@ -6,23 +6,35 @@ const failures=[];
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const reconcileCorrection='supabase/migrations/20260830211700_p9_alert_reconcile_column_qualification.sql';
 const actionCorrection='supabase/migrations/20260830211800_p9_alert_action_column_qualification.sql';
+const registryMigration='supabase/migrations/20260830211500_p9_operational_alert_condition_registry.sql';
+const normalizationMigration='supabase/migrations/20260830211600_p9_alert_cycle_seed_normalization.sql';
+const helperFile='api/_alert-lifecycle.js';
+const trackingFile='api/tracking-alerts.js';
+const manualTrackingFile='api/manual-tracking-alerts.js';
+const dischargeReleaseFile='api/discharge-release-alerts.js';
+const stagnantFile='api/stagnant-shipment-alerts.js';
+const historyFile='api/history.js';
+const centerFile='admin/operational-alert-center.js';
+const stabilityFile='admin/alert-phase2-stability.js';
+const retiredProviderChecker='api/shipsgo-error-alerts.js';
+
 const required=[
-  'supabase/migrations/20260830211500_p9_operational_alert_condition_registry.sql',
-  'supabase/migrations/20260830211600_p9_alert_cycle_seed_normalization.sql',
-  'api/_alert-lifecycle.js',
-  'api/tracking-alerts.js',
-  'api/manual-tracking-alerts.js',
-  'api/discharge-release-alerts.js',
-  'api/shipsgo-error-alerts.js',
-  'api/stagnant-shipment-alerts.js',
-  'api/history.js',
-  'admin/operational-alert-center.js',
-  'admin/alert-phase2-stability.js'
+  registryMigration,
+  normalizationMigration,
+  helperFile,
+  trackingFile,
+  manualTrackingFile,
+  dischargeReleaseFile,
+  stagnantFile,
+  historyFile,
+  centerFile,
+  stabilityFile
 ];
 for(const file of [...required,reconcileCorrection,actionCorrection])if(!fs.existsSync(path.join(root,file)))failures.push(`${file}: falta archivo P9`);
+if(fs.existsSync(path.join(root,retiredProviderChecker)))failures.push(`${retiredProviderChecker}: checker de proveedor retirado no debe volver a runtime`);
 
 if(!failures.length){
-  const migration=read(required[0]),normalization=read(required[1]),qualification=read(reconcileCorrection),actionQualification=read(actionCorrection),helper=read(required[2]),tracking=read(required[3]),history=read(required[8]),center=read(required[9]),stability=read(required[10]);
+  const migration=read(registryMigration),normalization=read(normalizationMigration),qualification=read(reconcileCorrection),actionQualification=read(actionCorrection),helper=read(helperFile),tracking=read(trackingFile),history=read(historyFile),center=read(centerFile),stability=read(stabilityFile);
   for(const requiredText of [
     'create table public.operational_alert_conditions',
     'dedupe_key text primary key',
@@ -80,7 +92,8 @@ if(!failures.length){
 
   for(const text of ['operational_alert_condition_state','rpc/reconcile_operational_alert_condition','closeCondition','changedAction'])if(!helper.includes(text))failures.push(`helper P9: falta ${text}`);
 
-  const checkerFiles=required.slice(3,8);
+  // P19 retires the provider-specific checker. P9 lifecycle must remain common for the canonical ERP checkers.
+  const checkerFiles=[trackingFile,manualTrackingFile,dischargeReleaseFile,stagnantFile];
   for(const file of checkerFiles){
     const code=read(file);
     if(!code.includes("from './_alert-lifecycle.js'"))failures.push(`${file}: no usa lifecycle común`);
@@ -95,6 +108,8 @@ if(!failures.length){
   if(tracking.includes('processCustomsDocumentAlerts'))failures.push('tracking-alerts P9: documentos Cuba no deben seguir como alerta inmediata');
   if(/EVENT_TASK_UNASSIGNED|task_unassigned/.test(tracking))failures.push('P9: unassigned no genera alerta individual');
   if(/due_soon/.test(tracking)&&/EVENT_TASK/.test(tracking))failures.push('P9: due_soon no genera alerta individual');
+  if(!tracking.includes("'shipsgo_tracking_failed'"))failures.push('P9/P19: tracking-alerts debe reconocer y cerrar el ciclo histórico del proveedor retirado');
+  if(!tracking.includes("closeCondition(row,'external_tracking_retired'"))failures.push('P9/P19: tracking-alerts debe cerrar el ciclo histórico con razón explícita');
 
   for(const text of ['operational_alert_conditions','act_on_operational_alert','condition_active','condition_cycle_count'])if(!history.includes(text))failures.push(`history P9: falta ${text}`);
   if(/patch\.alert_status\s*=\s*['"]resolved['"]/.test(history))failures.push('history P9: resolve operacional no debe mutar lifecycle directo');
