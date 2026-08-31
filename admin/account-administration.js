@@ -209,12 +209,14 @@
     setStatus('Actualizando contraseña...', true);
 
     try {
-      await request('/api/account', {
+      const result = await request('/api/account', {
         method: 'PATCH',
         body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
       });
+      if (!result?.token) throw new Error('No se pudo renovar la sesión segura. Inicia sesión nuevamente.');
+      localStorage.setItem('export_mca_token', result.token);
       event.currentTarget.reset();
-      setStatus('Contraseña actualizada correctamente.', true);
+      setStatus('Contraseña actualizada. Las sesiones anteriores quedaron cerradas.', true);
       await loadAccount();
     } catch (error) {
       setStatus(error.message || 'No se pudo actualizar la contraseña.', false);
