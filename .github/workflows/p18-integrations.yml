@@ -10,6 +10,7 @@ on:
       - 'api/tracking-mode.js'
       - 'api/manual-tracking-event.js'
       - 'api/twilio-status.js'
+      - 'api/shipments.js'
       - 'supabase/migrations/20260831011*.sql'
       - 'supabase/tests/p18_integrations.sql'
       - 'scripts/check-integrations.mjs'
@@ -34,6 +35,7 @@ jobs:
           node --check api/tracking-mode.js
           node --check api/manual-tracking-event.js
           node --check api/twilio-status.js
+          node --check api/shipments.js
           node --check scripts/check-integrations.mjs
           node --check scripts/check-integration-event-identity.mjs
       - name: Check P18 ownership contract
