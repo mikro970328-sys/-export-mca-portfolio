@@ -43,12 +43,12 @@ async function loadSupply(salesOrderId){
   const supplierIds=[...new Set(pos.map(row=>row.supplier_id).filter(Boolean))];
   const suppliers=supplierIds.length?await supabase('suppliers',{query:`?select=id,name,legal_name,active&id=${inFilter(supplierIds)}&limit=5000`})||[]:[];
   const directShipmentIds=[...new Set(directRows.map(row=>row.shipment_id).filter(Boolean))];
-  const clientShipments=await supabase('shipments',{query:`?select=id,container_number,client_id,importer_id,active,operational_status,last_status,carrier,booking_number,bol_number,departure_date,delivered_at,shipsgo_status&client_id=eq.${encodeURIComponent(order.client_id)}&limit=5000`})||[];
+  const clientShipments=await supabase('shipments',{query:`?select=id,container_number,client_id,importer_id,active,operational_status,last_status,carrier,booking_number,bol_number,departure_date,delivered_at&client_id=eq.${encodeURIComponent(order.client_id)}&limit=5000`})||[];
   const clientShipmentIds=clientShipments.map(row=>row.id);
   const activeLoads=clientShipmentIds.length?await supabase('loads',{query:`?select=id,shipment_id,status&shipment_id=${inFilter(clientShipmentIds)}&status=neq.cancelled&limit=5000`})||[]:[];
   const dispatched=directShipmentIds.length?await supabase('direct_shipment_dispatches',{query:`?select=shipment_id,dispatched_at,dispatched_by,notes,created_at&shipment_id=${inFilter(directShipmentIds)}&limit=5000`})||[]:[];
   const missingIds=directShipmentIds.filter(id=>!clientShipments.some(row=>row.id===id));
-  const historicalShipments=missingIds.length?await supabase('shipments',{query:`?select=id,container_number,client_id,importer_id,active,operational_status,last_status,carrier,booking_number,bol_number,departure_date,delivered_at,shipsgo_status&id=${inFilter(missingIds)}&limit=5000`})||[]:[];
+  const historicalShipments=missingIds.length?await supabase('shipments',{query:`?select=id,container_number,client_id,importer_id,active,operational_status,last_status,carrier,booking_number,bol_number,departure_date,delivered_at&id=${inFilter(missingIds)}&limit=5000`})||[]:[];
 
   const progressBy=indexBy(progressRows||[],'sales_order_item_id'),productBy=indexBy(productRows||[]),plansBy=groupBy(plans,'sales_order_item_id'),procBy=groupBy(procurements,'supply_plan_line_id'),directBy=groupBy(directRows,'sales_procurement_allocation_id'),poItemBy=indexBy(poItems),poBy=indexBy(pos),supplierBy=indexBy(suppliers),shipmentBy=indexBy([...clientShipments,...historicalShipments]),dispatchBy=indexBy(dispatched,'shipment_id');
   const purchaseOptions=poItems.map(poItem=>{const po=poBy.get(poItem.purchase_order_id);if(!po||po.status==='cancelled')return null;return {...poItem,purchase_order:{...po,supplier:supplierBy.get(po.supplier_id)||null},compatible_methods:po.warehouse_id?['purchase_warehouse']:['purchase_warehouse','purchase_direct']};}).filter(Boolean);
