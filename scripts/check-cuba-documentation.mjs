@@ -12,6 +12,7 @@ const files={
   api:'api/shipment-documents.js',
   readinessApi:'api/shipment-document-readiness.js',
   salesApi:'api/sales-workspace.js',
+  shipmentActions:'api/_shipment-actions.js',
   containers:'admin/containers-module.js'
 };
 Object.values(files).forEach(requireFile);
@@ -22,6 +23,7 @@ if(Object.values(files).every(file=>fs.existsSync(path.join(root,file)))){
   const api=read(files.api);
   const readinessApi=read(files.readinessApi);
   const salesApi=read(files.salesApi);
+  const shipmentActions=read(files.shipmentActions);
   const containers=read(files.containers);
 
   for(const required of [
@@ -67,12 +69,19 @@ if(Object.values(files).every(file=>fs.existsSync(path.join(root,file)))){
     'document_access:{read:documentsReadable}'
   ]) if(!salesApi.includes(required))failures.push(`api/sales-workspace.js: falta gate documental ${required}`);
 
+  // UX-5: shipment capabilities carry the effective documents.read permission from DB-backed P3 access.
   for(const required of [
-    "can('documents.read')",
-    "can('documents.write')",
+    "action==='view_documents'?'documents.read'",
+    'loadAdminAccessContext',
+    'shipment_action_capabilities'
+  ]) if(!shipmentActions.includes(required))failures.push(`api/_shipment-actions.js: falta contrato documental UX-5 ${required}`);
+
+  for(const required of [
+    "actionAllowed(shipment,'view_documents')",
+    "window.ExportMcaAccessControl?.can?.('documents.write')===true",
     'Versiones anteriores',
     'Eliminar versión vigente',
-    'confirmCustomsDelete',
+    'decision({title:\'Eliminar versión vigente\'',
     'refreshAfterCustomsChange',
     'window.TasksWorkspace?.load?.()',
     'SalesWorkspace?.reload?.({keepTab:true})'
