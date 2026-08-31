@@ -1,0 +1,35 @@
+name: UX5 Customer Finance Actions
+
+on:
+  pull_request:
+    paths:
+      - 'api/_customer-finance-actions.js'
+      - 'api/customer-advances.js'
+      - 'api/proformas.js'
+      - 'admin/sales-customer-finance.js'
+      - 'supabase/migrations/20260831223500_ux5_customer_finance_action_capabilities.sql'
+      - 'supabase/tests/ux5_customer_finance_actions.sql'
+      - 'scripts/check-ux5-customer-finance-actions.mjs'
+      - '.github/workflows/ux5-customer-finance-actions.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-customer-finance-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate canonical action ownership
+        run: node scripts/check-ux5-customer-finance-actions.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/_customer-finance-actions.js
+          node --check api/customer-advances.js
+          node --check api/proformas.js
+          node --check admin/sales-customer-finance.js
+          node --check scripts/check-ux5-customer-finance-actions.mjs
+      - name: Validate API runtime imports
+        run: |
+          node -e "Promise.all([import('./api/_customer-finance-actions.js'),import('./api/customer-advances.js'),import('./api/proformas.js')]).then(()=>console.log('customer finance ESM imports: OK'))"
