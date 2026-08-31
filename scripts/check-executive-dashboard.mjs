@@ -9,6 +9,7 @@ const executiveApi=read('api/_executive-dashboard.js');
 const ui=read('admin/dashboard-operational-state.js');
 const css=read('admin/dashboard-executive.css');
 const erp=read('admin/erp.js');
+const dataLoader=read('admin/admin-data-loader.js');
 
 assert(migration.includes('profitability.direct_cost_currency'), 'P11: source B8 no expone direct_cost_currency');
 assert(migration.includes('profitability.contribution_margin'), 'P11: source B8 no expone contribution_margin');
@@ -52,8 +53,18 @@ assert(ui.includes('OperationalNavigation?.openEntity'), 'P11: tracking debe del
 assert(ui.includes('NavigationShell'), 'P11: módulos deben abrirse mediante owner de navegación');
 assert(ui.includes('snapshot actual'), 'P11: UI debe etiquetar AR/AP como snapshot');
 assert(ui.includes('no se aplica'), 'P11: UI debe hacer explícito que no hay FX');
+assert(ui.includes('renderLoading()'), 'P11: dashboard debe tener estado loading explícito');
+assert(ui.includes('renderError(error)'), 'P11: dashboard debe tener error recuperable explícito');
+assert(ui.includes('dashboardRetry'), 'P11: dashboard debe ofrecer reintento sin bloquear el ERP');
 assert(css.includes('.executive-finance-grid'), 'P11: stylesheet del dashboard incompleto');
 assert(erp.includes("loadStylesheet('/admin/dashboard-executive.css?v=20260830-p11'"), 'P11: bootstrap no carga stylesheet dashboard');
-assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260830-p11'"), 'P11: bootstrap no carga owner P11');
+assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260830-hotfix1'"), 'P11: bootstrap no carga owner P11');
+assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260830-hotfix1'"), 'P11: bootstrap no carga owner de datos resiliente');
+assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');
+assert(dataLoader.includes('window.ExecutiveDashboard?.refresh'), 'P11: owner de datos no delega al owner visual P11');
+const coreStart=dataLoader.indexOf('async function loadCore()');
+const dashboardStart=dataLoader.indexOf('async function loadDashboard()');
+const coreSource=coreStart>=0&&dashboardStart>coreStart?dataLoader.slice(coreStart,dashboardStart):'';
+assert(coreSource && !coreSource.includes('/api/dashboard'), 'P11: dashboard no puede bloquear la carga núcleo del shell');
 
 console.log('P11 executive dashboard B8.3: OK');
