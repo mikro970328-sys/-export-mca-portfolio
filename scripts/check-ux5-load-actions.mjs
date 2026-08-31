@@ -43,7 +43,18 @@ requireText(api,"supabase('rpc/execute_load_action'",'Loads API');
 requireText(api,"supabase('rpc/replace_load_plan_canonical'",'Loads API');
 requireText(api,"supabase('rpc/create_load_shipment_canonical'",'Loads API');
 requireText(api,"supabase('rpc/assign_load_shipment_canonical'",'Loads API');
-for(const legacy of ["supabase('rpc/reserve_load'","supabase('rpc/release_load'","supabase('rpc/start_load_loading'","supabase('rpc/mark_load_loaded'","supabase('rpc/dispatch_load'","supabase('rpc/cancel_load'","supabase('rpc/unassign_load_shipment'","supabase('rpc/replace_load_plan'","supabase('rpc/create_load_shipment'","supabase('rpc/assign_load_shipment'"]){forbidText(api,legacy,'Loads API canonical routing');}
+for(const legacy of [
+  "supabase('rpc/reserve_load',",
+  "supabase('rpc/release_load',",
+  "supabase('rpc/start_load_loading',",
+  "supabase('rpc/mark_load_loaded',",
+  "supabase('rpc/dispatch_load',",
+  "supabase('rpc/cancel_load',",
+  "supabase('rpc/unassign_load_shipment',",
+  "supabase('rpc/replace_load_plan',",
+  "supabase('rpc/create_load_shipment',",
+  "supabase('rpc/assign_load_shipment',"
+])forbidText(api,legacy,'Loads API canonical routing');
 forbidText(api,'load_expediente_documents','Loads API');
 forbidText(api,'expediente_documents','Loads API');
 
