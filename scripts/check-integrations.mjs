@@ -2,105 +2,142 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root=process.cwd();
-const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const failures=[];
+const exists=rel=>fs.existsSync(path.join(root,rel));
+const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const requireText=(file,text,label=text)=>{if(!read(file).includes(text))failures.push(`${file}: falta ${label}`);};
 const forbid=(file,re,label)=>{if(re.test(read(file)))failures.push(`${file}: ${label}`);};
 
-const migrations=[
-  'supabase/migrations/20260831011500_p18_external_integration_observations.sql',
-  'supabase/migrations/20260831011600_p18_webhook_traceability.sql',
-  'supabase/migrations/20260831011700_p18_delivery_key_compatibility.sql',
-  'supabase/migrations/20260831011800_p18_twilio_delivery_reconcile.sql',
-  'supabase/migrations/20260831011900_p18_delivery_key_normalization_fix.sql',
-  'supabase/migrations/20260831012000_p18_tracking_observation_fk_index.sql'
+const retiredFiles=[
+  'api/_shipsgo.js',
+  'api/_integration-events.js',
+  'api/shipsgo-webhook.js',
+  'api/shipsgo-error-alerts.js',
+  'api/tracking-mode.js'
 ];
-for(const file of migrations)if(!fs.existsSync(path.join(root,file)))failures.push(`${file}: falta migración P18`);
+for(const file of retiredFiles)if(exists(file))failures.push(`${file}: ShipsGo retirado no puede permanecer en runtime`);
 
-const observation=read(migrations[0]);
-for(const text of [
-  'create table if not exists public.external_tracking_observations',
-  'unique(provider,provider_event_key)',
-  'tracking_provider_observation_id',
-  'create unique index if not exists notification_dispatch_claims_shipment_delivery_key_unique',
-  'on public.notification_dispatch_claims(shipment_id,delivery_key)',
-  'ingest_external_tracking_observation',
-  "v_manual := v_shipment.shipsgo_status='manual'",
-  "ignored_reason='stale_provider_event'",
-  "ignored_reason='manual_mode'",
-  'claim_notification_dispatch',
-  'release_notification_dispatch_claim'
-]) if(!observation.includes(text))failures.push(`${migrations[0]}: falta contrato ${text}`);
-
-const ingestStart=observation.indexOf('create or replace function public.ingest_external_tracking_observation');
-const ingestEnd=observation.indexOf('create or replace function public.claim_notification_dispatch');
-const ingest=ingestStart>=0&&ingestEnd>ingestStart?observation.slice(ingestStart,ingestEnd):'';
-if(!ingest)failures.push('No se pudo aislar ingest_external_tracking_observation');
-if(/operational_status/i.test(ingest))failures.push('ingest_external_tracking_observation no puede tocar operational_status');
-
-const trace=read(migrations[1]);
-for(const text of ['provider_event_key text','observation_id uuid','webhook_events_observation_id_fkey'])if(!trace.includes(text))failures.push(`${migrations[1]}: falta ${text}`);
-
-const compat=read(migrations[2]);
-for(const text of ['tracking_notification_delivery_key','notification_dispatch_delivery_key_guard','tracking:DEPA','tracking:ARRV','tracking:DELIVERED'])if(!compat.includes(text))failures.push(`${migrations[2]}: falta ${text}`);
-
-const twilioSql=read(migrations[3]);
-for(const text of ['twilio_delivery_rank','reconcile_twilio_delivery_status',"v_current in ('failed','undelivered','read')","v_current='delivered'","grant execute on function public.reconcile_twilio_delivery_status"])if(!twilioSql.includes(text))failures.push(`${migrations[3]}: falta ${text}`);
-
-const normalizationFix=read(migrations[4]);
-for(const text of ["when 'llegó al puerto' then 'tracking:ARRV'","when 'llego al puerto' then 'tracking:ARRV'","revoke all on function public.tracking_notification_delivery_key(text) from public,anon,authenticated,service_role"]){
-  if(!normalizationFix.includes(text))failures.push(`${migrations[4]}: falta ${text}`);
-}
-if(normalizationFix.includes("llego del puerto"))failures.push(`${migrations[4]}: no puede conservar variante incorrecta 'llego del puerto'`);
-
-const fkIndex=read(migrations[5]);
-for(const text of ['create index if not exists shipments_tracking_provider_observation_idx','on public.shipments(tracking_provider_observation_id)','where tracking_provider_observation_id is not null']){
-  if(!fkIndex.includes(text))failures.push(`${migrations[5]}: falta ${text}`);
+const runtimeFiles=[
+  'api/shipments-register.js',
+  'api/loads.js',
+  'api/direct-shipment-dispatch.js',
+  'api/manual-tracking-event.js',
+  'api/manual-tracking-alerts.js',
+  'api/stagnant-shipment-alerts.js',
+  'admin/containers-module.js',
+  'vercel.json',
+  '.env.example'
+];
+for(const file of runtimeFiles){
+  if(!exists(file)){failures.push(`${file}: falta owner runtime`);continue;}
+  forbid(file,/shipsgo/i,'no puede conservar dependencia, copy ni acción ShipsGo');
+  forbid(file,/\/api\/tracking-mode/i,'no puede conservar modo de proveedor');
+  forbid(file,/retry_shipsgo/i,'no puede conservar reconexión a proveedor');
 }
 
-const webhook=read('api/shipsgo-webhook.js');
-for(const text of ['ingestShipsGoObservation','resolveTrackingStaleCondition','claimNotificationDelivery','releaseNotificationDelivery','operational_status_changed: false'])if(!webhook.includes(text))failures.push(`api/shipsgo-webhook.js: falta ${text}`);
-forbid('api/shipsgo-webhook.js',/body\s*:\s*\{[^}]*operational_status\s*:/s,'ShipsGo webhook no puede escribir operational_status');
-forbid('api/shipsgo-webhook.js',/notification_dispatch_claims/,'ShipsGo webhook no debe reclamar delivery por tabla directa');
+// Only immutable history/tombstones may still name the retired provider.
+const shipsGoTextAllowlist=new Set([
+  'api/tracking-alerts.js',                 // closes historical alert cycles
+  'api/shipments.js',                       // rejects the retired legacy action explicitly
+  'admin/shipment-timeline.js',             // renders immutable historical provider events
+  'admin/operational-alert-center.js'       // renders immutable historical provider alert labels
+]);
+function walkRuntime(dir){
+  const absolute=path.join(root,dir);
+  if(!fs.existsSync(absolute))return;
+  for(const entry of fs.readdirSync(absolute,{withFileTypes:true})){
+    const rel=path.join(dir,entry.name).replaceAll('\\','/');
+    if(entry.isDirectory()){walkRuntime(rel);continue;}
+    if(!/\.(?:js|mjs|html|json)$/.test(entry.name))continue;
+    const src=read(rel);
+    if(/shipsgo/i.test(src)&&!shipsGoTextAllowlist.has(rel))failures.push(`${rel}: referencia ShipsGo residual fuera de allowlist histórica`);
+  }
+}
+walkRuntime('api');
+walkRuntime('admin');
 
-const mode=read('api/tracking-mode.js');
-requireText('api/tracking-mode.js','resolveTrackingStaleCondition');
-forbid('api/tracking-mode.js',/event_type=eq\.tracking_stale/,'tracking-mode no debe usar alerta legacy tracking_stale');
-forbid('api/tracking-mode.js',/supabase\(['"]notifications['"][\s\S]{0,180}method:\s*['"]PATCH/,'tracking-mode no debe resolver alertas por PATCH directo');
+const historicalAlertCenter=read('admin/operational-alert-center.js');
+if(!historicalAlertCenter.includes("shipsgo_tracking_failed:'Error ShipsGo'"))failures.push('admin/operational-alert-center.js: debe conservar etiqueta histórica del proveedor para auditoría');
+forbid('admin/operational-alert-center.js',/\/api\/(?:shipsgo|tracking-mode)|retry_shipsgo|SHIPSGO_(?:API|TOKEN|WEBHOOK|CREATE|SEARCH|DELETE|CONFIG)/i,'allowlist histórica no puede esconder consumo activo del proveedor');
 
-const manual=read('api/manual-tracking-event.js');
-for(const text of ['claimNotificationDelivery','releaseNotificationDelivery','event.eventType'])if(!manual.includes(text))failures.push(`api/manual-tracking-event.js: falta ${text}`);
-forbid('api/manual-tracking-event.js',/notification_dispatch_claims/,'tracking manual no debe duplicar owner de claims');
+const notificationOwner='api/_notification-delivery.js';
+for(const text of ["new Set(['DEPA', 'RELEASE'])",'whatsappDeliveryKey','claim_notification_dispatch','release_notification_dispatch_claim'])requireText(notificationOwner,text);
+for(const blocked of ['LOAD','ARRV','DISC','DELIVERED','GTOT'])forbid(notificationOwner,new RegExp(`['\"]${blocked}['\"]`),`no puede habilitar ${blocked} para WhatsApp`);
 
-const twilio=read('api/twilio-status.js');
-requireText('api/twilio-status.js','rpc/reconcile_twilio_delivery_status');
-forbid('api/twilio-status.js',/supabase\(['"]notifications['"][\s\S]{0,200}method:\s*['"]PATCH/,'callback Twilio no debe mutar historial directamente');
+const manual='api/manual-tracking-event.js';
+for(const text of ['TWILIO_DEPARTED_CONTENT_SID','TWILIO_RELEASE_CONTENT_SID','whatsappMilestoneAllowed',"tracking_source:'erp'"])requireText(manual,text);
+for(const forbidden of ['TWILIO_CONTENT_SID','TWILIO_DELIVERED_CONTENT_SID','TWILIO_REGISTERED_CONTENT_SID'])forbid(manual,new RegExp(forbidden),`no puede usar ${forbidden}`);
+requireText(manual,"load: { order:1, status:'Cargado en el buque', eventType:'LOAD' }");
+requireText(manual,"arrived: { order:3, status:'Llegó al puerto', eventType:'ARRV' }");
+requireText(manual,"discharged: { order:4, status:'Descargado del buque', eventType:'DISC' }");
+requireText(manual,"delivered: { order:6, status:'Entregado', eventType:'DELIVERED' }");
 
-const shipsgo=read('api/_shipsgo.js');
-for(const text of ['SHIPSGO_TRACKING_ID_MISSING','requireTrackingIdentity','provider_lookup_failed','provider_delete_failed','export async function assertShipmentTrackingCanBeDeleted','domain_block = true'])if(!shipsgo.includes(text))failures.push(`api/_shipsgo.js: falta ${text}`);
+const shipments='api/shipments.js';
+for(const text of ["tracking_source:'erp'",'assertShipmentCanBeDeleted','TWILIO_RELEASE_CONTENT_SID',"claimNotificationDelivery(shipment.id,'RELEASE'"])requireText(shipments,text);
+forbid(shipments,/registerShipsGo|deleteShipsGoTracking|activateTracking\s*\(/,'no puede llamar tracking externo');
+requireText(shipments,"body.action === 'send_test_whatsapp') return fail(res,410",'debe bloquear envío arbitrario de WhatsApp heredado');
+requireText(shipments,"action === 'manual_notification') return fail(res,410",'debe bloquear plantillas manuales heredadas');
+requireText(shipments,"action === 'retry_shipsgo') return fail(res,410",'debe bloquear reconexión heredada sin llamar proveedor');
 
-const shipments=read('api/shipments.js');
-for(const text of ['assertShipmentTrackingCanBeDeleted','shipment_delete_blocked_load','deletion_scope:\'erp_authoritative_provider_cleanup_best_effort\''])if(!shipments.includes(text))failures.push(`api/shipments.js: falta ${text}`);
-const guardAt=shipments.indexOf('await assertShipmentTrackingCanBeDeleted(shipment.id)');
-const erpDeleteAt=shipments.indexOf("const deleted = await supabase('shipments'");
-const providerDeleteAt=shipments.indexOf('const shipsgoResult = await deleteShipsGoTracking(shipment)');
-if(!(guardAt>=0&&erpDeleteAt>guardAt&&providerDeleteAt>erpDeleteAt))failures.push('api/shipments.js: orden de borrado debe ser guard ERP -> DELETE ERP -> cleanup proveedor');
-forbid('api/shipments.js',/No se pudo borrar el tracking en ShipsGo\. El contenedor no fue eliminado del ERP/,'provider cleanup no debe gobernar el DELETE ERP');
+// Welcome is intentionally manual and repeatable. Saving a client must never send it.
+const clientsFile='api/clients.js';
+const clients=read(clientsFile);
+requireText(clientsFile,'TWILIO_WELCOME_CONTENT_SID','debe conservar plantilla de bienvenida');
+requireText(clientsFile,"body.action === 'resend_welcome'",'debe conservar acción manual y repetible de bienvenida');
+requireText(clientsFile,"return ok(res, { client, welcome: { status: 'pending' } });",'crear cliente debe dejar bienvenida pendiente sin enviarla');
+const clientPostStart=clients.indexOf("if (req.method === 'POST')");
+const clientPatchStart=clients.indexOf("if (req.method === 'PATCH')");
+const clientPost=clientPostStart>=0&&clientPatchStart>clientPostStart?clients.slice(clientPostStart,clientPatchStart):'';
+if(!clientPost)failures.push('api/clients.js: no se pudo aislar POST de creación de cliente');
+else if(/sendWelcome\s*\(|sendWhatsApp\s*\(/.test(clientPost))failures.push('api/clients.js: guardar cliente no puede enviar bienvenida automáticamente');
 
-const errorAlerts=read('api/shipsgo-error-alerts.js');
-requireText('api/shipsgo-error-alerts.js',"status==='active'&&!shipment.shipsgo_tracking_id",'detección active sin tracking id');
+const clientsUiFile='admin/clients-module.js';
+const clientsUi=read(clientsUiFile);
+for(const text of ["action==='welcome')welcome(id)",'Reenviar bienvenida','Enviar bienvenida'])requireText(clientsUiFile,text,'debe conservar acción manual Enviar/Reenviar bienvenida');
+const saveStart=clientsUi.indexOf('async function save()');
+const menuStart=clientsUi.indexOf('function ensureMenu()',saveStart);
+const saveBlock=saveStart>=0&&menuStart>saveStart?clientsUi.slice(saveStart,menuStart):'';
+if(!saveBlock)failures.push('admin/clients-module.js: no se pudo aislar flujo Guardar cliente');
+else if(/\bwelcome\s*\(|resend_welcome/.test(saveBlock))failures.push('admin/clients-module.js: Guardar cliente no puede disparar bienvenida');
 
-for(const file of ['api/_integration-events.js','api/shipsgo-webhook.js','api/tracking-mode.js','api/manual-tracking-event.js','api/twilio-status.js','api/shipsgo-error-alerts.js','api/shipments.js']){
-  forbid(file,/\bMutationObserver\b/,'no usar MutationObserver');
-  forbid(file,/\b(?:alert|prompt|confirm)\s*\(/,'no usar diálogos nativos');
+const twilio='api/twilio-status.js';
+for(const text of ['validateTwilioRequest({','rpc/reconcile_twilio_delivery_status'])requireText(twilio,text);
+
+const ui='admin/containers-module.js';
+for(const text of ['Seguimiento ERP',"{key:'departed',label:'Salió del puerto',whatsapp:true}","{key:'released',label:'Liberado',whatsapp:true}"])requireText(ui,text);
+forbid(ui,/Reconectar|Volver a automático|Cambiar a manual/i,'no puede ofrecer acciones de proveedor retirado');
+forbid(ui,/manualTrackingNotify/,'WhatsApp ya no es checkbox arbitrario');
+
+const alerts='api/tracking-alerts.js';
+requireText(alerts,"'shipsgo_tracking_failed'",'debe cerrar condición histórica de proveedor');
+forbid(alerts,/shipsgo_status|shipsgo_link_mode/i,'alertas activas no pueden depender del proveedor retirado');
+requireText(alerts,"closeCondition(row,'external_tracking_retired'",'debe retirar condiciones automáticas antiguas');
+
+const manualAlerts='api/manual-tracking-alerts.js';
+requireText(manualAlerts,"tracking_source:'erp'",'supervisión debe usar tracking ERP');
+forbid(manualAlerts,/shipsgo_status|shipsgo_link_mode/i,'supervisión ERP no puede filtrar por proveedor');
+
+const migration='supabase/migrations/20260831102000_p19_retire_shipsgo_limit_whatsapp.sql';
+if(!exists(migration))failures.push(`${migration}: falta migración P19`);
+else{
+  for(const text of ["v_key not in ('tracking:DEPA','tracking:RELEASE')","NOTIFICATION_DELIVERY_KEY_NOT_ALLOWED","'external_tracking_retired'","'shipsgo_tracking_failed'"])requireText(migration,text);
+}
+const fixture='supabase/tests/p19_integration_scope.sql';
+if(!exists(fixture))failures.push(`${fixture}: falta fixture P19`);
+else{
+  for(const text of ['begin;','rollback;','P19_LOAD_CLAIM_WAS_NOT_BLOCKED','P19_DELIVERED_CLAIM_WAS_NOT_BLOCKED','shipment_fixture_residue','claim_fixture_residue'])requireText(fixture,text);
+  forbid(fixture,/\bcommit\s*;/i,'fixture reversible no puede hacer COMMIT');
 }
 
-const changedIntegrationFiles=['api/_integration-events.js','api/_shipsgo.js','api/shipsgo-webhook.js','api/tracking-mode.js','api/manual-tracking-event.js','api/twilio-status.js','api/shipsgo-error-alerts.js','api/shipments.js',...migrations];
-const providerText=changedIntegrationFiles.map(read).join('\n').toLowerCase();
-for(const prohibited of ['sendgrid','mailgun','vonage','messagebird','aftership'])if(providerText.includes(prohibited))failures.push(`P18 no debe introducir proveedor externo nuevo: ${prohibited}`);
+const env=read('.env.example');
+for(const required of ['TWILIO_WELCOME_CONTENT_SID','TWILIO_DEPARTED_CONTENT_SID','TWILIO_RELEASE_CONTENT_SID','TWILIO_STATUS_CALLBACK_URL'])if(!env.includes(required))failures.push(`.env.example: falta ${required}`);
+for(const forbidden of ['SHIPSGO_','TWILIO_CONTENT_SID','TWILIO_DELIVERED_CONTENT_SID','TWILIO_REGISTERED_CONTENT_SID'])if(env.includes(forbidden))failures.push(`.env.example: no debe contener ${forbidden}`);
+
+const vercel=read('vercel.json');
+if(/shipsgo/i.test(vercel))failures.push('vercel.json: no puede conservar cron ShipsGo');
 
 if(failures.length){
-  console.error('P18 integration ownership gate failed:\n'+failures.map(x=>`- ${x}`).join('\n'));
+  console.error('P19 integration scope gate failed:\n'+failures.map(x=>`- ${x}`).join('\n'));
   process.exit(1);
 }
-console.log('P18 integration ownership gate passed.');
+console.log('P19 integration scope gate passed: ShipsGo retired; WhatsApp limited to manual/repeatable welcome plus automatic departure and release.');

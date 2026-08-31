@@ -1,25 +1,16 @@
 import assert from 'node:assert/strict';
-import { providerEventKey, trackingDeliveryKey } from '../api/_integration-events.js';
+import { whatsappDeliveryKey, whatsappMilestoneAllowed } from '../api/_notification-delivery.js';
 
-const base={
-  provider:'shipsgo',
-  trackingId:'track-1',
-  container:'MSCU1234567',
-  eventCode:'DEPA',
-  eventTime:'2026-08-31T01:00:00.000Z',
-  location:'Miami',
-  status:'Salió del puerto'
-};
+assert.equal(whatsappDeliveryKey('DEPA'),'tracking:DEPA');
+assert.equal(whatsappDeliveryKey('depa'),'tracking:DEPA');
+assert.equal(whatsappDeliveryKey('RELEASE'),'tracking:RELEASE');
+assert.equal(whatsappDeliveryKey('release'),'tracking:RELEASE');
 
-const first=providerEventKey(base);
-const second=providerEventKey({...base});
-assert.equal(first,second,'same provider event must have stable identity');
-assert.match(first,/^[a-f0-9]{64}$/,'provider event identity must be sha256 hex');
-assert.notEqual(first,providerEventKey({...base,eventTime:'2026-08-31T01:01:00.000Z'}),'event time must version provider identity');
-assert.notEqual(first,providerEventKey({...base,location:'Mariel'}),'location must version provider identity');
-assert.notEqual(first,providerEventKey({...base,status:'Llegó al puerto'}),'status must version provider identity');
-assert.equal(trackingDeliveryKey('DEPA'),'tracking:DEPA');
-assert.equal(trackingDeliveryKey('delivered'),'tracking:DELIVERED');
-assert.equal(trackingDeliveryKey('unknown'),null);
+for (const blocked of ['LOAD','ARRV','DISC','GTOT','DELIVERED','REGISTERED','UNKNOWN','']) {
+  assert.equal(whatsappDeliveryKey(blocked),null,`${blocked || 'empty'} must not have a WhatsApp delivery key`);
+  assert.equal(whatsappMilestoneAllowed(blocked),false,`${blocked || 'empty'} must not be WhatsApp-enabled`);
+}
+assert.equal(whatsappMilestoneAllowed('DEPA'),true);
+assert.equal(whatsappMilestoneAllowed('RELEASE'),true);
 
-console.log('P18 provider event identity gate passed.');
+console.log('P19 WhatsApp milestone identity gate passed: only DEPA and RELEASE are shipment notifications.');

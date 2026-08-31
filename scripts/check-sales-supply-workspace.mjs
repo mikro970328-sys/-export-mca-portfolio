@@ -29,9 +29,10 @@ for(const required of ['sales_supply_plan_lines','sales_procurement_allocations'
 assert(!api.includes('warehouses(id,code,name,location'),'API vuelve a consultar warehouses.location inexistente');
 assert(!api.includes('unit_price,currency'),'API vuelve a consultar sales_order_items.currency inexistente');
 
-for(const required of ['mark_direct_shipment_dispatched','registerShipsGo','importer_id:order.importer_id','direct_shipment_dispatched']){
+for(const required of ['mark_direct_shipment_dispatched',"tracking_source:'erp'",'importer_id:order.importer_id','direct_shipment_dispatched']){
   assert(directApi.includes(required),`Endpoint Direct Ship incompleto: ${required}`);
 }
+assert(!/registerShipsGo|shipsgo/i.test(directApi),'Direct Ship no puede depender de proveedor externo de tracking');
 for(const required of ['direct_shipment_dispatches','SO_ALLOCATION_CONFLICTS_WITH_DIRECT_SUPPLY','SUPPLY_DIRECT_CONFLICTS_WITH_LOAD','shipment_customs_document_readiness']){
   assert(migration.includes(required),`Migration Direct Ship incompleta: ${required}`);
 }

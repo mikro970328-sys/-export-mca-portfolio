@@ -1,8 +1,6 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
-import { registerShipsGo } from './_shipsgo.js';
 
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ISO_CONTAINER_RE=/^[A-Z]{4}\d{7}$/;
 const uuid=(value,label='ID')=>{const result=String(value||'').trim();if(!UUID_RE.test(result))throw new Error(`${label}_INVALID`);return result;};
 const note=value=>String(value??'').trim().slice(0,2000)||null;
 const text=(value,max=250)=>String(value??'').trim().slice(0,max)||null;
@@ -51,27 +49,6 @@ async function history(shipment,eventType,title,details=null){
   }catch(error){console.error('[direct-shipment-history]',error.message);}
 }
 
-async function activateTracking(shipment,admin){
-  if(!ISO_CONTAINER_RE.test(shipment.container_number)){
-    await supabase('shipments',{method:'PATCH',query:`?id=eq.${encodeURIComponent(shipment.id)}`,body:{shipsgo_status:'manual',shipsgo_error:null,updated_at:new Date().toISOString()}});
-    await history(shipment,'tracking_manual_reference','Referencia provisional de contenedor','Tracking automático pendiente de número ISO real.');
-    return {...shipment,shipsgo_status:'manual',shipsgo_error:null};
-  }
-  try{
-    const tracking=await registerShipsGo(shipment.container_number,shipment.shipsgo_tracking_id||null);
-    const trackingId=tracking.id||shipment.shipsgo_tracking_id||null;
-    await supabase('shipments',{method:'PATCH',query:`?id=eq.${encodeURIComponent(shipment.id)}`,body:{shipsgo_status:'active',shipsgo_tracking_id:trackingId,shipsgo_link_mode:tracking.mode,shipsgo_error:null,updated_at:new Date().toISOString()}});
-    await history(shipment,tracking.mode==='created'?'shipsgo_created':'shipsgo_linked',tracking.mode==='created'?'Tracking creado en ShipsGo':'Tracking existente vinculado en ShipsGo',trackingId||shipment.container_number);
-    await writeAudit(admin,'shipsgo_tracking_ready','shipment',shipment.id,{tracking_id:trackingId,mode:tracking.mode,source:'direct_ship'});
-    return {...shipment,shipsgo_status:'active',shipsgo_tracking_id:trackingId,shipsgo_link_mode:tracking.mode,shipsgo_error:null};
-  }catch(error){
-    await supabase('shipments',{method:'PATCH',query:`?id=eq.${encodeURIComponent(shipment.id)}`,body:{shipsgo_status:'failed',shipsgo_error:error.message,updated_at:new Date().toISOString()}});
-    await history(shipment,'shipsgo_failed','No se pudo activar el tracking en ShipsGo',error.message);
-    await writeAudit(admin,'shipsgo_tracking_failed','shipment',shipment.id,{error:error.message,source:'direct_ship'});
-    return {...shipment,shipsgo_status:'failed',shipsgo_error:error.message};
-  }
-}
-
 async function createDirectShipment(body,admin){
   const salesOrderId=uuid(body.sales_order_id,'SALES_ORDER_ID');
   const orders=await supabase('sales_orders',{query:`?select=id,so_number,status,client_id,importer_id&id=eq.${encodeURIComponent(salesOrderId)}&limit=1`})||[];
@@ -98,16 +75,14 @@ async function createDirectShipment(body,admin){
       last_status:'Registrado',
       operational_status:'Registrado',
       last_location:null,
-      last_event_at:null,
-      shipsgo_status:ISO_CONTAINER_RE.test(containerNumber)?'pending':'manual'
+      last_event_at:null
     }],
     prefer:'return=representation'
   })||[];
-  let shipment=rows[0];
+  const shipment=rows[0];
   if(!shipment)throw new Error('DIRECT_SHIPMENT_CREATE_FAILED');
   await history(shipment,'created_direct_from_sale','Contenedor Direct Ship registrado',`${order.so_number} · ${containerNumber}`);
-  await writeAudit(admin,'direct_shipment_created_from_sale','shipment',shipment.id,{sales_order_id:salesOrderId,so_number:order.so_number,container_number:containerNumber,provisional:!ISO_CONTAINER_RE.test(containerNumber)});
-  shipment=await activateTracking(shipment,admin);
+  await writeAudit(admin,'direct_shipment_created_from_sale','shipment',shipment.id,{sales_order_id:salesOrderId,so_number:order.so_number,container_number:containerNumber,tracking_source:'erp'});
   return shipment;
 }
 

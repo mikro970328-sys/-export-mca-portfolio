@@ -19,9 +19,9 @@ export async function readJson(req) {
   catch { throw new Error('JSON_INVALID'); }
 }
 
-const b64url = (value) => Buffer.from(value).toString('base64url');
+const b64url = value => Buffer.from(value).toString('base64url');
 const sign = (value, secret) => crypto.createHmac('sha256', secret).update(value).digest('base64url');
-const fromB64url = (value) => Buffer.from(value, 'base64url');
+const fromB64url = value => Buffer.from(value, 'base64url');
 
 export function createToken(payload) {
   const secret = process.env.JWT_SECRET;
@@ -239,7 +239,7 @@ const cleanVariable = (value, fallback = 'No disponible') => {
 export async function sendWhatsApp({ to, variables, contentSid }) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const selectedContentSid = contentSid || process.env.TWILIO_CONTENT_SID;
+  const selectedContentSid = String(contentSid || '').trim();
   const sender = process.env.TWILIO_WHATSAPP_FROM;
   if (!accountSid || !authToken || !selectedContentSid || !sender) throw new Error('TWILIO_CONFIG_MISSING');
 
@@ -261,14 +261,4 @@ export async function sendWhatsApp({ to, variables, contentSid }) {
   const data = await response.json();
   if (!response.ok) throw new Error(`TWILIO_${data.code || response.status}:${data.message || 'Error enviando mensaje'}`);
   return data;
-}
-
-export function parseShipsGoEvent(payload = {}) {
-  const source = payload.data || payload.result || payload;
-  const container = source.containerNumber || source.container_number || source.container || source.ContainerNumber || source.containerNo;
-  const status = source.status || source.event || source.eventType || source.description || source.lastEvent || 'Actualización disponible';
-  const location = source.location || source.port || source.eventLocation || source.currentLocation || 'No disponible';
-  const eventTime = source.eventTime || source.eventDate || source.date || source.updatedAt || new Date().toISOString();
-  const voyage = source.voyage || source.vesselVoyage || source.vessel || '';
-  return { container: normalizeContainer(container), status, location, eventTime, voyage, raw: payload };
 }

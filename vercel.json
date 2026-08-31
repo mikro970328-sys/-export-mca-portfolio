@@ -14,10 +14,6 @@
       "schedule": "30 * * * *"
     },
     {
-      "path": "/api/shipsgo-error-alerts",
-      "schedule": "45 * * * *"
-    },
-    {
       "path": "/api/stagnant-shipment-alerts",
       "schedule": "50 * * * *"
     },

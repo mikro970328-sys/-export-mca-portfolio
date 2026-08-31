@@ -1,26 +1,39 @@
-name: P18 Integrations
+name: P19 Integration Scope
 
 on:
   pull_request:
     paths:
-      - 'api/_integration-events.js'
+      - 'api/_notification-delivery.js'
       - 'api/_shipsgo.js'
+      - 'api/_integration-events.js'
       - 'api/shipsgo-webhook.js'
       - 'api/shipsgo-error-alerts.js'
       - 'api/tracking-mode.js'
       - 'api/manual-tracking-event.js'
+      - 'api/manual-tracking-alerts.js'
+      - 'api/stagnant-shipment-alerts.js'
+      - 'api/tracking-alerts.js'
       - 'api/twilio-status.js'
       - 'api/shipments.js'
-      - 'supabase/migrations/20260831011*.sql'
-      - 'supabase/tests/p18_integrations.sql'
+      - 'api/shipments-register.js'
+      - 'api/loads.js'
+      - 'api/direct-shipment-dispatch.js'
+      - 'api/clients.js'
+      - 'admin/containers-module.js'
+      - 'admin/clients-module.js'
+      - '.env.example'
+      - 'vercel.json'
       - 'scripts/check-integrations.mjs'
       - 'scripts/check-integration-event-identity.mjs'
       - 'scripts/check-b9-public-boundaries.mjs'
+      - 'supabase/migrations/*p19*'
+      - 'supabase/tests/p19_integration_scope.sql'
+      - '.github/workflows/p19-integration-scope.yml'
       - '.github/workflows/p18-integrations.yml'
   workflow_dispatch:
 
 jobs:
-  integration-contract:
+  integration-scope:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,24 +42,29 @@ jobs:
           node-version: '24'
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Syntax check integration JavaScript
+      - name: Syntax check P19 JavaScript
         run: |
-          node --check api/_integration-events.js
-          node --check api/_shipsgo.js
-          node --check api/shipsgo-webhook.js
-          node --check api/shipsgo-error-alerts.js
-          node --check api/tracking-mode.js
+          node --check api/_notification-delivery.js
           node --check api/manual-tracking-event.js
+          node --check api/manual-tracking-alerts.js
+          node --check api/stagnant-shipment-alerts.js
+          node --check api/tracking-alerts.js
           node --check api/twilio-status.js
           node --check api/shipments.js
+          node --check api/shipments-register.js
+          node --check api/loads.js
+          node --check api/direct-shipment-dispatch.js
+          node --check api/clients.js
+          node --check admin/containers-module.js
+          node --check admin/clients-module.js
           node --check scripts/check-integrations.mjs
           node --check scripts/check-integration-event-identity.mjs
           node --check scripts/check-b9-public-boundaries.mjs
-      - name: Check P18 ownership contract
+      - name: Enforce P19 integration scope
         run: node scripts/check-integrations.mjs
-      - name: Verify provider event identity
+      - name: Verify WhatsApp milestone identity
         run: node scripts/check-integration-event-identity.mjs
-      - name: Preserve P16 public boundary hardening
+      - name: Preserve Twilio public boundary hardening
         run: node scripts/check-b9-public-boundaries.mjs
       - name: Preserve P9 alert lifecycle
         run: node scripts/check-operational-alert-lifecycle.mjs
