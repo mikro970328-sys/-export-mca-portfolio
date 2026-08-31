@@ -11,7 +11,8 @@ const migrations=[
   'supabase/migrations/20260831011500_p18_external_integration_observations.sql',
   'supabase/migrations/20260831011600_p18_webhook_traceability.sql',
   'supabase/migrations/20260831011700_p18_delivery_key_compatibility.sql',
-  'supabase/migrations/20260831011800_p18_twilio_delivery_reconcile.sql'
+  'supabase/migrations/20260831011800_p18_twilio_delivery_reconcile.sql',
+  'supabase/migrations/20260831011900_p18_delivery_key_normalization_fix.sql'
 ];
 for(const file of migrations)if(!fs.existsSync(path.join(root,file)))failures.push(`${file}: falta migración P18`);
 
@@ -44,6 +45,12 @@ for(const text of ['tracking_notification_delivery_key','notification_dispatch_d
 
 const twilioSql=read(migrations[3]);
 for(const text of ['twilio_delivery_rank','reconcile_twilio_delivery_status',"v_current in ('failed','undelivered','read')","v_current='delivered'","grant execute on function public.reconcile_twilio_delivery_status"])if(!twilioSql.includes(text))failures.push(`${migrations[3]}: falta ${text}`);
+
+const normalizationFix=read(migrations[4]);
+for(const text of ["when 'llegó al puerto' then 'tracking:ARRV'","when 'llego al puerto' then 'tracking:ARRV'","revoke all on function public.tracking_notification_delivery_key(text) from public,anon,authenticated,service_role"]){
+  if(!normalizationFix.includes(text))failures.push(`${migrations[4]}: falta ${text}`);
+}
+if(normalizationFix.includes("llego del puerto"))failures.push(`${migrations[4]}: no puede conservar variante incorrecta 'llego del puerto'`);
 
 const webhook=read('api/shipsgo-webhook.js');
 for(const text of ['ingestShipsGoObservation','resolveTrackingStaleCondition','claimNotificationDelivery','releaseNotificationDelivery','operational_status_changed: false'])if(!webhook.includes(text))failures.push(`api/shipsgo-webhook.js: falta ${text}`);
