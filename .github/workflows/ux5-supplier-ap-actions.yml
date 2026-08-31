@@ -1,0 +1,37 @@
+name: UX5 Supplier AP Actions
+
+on:
+  pull_request:
+    paths:
+      - 'api/_supplier-ap-actions.js'
+      - 'api/payables.js'
+      - 'api/supplier-payments.js'
+      - 'admin/payables.js'
+      - 'admin/payables-payment-ux.js'
+      - 'supabase/migrations/20260901001500_ux5_supplier_ap_action_capabilities.sql'
+      - 'supabase/tests/ux5_supplier_ap_actions.sql'
+      - 'scripts/check-ux5-supplier-ap-actions.mjs'
+      - '.github/workflows/ux5-supplier-ap-actions.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-supplier-ap-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate canonical action ownership
+        run: node scripts/check-ux5-supplier-ap-actions.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/_supplier-ap-actions.js
+          node --check api/payables.js
+          node --check api/supplier-payments.js
+          node --check admin/payables.js
+          node --check admin/payables-payment-ux.js
+          node --check scripts/check-ux5-supplier-ap-actions.mjs
+      - name: Validate API runtime imports
+        run: |
+          node -e "Promise.all([import('./api/_supplier-ap-actions.js'),import('./api/payables.js'),import('./api/supplier-payments.js')]).then(()=>console.log('supplier AP ESM imports: OK'))"
