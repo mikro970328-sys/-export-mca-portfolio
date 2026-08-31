@@ -35,7 +35,7 @@ for(const file of endpointFiles){
   const twilioCallback=name==='api/twilio-status.js';
   const shipsgoVerified=shipsgoWebhook&&/(SHIPSGO_WEBHOOK_SECRET|timingSafeEqual|signature)/i.test(src);
   const twilioVerified=twilioCallback&&/x-twilio-signature/i.test(src)&&/validateTwilioRequest\s*\(/.test(src)&&/TWILIO_STATUS_CALLBACK_URL/.test(src);
-  const retiredVerified=retiredPublic.has(name)&&/fail\s*\(\s*res\s*,\s*410\b/.test(src)&&!\bsupabase\b/.test(src);
+  const retiredVerified=retiredPublic.has(name)&&/fail\s*\(\s*res\s*,\s*410\b/.test(src)&&!/\bsupabase\b/.test(src);
   let boundary='UNCLASSIFIED';
 
   if(explicitPublic.has(name)) boundary='public_explicit';
