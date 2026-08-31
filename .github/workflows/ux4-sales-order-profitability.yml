@@ -1,0 +1,27 @@
+name: UX4 Sales Order Profitability
+
+on:
+  pull_request:
+    paths:
+      - 'api/sales-workspace.js'
+      - 'api/costs.js'
+      - 'admin/sales-workspace.js'
+      - 'scripts/check-sales-order-profitability.mjs'
+      - '.github/workflows/ux4-sales-order-profitability.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-ux4-profitability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate UX4 profitability contract
+        run: node scripts/check-sales-order-profitability.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/sales-workspace.js
+          node --check admin/sales-workspace.js
+          node --check api/costs.js
