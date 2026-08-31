@@ -1,6 +1,7 @@
 import { authorizeAdmin, fail, ok, readJson, sendWhatsApp, supabase } from './_lib.js';
 import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
 import { claimNotificationDelivery, releaseNotificationDelivery } from './_notification-delivery.js';
+import { assertShipmentBusinessAction, loadShipmentActionCapabilityMap, loadShipmentActionCapabilities } from './_shipment-actions.js';
 
 const cleanText = value => String(value ?? '').trim() || null;
 const cleanClientId = value => cleanText(value);
@@ -46,18 +47,6 @@ async function audit(action,shipment,details={}) {
   }
 }
 
-async function assertShipmentCanBeDeleted(shipmentId) {
-  const linked = await supabase('loads', {
-    query:`?select=id,load_number,status&shipment_id=eq.${encodeURIComponent(shipmentId)}&limit=1`
-  });
-  if (!linked?.length) return;
-  const error = new Error(`LOAD_SHIPMENT_DELETE_BLOCKED:${linked[0].load_number || linked[0].id}`);
-  error.status = 409;
-  error.domain_block = true;
-  error.load_reference = linked[0].load_number || linked[0].id;
-  throw error;
-}
-
 async function logNotification(shipment,type,data={}) {
   if (!shipment.client_id) return;
   try {
@@ -98,7 +87,6 @@ async function logNotification(shipment,type,data={}) {
 }
 
 async function releaseShipment(shipment,admin) {
-  if (shipment.released_at) return { conflict:true };
   const now = new Date().toISOString();
   const basePatch = {
     operational_status:'Liberado',
@@ -151,14 +139,36 @@ async function releaseShipment(shipment,admin) {
   }
 }
 
+function translatedError(error) {
+  const raw=String(error?.message||error||'Error');
+  const map=[
+    ['SHIPMENT_ALREADY_DELIVERED','Este contenedor ya fue marcado como entregado.'],
+    ['SHIPMENT_NOT_DELIVERED','Este contenedor no está entregado y no puede reactivarse.'],
+    ['SHIPMENT_ALREADY_RELEASED','Este contenedor ya fue marcado como liberado.'],
+    ['SHIPMENT_ALREADY_HAS_CLIENT','Este contenedor ya tiene un cliente asignado.'],
+    ['SHIPMENT_LINKED_TO_LOAD','No se puede eliminar este contenedor porque está vinculado a un Cargue.'],
+    ['SHIPMENT_ACTION_NOT_ALLOWED','Esta acción no está permitida para el contenedor.'],
+    ['SHIPMENT_ACTION_INVALID','Acción de contenedor no válida.'],
+    ['CONTAINER_REFERENCE_INVALID','La referencia del contenedor no es válida. Usa letras/números y, si necesitas, espacios, guion, punto, slash o underscore.']
+  ];
+  return map.find(([key])=>raw.includes(key))?.[1]||raw;
+}
+
 export default async function handler(req,res) {
   const admin = await authorizeAdmin(req,res,req.method === 'GET' ? 'logistics.read' : 'logistics.write');
   if (!admin) return;
 
   try {
     if (req.method === 'GET') {
-      const data = await supabase('shipments',{ query:'?select=*,clients(id,name,company,phone,email,welcome_status,active)&order=created_at.desc' });
-      return ok(res,{ shipments:data || [] });
+      const [data,capabilityBundle] = await Promise.all([
+        supabase('shipments',{ query:'?select=*,clients(id,name,company,phone,email,welcome_status,active)&order=created_at.desc' }),
+        loadShipmentActionCapabilityMap(admin)
+      ]);
+      const shipments=(data||[]).map(shipment=>({
+        ...shipment,
+        capabilities:capabilityBundle.map.get(String(shipment.id))||{actions:{}}
+      }));
+      return ok(res,{ shipments,write_access:capabilityBundle.write_access });
     }
 
     if (req.method === 'DELETE') {
@@ -167,16 +177,7 @@ export default async function handler(req,res) {
       const rows = await supabase('shipments',{ query:`?select=id,client_id,container_number&id=eq.${encodeURIComponent(id)}&limit=1` });
       const shipment = rows?.[0];
       if (!shipment) return fail(res,404,'Contenedor no encontrado');
-
-      try {
-        await assertShipmentCanBeDeleted(shipment.id);
-      } catch (error) {
-        if (error.domain_block || String(error.message || '').startsWith('LOAD_SHIPMENT_DELETE_BLOCKED:')) {
-          await audit('shipment_delete_blocked_load',shipment,{ container_number:shipment.container_number,actor:admin.username,load_reference:error.load_reference || null });
-          return fail(res,409,'No se puede eliminar este contenedor porque está vinculado a un Cargue.',error.load_reference ? `Cargue: ${error.load_reference}` : undefined);
-        }
-        throw error;
-      }
+      await assertShipmentBusinessAction(shipment.id,'delete');
 
       await supabase('notifications',{ method:'DELETE',query:`?shipment_id=eq.${encodeURIComponent(id)}` });
       await supabase('shipment_history',{ method:'DELETE',query:`?shipment_id=eq.${encodeURIComponent(id)}` });
@@ -222,6 +223,7 @@ export default async function handler(req,res) {
         await history(shipment,clientId ? 'created' : 'created_unassigned',clientId ? 'Contenedor registrado' : 'Contenedor registrado sin cliente',clientId ? containerNumber : `${containerNumber} · Sin cliente`);
         await audit('shipment_created',shipment,{ container_number:containerNumber,client_id:clientId,unassigned:!clientId,provisional:!isIsoContainer(containerNumber),tracking_source:'erp',actor:admin.username });
         if (!isIsoContainer(containerNumber)) await history(shipment,'tracking_reference_provisional','Referencia provisional de contenedor','El seguimiento continuará dentro del ERP hasta registrar el número definitivo.');
+        shipment.capabilities=await loadShipmentActionCapabilities(admin,shipment.id);
       }
       return ok(res,{ shipment });
     }
@@ -239,13 +241,14 @@ export default async function handler(req,res) {
       if (action === 'retry_shipsgo') return fail(res,410,'ShipsGo fue retirado de la plataforma.');
 
       if (action === 'release') {
+        await assertShipmentBusinessAction(shipment.id,'release');
         const result = await releaseShipment(shipment,admin);
-        if (result.conflict) return fail(res,409,'Este contenedor ya fue marcado como liberado');
         await reconcileOperationLifecycle(shipment.operation_id,admin,{ source:'shipment_released',shipment_id:shipment.id });
         return ok(res,result);
       }
 
       if (action === 'deliver' || action === 'reactivate') {
+        await assertShipmentBusinessAction(shipment.id,action);
         const active = action === 'reactivate';
         const now = new Date().toISOString();
         const status = active ? 'Activo' : 'Entregado';
@@ -255,6 +258,9 @@ export default async function handler(req,res) {
         await reconcileOperationLifecycle(shipment.operation_id,admin,{ source:active ? 'shipment_reactivated' : 'shipment_delivered',shipment_id:shipment.id });
         return ok(res,{ active,status });
       }
+
+      const assigningClient=shipment.client_id===null && body.client_id!==undefined && cleanClientId(body.client_id)!==null;
+      await assertShipmentBusinessAction(shipment.id,assigningClient?'assign_client':'edit');
 
       const patch = { updated_at:new Date().toISOString() };
       if (body.client_id !== undefined) patch.client_id = cleanClientId(body.client_id);
@@ -290,14 +296,15 @@ export default async function handler(req,res) {
 
       await history(shipment,'updated','Datos del contenedor actualizados',JSON.stringify(patch));
       await audit('shipment_updated',shipment,patch);
+      resultShipment.capabilities=await loadShipmentActionCapabilities(admin,resultShipment.id);
       return ok(res,{ shipment:resultShipment });
     }
 
     return fail(res,405,'Método no permitido');
   } catch (error) {
-    const message = error.message === 'CONTAINER_REFERENCE_INVALID'
-      ? 'La referencia del contenedor no es válida. Usa letras/números y, si necesitas, espacios, guion, punto, slash o underscore.'
-      : error.message;
-    return fail(res,400,message);
+    console.error('[shipments]',error);
+    const message=translatedError(error);
+    const status=String(error?.message||'').includes('SHIPMENT_LINKED_TO_LOAD')?409:400;
+    return fail(res,status,message);
   }
 }
