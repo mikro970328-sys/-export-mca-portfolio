@@ -1,0 +1,34 @@
+name: UX5 Load Actions
+
+on:
+  pull_request:
+    paths:
+      - 'api/_load-actions.js'
+      - 'api/loads.js'
+      - 'admin/loads.html'
+      - 'admin/loads.js'
+      - 'supabase/migrations/20260831233000_ux5_load_action_capabilities.sql'
+      - 'supabase/tests/ux5_load_actions.sql'
+      - 'scripts/check-ux5-load-actions.mjs'
+      - '.github/workflows/ux5-load-actions.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-load-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate canonical action ownership
+        run: node scripts/check-ux5-load-actions.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/_load-actions.js
+          node --check api/loads.js
+          node --check admin/loads.js
+          node --check scripts/check-ux5-load-actions.mjs
+      - name: Validate API runtime imports
+        run: |
+          node -e "Promise.all([import('./api/_load-actions.js'),import('./api/loads.js')]).then(()=>console.log('load ESM imports: OK'))"
