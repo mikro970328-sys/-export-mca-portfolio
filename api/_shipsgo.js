@@ -100,18 +100,23 @@ async function assertShipmentTrackingCanBeDeleted(shipmentId) {
   if (linked?.length) {
     const error = new Error(`LOAD_SHIPMENT_DELETE_BLOCKED:${linked[0].load_number || linked[0].id}`);
     error.status = 409;
+    error.domain_block = true;
     throw error;
   }
 }
 
 export async function deleteShipsGoTracking(shipment) {
-  // Domain guard intentionally runs before any external side effect.
+  // ERP domain guard is authoritative and runs before any provider side effect.
   await assertShipmentTrackingCanBeDeleted(shipment?.id);
 
   let trackingId = shipment.shipsgo_tracking_id || null;
   if (!trackingId) {
-    const found = await findShipsGoTracking(shipment.container_number);
-    trackingId = trackingIdentity(found);
+    try {
+      const found = await findShipsGoTracking(shipment.container_number);
+      trackingId = trackingIdentity(found);
+    } catch (error) {
+      return { deleted: false, reason: 'provider_lookup_failed', tracking_id: null, error: error.message };
+    }
   }
   if (!trackingId) return { deleted: false, reason: 'not_found', tracking_id: null };
 
@@ -124,7 +129,6 @@ export async function deleteShipsGoTracking(shipment) {
     return { deleted: true, tracking_id: trackingId, response };
   } catch (error) {
     if (error.status === 404) return { deleted: true, tracking_id: trackingId, already_missing: true };
-    error.tracking_id = trackingId;
-    throw error;
+    return { deleted: false, reason: 'provider_delete_failed', tracking_id: trackingId, error: error.message };
   }
 }
