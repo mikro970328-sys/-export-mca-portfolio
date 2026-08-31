@@ -84,7 +84,7 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
     "accessCan('clients.read')",
     "accessCan('logistics.read')",
     "accessCan('notifications.read')",
-    '/admin/admin-data-loader.js?v=20260830-hotfix1',
+    '/admin/admin-data-loader.js?v=20260830-hotfix2',
     'await window.ExportMcaAdminData.loadCore()'
   ]) {
     if (!loader.includes(required)) failures.push(`admin/erp.js: falta ${required}`);
