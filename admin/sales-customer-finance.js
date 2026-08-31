@@ -16,8 +16,10 @@
   };
   const date = value => value ? new Date(`${String(value).slice(0,10)}T00:00:00`).toLocaleDateString('es-US') : '—';
   const today = () => new Date().toISOString().slice(0,10);
-  const state = { salesOrderId:null, finance:null, proformas:[], busy:false };
+  const state = { salesOrderId:null, finance:null, proformas:[], salesOrderCapabilities:{actions:{}}, busy:false };
   const nativeWorkspace = window.SalesWorkspace || null;
+  const can = (owner,action) => owner?.capabilities?.actions?.[action]?.allowed === true;
+  const canSalesOrder = action => state.salesOrderCapabilities?.actions?.[action]?.allowed === true;
 
   const STATUS_LABELS = Object.freeze({
     posted:'Activo', reversed:'Revertido', draft:'Borrador', issued:'Emitida', void:'Anulada',
@@ -156,6 +158,7 @@
     ]);
     state.finance = finance;
     state.proformas = proformas.proformas || [];
+    state.salesOrderCapabilities = proformas.sales_order_capabilities || finance.sales_order_capabilities || {actions:{}};
   }
 
   function metric(label, value) {
@@ -184,11 +187,11 @@
         ${metric('Saldo facturas', money(p.invoice_balance_due,currency))}
       </div>
       <section class="sales-finance-section">
-        <div class="sales-finance-section-head"><div><h3>Anticipos del cliente</h3><p>Cash recibido vinculado a esta venta. No requiere inventario ni factura.</p></div><button type="button" class="btn orange" data-cf-register>Registrar anticipo</button></div>
+        <div class="sales-finance-section-head"><div><h3>Anticipos del cliente</h3><p>Cash recibido vinculado a esta venta. No requiere inventario ni factura.</p></div>${canSalesOrder('register_advance')?'<button type="button" class="btn orange" data-cf-register>Registrar anticipo</button>':''}</div>
         <div class="sales-finance-list">${advances.length ? advances.map(renderAdvance).join('') : '<div class="sales-finance-empty">Todavía no hay anticipos registrados para esta venta.</div>'}</div>
       </section>
       <section class="sales-finance-section">
-        <div class="sales-finance-section-head"><div><h3>Proformas</h3><p>Solicitud comercial de pago. No crea AR, revenue, inventario ni fulfillment.</p></div><button type="button" class="btn" data-cf-new-proforma>Nueva Proforma</button></div>
+        <div class="sales-finance-section-head"><div><h3>Proformas</h3><p>Solicitud comercial de pago. No crea AR, revenue, inventario ni fulfillment.</p></div>${canSalesOrder('create_proforma')?'<button type="button" class="btn" data-cf-new-proforma>Nueva Proforma</button>':''}</div>
         <div class="sales-finance-list">${state.proformas.length ? state.proformas.map(renderProforma).join('') : '<div class="sales-finance-empty">Todavía no hay Proformas para esta venta.</div>'}</div>
       </section>
       <section class="sales-finance-section">
@@ -204,18 +207,17 @@
 
   function renderAdvance(row) {
     const currency = row.currency || state.finance?.progress?.currency || 'USD';
-    const active = row.status === 'posted';
-    const activeApplications = (row.applications || []).filter(item => item.status === 'posted');
-    const activeRefunds = (row.refunds || []).filter(item => item.status === 'posted');
     const history = [
       ...(row.applications || []).map(item => `<div>Aplicado ${esc(money(item.amount,currency))} a ${esc(item.invoice?.invoice_number || 'factura')} · ${status(item.status)}</div>`),
       ...(row.refunds || []).map(item => `<div>Reembolso ${esc(item.refund_number || '')} ${esc(money(item.amount,currency))} · ${status(item.status)}</div>`)
     ];
-    return `<div class="sales-finance-row"><div class="sales-finance-row-head"><div><div class="sales-finance-title">${esc(row.advance_number)}</div><div class="sales-finance-meta">${date(row.received_date)}${row.method ? ` · ${esc(row.method)}` : ''}${row.reference ? ` · ${esc(row.reference)}` : ''}</div></div>${status(row.status)}</div><div class="sales-finance-values"><span>Recibido: <b>${esc(money(row.amount,currency))}</b></span><span>Aplicado: <b>${esc(money(row.applied_amount,currency))}</b></span><span>Reembolsado: <b>${esc(money(row.refunded_amount,currency))}</b></span><span>Disponible: <b>${esc(money(row.available_amount,currency))}</b></span></div>${history.length ? `<div class="sales-finance-meta">${history.join('')}</div>` : ''}<div class="sales-finance-actions">${active && Number(row.available_amount) > 0 ? `<button class="btn" data-cf-apply="${esc(row.customer_advance_id)}">Aplicar a factura</button><button class="btn" data-cf-refund="${esc(row.customer_advance_id)}">Reembolsar</button>` : ''}${active && !activeApplications.length && !activeRefunds.length ? `<button class="btn" data-cf-reverse="${esc(row.customer_advance_id)}">Reversar registro</button>` : ''}${activeApplications.map(item => `<button class="btn" data-cf-reverse-app="${esc(item.id)}">Reversar aplicación</button>`).join('')}${activeRefunds.map(item => `<button class="btn" data-cf-reverse-refund="${esc(item.id)}">Reversar reembolso</button>`).join('')}</div></div>`;
+    const applicationActions=(row.applications||[]).filter(item=>can(item,'reverse')).map(item=>`<button class="btn" data-cf-reverse-app="${esc(item.id)}">Reversar aplicación</button>`).join('');
+    const refundActions=(row.refunds||[]).filter(item=>can(item,'reverse')).map(item=>`<button class="btn" data-cf-reverse-refund="${esc(item.id)}">Reversar reembolso</button>`).join('');
+    return `<div class="sales-finance-row"><div class="sales-finance-row-head"><div><div class="sales-finance-title">${esc(row.advance_number)}</div><div class="sales-finance-meta">${date(row.received_date)}${row.method ? ` · ${esc(row.method)}` : ''}${row.reference ? ` · ${esc(row.reference)}` : ''}</div></div>${status(row.status)}</div><div class="sales-finance-values"><span>Recibido: <b>${esc(money(row.amount,currency))}</b></span><span>Aplicado: <b>${esc(money(row.applied_amount,currency))}</b></span><span>Reembolsado: <b>${esc(money(row.refunded_amount,currency))}</b></span><span>Disponible: <b>${esc(money(row.available_amount,currency))}</b></span></div>${history.length ? `<div class="sales-finance-meta">${history.join('')}</div>` : ''}<div class="sales-finance-actions">${can(row,'apply')?`<button class="btn" data-cf-apply="${esc(row.customer_advance_id)}">Aplicar a factura</button>`:''}${can(row,'refund')?`<button class="btn" data-cf-refund="${esc(row.customer_advance_id)}">Reembolsar</button>`:''}${can(row,'reverse')?`<button class="btn" data-cf-reverse="${esc(row.customer_advance_id)}">Reversar registro</button>`:''}${applicationActions}${refundActions}</div></div>`;
   }
 
   function renderProforma(row) {
-    return `<div class="sales-finance-row"><div class="sales-finance-row-head"><div><div class="sales-finance-title">${esc(row.proforma_number)}</div><div class="sales-finance-meta">${date(row.issue_date)}${row.valid_until ? ` · Válida hasta ${date(row.valid_until)}` : ''}</div></div>${status(row.status)}</div><div class="sales-finance-values"><span>Total: <b>${esc(money(row.financial?.total,row.currency))}</b></span><span>Líneas: <b>${esc(row.financial?.item_count ?? row.items?.length ?? 0)}</b></span></div><div class="sales-finance-actions">${row.status === 'draft' ? `<button class="btn orange" data-cf-issue-proforma="${esc(row.id)}">Emitir</button>` : ''}${row.status !== 'void' ? `<button class="btn" data-cf-print-proforma="${esc(row.id)}">Ver / imprimir</button>` : ''}${['draft','issued'].includes(row.status) ? `<button class="btn" data-cf-void-proforma="${esc(row.id)}">Anular</button>` : ''}</div></div>`;
+    return `<div class="sales-finance-row"><div class="sales-finance-row-head"><div><div class="sales-finance-title">${esc(row.proforma_number)}</div><div class="sales-finance-meta">${date(row.issue_date)}${row.valid_until ? ` · Válida hasta ${date(row.valid_until)}` : ''}</div></div>${status(row.status)}</div><div class="sales-finance-values"><span>Total: <b>${esc(money(row.financial?.total,row.currency))}</b></span><span>Líneas: <b>${esc(row.financial?.item_count ?? row.items?.length ?? 0)}</b></span></div><div class="sales-finance-actions">${can(row,'issue')?`<button class="btn orange" data-cf-issue-proforma="${esc(row.id)}">Emitir</button>`:''}${row.status !== 'void' ? `<button class="btn" data-cf-print-proforma="${esc(row.id)}">Ver / imprimir</button>` : ''}${can(row,'void')?`<button class="btn" data-cf-void-proforma="${esc(row.id)}">Anular</button>`:''}</div></div>`;
   }
 
   function bindMainEvents() {
@@ -233,6 +235,7 @@
   }
 
   function openRegisterAdvance() {
+    if(!canSalesOrder('register_advance'))return showMessage('Esta venta no admite registrar anticipos en su estado actual.');
     const currency = state.finance?.progress?.currency || 'USD';
     openForm({
       title:'Registrar anticipo',
@@ -244,6 +247,7 @@
 
   function openApply(advanceId) {
     const advance = (state.finance?.advances || []).find(row => row.customer_advance_id === advanceId);
+    if(!can(advance,'apply'))return showMessage('Este anticipo no admite una aplicación en su estado actual.');
     const invoices = (state.finance?.invoices || []).filter(row => Number(row.balance_due) > 0);
     if (!advance || !invoices.length) {
       showMessage('No hay una factura emitida con saldo pendiente para aplicar este anticipo.');
@@ -259,7 +263,7 @@
 
   function openRefund(advanceId) {
     const advance = (state.finance?.advances || []).find(row => row.customer_advance_id === advanceId);
-    if (!advance) return;
+    if(!can(advance,'refund'))return showMessage('Este anticipo no admite reembolso en su estado actual.');
     openForm({
       title:`Reembolsar ${advance.advance_number}`,
       subtitle:`Disponible para reembolso: ${money(advance.available_amount,advance.currency)}. Esto representa una salida real de dinero.`,
@@ -283,6 +287,7 @@
   }
 
   function openNewProforma() {
+    if(!canSalesOrder('create_proforma'))return showMessage('Esta venta no admite crear una Proforma en su estado actual.');
     const inSeven = new Date();
     inSeven.setDate(inSeven.getDate() + 7);
     const valid = inSeven.toISOString().slice(0,10);
