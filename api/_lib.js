@@ -26,8 +26,11 @@ const fromB64url = (value) => Buffer.from(value, 'base64url');
 export function createToken(payload) {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET_MISSING');
+  const sessionVersion = Number(payload?.session_version);
+  if (!Number.isInteger(sessionVersion) || sessionVersion < 1) throw new Error('SESSION_VERSION_REQUIRED');
+  const issuedAt = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body = b64url(JSON.stringify({ ...payload, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 12 }));
+  const body = b64url(JSON.stringify({ ...payload, session_version: sessionVersion, iat: issuedAt, exp: issuedAt + 60 * 60 * 12 }));
   return `${header}.${body}.${sign(`${header}.${body}`, secret)}`;
 }
 
@@ -40,7 +43,10 @@ export function verifyToken(token) {
   if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
-    if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
+    const now = Math.floor(Date.now() / 1000);
+    if (!payload.exp || payload.exp < now) return null;
+    if (!Number.isInteger(payload.iat) || payload.iat <= 0 || payload.iat > now + 60) return null;
+    if (!Number.isInteger(payload.session_version) || payload.session_version < 1) return null;
     return payload;
   } catch { return null; }
 }
@@ -78,11 +84,15 @@ export async function authenticateAdmin(req, res) {
   }
 
   const rows = await supabase('admin_users', {
-    query: `?select=id,full_name,username,role,is_active,access_role_id&id=eq.${encodeURIComponent(payload.admin_id)}&limit=1`
+    query: `?select=id,full_name,username,role,is_active,access_role_id,session_version&id=eq.${encodeURIComponent(payload.admin_id)}&limit=1`
   });
   const account = rows?.[0] || null;
   if (!account || account.is_active !== true || !['master_admin', 'admin'].includes(account.role)) {
     fail(res, 401, 'Sesión no autorizada');
+    return null;
+  }
+  if (Number(payload.session_version) !== Number(account.session_version)) {
+    fail(res, 401, 'La sesión expiró o fue revocada');
     return null;
   }
   if (account.role === 'admin' && !account.access_role_id) {
@@ -96,7 +106,8 @@ export async function authenticateAdmin(req, res) {
     username: account.username,
     full_name: account.full_name,
     role: account.role,
-    access_role_id: account.access_role_id || null
+    access_role_id: account.access_role_id || null,
+    session_version: Number(account.session_version)
   };
 }
 
@@ -207,21 +218,17 @@ export async function supabase(path, { method = 'GET', body, query = '', prefer 
 }
 
 export async function writeAudit(admin, action, entityType, entityId = null, details = {}) {
-  try {
-    await supabase('audit_log', {
-      method: 'POST',
-      body: {
-        actor_admin_id: admin?.admin_id || null,
-        actor_username: admin?.username || null,
-        action,
-        entity_type: entityType,
-        entity_id: entityId,
-        details
-      }
-    });
-  } catch (error) {
-    console.error('AUDIT_LOG_FAILED', error.message);
-  }
+  return supabase('audit_log', {
+    method: 'POST',
+    body: {
+      actor_admin_id: admin?.admin_id || null,
+      actor_username: admin?.username || null,
+      action,
+      entity_type: entityType,
+      entity_id: entityId,
+      details
+    }
+  });
 }
 
 const cleanVariable = (value, fallback = 'No disponible') => {
