@@ -1,5 +1,6 @@
 import { authorizeAdmin, fail, ok, readJson, sendWhatsApp, supabase } from './_lib.js';
 import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
+import { claimNotificationDelivery, releaseNotificationDelivery } from './_integration-events.js';
 
 const EVENTS = {
   load: { order: 1, status: 'Cargado en el buque', eventType: 'LOAD', templateEnv: 'TWILIO_CONTENT_SID', templateType: 'tracking' },
@@ -15,30 +16,6 @@ const EVENT_LIST = Object.entries(EVENTS).map(([key, value]) => ({ key, ...value
 function eventForStatus(status) {
   const normalized = String(status || '').trim().toLowerCase();
   return EVENT_LIST.find(event => event.status.toLowerCase() === normalized) || null;
-}
-
-async function claimNotification(shipmentId, eventStatus, source) {
-  try {
-    await supabase('notification_dispatch_claims', {
-      method: 'POST',
-      body: [{ shipment_id: shipmentId, event_status: eventStatus, source }]
-    });
-    return true;
-  } catch (error) {
-    if (String(error.message || '').includes('SUPABASE_409')) return false;
-    throw error;
-  }
-}
-
-async function releaseClaim(shipmentId, eventStatus) {
-  try {
-    await supabase('notification_dispatch_claims', {
-      method: 'DELETE',
-      query: `?shipment_id=eq.${encodeURIComponent(shipmentId)}&event_status=eq.${encodeURIComponent(eventStatus)}`
-    });
-  } catch (error) {
-    console.error('MANUAL_NOTIFICATION_CLAIM_RELEASE_FAILED', error.message);
-  }
 }
 
 async function writeHistory(shipment, event, admin, details, correctionType) {
@@ -93,6 +70,7 @@ async function logNotification(shipment, event, data = {}) {
         event_type: event.templateType,
         event_status: event.status,
         channel: 'whatsapp',
+        notification_scope: 'message',
         recipient: shipment.clients?.phone || null,
         recipient_phone: shipment.clients?.phone || null,
         status: data.status || 'pending',
@@ -107,6 +85,7 @@ async function logNotification(shipment, event, data = {}) {
           location: data.location || null,
           manual_tracking: true,
           event_code: event.eventType,
+          delivery_key: data.deliveryKey || null,
           correction_type: data.correctionType || 'forward'
         },
         error_message: data.error || null,
@@ -221,24 +200,24 @@ export default async function handler(req, res) {
       return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: 'pending_template', missing_variable: event.templateEnv, notified: false });
     }
 
-    const claimed = await claimNotification(shipment.id, event.status, 'manual');
-    if (!claimed) {
+    const claim = await claimNotificationDelivery(shipment.id, event.eventType, event.status, 'manual');
+    if (!claim.claimed) {
       await writeHistory(shipment, event, admin, `${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · WhatsApp no reenviado: esta etapa ya había sido notificada`, correctionType);
-      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: 'already_notified', notified: false, location }, correctionType);
-      return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: 'already_notified', notified: false });
+      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: claim.reason || 'already_notified', notified: false, location }, correctionType);
+      return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: claim.reason || 'already_notified', notified: false });
     }
 
     try {
       const sent = await sendWhatsApp({ to: shipment.clients.phone, contentSid: templateSid, variables: variablesFor(event, shipment) });
-      await logNotification(shipment, event, { status: sent.status || 'queued', sid: sent.sid, templateSid, sentAt: now, location, correctionType });
+      await logNotification(shipment, event, { status: sent.status || 'queued', sid: sent.sid, templateSid, sentAt: now, location, deliveryKey: claim.deliveryKey, correctionType });
       await writeHistory(shipment, event, admin, `${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · WhatsApp: ${sent.sid}`, correctionType);
-      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: sent.status || 'queued', notified: true, sid: sent.sid, location }, correctionType);
+      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: sent.status || 'queued', notified: true, sid: sent.sid, delivery_key: claim.deliveryKey, location }, correctionType);
       return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: sent.status || 'queued', notified: true, sid: sent.sid });
     } catch (error) {
-      await releaseClaim(shipment.id, event.status);
-      await logNotification(shipment, event, { status: 'failed', templateSid, location, error: error.message, correctionType });
+      await releaseNotificationDelivery(shipment.id, claim.deliveryKey);
+      await logNotification(shipment, event, { status: 'failed', templateSid, location, deliveryKey: claim.deliveryKey, error: error.message, correctionType });
       await writeHistory(shipment, event, admin, `${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · Falló WhatsApp: ${error.message}`, correctionType);
-      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: 'failed', notified: false, error: error.message, location }, correctionType);
+      await writeAudit(shipment, event, admin, { previous_status: previousStatus, notification_status: 'failed', notified: false, delivery_key: claim.deliveryKey, error: error.message, location }, correctionType);
       return ok(res, { updated: true, event: eventKey, status: event.status, previous_status: previousStatus, correction_type: correctionType, notification_status: 'failed', notification_error: error.message, notified: false });
     }
   } catch (error) {
