@@ -9,6 +9,7 @@ on:
       - 'admin/invoices.js'
       - 'admin/invoices.html'
       - 'supabase/migrations/20260831160000_ux5_invoice_financial_action_capabilities.sql'
+      - 'supabase/migrations/20260831160100_ux5_invoice_currency_precision.sql'
       - 'supabase/tests/ux5_invoice_actions.sql'
       - 'scripts/check-ux5-invoice-actions.mjs'
       - '.github/workflows/ux5-invoice-actions.yml'

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const read=path=>fs.readFileSync(path,'utf8');
 const migration=read('supabase/migrations/20260831160000_ux5_invoice_financial_action_capabilities.sql');
+const precisionMigration=read('supabase/migrations/20260831160100_ux5_invoice_currency_precision.sql');
 const helper=read('api/_invoice-actions.js');
 const invoicesApi=read('api/invoices.js');
 const paymentsApi=read('api/invoice-payments.js');
@@ -29,6 +30,14 @@ for(const token of [
   'grant select on public.invoice_action_capabilities to service_role',
   'grant select on public.payment_action_capabilities to service_role'
 ])requireText(migration,token,'DB canonical owner');
+
+for(const token of [
+  'create or replace view public.invoice_financial_progress',
+  'sum(round(line_total,2))',
+  'round(v_existing+v_advance_applied+new.amount,2)>v_total',
+  'round(v_invoice_cash+v_invoice_advance+new.amount,2)>v_invoice_total',
+  'grant select on public.invoice_financial_progress to service_role'
+])requireText(precisionMigration,token,'Financial precision owner');
 
 requireText(helper,'loadAdminAccessContext','Finance permission helper');
 requireText(helper,"includes('finance.write')",'Finance permission helper');
