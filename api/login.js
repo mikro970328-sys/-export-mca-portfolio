@@ -1,4 +1,4 @@
-import { createToken, fail, normalizeUsername, ok, readJson, supabase, verifyPassword, writeAudit } from './_lib.js';
+import { createToken, fail, normalizeUsername, ok, readJson, supabase, verifyPassword } from './_lib.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
@@ -18,33 +18,37 @@ export default async function handler(req, res) {
 
     const valid = verifyPassword(password, user.password_salt, user.password_hash);
     if (!valid) {
-      const attempts = Number(user.failed_attempts || 0) + 1;
-      const lockedUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null;
-      await supabase('admin_users', {
-        method: 'PATCH',
-        query: `?id=eq.${user.id}`,
-        body: { failed_attempts: attempts >= 5 ? 0 : attempts, locked_until: lockedUntil }
+      const failureRows = await supabase('rpc/register_admin_login_failure', {
+        method: 'POST',
+        body: { p_admin_user_id: user.id }
       });
-      return fail(res, 401, attempts >= 5 ? 'Cuenta bloqueada por 15 minutos' : 'Usuario o contraseña incorrectos');
+      const failure = failureRows?.[0] || {};
+      return fail(res, 401, failure.locked ? 'Cuenta bloqueada por 15 minutos' : 'Usuario o contraseña incorrectos');
     }
 
-    await supabase('admin_users', {
-      method: 'PATCH',
-      query: `?id=eq.${user.id}`,
-      body: { failed_attempts: 0, locked_until: null, last_login_at: new Date().toISOString() }
+    const loginRows = await supabase('rpc/register_admin_login_success', {
+      method: 'POST',
+      body: { p_admin_user_id: user.id }
     });
+    const login = loginRows?.[0] || null;
+    if (!login?.session_version) throw new Error('LOGIN_SESSION_VERSION_MISSING');
 
     const admin = {
       admin: true,
       admin_id: user.id,
       username: user.username,
       full_name: user.full_name,
-      role: user.role
+      role: user.role,
+      session_version: Number(login.session_version)
     };
-    await writeAudit(admin, 'login', 'admin_user', user.id, {});
-    return ok(res, { token: createToken(admin), user: { id: user.id, full_name: user.full_name, username: user.username, role: user.role } });
+    return ok(res, {
+      token: createToken(admin),
+      user: { id: user.id, full_name: user.full_name, username: user.username, role: user.role }
+    });
   } catch (error) {
     if (error.message === 'USERNAME_INVALID') return fail(res, 400, 'Nombre de usuario inválido');
+    if (error.message.includes('ACCOUNT_LOCKED')) return fail(res, 429, 'Cuenta bloqueada temporalmente. Intenta más tarde');
+    if (error.message.includes('ADMIN_USER_UNAVAILABLE')) return fail(res, 403, 'Esta cuenta no está disponible');
     return fail(res, 400, error.message === 'JSON_INVALID' ? 'Solicitud inválida' : 'No se pudo iniciar sesión', error.message);
   }
 }
