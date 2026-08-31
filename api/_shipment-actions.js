@@ -1,10 +1,10 @@
 import { loadAdminAccessContext, supabase } from './_lib.js';
 
 const clone=value=>value&&typeof value==='object'?JSON.parse(JSON.stringify(value)):{actions:{}};
-const READ_ACTIONS=new Set(['view_info','view_documents','view_history']);
+const requiredPermission=action=>action==='view_documents'?'documents.read':(['view_info','view_history'].includes(action)?'logistics.read':'logistics.write');
 
 async function effectivePermissions(admin){
-  if(admin?.role==='master_admin')return new Set(['logistics.read','logistics.write']);
+  if(admin?.role==='master_admin')return new Set(['logistics.read','logistics.write','documents.read']);
   const access=await loadAdminAccessContext(admin?.admin_id);
   return new Set(access?.permissions||[]);
 }
@@ -14,7 +14,7 @@ export function maskShipmentActionCapabilities(raw,permissions){
   const actions=state.actions&&typeof state.actions==='object'?state.actions:{};
   for(const [key,entry] of Object.entries(actions)){
     if(!entry||typeof entry!=='object')continue;
-    const required=READ_ACTIONS.has(key)?'logistics.read':'logistics.write';
+    const required=requiredPermission(key);
     entry.business_allowed=entry.allowed===true;
     entry.required_permission=required;
     if(entry.allowed===true&&!permissions.has(required)){
