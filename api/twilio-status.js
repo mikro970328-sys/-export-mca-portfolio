@@ -30,12 +30,7 @@ export default async function handler(req, res) {
     const params = parseTwilioFormBody(rawBody);
     const signature = req.headers['x-twilio-signature'];
 
-    if (!validateTwilioRequest({
-      authToken,
-      signature,
-      callbackUrl: expectedUrl,
-      params
-    })) {
+    if (!validateTwilioRequest({ authToken, signature, callbackUrl: expectedUrl, params })) {
       return fail(res, 403, 'Firma Twilio inválida');
     }
 
@@ -47,19 +42,26 @@ export default async function handler(req, res) {
     const status = String(params.MessageStatus || params.SmsStatus || '').trim();
     if (!sid || !status) return fail(res, 400, 'Callback Twilio incompleto');
 
-    const rows = await supabase('notifications', {
-      method: 'PATCH',
-      query: `?twilio_message_sid=eq.${encodeURIComponent(sid)}&select=id`,
-      prefer: 'return=representation',
+    const result = await supabase('rpc/reconcile_twilio_delivery_status', {
+      method: 'POST',
       body: {
-        delivery_status: status,
-        error_code: params.ErrorCode || null,
-        error_message: params.ErrorMessage || null,
-        updated_at: new Date().toISOString()
-      }
+        p_message_sid: sid,
+        p_status: status,
+        p_error_code: params.ErrorCode || null,
+        p_error_message: params.ErrorMessage || null,
+        p_now: new Date().toISOString()
+      },
+      prefer: 'return=representation'
     });
+    const row = Array.isArray(result) ? result[0] || null : result;
 
-    return ok(res, { received: true, matched: Boolean(rows?.length) });
+    return ok(res, {
+      received: true,
+      matched: Boolean(row?.matched),
+      applied: Boolean(row?.applied),
+      previous_status: row?.previous_status || null,
+      current_status: row?.current_status || status
+    });
   } catch (error) {
     console.error('TWILIO_STATUS_CALLBACK_ERROR', error.message);
     return fail(res, 500, 'No se pudo procesar el callback Twilio');

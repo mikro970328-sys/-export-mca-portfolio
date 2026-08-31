@@ -1,0 +1,56 @@
+name: P18 Integrations
+
+on:
+  pull_request:
+    paths:
+      - 'api/_integration-events.js'
+      - 'api/_shipsgo.js'
+      - 'api/shipsgo-webhook.js'
+      - 'api/shipsgo-error-alerts.js'
+      - 'api/tracking-mode.js'
+      - 'api/manual-tracking-event.js'
+      - 'api/twilio-status.js'
+      - 'api/shipments.js'
+      - 'supabase/migrations/20260831011*.sql'
+      - 'supabase/tests/p18_integrations.sql'
+      - 'scripts/check-integrations.mjs'
+      - 'scripts/check-integration-event-identity.mjs'
+      - 'scripts/check-b9-public-boundaries.mjs'
+      - '.github/workflows/p18-integrations.yml'
+  workflow_dispatch:
+
+jobs:
+  integration-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Syntax check integration JavaScript
+        run: |
+          node --check api/_integration-events.js
+          node --check api/_shipsgo.js
+          node --check api/shipsgo-webhook.js
+          node --check api/shipsgo-error-alerts.js
+          node --check api/tracking-mode.js
+          node --check api/manual-tracking-event.js
+          node --check api/twilio-status.js
+          node --check api/shipments.js
+          node --check scripts/check-integrations.mjs
+          node --check scripts/check-integration-event-identity.mjs
+          node --check scripts/check-b9-public-boundaries.mjs
+      - name: Check P18 ownership contract
+        run: node scripts/check-integrations.mjs
+      - name: Verify provider event identity
+        run: node scripts/check-integration-event-identity.mjs
+      - name: Preserve P16 public boundary hardening
+        run: node scripts/check-b9-public-boundaries.mjs
+      - name: Preserve P9 alert lifecycle
+        run: node scripts/check-operational-alert-lifecycle.mjs
+      - name: Preserve P15 privilege boundary
+        run: node scripts/check-b9-database-privileges.mjs
+      - name: Preserve API boundary inventory
+        run: node scripts/audit-b9-api-boundaries.mjs
