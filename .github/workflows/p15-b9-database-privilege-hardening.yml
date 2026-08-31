@@ -1,0 +1,21 @@
+name: P15 B9 Database Privilege Hardening
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'scripts/check-b9-database-privileges.mjs'
+      - '.github/workflows/p15-b9-database-privilege-hardening.yml'
+  workflow_dispatch:
+
+jobs:
+  privilege-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check B9 database privilege contract
+        run: node scripts/check-b9-database-privileges.mjs
