@@ -35,11 +35,12 @@ for(const file of runtimeFiles){
   forbid(file,/retry_shipsgo/i,'no puede conservar reconexión a proveedor');
 }
 
-// Scan all active API/admin runtime. ShipsGo text is allowed only in explicit historical/tombstone owners.
+// Only immutable history/tombstones may still name the retired provider.
 const shipsGoTextAllowlist=new Set([
-  'api/tracking-alerts.js',          // closes historical alert cycles
-  'api/shipments.js',                // rejects the retired legacy action explicitly
-  'admin/shipment-timeline.js'       // renders immutable historical provider events
+  'api/tracking-alerts.js',                 // closes historical alert cycles
+  'api/shipments.js',                       // rejects the retired legacy action explicitly
+  'admin/shipment-timeline.js',             // renders immutable historical provider events
+  'admin/operational-alert-center.js'       // renders immutable historical provider alert labels
 ]);
 function walkRuntime(dir){
   const absolute=path.join(root,dir);
@@ -54,6 +55,10 @@ function walkRuntime(dir){
 }
 walkRuntime('api');
 walkRuntime('admin');
+
+const historicalAlertCenter=read('admin/operational-alert-center.js');
+if(!historicalAlertCenter.includes("shipsgo_tracking_failed:'Error ShipsGo'"))failures.push('admin/operational-alert-center.js: debe conservar etiqueta histórica del proveedor para auditoría');
+forbid('admin/operational-alert-center.js',/\/api\/(?:shipsgo|tracking-mode)|retry_shipsgo|SHIPSGO_/i,'allowlist histórica no puede esconder consumo activo del proveedor');
 
 const notificationOwner='api/_notification-delivery.js';
 for(const text of ["new Set(['DEPA', 'RELEASE'])",'whatsappDeliveryKey','claim_notification_dispatch','release_notification_dispatch_claim'])requireText(notificationOwner,text);
