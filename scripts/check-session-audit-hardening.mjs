@@ -5,6 +5,7 @@ const root=process.cwd();
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const failures=[];
 const requireText=(file,text,label=text)=>{ if(!read(file).includes(text)) failures.push(`${file}: falta ${label}`); };
+const requirePattern=(file,re,label)=>{ if(!re.test(read(file))) failures.push(`${file}: falta ${label}`); };
 const forbid=(file,re,label)=>{ if(re.test(read(file))) failures.push(`${file}: ${label}`); };
 
 const foundation='supabase/migrations/20260831005000_p17_session_audit_foundation.sql';
@@ -55,7 +56,8 @@ forbid('api/login.js',/method:\s*['"]PATCH['"][\s\S]{0,180}admin_users/,'login n
 
 const account=read('api/account.js');
 requireText('api/account.js','rpc/change_own_admin_password');
-requireText('api/account.js','token: createToken');
+requireText('api/account.js','const token = createToken(','creación del token renovado');
+requirePattern('api/account.js',/return\s+ok\(res,\s*\{[\s\S]{0,260}\btoken\b[\s\S]{0,80}\}\s*\)/,'retorno del token renovado');
 forbid('api/account.js',/method:\s*['"]PATCH['"][\s\S]{0,220}admin_users/,'password change no debe mutar admin_users directamente');
 
 const admins=read('api/admins.js');
@@ -72,8 +74,12 @@ for(const rpc of ['create_access_role_with_audit','update_access_role_with_audit
 forbid('api/access-control.js',/writeAudit\s*\(/,'roles/equipos no deben duplicar audit fuera de RPC');
 forbid('api/access-control.js',/supabase\(['"](?:access_roles|access_role_permissions|teams|team_memberships)['"]\s*,\s*\{\s*method:\s*['"](?:POST|PATCH|DELETE)/,'roles/equipos no deben escribir tablas directamente');
 
-requireText('admin/account-administration.js',"localStorage.setItem('export_mca_token', result.token)",'reemplazo de token tras cambio de contraseña');
-for(const file of ['admin/account-administration.js']) {
+const accountUi='admin/account-administration.js';
+requireText(accountUi,"localStorage.setItem('export_mca_token', result.token)",'reemplazo de token tras cambio de contraseña');
+requireText(accountUi,'accountSessionRevokeForm','formulario de revocación administrativa');
+requireText(accountUi,'accountSessionReason','motivo de revocación');
+requireText(accountUi,'revoke_sessions: true','acción explícita de revocación');
+for(const file of [accountUi]) {
   forbid(file,/\bMutationObserver\b/,'no usar MutationObserver');
   forbid(file,/\b(?:alert|prompt|confirm)\s*\(/,'no usar diálogos nativos');
 }
