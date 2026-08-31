@@ -5,7 +5,6 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   const norm = value => String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
   const validReference = value => Boolean(value) && value.length <= 40 && /^[A-Z0-9][A-Z0-9 ._/-]*$/.test(value);
-  const isIso = value => /^[A-Z]{4}\d{7}$/.test(value);
   let current = null;
   let saving = false;
 
@@ -94,20 +93,10 @@
     return values.map(value => `<option ${value === selected ? 'selected' : ''}>${esc(value)}</option>`).join('');
   }
 
-  function formatTrackingMode(shipment) {
-    if (shipment.shipsgo_status === 'manual') return 'Manual';
-    if (shipment.shipsgo_status === 'active') return 'ShipsGo automático';
-    if (shipment.shipsgo_status === 'failed') return 'ShipsGo con error';
-    return shipment.shipsgo_status || 'Pendiente';
-  }
-
   function html(shipment) {
     const status = shipment.operational_status || shipment.last_status || 'Registrado';
     const importerName = importerNameForShipment(shipment.id);
-    const reference = norm(shipment.container_number);
-    const referenceHelp = isIso(reference)
-      ? 'Número ISO válido para tracking automático.'
-      : 'Referencia provisional. Puedes reemplazarla por el número ISO real cuando la naviera lo entregue.';
+    const referenceHelp = 'Referencia operativa del ERP. Puede ser un número ISO real o una referencia provisional mientras la naviera entrega el número definitivo.';
     return `<div id="shipmentEditorMessage"></div>
       <div class="shipment-editor-grid">
         <div><label>Cliente</label><select id="editorClient">${clientOptions(shipment.client_id)}</select><div class="shipment-editor-help">Si el contenedor proviene de una venta/cargue, el cliente debe heredarse de esa operación.</div></div>
@@ -122,13 +111,13 @@
         <div><label>B/L</label><input id="editorBol" value="${esc(shipment.bol_number || '')}"><div class="shipment-editor-help">Puede quedar vacío hasta que la naviera lo emita.</div></div>
         <div><label>Estado operativo</label><select id="editorStatus">${statuses(status)}</select></div>
       </div>
-      <section class="shipment-editor-section"><h3>Tracking</h3><div class="shipment-editor-info">
-        <div class="shipment-editor-card"><b>Modo</b>${esc(formatTrackingMode(shipment))}</div>
+      <section class="shipment-editor-section"><h3>Seguimiento ERP</h3><div class="shipment-editor-info">
+        <div class="shipment-editor-card"><b>Fuente</b>Export MCA ERP</div>
         <div class="shipment-editor-card"><b>Último estado</b>${esc(shipment.last_status || shipment.operational_status || '—')}</div>
         <div class="shipment-editor-card"><b>Ubicación</b>${esc(shipment.last_location || '—')}</div>
-        <div class="shipment-editor-card"><b>ShipsGo ID</b>${esc(shipment.shipsgo_tracking_id || '—')}</div>
-        <div class="shipment-editor-card"><b>Vínculo</b>${esc(shipment.shipsgo_link_mode || '—')}</div>
-        <div class="shipment-editor-card"><b>Error ShipsGo</b>${esc(shipment.shipsgo_error || '—')}</div>
+        <div class="shipment-editor-card"><b>Último evento</b>${esc(shipment.last_event_at ? new Date(shipment.last_event_at).toLocaleString('es-US') : '—')}</div>
+        <div class="shipment-editor-card"><b>Salida</b>${esc(shipment.departure_date || '—')}</div>
+        <div class="shipment-editor-card"><b>Estado</b>${esc(status)}</div>
       </div></section>
       <div class="shipment-editor-footer"><button id="shipmentEditorCancel" class="alt" type="button">Cancelar</button><button id="shipmentEditorSave" class="orange" type="button">Guardar cambios</button></div>`;
   }
