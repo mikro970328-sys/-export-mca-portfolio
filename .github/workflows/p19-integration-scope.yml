@@ -1,0 +1,71 @@
+name: P19 Integration Scope
+
+on:
+  pull_request:
+    paths:
+      - 'api/_notification-delivery.js'
+      - 'api/_shipsgo.js'
+      - 'api/_integration-events.js'
+      - 'api/shipsgo-webhook.js'
+      - 'api/shipsgo-error-alerts.js'
+      - 'api/tracking-mode.js'
+      - 'api/manual-tracking-event.js'
+      - 'api/manual-tracking-alerts.js'
+      - 'api/stagnant-shipment-alerts.js'
+      - 'api/tracking-alerts.js'
+      - 'api/twilio-status.js'
+      - 'api/shipments.js'
+      - 'api/shipments-register.js'
+      - 'api/loads.js'
+      - 'api/direct-shipment-dispatch.js'
+      - 'api/clients.js'
+      - 'admin/containers-module.js'
+      - '.env.example'
+      - 'vercel.json'
+      - 'scripts/check-integrations.mjs'
+      - 'scripts/check-integration-event-identity.mjs'
+      - 'scripts/check-b9-public-boundaries.mjs'
+      - 'supabase/migrations/*p19*'
+      - 'supabase/tests/p19_integration_scope.sql'
+      - '.github/workflows/p19-integration-scope.yml'
+      - '.github/workflows/p18-integrations.yml'
+  workflow_dispatch:
+
+jobs:
+  integration-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Syntax check P19 JavaScript
+        run: |
+          node --check api/_notification-delivery.js
+          node --check api/manual-tracking-event.js
+          node --check api/manual-tracking-alerts.js
+          node --check api/stagnant-shipment-alerts.js
+          node --check api/tracking-alerts.js
+          node --check api/twilio-status.js
+          node --check api/shipments.js
+          node --check api/shipments-register.js
+          node --check api/loads.js
+          node --check api/direct-shipment-dispatch.js
+          node --check admin/containers-module.js
+          node --check scripts/check-integrations.mjs
+          node --check scripts/check-integration-event-identity.mjs
+          node --check scripts/check-b9-public-boundaries.mjs
+      - name: Enforce P19 integration scope
+        run: node scripts/check-integrations.mjs
+      - name: Verify WhatsApp milestone identity
+        run: node scripts/check-integration-event-identity.mjs
+      - name: Preserve Twilio public boundary hardening
+        run: node scripts/check-b9-public-boundaries.mjs
+      - name: Preserve P9 alert lifecycle
+        run: node scripts/check-operational-alert-lifecycle.mjs
+      - name: Preserve P15 privilege boundary
+        run: node scripts/check-b9-database-privileges.mjs
+      - name: Preserve API boundary inventory
+        run: node scripts/audit-b9-api-boundaries.mjs
