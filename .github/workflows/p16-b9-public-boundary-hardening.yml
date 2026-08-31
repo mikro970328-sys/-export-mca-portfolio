@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'api/**'
+      - 'market/**'
+      - 'portal/**'
       - 'package.json'
       - 'scripts/audit-b9-api-boundaries.mjs'
       - 'scripts/check-b9-public-boundaries.mjs'
