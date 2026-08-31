@@ -20,6 +20,7 @@ on:
       - 'api/direct-shipment-dispatch.js'
       - 'api/clients.js'
       - 'admin/containers-module.js'
+      - 'admin/clients-module.js'
       - '.env.example'
       - 'vercel.json'
       - 'scripts/check-integrations.mjs'
@@ -53,7 +54,9 @@ jobs:
           node --check api/shipments-register.js
           node --check api/loads.js
           node --check api/direct-shipment-dispatch.js
+          node --check api/clients.js
           node --check admin/containers-module.js
+          node --check admin/clients-module.js
           node --check scripts/check-integrations.mjs
           node --check scripts/check-integration-event-identity.mjs
           node --check scripts/check-b9-public-boundaries.mjs
