@@ -17,16 +17,16 @@ function ruleFor(status){return RULES.find(rule=>rule.match.some(value=>status.i
 async function runCheck(){
   const now=new Date().toISOString(),nowMs=Date.now();
   const [shipments,conditions]=await Promise.all([
-    supabase('shipments',{query:'?select=id,client_id,container_number,last_status,operational_status,last_event_at,created_at,updated_at,shipsgo_status,active,released_at,delivered_at,clients(id,name)&active=eq.true&order=created_at.asc&limit=5000'}),
+    supabase('shipments',{query:'?select=id,client_id,container_number,last_status,operational_status,last_event_at,created_at,updated_at,active,released_at,delivered_at,clients(id,name)&active=eq.true&order=created_at.asc&limit=5000'}),
     loadConditionMap([EVENT_TYPE])
   ]);
   const seen=new Set();let changed=0;
   for(const shipment of shipments||[]){
     const key=alertKey(EVENT_TYPE,shipment.id);seen.add(key);const previous=conditions.get(key),status=normalizedStatus(shipment);
-    const excluded=shipment.shipsgo_status==='manual'||status.includes('descargado')||status.includes('discharged')||Boolean(shipment.delivered_at);
-    const rule=excluded?null:ruleFor(status),reference=rule?validDate(shipment.last_event_at||shipment.updated_at||shipment.created_at):null;
+    const completed=status.includes('descargado')||status.includes('discharged')||Boolean(shipment.delivered_at);
+    const rule=completed?null:ruleFor(status),reference=rule?validDate(shipment.last_event_at||shipment.updated_at||shipment.created_at):null;
     const days=reference?elapsedDays(reference,nowMs):0,activeCondition=Boolean(rule&&reference&&days>=rule.warningDays);
-    if(!activeCondition){if(previous&&changedAction(await closeCondition(previous,excluded?'covered_by_specific_rule_or_completed':rule?'status_advanced_or_within_threshold':'status_not_monitored',now)))changed+=1;continue;}
+    if(!activeCondition){if(previous&&changedAction(await closeCondition(previous,completed?'covered_by_specific_rule_or_completed':rule?'status_advanced_or_within_threshold':'status_not_monitored',now)))changed+=1;continue;}
     const severity=days>=rule.criticalDays?'critical':'warning',referenceIso=reference.toISOString(),statusLabel=shipment.last_status||shipment.operational_status||'Sin estado';
     const referenceChanged=Boolean(previous&&previous.payload?.status_reference_at&&previous.payload.status_reference_at!==referenceIso);
     const result=await reconcileAlert({
@@ -34,13 +34,13 @@ async function runCheck(){
       severity,title:severity==='critical'?'Contenedor detenido en el mismo estado':'Contenedor sin avance operativo',
       message:`El contenedor ${shipment.container_number||'sin número'} lleva ${days} días en “${statusLabel}” sin registrar un nuevo evento.`,
       dueAt:new Date(reference.getTime()+rule.warningDays*DAY).toISOString(),
-      payload:{container_number:shipment.container_number||null,client_name:shipment.clients?.name||null,operational_status:statusLabel,status_reference_at:referenceIso,days_in_status:days,warning_days:rule.warningDays,critical_days:rule.criticalDays,required_action:'review_shipment_status'},
+      payload:{container_number:shipment.container_number||null,client_name:shipment.clients?.name||null,operational_status:statusLabel,status_reference_at:referenceIso,days_in_status:days,warning_days:rule.warningDays,critical_days:rule.criticalDays,tracking_source:'erp',required_action:'review_shipment_status'},
       trigger:Boolean(previous&&(referenceChanged||previous.severity!==severity||repeatDue(previous,DAY,nowMs))),now
     });
     if(changedAction(result))changed+=1;
   }
   for(const row of conditions.values())if(!seen.has(row.dedupe_key)&&changedAction(await closeCondition(row,'shipment_inactive_or_missing',now)))changed+=1;
-  return {shipments_checked:(shipments||[]).length,alerts_changed:changed};
+  return {shipments_checked:(shipments||[]).length,alerts_changed:changed,tracking_source:'erp'};
 }
 
 export default async function handler(req,res){
