@@ -10,7 +10,9 @@ const walk=dir=>fs.readdirSync(dir,{withFileTypes:true}).flatMap(entry=>{
 const rel=file=>path.relative(root,file).replaceAll('\\','/');
 const endpointFiles=walk(apiRoot).filter(file=>file.endsWith('.js')&&!path.basename(file).startsWith('_'));
 const explicitPublic=new Set([
-  'api/public/publications.js',
+  'api/public/publications.js'
+]);
+const retiredPublic=new Set([
   'api/public-marketplace.js',
   'api/public-tracking.js'
 ]);
@@ -32,22 +34,26 @@ for(const file of endpointFiles){
   const shipsgoWebhook=name==='api/shipsgo-webhook.js';
   const twilioCallback=name==='api/twilio-status.js';
   const shipsgoVerified=shipsgoWebhook&&/(SHIPSGO_WEBHOOK_SECRET|timingSafeEqual|signature)/i.test(src);
-  const twilioVerified=twilioCallback&&/(x-twilio-signature|validateRequest|twilio.*signature|timingSafeEqual)/i.test(src);
+  const twilioVerified=twilioCallback&&/x-twilio-signature/i.test(src)&&/validateTwilioRequest\s*\(/.test(src)&&/TWILIO_STATUS_CALLBACK_URL/.test(src);
+  const retiredVerified=retiredPublic.has(name)&&/fail\s*\(\s*res\s*,\s*410\b/.test(src)&&!/\bsupabase\b/.test(src);
   let boundary='UNCLASSIFIED';
 
   if(explicitPublic.has(name)) boundary='public_explicit';
+  else if(retiredVerified) boundary='public_retired';
   else if(login&&/verifyPassword\s*\(/.test(src)) boundary='credential_login';
   else if(hasAuthorize) boundary='permission';
   else if(hasScopedIdentity) boundary='identity_scoped_permissions';
   else if(hasAuthenticate) boundary='identity_only';
   else if(shipsgoVerified) boundary='external_webhook_verified';
-  else if(twilioCallback&&!twilioVerified) {
+  else if(twilioCallback&&twilioVerified) boundary='external_webhook_verified';
+  else if(twilioCallback) {
     boundary='external_webhook_unverified';
     findings.push({severity:'critical',file:name,code:'TWILIO_SIGNATURE_NOT_VERIFIED'});
   }
 
-  if(name==='api/public-marketplace.js') findings.push({severity:'medium',file:name,code:'STALE_PUBLIC_MARKETPLACE_SCHEMA'});
-  if(name==='api/public-tracking.js') findings.push({severity:'medium',file:name,code:'STALE_PUBLIC_TRACKING_SCHEMA'});
+  if(retiredPublic.has(name)&&!retiredVerified) {
+    findings.push({severity:'high',file:name,code:'STALE_PUBLIC_ENDPOINT_NOT_RETIRED'});
+  }
   if(hasLegacy) legacy.push(name);
   if(boundary==='UNCLASSIFIED') unresolved.push(name);
   rows.push({file:name,boundary,permissions:[...new Set([...permissions,...anyPermissions])].sort(),hasLegacy});
@@ -56,7 +62,7 @@ for(const file of endpointFiles){
 const permissionKeys=[...new Set(rows.flatMap(row=>row.permissions))].sort();
 console.log(JSON.stringify({endpoint_count:rows.length,permission_keys:permissionKeys,unresolved,legacy,findings,rows},null,2));
 
-if(legacy.length||unresolved.length){
-  console.error(`B9 API boundary audit found ${legacy.length} legacy and ${unresolved.length} unclassified handlers.`);
+if(legacy.length||unresolved.length||findings.some(item=>item.severity==='critical'||item.severity==='high')){
+  console.error(`B9 API boundary audit failed: ${legacy.length} legacy, ${unresolved.length} unclassified, ${findings.length} finding(s).`);
   process.exit(1);
 }

@@ -1,27 +1,17 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Rastrear envío · Export MCA</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seguimiento de envío · Export MCA</title>
 <style>
-:root{--navy:#06204a;--orange:#f58220;--bg:#f5f7fb;--line:#dfe5ee;--text:#152238;--muted:#667085;--ok:#117a37}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}header{background:var(--navy);color:#fff;padding:22px 18px}.wrap{width:min(980px,calc(100% - 28px));margin:auto}.brand{font-size:22px;font-weight:800}.sub{color:#c7d4e8;margin-top:4px}.hero{padding:42px 0 20px}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 10px 30px rgba(6,32,74,.06);margin-bottom:18px}.search{display:flex;gap:10px}.search input{flex:1;padding:14px;border:1px solid #cfd7e3;border-radius:10px;font-size:16px;text-transform:uppercase}.search button{border:0;border-radius:10px;padding:0 20px;background:var(--orange);color:#fff;font-weight:800;cursor:pointer}.hidden{display:none}.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.item{padding:14px;background:#f8fafc;border-radius:10px}.item small{display:block;color:var(--muted);margin-bottom:5px}.timeline{border-left:3px solid var(--line);margin:14px 0 0 9px;padding-left:18px}.event{position:relative;margin-bottom:20px}.event:before{content:"";position:absolute;width:12px;height:12px;border-radius:50%;background:var(--ok);left:-25px;top:3px}.event h4{margin:0 0 4px}.muted{color:var(--muted);font-size:13px}.error{color:#b42318;margin-top:10px}.status{display:inline-block;background:#edf3ff;color:var(--navy);padding:6px 10px;border-radius:999px;font-size:13px;font-weight:700}@media(max-width:700px){.search{flex-direction:column}.search button{padding:14px}.summary-grid{grid-template-columns:1fr}}
+:root{--navy:#06204a;--orange:#f58220;--bg:#f5f7fb;--line:#dfe5ee;--text:#152238;--muted:#667085}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}header{background:var(--navy);color:#fff;padding:22px 18px}.wrap{width:min(760px,calc(100% - 28px));margin:auto}.brand{font-size:22px;font-weight:800}.sub{color:#c7d4e8;margin-top:4px}.hero{padding:54px 0 22px}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px;box-shadow:0 10px 30px rgba(6,32,74,.06)}.notice{display:inline-block;padding:7px 11px;border-radius:999px;background:#fff3e8;color:#9a4b08;font-size:12px;font-weight:800}.muted{color:var(--muted)}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}.btn{display:inline-block;border-radius:10px;padding:13px 18px;background:var(--orange);color:#fff;font-weight:800;text-decoration:none}.btn.alt{background:#fff;color:var(--navy);border:1px solid var(--navy)}
 </style>
 </head>
 <body>
 <header><div class="wrap"><div class="brand">EXPORT MCA</div><div class="sub">Seguimiento de operaciones</div></div></header>
 <main class="wrap">
-<section class="hero"><h1>Rastrear mi envío</h1><p>Introduzca el número de operación recibido por WhatsApp.</p></section>
-<section class="card"><div class="search"><input id="code" placeholder="Ej. EXP-000123" autocomplete="off"><button id="track">Rastrear</button></div><div id="message" class="error"></div></section>
-<section id="result" class="hidden">
-  <section class="card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><div class="muted">Operación</div><h2 id="operationCode" style="margin:4px 0"></h2></div><span id="status" class="status"></span></div><p id="summary"></p><div id="details" class="summary-grid"></div></section>
-  <section class="card"><h3>Progreso del envío</h3><div id="timeline" class="timeline"></div></section>
-</section>
+<section class="hero"><h1>Seguimiento seguro</h1><p class="muted">La consulta pública por número de operación está temporalmente deshabilitada para proteger la información de cada embarque.</p></section>
+<section class="card"><span class="notice">Acceso público retirado</span><h2>Solicite el estado de su envío por el canal asignado</h2><p>Para conocer la situación actual de un contenedor u operación, utilice el contacto de Export MCA o la conversación de WhatsApp donde recibió sus actualizaciones.</p><div class="actions"><a class="btn" href="https://wa.me/17868000735" target="_blank" rel="noopener">Consultar por WhatsApp</a><a class="btn alt" href="https://exportmca.com/#contacto">Contacto Export MCA</a></div></section>
 </main>
-<script>
-const $=id=>document.getElementById(id);const fmt=v=>v?new Date(v).toLocaleString('es-US',{dateStyle:'medium',timeStyle:'short'}):'Pendiente';
-async function track(){const code=$('code').value.trim();$('message').textContent='';$('result').classList.add('hidden');if(!code){$('message').textContent='Escriba su número de envío.';return}try{const r=await fetch('/api/public-tracking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});const data=await r.json();if(!r.ok)throw new Error(data.error||'No se pudo consultar');const o=data.operation;$('operationCode').textContent=o.code;$('status').textContent=o.status||'En proceso';$('summary').textContent=o.summary||o.title||'';const containers=(o.containers||[]).map(c=>c.container_number).join(', ')||'Pendiente';$('details').innerHTML=[['Origen',o.origin_port||'Pendiente'],['Destino',o.destination_port||'Pendiente'],['Contenedor',containers],['Naviera',o.carrier||'Pendiente'],['Salida estimada',fmt(o.estimated_departure_at)],['Llegada estimada',fmt(o.estimated_arrival_at)]].map(([a,b])=>`<div class="item"><small>${a}</small><strong>${b}</strong></div>`).join('');$('timeline').innerHTML=(data.events||[]).length?(data.events||[]).map(e=>`<div class="event"><h4>${e.title}</h4><div>${e.public_description||''}</div><div class="muted">${e.location||''}${e.location?' · ':''}${fmt(e.event_at)}</div></div>`).join(''):'<p class="muted">Aún no hay movimientos públicos para mostrar.</p>';$('result').classList.remove('hidden')}catch(e){$('message').textContent=e.message}}
-$('track').onclick=track;$('code').addEventListener('keydown',e=>{if(e.key==='Enter')track()});
-</script>
 </body>
 </html>

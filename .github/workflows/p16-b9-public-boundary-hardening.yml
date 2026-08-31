@@ -1,0 +1,28 @@
+name: P16 B9 Public Boundary Hardening
+
+on:
+  pull_request:
+    paths:
+      - 'api/**'
+      - 'market/**'
+      - 'portal/**'
+      - 'package.json'
+      - 'scripts/audit-b9-api-boundaries.mjs'
+      - 'scripts/check-b9-public-boundaries.mjs'
+      - '.github/workflows/p16-b9-public-boundary-hardening.yml'
+  workflow_dispatch:
+
+jobs:
+  public-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Audit API boundaries
+        run: node scripts/audit-b9-api-boundaries.mjs
+      - name: Verify Twilio and retired public surfaces
+        run: node scripts/check-b9-public-boundaries.mjs
