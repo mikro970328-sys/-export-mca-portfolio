@@ -75,7 +75,6 @@ on:
       - 'api/tracking-alerts.js'
       - 'api/manual-tracking-alerts.js'
       - 'api/discharge-release-alerts.js'
-      - 'api/shipsgo-error-alerts.js'
       - 'api/stagnant-shipment-alerts.js'
       - 'api/history.js'
       - 'supabase/migrations/20260830211500_p9_operational_alert_condition_registry.sql'
@@ -191,7 +190,6 @@ jobs:
           node --check api/tracking-alerts.js
           node --check api/manual-tracking-alerts.js
           node --check api/discharge-release-alerts.js
-          node --check api/shipsgo-error-alerts.js
           node --check api/stagnant-shipment-alerts.js
           node --check api/history.js
           node --check admin/operational-alert-center.js
