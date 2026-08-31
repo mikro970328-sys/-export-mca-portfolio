@@ -12,6 +12,11 @@
   const dateLabel = value => { const d=new Date(value||0); return Number.isNaN(d.getTime())?'-':d.toLocaleString('es-US',{dateStyle:'medium',timeStyle:'short'}); };
   const apiCall = (path, options={}) => typeof window.api === 'function' ? window.api(path,options) : Promise.reject(new Error('API no disponible'));
 
+  function removeLegacyAlertBell() {
+    $('operationalAlertBellWrap')?.remove();
+    $('operationalAlertPopover')?.remove();
+  }
+
   function setMessage(message='', bad=false) {
     state.message=message;
     const node=$('notificationInboxMessage');
@@ -19,6 +24,7 @@
   }
 
   function ensureShell() {
+    removeLegacyAlertBell();
     const actions=document.querySelector('.topbar-actions');
     if(actions && !$('notificationInboxBell')) {
       const button=document.createElement('button');
@@ -164,9 +170,11 @@
   function closePanel() { state.open=false; $('notificationInboxOverlay').hidden=true; document.body.classList.remove('notification-inbox-open'); }
 
   function install() {
+    removeLegacyAlertBell();
     ensureShell();
     refresh().catch(()=>{});
     window.addEventListener('export-mca:data-loaded',()=>refresh().catch(()=>{}));
+    window.addEventListener('export-mca:modules-ready',()=>{removeLegacyAlertBell();ensureShell();});
     window.addEventListener('focus',()=>refresh().catch(()=>{}));
     window.addEventListener('keydown',event=>{if(event.key==='Escape'&&state.open)closePanel();});
     window.NotificationInbox=Object.freeze({open:openPanel,refresh,close:closePanel,getState:()=>({...state}),owner:'notification-inbox.js'});

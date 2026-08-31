@@ -169,19 +169,36 @@
     };
   }
 
-  async function reloadDashboard(filters=readFilters()) {
-    if(state.loading)return;
-    state.loading=true;
+  function renderLoading() {
     const section=$('dashboardSection');
+    if(!section || state.data)return;
+    section.innerHTML='<section class="executive-section"><div class="executive-section-head"><div><h3>Cargando dashboard</h3><p>La plataforma ya está disponible. Estamos actualizando los indicadores ejecutivos.</p></div></div><div class="executive-empty">Cargando indicadores…</div></section>';
+  }
+
+  function renderError(error) {
+    const section=$('dashboardSection');
+    if(!section)return;
+    const message=esc(error?.message||'No se pudo cargar el dashboard.');
+    section.innerHTML=`<section class="executive-section"><div class="executive-section-head"><div><h3>Dashboard temporalmente no disponible</h3><p>${message}</p></div><button type="button" class="alt" id="dashboardRetry">Reintentar</button></div><div class="executive-empty">El resto del ERP sigue disponible desde el menú.</div></section>`;
+    $('dashboardRetry')?.addEventListener('click',()=>reloadDashboard(state.filters));
+  }
+
+  async function reloadDashboard(filters=readFilters()) {
+    if(state.loading)return false;
+    state.loading=true;
     const button=$('dashboardApplyFilters');
     if(button)button.disabled=true;
+    if(!state.data)renderLoading();
     try {
       const params=new URLSearchParams();
       Object.entries(filters).forEach(([key,value])=>{if(value)params.set(key,value);});
       const result=await window.api(`/api/dashboard${params.size?`?${params}`:''}`);
       renderDashboard(result);
+      return true;
     } catch(error) {
-      if(section)section.insertAdjacentHTML('afterbegin',`<div class="executive-error">${esc(error.message||'No se pudo cargar el dashboard.')}</div>`);
+      console.error('[executive dashboard]',error);
+      renderError(error);
+      return false;
     } finally {
       state.loading=false;
       if(button)button.disabled=false;
@@ -220,6 +237,7 @@
 
   function initializeOperationalDashboard() {
     if(state.data)bind();
+    else renderLoading();
     return true;
   }
 

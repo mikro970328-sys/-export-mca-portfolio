@@ -158,6 +158,24 @@
     window.dispatchEvent(new CustomEvent('export-mca:admin-ready'));
   };
 
+  const ensureVisibleSection = () => {
+    const visible = [...document.querySelectorAll('.app-section')].find(section => !section.classList.contains('hidden'));
+    if (visible) return visible.id;
+    const saved = localStorage.getItem('export_mca_current_section');
+    const candidates = [
+      saved,
+      accessCan('dashboard.read') ? 'dashboardSection' : null,
+      ...[...document.querySelectorAll('[data-section]')].map(button => button.dataset.section)
+    ].filter(Boolean);
+    for (const id of [...new Set(candidates)]) {
+      const section = document.getElementById(id);
+      const button = document.querySelector(`[data-section="${id}"]`);
+      if (!section?.classList.contains('app-section') || !button || button.hidden || button.classList.contains('hidden') || button.disabled) continue;
+      if (typeof window.showSection === 'function' && window.showSection(id) !== false) return id;
+    }
+    return null;
+  };
+
   const hydrateSecondaryModules = async () => {
     const tasks = [];
 
@@ -168,12 +186,12 @@
       tasks.push(loadScript('/admin/module-export-controls.js', 'data-module-export-controls'));
     }
     if (accessCan('notifications.read')) {
-      let alertChain = loadScript('/admin/operational-alert-center.js?v=20260830-p9', 'data-operational-alert-center');
+      let alertChain = loadScript('/admin/operational-alert-center.js?v=20260830-hotfix1', 'data-operational-alert-center');
       if (accessCan('notifications.manage')) {
         alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260830-p9', 'data-alert-phase2-stability'));
       }
       const inboxChain = loadStylesheet('/admin/notification-inbox.css?v=20260830-p10', 'data-notification-inbox-style')
-        .then(() => loadScript('/admin/notification-inbox.js?v=20260830-p10', 'data-notification-inbox'));
+        .then(() => loadScript('/admin/notification-inbox.js?v=20260830-hotfix1', 'data-notification-inbox'));
       tasks.push(Promise.all([alertChain,inboxChain]));
     }
 
@@ -197,7 +215,7 @@
 
       if (accessCan('dashboard.read')) {
         await loadStylesheet('/admin/dashboard-executive.css?v=20260830-p11', 'data-dashboard-executive-style');
-        await loadScript('/admin/dashboard-operational-state.js?v=20260830-p11', 'data-dashboard-operational-state');
+        await loadScript('/admin/dashboard-operational-state.js?v=20260830-hotfix1', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
         await loadScript('/admin/containers-module.js?v=20260830-ux2d', 'data-containers-module');
@@ -228,19 +246,27 @@
       window.ExportMcaAccessControl?.applyNavigation?.();
       await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
       await loadScript('/admin/operational-navigation.js?v=20260830-ux2d', 'data-operational-navigation');
+      await loadScript('/admin/admin-data-loader.js?v=20260830-hotfix1', 'data-admin-data-loader');
       window.ExportMcaAccessControl?.applyNavigation?.();
 
-      if (typeof window.loadAll !== 'function') {
+      if (!window.ExportMcaAdminData?.loadCore) {
         throw new Error('El cargador inicial de datos no está disponible.');
       }
 
-      await window.loadAll();
+      await window.ExportMcaAdminData.loadCore();
 
       if (accessCan('dashboard.read') && typeof window.initializeOperationalDashboard === 'function') {
         window.initializeOperationalDashboard();
       }
 
       revealAdminShell();
+      ensureVisibleSection();
+
+      if (accessCan('dashboard.read')) {
+        window.ExportMcaAdminData.loadDashboard().catch(error => {
+          console.error('[admin dashboard]', error);
+        });
+      }
 
       hydrateSecondaryModules().catch(error => {
         console.error('[admin secondary modules]', error);
