@@ -37,10 +37,10 @@ for(const file of runtimeFiles){
 
 // Only immutable history/tombstones may still name the retired provider.
 const shipsGoTextAllowlist=new Set([
-  'api/tracking-alerts.js',                 // closes historical alert cycles
-  'api/shipments.js',                       // rejects the retired legacy action explicitly
-  'admin/shipment-timeline.js',             // renders immutable historical provider events
-  'admin/operational-alert-center.js'       // renders immutable historical provider alert labels
+  'api/tracking-alerts.js',
+  'api/shipments.js',
+  'admin/shipment-timeline.js',
+  'admin/operational-alert-center.js'
 ]);
 function walkRuntime(dir){
   const absolute=path.join(root,dir);
@@ -71,9 +71,19 @@ requireText(manual,"load: { order:1, status:'Cargado en el buque', eventType:'LO
 requireText(manual,"arrived: { order:3, status:'Llegó al puerto', eventType:'ARRV' }");
 requireText(manual,"discharged: { order:4, status:'Descargado del buque', eventType:'DISC' }");
 requireText(manual,"delivered: { order:6, status:'Entregado', eventType:'DELIVERED' }");
+requireText(manual,"assertShipmentBusinessAction(shipment.id,'manual_tracking')",'debe respetar capability canónica antes de mutar tracking');
+
+const shipmentActions='api/_shipment-actions.js';
+for(const text of ['loadAdminAccessContext','shipment_action_capabilities',"supabase('rpc/assert_shipment_action'",'assertShipmentBusinessAction'])requireText(shipmentActions,text);
 
 const shipments='api/shipments.js';
-for(const text of ["tracking_source:'erp'",'assertShipmentCanBeDeleted','TWILIO_RELEASE_CONTENT_SID',"claimNotificationDelivery(shipment.id,'RELEASE'"])requireText(shipments,text);
+for(const text of [
+  "tracking_source:'erp'",
+  "assertShipmentBusinessAction(shipment.id,'delete')",
+  'TWILIO_RELEASE_CONTENT_SID',
+  "claimNotificationDelivery(shipment.id,'RELEASE'"
+])requireText(shipments,text);
+forbid(shipments,/assertShipmentCanBeDeleted/,'no debe reintroducir owner JS duplicado para delete');
 forbid(shipments,/registerShipsGo|deleteShipsGoTracking|activateTracking\s*\(/,'no puede llamar tracking externo');
 requireText(shipments,"body.action === 'send_test_whatsapp') return fail(res,410",'debe bloquear envío arbitrario de WhatsApp heredado');
 requireText(shipments,"action === 'manual_notification') return fail(res,410",'debe bloquear plantillas manuales heredadas');
@@ -140,4 +150,4 @@ if(failures.length){
   console.error('P19 integration scope gate failed:\n'+failures.map(x=>`- ${x}`).join('\n'));
   process.exit(1);
 }
-console.log('P19 integration scope gate passed: ShipsGo retired; WhatsApp limited to manual/repeatable welcome plus automatic departure and release.');
+console.log('P19 integration scope gate passed: ShipsGo retired; WhatsApp limited to manual/repeatable welcome plus automatic departure and release; shipment actions respect UX-5 canonical DB ownership.');
