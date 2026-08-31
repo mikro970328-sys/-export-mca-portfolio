@@ -250,7 +250,7 @@ create or replace function public.create_worker_with_audit(
   p_phone text,
   p_position text default null
 )
-returns table(id uuid,full_name text,phone text,position text,is_active boolean)
+returns table(id uuid,full_name text,phone text,"position" text,is_active boolean)
 language plpgsql
 security definer
 set search_path=public,pg_temp
@@ -284,7 +284,7 @@ create or replace function public.update_worker_with_audit(
   p_actor uuid,
   p_patch jsonb
 )
-returns table(id uuid,full_name text,phone text,position text,is_active boolean)
+returns table(id uuid,full_name text,phone text,"position" text,is_active boolean)
 language plpgsql
 security definer
 set search_path=public,pg_temp
