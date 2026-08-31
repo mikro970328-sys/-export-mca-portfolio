@@ -17,7 +17,6 @@ $$;
 
 revoke all on function public.tracking_notification_delivery_key(text) from public, anon, authenticated, service_role;
 
-after_restrict_claims:
 create or replace function public.claim_notification_dispatch(
   p_shipment_id uuid,
   p_delivery_key text,
