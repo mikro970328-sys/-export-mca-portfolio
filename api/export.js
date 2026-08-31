@@ -48,7 +48,7 @@ export default async function handler(req, res) {
 
     const rows = await supabase('shipments', { query: '?select=*,clients(name,company,phone,email)&order=created_at.desc' });
     return sendCsv(res, 'export-mca-tracking',
-      ['Contenedor','Cliente','Empresa','WhatsApp','Correo','Producto','Cantidad','Unidad','Fecha de salida','Booking','B/L','Naviera','Estado','Ubicación','ShipsGo','Creado','Liberado','Entregado'],
+      ['Contenedor','Cliente','Empresa','WhatsApp','Correo','Producto','Cantidad','Unidad','Fecha de salida','Booking','B/L','Naviera','Estado','Ubicación','Creado','Liberado','Entregado'],
       (rows || []).map(x => [
         x.container_number,
         x.clients?.name || (x.client_id ? '' : 'SIN CLIENTE'),
@@ -64,7 +64,6 @@ export default async function handler(req, res) {
         x.carrier,
         x.operational_status || x.last_status,
         x.last_location,
-        x.shipsgo_status,
         x.created_at,
         x.released_at,
         x.delivered_at
