@@ -158,13 +158,13 @@ export default async function handler(req,res) {
     const eventKey = String(body.event || '').trim().toLowerCase();
     const event = EVENTS[eventKey];
     const location = String(body.location || '').trim() || null;
-    const notifyWhatsApp = body.notify_whatsapp === true;
 
     if (!id) return fail(res,400,'Falta el identificador del contenedor');
     if (!event) return fail(res,400,'Evento de tracking no válido');
-    if (notifyWhatsApp && !whatsappMilestoneAllowed(event.eventType)) {
+    if (body.notify_whatsapp === true && !whatsappMilestoneAllowed(event.eventType)) {
       return fail(res,400,'Este hito no envía WhatsApp. Solo se notifican salida del puerto y liberación.');
     }
+    const notifyWhatsApp = whatsappMilestoneAllowed(event.eventType);
 
     const rows = await supabase('shipments', {
       query:`?select=*,clients(id,name,phone,active)&id=eq.${encodeURIComponent(id)}&limit=1`
@@ -185,10 +185,9 @@ export default async function handler(req,res) {
     const correctionDetail = `Estado anterior: ${previousStatus} · Estado nuevo: ${event.status}`;
 
     if (!notifyWhatsApp) {
-      if (event.eventType === 'RELEASE') await patchReleaseNotification(shipment.id,'not_requested');
-      await writeHistory(shipment,event,admin,`${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · WhatsApp no solicitado`,correctionType);
-      await writeAudit(shipment,event,admin,{ previous_status:previousStatus,notification_status:'not_requested',notified:false,location },correctionType);
-      return ok(res,{ updated:true,event:eventKey,status:event.status,previous_status:previousStatus,correction_type:correctionType,notification_status:'not_requested',notified:false });
+      await writeHistory(shipment,event,admin,`${correctionDetail} · Confirmado por ${admin.username || 'administrador'} · Este hito no genera WhatsApp`,correctionType);
+      await writeAudit(shipment,event,admin,{ previous_status:previousStatus,notification_status:'not_applicable',notified:false,location },correctionType);
+      return ok(res,{ updated:true,event:eventKey,status:event.status,previous_status:previousStatus,correction_type:correctionType,notification_status:'not_applicable',notified:false });
     }
 
     if (!shipment.client_id || !shipment.clients?.active || !shipment.clients?.phone) {
