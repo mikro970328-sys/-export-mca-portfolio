@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { fail, normalizeContainer, ok, sendWhatsApp, supabase } from './_lib.js';
+import { claimNotificationDelivery, ingestShipsGoObservation, releaseNotificationDelivery, resolveTrackingStaleCondition, trackingDeliveryKey } from './_integration-events.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -26,12 +27,12 @@ function validSignature(rawBody, signature) {
 }
 
 function extract(payload) {
-  const shipment = payload?.shipment || payload?.data?.shipment || payload?.data || payload?.resource || payload?.object || {};
-  const containers = shipment?.containers || [];
+  const providerShipment = payload?.shipment || payload?.data?.shipment || payload?.data || payload?.resource || payload?.object || {};
+  const containers = providerShipment?.containers || [];
   const movements = containers.flatMap(container =>
     (container.movements || []).map(movement => ({
       ...movement,
-      containerNumber: container.number || container.container_number || shipment.container_number
+      containerNumber: container.number || container.container_number || providerShipment.container_number
     }))
   );
 
@@ -40,50 +41,14 @@ function extract(payload) {
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
 
   const container = normalizeContainer(
-    movement?.containerNumber || shipment.container_number || shipment.containerNumber || containers?.[0]?.number
+    movement?.containerNumber || providerShipment.container_number || providerShipment.containerNumber || containers?.[0]?.number
   );
   const code = String(movement?.event || '').toUpperCase();
   const status = EVENT_LABELS[code] || movement?.event_description || movement?.description || 'Nueva actualización del embarque';
-  const location = movement?.location?.name || movement?.location || shipment?.current_location || 'No disponible';
+  const location = movement?.location?.name || movement?.location || providerShipment?.current_location || 'No disponible';
   const eventTime = movement?.timestamp || new Date().toISOString();
-  return { shipment, movement, container, code, status, location, eventTime };
-}
-
-async function claimNotification(shipmentId, eventStatus) {
-  try {
-    await supabase('notification_dispatch_claims', {
-      method: 'POST',
-      body: [{ shipment_id: shipmentId, event_status: eventStatus, source: 'shipsgo' }]
-    });
-    return true;
-  } catch (error) {
-    if (String(error.message || '').includes('SUPABASE_409')) return false;
-    throw error;
-  }
-}
-
-async function releaseClaim(shipmentId, eventStatus) {
-  try {
-    await supabase('notification_dispatch_claims', {
-      method: 'DELETE',
-      query: `?shipment_id=eq.${encodeURIComponent(shipmentId)}&event_status=eq.${encodeURIComponent(eventStatus)}`
-    });
-  } catch (error) {
-    console.error('SHIPSGO_NOTIFICATION_CLAIM_RELEASE_FAILED', error.message);
-  }
-}
-
-async function resolveTrackingAlerts(shipmentId) {
-  const rows = await supabase('notifications', {
-    method: 'PATCH',
-    query: `?shipment_id=eq.${encodeURIComponent(shipmentId)}&event_type=eq.tracking_stale&status=eq.pending&select=id`,
-    body: {
-      status: 'resolved',
-      delivery_status: 'resolved',
-      updated_at: new Date().toISOString()
-    }
-  });
-  return rows?.length || 0;
+  const trackingId = providerShipment?.id || providerShipment?.shipment_id || providerShipment?.tracking_id || null;
+  return { providerShipment, movement, container, code, status, location, eventTime, trackingId };
 }
 
 async function writeTrackingHistory(shipment, event, details, source = 'shipsgo') {
@@ -104,7 +69,7 @@ async function writeTrackingHistory(shipment, event, details, source = 'shipsgo'
   }
 }
 
-async function logWebhookEvent(event, payload, processed, errorMessage = null) {
+async function logWebhookEvent(event, payload, processed, errorMessage = null, trace = {}) {
   await supabase('webhook_events', {
     method: 'POST',
     body: [{
@@ -112,12 +77,15 @@ async function logWebhookEvent(event, payload, processed, errorMessage = null) {
       event_type: event.status,
       payload,
       processed,
-      error_message: errorMessage
+      error_message: errorMessage,
+      provider: 'shipsgo',
+      provider_event_key: trace.eventKey || null,
+      observation_id: trace.observationId || null
     }]
   });
 }
 
-async function logWhatsAppFailure(shipment, event, payload, error) {
+async function logWhatsAppFailure(shipment, event, payload, error, observationId = null) {
   if (!shipment.client_id || !shipment.clients?.phone) return;
   try {
     await supabase('notifications', {
@@ -132,6 +100,7 @@ async function logWhatsAppFailure(shipment, event, payload, error) {
         delivery_status: 'failed',
         event_type: 'tracking',
         channel: 'whatsapp',
+        notification_scope: 'message',
         status: 'failed',
         error_message: error.message,
         raw_event: payload,
@@ -139,7 +108,10 @@ async function logWhatsAppFailure(shipment, event, payload, error) {
           container_number: event.container,
           client_name: shipment.clients.name,
           status: event.status,
-          location: event.location
+          location: event.location,
+          event_code: event.code || null,
+          provider: 'shipsgo',
+          provider_observation_id: observationId
         },
         attempt_count: 1,
         last_attempt_at: new Date().toISOString()
@@ -151,7 +123,7 @@ async function logWhatsAppFailure(shipment, event, payload, error) {
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 9 });
+  if (req.method === 'GET') return ok(res, { ok: true, service: 'export-mca-shipsgo-webhook', version: 10 });
   if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
 
   try {
@@ -167,12 +139,7 @@ export default async function handler(req, res) {
     const event = extract(payload);
     if (!event.movement?.timestamp) {
       await logWebhookEvent(event, payload, false, 'Webhook de sincronización sin movimiento activo');
-      return ok(res, {
-        received: true,
-        tracking_updated: false,
-        notified: false,
-        reason: 'no_active_movement'
-      });
+      return ok(res, { received: true, tracking_updated: false, notified: false, reason: 'no_active_movement' });
     }
 
     const rows = await supabase('shipments', {
@@ -185,83 +152,68 @@ export default async function handler(req, res) {
       return ok(res, { received: true, tracking_updated: false, notified: false, reason: 'shipment_not_found' });
     }
 
-    const incomingTime = new Date(event.eventTime).getTime();
-    const currentTime = shipment.last_event_at ? new Date(shipment.last_event_at).getTime() : 0;
-    if (Number.isFinite(currentTime) && currentTime > 0 && Number.isFinite(incomingTime) && incomingTime <= currentTime) {
-      await logWebhookEvent(event, payload, false, 'Evento anterior o igual al último evento confirmado');
-      await writeTrackingHistory(
-        shipment,
-        event,
-        `Ignorado por antigüedad · Evento ShipsGo: ${event.eventTime} · Último evento ERP: ${shipment.last_event_at}`,
-        'shipsgo'
-      );
+    const observation = await ingestShipsGoObservation({ shipment, event, payload });
+    const trace = { eventKey: observation.eventKey, observationId: observation.observation_id || null };
+
+    if (observation.action === 'duplicate') {
+      await logWebhookEvent(event, payload, true, 'Evento ShipsGo ya ingerido', trace);
+      return ok(res, { received: true, tracking_updated: false, notified: false, reason: 'duplicate_event', observation_id: trace.observationId });
+    }
+
+    if (observation.action === 'stale') {
+      await logWebhookEvent(event, payload, false, 'Evento anterior o igual al último evento del proveedor', trace);
+      await writeTrackingHistory(shipment, event, `Observación ignorada por antigüedad · ${event.eventTime}`, 'shipsgo');
+      return ok(res, { received: true, tracking_updated: false, notified: false, reason: 'stale_event', observation_id: trace.observationId });
+    }
+
+    if (observation.action === 'observed_manual') {
+      await logWebhookEvent(event, payload, true, 'Observación conservada; tracking manual mantiene autoridad ERP', trace);
+      await writeTrackingHistory(shipment, event, `Observado por ShipsGo durante modo manual · ${event.location} · ${event.eventTime}`, 'shipsgo');
+      return ok(res, { received: true, tracking_updated: false, provider_observed: true, notified: false, reason: 'manual_mode', observation_id: trace.observationId });
+    }
+
+    await writeTrackingHistory(shipment, event, `${event.location} · ${event.eventTime} · Observación ${trace.observationId}`, 'shipsgo');
+    const alertResult = await resolveTrackingStaleCondition(shipment, 'tracking_updated', new Date().toISOString());
+    const resolvedAlerts = alertResult && ['auto_resolved','condition_closed'].includes(alertResult.action) ? 1 : 0;
+
+    if (!trackingDeliveryKey(event.code)) {
+      await logWebhookEvent(event, payload, true, 'Tracking actualizado; milestone externo no habilitado para WhatsApp', trace);
       return ok(res, {
         received: true,
-        tracking_updated: false,
+        tracking_updated: true,
+        operational_status_changed: false,
+        resolved_alerts: resolvedAlerts,
         notified: false,
-        reason: 'stale_event',
-        current_event_time: shipment.last_event_at,
-        incoming_event_time: event.eventTime
+        reason: 'unmapped_milestone',
+        observation_id: trace.observationId
       });
     }
 
-    if (shipment.shipsgo_status === 'manual') {
-      await logWebhookEvent(event, payload, false, 'Evento recibido mientras el contenedor está en modo manual');
-      await writeTrackingHistory(
-        shipment,
-        event,
-        `Detectado por ShipsGo durante modo manual · ${event.location} · ${event.eventTime}`,
-        'shipsgo'
-      );
-      return ok(res, {
-        received: true,
-        tracking_updated: false,
-        notified: false,
-        reason: 'manual_mode'
-      });
-    }
-
-    await supabase(`shipments?id=eq.${shipment.id}`, {
-      method: 'PATCH',
-      body: {
-        last_status: event.status,
-        operational_status: event.status,
-        last_location: event.location,
-        last_event_at: event.eventTime,
-        updated_at: new Date().toISOString()
-      }
-    });
-    await writeTrackingHistory(shipment, event, `${event.location} · ${event.eventTime}`, 'shipsgo');
-    const resolvedAlerts = await resolveTrackingAlerts(shipment.id);
-
-    // An unassigned container must continue receiving ShipsGo movements. Customer
-    // messaging is simply skipped until a real active client is assigned.
     if (!shipment.client_id || !shipment.clients?.active || !shipment.clients?.phone) {
-      await logWebhookEvent(event, payload, true, 'Tracking actualizado sin cliente activo; WhatsApp omitido');
+      await logWebhookEvent(event, payload, true, 'Tracking actualizado sin cliente activo; WhatsApp omitido', trace);
       return ok(res, {
         received: true,
         tracking_updated: true,
+        operational_status_changed: false,
         resolved_alerts: resolvedAlerts,
         notified: false,
-        reason: 'no_active_client'
+        reason: 'no_active_client',
+        observation_id: trace.observationId
       });
     }
 
-    const claimed = await claimNotification(shipment.id, event.status);
-    if (!claimed) {
-      await logWebhookEvent(event, payload, true, 'Etapa ya notificada previamente por ShipsGo o manual');
-      await writeTrackingHistory(
-        shipment,
-        event,
-        'Tracking actualizado sin reenviar WhatsApp · La etapa ya había sido notificada',
-        'shipsgo'
-      );
+    const claim = await claimNotificationDelivery(shipment.id, event.code, event.status, 'shipsgo');
+    if (!claim.claimed) {
+      await logWebhookEvent(event, payload, true, 'Milestone ya notificado previamente', trace);
+      await writeTrackingHistory(shipment, event, 'Tracking actualizado sin reenviar WhatsApp · Milestone ya notificado', 'shipsgo');
       return ok(res, {
         received: true,
         tracking_updated: true,
+        operational_status_changed: false,
         resolved_alerts: resolvedAlerts,
         notified: false,
-        reason: 'already_notified'
+        reason: claim.reason || 'already_notified',
+        observation_id: trace.observationId
       });
     }
 
@@ -290,24 +242,38 @@ export default async function handler(req, res) {
           delivery_status: twilio.status || 'queued',
           event_type: 'tracking',
           channel: 'whatsapp',
+          notification_scope: 'message',
           status: twilio.status || 'queued',
           provider_message_id: twilio.sid,
-          raw_event: payload
+          raw_event: payload,
+          payload: {
+            provider: 'shipsgo',
+            event_code: event.code,
+            delivery_key: claim.deliveryKey,
+            provider_event_key: observation.eventKey,
+            provider_observation_id: trace.observationId,
+            container_number: event.container,
+            client_name: shipment.clients.name,
+            status: event.status,
+            location: event.location
+          }
         }]
       });
     } catch (twilioError) {
       console.error('SHIPSGO_WHATSAPP_ERROR', twilioError);
-      await releaseClaim(shipment.id, event.status);
-      await logWhatsAppFailure(shipment, event, payload, twilioError);
+      await releaseNotificationDelivery(shipment.id, claim.deliveryKey);
+      await logWhatsAppFailure(shipment, event, payload, twilioError, trace.observationId);
     }
 
-    await logWebhookEvent(event, payload, true, twilio ? null : 'Tracking actualizado; notificación WhatsApp fallida');
+    await logWebhookEvent(event, payload, true, twilio ? null : 'Tracking actualizado; notificación WhatsApp fallida', trace);
     return ok(res, {
       received: true,
       tracking_updated: true,
+      operational_status_changed: false,
       resolved_alerts: resolvedAlerts,
       notified: Boolean(twilio),
-      message_sid: twilio?.sid || null
+      message_sid: twilio?.sid || null,
+      observation_id: trace.observationId
     });
   } catch (error) {
     console.error('ShipsGo webhook error:', error);
