@@ -18,9 +18,9 @@
 
   function canManageAccess() {
     const access = window.ExportMcaAccessControl;
-    if (access?.canAny) return access.canAny(MANAGEMENT_KEYS);
+    if (access?.can) return access.can('administration.users.manage');
     const user = getCurrentUser();
-    return user?.role === 'master_admin' || MANAGEMENT_KEYS.some(key => Array.isArray(user?.permissions) && user.permissions.includes(key));
+    return user?.role === 'master_admin' || Array.isArray(user?.permissions) && user.permissions.includes('administration.users.manage');
   }
 
   function syncAccessUiState() {
@@ -28,6 +28,7 @@
     const notificationsReadOnly = Boolean(access?.can?.('notifications.read') && !access?.can?.('notifications.manage'));
     document.body.classList.toggle('access-notifications-readonly', notificationsReadOnly);
     ensureAdministrationNavigation();
+    byId('accountSessionAdminCard')?.classList.toggle('hidden', !canManageAccess());
   }
 
   async function request(path, options = {}) {
@@ -66,11 +67,14 @@
       .account-security-actions{display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap}
       .account-security-actions button{min-width:180px}
       .account-security-status{font-size:12px;margin-top:10px;min-height:18px}
+      .account-session-admin{grid-column:1/-1}
+      .account-session-grid{display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,1.4fr) auto;gap:10px;align-items:end}
+      .account-session-grid button{min-height:42px}
       .sidebar-foot .sidebar-user{margin-bottom:10px}
       .sidebar-foot #logout{width:100%;display:flex;align-items:center;justify-content:center;gap:9px}
       body.sidebar-collapsed .sidebar-foot #logout .nav-label{display:none}
       body.sidebar-collapsed .sidebar-foot #logout{width:42px;min-width:42px;height:42px;padding:0;margin-inline:auto}
-      @media(max-width:760px){.account-layout{grid-template-columns:1fr}.account-security-actions button{width:100%}}
+      @media(max-width:760px){.account-layout{grid-template-columns:1fr}.account-security-actions button{width:100%}.account-session-admin{grid-column:auto}.account-session-grid{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
   }
@@ -104,6 +108,16 @@
             <div class="account-security-actions"><button type="submit">Actualizar contraseña</button></div>
             <div id="accountPasswordStatus" class="account-security-status" aria-live="polite"></div>
           </form>
+        </section>
+        <section id="accountSessionAdminCard" class="card account-card account-session-admin hidden">
+          <h2>Sesiones de usuarios</h2>
+          <div class="account-intro">Revoca inmediatamente todos los tokens anteriores de una cuenta. La acción queda registrada en auditoría.</div>
+          <form id="accountSessionRevokeForm" class="account-session-grid" autocomplete="off">
+            <div><label for="accountSessionUser">Usuario</label><select id="accountSessionUser" required><option value="">Seleccionar usuario</option></select></div>
+            <div><label for="accountSessionReason">Motivo</label><input id="accountSessionReason" maxlength="240" placeholder="Ej. dispositivo perdido" required></div>
+            <button type="submit">Revocar sesiones</button>
+          </form>
+          <div id="accountSessionStatus" class="account-security-status" aria-live="polite"></div>
         </section>
       </div>`;
 
@@ -153,9 +167,7 @@
     };
   }
 
-  function cleanSidebarFooter() {
-    byId('changeOwnPassword')?.remove();
-  }
+  function cleanSidebarFooter() { byId('changeOwnPassword')?.remove(); }
 
   function roleLabel(account) {
     if (account?.role === 'master_admin') return 'Administrador maestro';
@@ -179,15 +191,6 @@
       <div class="account-field"><div class="account-field-label">Último cambio de contraseña</div><div class="account-field-value">${changed && !Number.isNaN(changed.getTime()) ? esc(changed.toLocaleString('es-US')) : 'No disponible'}</div></div>`;
   }
 
-  async function loadAccount() {
-    const account = window.ExportMcaAccessControl?.refreshAccount
-      ? await window.ExportMcaAccessControl.refreshAccount()
-      : (await request('/api/account')).account || {};
-    syncAccessUiState();
-    renderAccount(account || {});
-    return account || {};
-  }
-
   function setStatus(message, ok) {
     const target = byId('accountPasswordStatus');
     if (!target) return;
@@ -195,19 +198,50 @@
     target.className = `account-security-status ${message ? (ok ? 'ok' : 'bad') : ''}`;
   }
 
+  function setSessionStatus(message, ok) {
+    const target = byId('accountSessionStatus');
+    if (!target) return;
+    target.textContent = message || '';
+    target.className = `account-security-status ${message ? (ok ? 'ok' : 'bad') : ''}`;
+  }
+
+  async function loadSessionTargets() {
+    const card = byId('accountSessionAdminCard');
+    if (!card) return;
+    const allowed = canManageAccess();
+    card.classList.toggle('hidden', !allowed);
+    if (!allowed) return;
+    const result = await request('/api/admins');
+    const select = byId('accountSessionUser');
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '<option value="">Seleccionar usuario</option>' + (result?.admins || []).map(user =>
+      `<option value="${esc(user.id)}">${esc(user.full_name)} · ${esc(user.username)}${user.is_active ? '' : ' · desactivado'}</option>`
+    ).join('');
+    if ([...select.options].some(option => option.value === current)) select.value = current;
+  }
+
+  async function loadAccount() {
+    const account = window.ExportMcaAccessControl?.refreshAccount
+      ? await window.ExportMcaAccessControl.refreshAccount()
+      : (await request('/api/account')).account || {};
+    syncAccessUiState();
+    renderAccount(account || {});
+    await loadSessionTargets();
+    return account || {};
+  }
+
   async function submitPassword(event) {
     event.preventDefault();
     const currentPassword = byId('accountCurrentPassword')?.value || '';
     const newPassword = byId('accountNewPassword')?.value || '';
     const confirmPassword = byId('accountConfirmPassword')?.value || '';
-
     if (newPassword.length < 10) return setStatus('La nueva contraseña debe tener al menos 10 caracteres.', false);
     if (newPassword !== confirmPassword) return setStatus('La confirmación no coincide con la nueva contraseña.', false);
 
     const button = event.currentTarget.querySelector('button[type="submit"]');
     if (button) button.disabled = true;
     setStatus('Actualizando contraseña...', true);
-
     try {
       const result = await request('/api/account', {
         method: 'PATCH',
@@ -225,11 +259,42 @@
     }
   }
 
-  function bindAccountForm() {
-    const form = byId('accountPasswordForm');
-    if (!form || form.dataset.bound === 'true') return;
-    form.dataset.bound = 'true';
-    form.addEventListener('submit', submitPassword);
+  async function submitSessionRevocation(event) {
+    event.preventDefault();
+    const userId = byId('accountSessionUser')?.value || '';
+    const reason = String(byId('accountSessionReason')?.value || '').trim();
+    if (!userId) return setSessionStatus('Selecciona un usuario.', false);
+    if (reason.length < 3) return setSessionStatus('Escribe un motivo para la revocación.', false);
+    const button = event.currentTarget.querySelector('button[type="submit"]');
+    if (button) button.disabled = true;
+    setSessionStatus('Revocando sesiones...', true);
+    try {
+      const result = await request('/api/admins', {
+        method: 'PATCH',
+        body: JSON.stringify({ id: userId, revoke_sessions: true, revoke_reason: reason })
+      });
+      if (result?.token) localStorage.setItem('export_mca_token', result.token);
+      byId('accountSessionReason').value = '';
+      setSessionStatus('Sesiones anteriores revocadas correctamente.', true);
+      await loadSessionTargets();
+    } catch (error) {
+      setSessionStatus(error.message || 'No se pudieron revocar las sesiones.', false);
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  function bindAccountForms() {
+    const passwordForm = byId('accountPasswordForm');
+    if (passwordForm && passwordForm.dataset.bound !== 'true') {
+      passwordForm.dataset.bound = 'true';
+      passwordForm.addEventListener('submit', submitPassword);
+    }
+    const sessionForm = byId('accountSessionRevokeForm');
+    if (sessionForm && sessionForm.dataset.bound !== 'true') {
+      sessionForm.dataset.bound = 'true';
+      sessionForm.addEventListener('submit', submitSessionRevocation);
+    }
   }
 
   function updatePageTitle(sectionId) {
@@ -244,7 +309,7 @@
     ensureAdministrationNavigation();
     syncAccessUiState();
     cleanSidebarFooter();
-    bindAccountForm();
+    bindAccountForms();
 
     window.addEventListener('export-mca:section-changed', event => {
       const id = event.detail?.id;
