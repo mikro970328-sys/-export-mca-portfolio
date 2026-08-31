@@ -23,7 +23,8 @@ for(const required of [
   if(!twilioHandler.includes(required)) failures.push(`api/twilio-status.js: falta ${required}`);
 }
 const validationIndex=twilioHandler.indexOf('validateTwilioRequest({');
-const mutationIndex=twilioHandler.indexOf("await supabase('notifications'");
+const firstSupabaseCall=twilioHandler.match(/await\s+supabase\s*\(/);
+const mutationIndex=firstSupabaseCall?.index ?? -1;
 if(validationIndex<0||mutationIndex<0||validationIndex>mutationIndex){
   failures.push('api/twilio-status.js: la validación de firma debe ocurrir antes de cualquier mutación Supabase');
 }
