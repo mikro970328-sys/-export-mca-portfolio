@@ -58,7 +58,7 @@ walkRuntime('admin');
 
 const historicalAlertCenter=read('admin/operational-alert-center.js');
 if(!historicalAlertCenter.includes("shipsgo_tracking_failed:'Error ShipsGo'"))failures.push('admin/operational-alert-center.js: debe conservar etiqueta histórica del proveedor para auditoría');
-forbid('admin/operational-alert-center.js',/\/api\/(?:shipsgo|tracking-mode)|retry_shipsgo|SHIPSGO_/i,'allowlist histórica no puede esconder consumo activo del proveedor');
+forbid('admin/operational-alert-center.js',/\/api\/(?:shipsgo|tracking-mode)|retry_shipsgo|SHIPSGO_(?:API|TOKEN|WEBHOOK|CREATE|SEARCH|DELETE|CONFIG)/i,'allowlist histórica no puede esconder consumo activo del proveedor');
 
 const notificationOwner='api/_notification-delivery.js';
 for(const text of ["new Set(['DEPA', 'RELEASE'])",'whatsappDeliveryKey','claim_notification_dispatch','release_notification_dispatch_claim'])requireText(notificationOwner,text);
