@@ -9,6 +9,7 @@ on:
       - 'admin/notification-inbox.js'
       - 'scripts/check-admin-shell-resilience.mjs'
       - 'scripts/check-access-control.mjs'
+      - 'scripts/check-executive-dashboard.mjs'
       - '.github/workflows/hotfix-admin-shell.yml'
   workflow_dispatch:
 
@@ -28,9 +29,12 @@ jobs:
           node --check admin/notification-inbox.js
           node --check scripts/check-admin-shell-resilience.mjs
           node --check scripts/check-access-control.mjs
+          node --check scripts/check-executive-dashboard.mjs
       - name: Verify resilient shell and notification owner
         run: node scripts/check-admin-shell-resilience.mjs
       - name: Preserve operational alert lifecycle
         run: node scripts/check-operational-alert-lifecycle.mjs
       - name: Preserve access control boundary
         run: node scripts/check-access-control.mjs
+      - name: Preserve resilient executive dashboard
+        run: node scripts/check-executive-dashboard.mjs
