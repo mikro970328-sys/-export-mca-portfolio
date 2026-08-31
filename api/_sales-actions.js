@@ -2,7 +2,7 @@ import { loadAdminAccessContext, supabase } from './_lib.js';
 
 function clone(value){return value&&typeof value==='object'?JSON.parse(JSON.stringify(value)):{actions:{}};}
 
-async function canWriteSales(admin){
+export async function loadSalesWriteAccess(admin){
   if(admin?.role==='master_admin')return true;
   const access=await loadAdminAccessContext(admin?.admin_id);
   return new Set(access?.permissions||[]).has('sales.write');
@@ -21,15 +21,13 @@ export function maskSalesActionCapabilities(raw,writable){
   return state;
 }
 
-export async function loadSalesActionCapabilityMap(admin){
-  const [writable,rows]=await Promise.all([
-    canWriteSales(admin),
-    supabase('sales_order_action_capabilities',{query:'?select=sales_order_id,capabilities&limit=2000'})
-  ]);
+export async function loadSalesActionCapabilityMap(admin,writableOverride=null){
+  const writable=writableOverride===null?await loadSalesWriteAccess(admin):writableOverride===true;
+  const rows=await supabase('sales_order_action_capabilities',{query:'?select=sales_order_id,capabilities&limit=2000'});
   return new Map((rows||[]).map(row=>[String(row.sales_order_id),maskSalesActionCapabilities(row.capabilities,writable)]));
 }
 
-export async function loadSalesActionCapabilities(admin,salesOrderId){
-  const map=await loadSalesActionCapabilityMap(admin);
+export async function loadSalesActionCapabilities(admin,salesOrderId,writableOverride=null){
+  const map=await loadSalesActionCapabilityMap(admin,writableOverride);
   return map.get(String(salesOrderId))||{actions:{},write_access:false};
 }
