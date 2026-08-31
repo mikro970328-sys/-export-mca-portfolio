@@ -1,4 +1,5 @@
 import { authorizeAdmin, fail, ok, readJson, supabase } from './_lib.js';
+import { resolveTrackingStaleCondition } from './_integration-events.js';
 
 async function history(shipment, eventType, title, details = null, source = 'admin') {
   try {
@@ -6,30 +7,27 @@ async function history(shipment, eventType, title, details = null, source = 'adm
       method: 'POST',
       body: [{ shipment_id: shipment.id, client_id: shipment.client_id, event_type: eventType, title, details, source }]
     });
-  } catch {}
+  } catch (error) {
+    console.error('TRACKING_MODE_HISTORY_FAILED', error.message);
+  }
 }
 
-async function audit(action, shipment, details = {}) {
+async function audit(action, shipment, admin, details = {}) {
   try {
     await supabase('audit_log', {
       method: 'POST',
-      body: [{ action, entity_type: 'shipment', entity_id: shipment.id, details }]
+      body: [{
+        actor_admin_id: admin.admin_id || null,
+        actor_username: admin.username || null,
+        action,
+        entity_type: 'shipment',
+        entity_id: shipment.id,
+        details
+      }]
     });
-  } catch {}
-}
-
-async function resolveTrackingAlerts(shipmentId) {
-  const resolvedAt = new Date().toISOString();
-  const rows = await supabase('notifications', {
-    method: 'PATCH',
-    query: `?shipment_id=eq.${encodeURIComponent(shipmentId)}&event_type=eq.tracking_stale&status=eq.pending&select=id`,
-    body: {
-      status: 'resolved',
-      delivery_status: 'resolved',
-      updated_at: resolvedAt
-    }
-  });
-  return rows?.length || 0;
+  } catch (error) {
+    console.error('TRACKING_MODE_AUDIT_FAILED', error.message);
+  }
 }
 
 export default async function handler(req, res) {
@@ -62,7 +60,8 @@ export default async function handler(req, res) {
         }
       });
 
-      const resolvedAlerts = await resolveTrackingAlerts(id);
+      const alertResult = await resolveTrackingStaleCondition(shipment, 'manual_mode_enabled', now);
+      const resolvedAlerts = alertResult && ['auto_resolved','condition_closed'].includes(alertResult.action) ? 1 : 0;
 
       await history(
         shipment,
@@ -71,8 +70,7 @@ export default async function handler(req, res) {
         `Activado por ${admin.username || 'administrador'}${shipment.shipsgo_tracking_id ? ` · Vínculo ShipsGo conservado: ${shipment.shipsgo_tracking_id}` : ''}`,
         'admin'
       );
-      await audit('tracking_manual_enabled', shipment, {
-        actor: admin.username,
+      await audit('tracking_manual_enabled', shipment, admin, {
         previous_status: shipment.shipsgo_status || null,
         shipsgo_tracking_id_preserved: shipment.shipsgo_tracking_id || null,
         resolved_tracking_alerts: resolvedAlerts
@@ -86,7 +84,7 @@ export default async function handler(req, res) {
 
     if (action === 'enable_auto') {
       if (!shipment.shipsgo_tracking_id) {
-        return fail(res, 409, 'Este contenedor no tiene un tracking de ShipsGo vinculado. Debes reconectarlo primero.');
+        return fail(res, 409, 'Este contenedor no tiene un tracking de ShipsGo confirmado. Debes reconectarlo primero.');
       }
 
       const updated = await supabase('shipments', {
@@ -103,11 +101,10 @@ export default async function handler(req, res) {
         shipment,
         'tracking_auto_resumed',
         'Seguimiento automático reanudado',
-        `Vínculo ShipsGo existente: ${shipment.shipsgo_tracking_id} · Activado por ${admin.username || 'administrador'}`,
+        `Vínculo ShipsGo confirmado: ${shipment.shipsgo_tracking_id} · Activado por ${admin.username || 'administrador'}`,
         'admin'
       );
-      await audit('tracking_auto_resumed', shipment, {
-        actor: admin.username,
+      await audit('tracking_auto_resumed', shipment, admin, {
         shipsgo_tracking_id: shipment.shipsgo_tracking_id,
         previous_status: shipment.shipsgo_status || null
       });

@@ -5,7 +5,14 @@ const EVENT_TYPE='shipsgo_tracking_failed';
 const REPEAT_EVERY=DAY;
 
 function cronAuthorized(req){const secret=process.env.CRON_SECRET;return Boolean(secret)&&req.headers.authorization===`Bearer ${secret}`;}
-function isShipsGoFailure(shipment){const status=String(shipment.shipsgo_status||'').trim().toLowerCase();return status==='failed'||Boolean(String(shipment.shipsgo_error||'').trim());}
+function failureReason(shipment){
+  const status=String(shipment.shipsgo_status||'').trim().toLowerCase();
+  const configuredError=String(shipment.shipsgo_error||'').trim();
+  if(configuredError)return configuredError;
+  if(status==='active'&&!shipment.shipsgo_tracking_id)return 'ShipsGo figura activo sin una identidad de tracking confirmada';
+  if(status==='failed')return 'ShipsGo no pudo mantener el tracking automático';
+  return null;
+}
 
 async function runCheck(){
   const now=new Date().toISOString(),nowMs=Date.now();
@@ -16,9 +23,9 @@ async function runCheck(){
   const seen=new Set();let changed=0;
   for(const shipment of shipments||[]){
     const key=alertKey(EVENT_TYPE,shipment.id);seen.add(key);const previous=conditions.get(key);
-    const manual=String(shipment.shipsgo_status||'').toLowerCase()==='manual',failed=!manual&&isShipsGoFailure(shipment);
-    if(!failed){if(previous&&changedAction(await closeCondition(previous,manual?'manual_mode_enabled':'shipsgo_recovered',now)))changed+=1;continue;}
-    const error=String(shipment.shipsgo_error||'ShipsGo no pudo mantener el tracking automático').trim();
+    const manual=String(shipment.shipsgo_status||'').toLowerCase()==='manual';
+    const error=manual?null:failureReason(shipment);
+    if(!error){if(previous&&changedAction(await closeCondition(previous,manual?'manual_mode_enabled':'shipsgo_recovered',now)))changed+=1;continue;}
     const result=await reconcileAlert({
       dedupeKey:key,conditionActive:true,eventType:EVENT_TYPE,clientId:shipment.client_id||null,shipmentId:shipment.id,entityType:'shipment',entityId:shipment.id,
       severity:'critical',title:'Error de tracking en ShipsGo',message:`El contenedor ${shipment.container_number||'sin número'} tiene un error de ShipsGo y requiere reconexión o cambio a seguimiento manual.`,
