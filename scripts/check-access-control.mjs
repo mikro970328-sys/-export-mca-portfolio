@@ -46,6 +46,7 @@ const frontendFiles = [
   'admin/access-control.css',
   'admin/account-administration.js',
   'admin/erp.js',
+  'admin/admin-data-loader.js',
   'admin/navigation-shell.js',
   'admin/operational-alert-center.js',
   'admin/alert-phase2-stability.js'
@@ -58,6 +59,7 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
   const accessUi = fs.readFileSync(path.join(root,'admin/access-control-administration.js'),'utf8');
   const accountUi = fs.readFileSync(path.join(root,'admin/account-administration.js'),'utf8');
   const loader = fs.readFileSync(path.join(root,'admin/erp.js'),'utf8');
+  const dataLoader = fs.readFileSync(path.join(root,'admin/admin-data-loader.js'),'utf8');
   const accessCss = fs.readFileSync(path.join(root,'admin/access-control.css'),'utf8');
   const navigation = fs.readFileSync(path.join(root,'admin/navigation-shell.js'),'utf8');
   const alertCenter = fs.readFileSync(path.join(root,'admin/operational-alert-center.js'),'utf8');
@@ -81,16 +83,33 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
     'window.ExportMcaAccessControl.initialize()',
     "accessCan('clients.read')",
     "accessCan('logistics.read')",
-    "accessCan('notifications.read')"
+    "accessCan('notifications.read')",
+    '/admin/admin-data-loader.js?v=20260830-hotfix1',
+    'await window.ExportMcaAdminData.loadCore()'
   ]) {
     if (!loader.includes(required)) failures.push(`admin/erp.js: falta ${required}`);
   }
 
   const initializeIndex = loader.indexOf('window.ExportMcaAccessControl.initialize()');
-  const loadAllIndex = loader.indexOf('await window.loadAll()');
-  if (initializeIndex < 0 || loadAllIndex < 0 || initializeIndex > loadAllIndex) {
-    failures.push('admin/erp.js: el contexto de permisos debe inicializarse antes de loadAll');
+  const coreLoadIndex = loader.indexOf('await window.ExportMcaAdminData.loadCore()');
+  if (initializeIndex < 0 || coreLoadIndex < 0 || initializeIndex > coreLoadIndex) {
+    failures.push('admin/erp.js: el contexto de permisos debe inicializarse antes de cargar datos del ERP');
   }
+
+  for (const required of [
+    "accessCan('clients.read')",
+    "accessCan('logistics.read')",
+    "accessCan('administration.users.manage')",
+    "accessCan('dashboard.read')",
+    'window.loadAll = loadAll;'
+  ]) {
+    if (!dataLoader.includes(required)) failures.push(`admin/admin-data-loader.js: falta ${required}`);
+  }
+  const coreStart = dataLoader.indexOf('async function loadCore()');
+  const dashboardStart = dataLoader.indexOf('async function loadDashboard()');
+  const coreSource = coreStart >= 0 && dashboardStart > coreStart ? dataLoader.slice(coreStart,dashboardStart) : '';
+  if (!coreSource) failures.push('admin/admin-data-loader.js: no se pudo aislar loadCore');
+  if (coreSource.includes('/api/dashboard')) failures.push('admin/admin-data-loader.js: loadCore no puede depender de /api/dashboard');
 
   if (!accountUi.includes("account?.access_role?.name || 'Usuario'")) {
     failures.push('admin/account-administration.js: Mi cuenta no muestra el rol configurable efectivo');
