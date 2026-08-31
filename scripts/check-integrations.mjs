@@ -12,7 +12,8 @@ const migrations=[
   'supabase/migrations/20260831011600_p18_webhook_traceability.sql',
   'supabase/migrations/20260831011700_p18_delivery_key_compatibility.sql',
   'supabase/migrations/20260831011800_p18_twilio_delivery_reconcile.sql',
-  'supabase/migrations/20260831011900_p18_delivery_key_normalization_fix.sql'
+  'supabase/migrations/20260831011900_p18_delivery_key_normalization_fix.sql',
+  'supabase/migrations/20260831012000_p18_tracking_observation_fk_index.sql'
 ];
 for(const file of migrations)if(!fs.existsSync(path.join(root,file)))failures.push(`${file}: falta migración P18`);
 
@@ -51,6 +52,11 @@ for(const text of ["when 'llegó al puerto' then 'tracking:ARRV'","when 'llego a
   if(!normalizationFix.includes(text))failures.push(`${migrations[4]}: falta ${text}`);
 }
 if(normalizationFix.includes("llego del puerto"))failures.push(`${migrations[4]}: no puede conservar variante incorrecta 'llego del puerto'`);
+
+const fkIndex=read(migrations[5]);
+for(const text of ['create index if not exists shipments_tracking_provider_observation_idx','on public.shipments(tracking_provider_observation_id)','where tracking_provider_observation_id is not null']){
+  if(!fkIndex.includes(text))failures.push(`${migrations[5]}: falta ${text}`);
+}
 
 const webhook=read('api/shipsgo-webhook.js');
 for(const text of ['ingestShipsGoObservation','resolveTrackingStaleCondition','claimNotificationDelivery','releaseNotificationDelivery','operational_status_changed: false'])if(!webhook.includes(text))failures.push(`api/shipsgo-webhook.js: falta ${text}`);
