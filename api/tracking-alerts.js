@@ -3,17 +3,15 @@ import { HOUR, DAY, alertKey, validDate, elapsedHours, repeatDue, loadConditionM
 
 const CLIENT_ALERT_AFTER=48*HOUR;
 const CLIENT_CRITICAL_AFTER=7*DAY;
-const TRACKING_ALERT_AFTER=12*HOUR;
-const TRACKING_REPEAT_EVERY=12*HOUR;
 const TASK_REPEAT_EVERY=24*HOUR;
 
 const EVENT_CLIENT='client_without_shipment';
-const EVENT_TRACKING='shipment_stale_tracking';
+const EVENT_TRACKING_RETIRED='shipment_stale_tracking';
 const EVENT_CUSTOMS_LEGACY='shipment_customs_documents_missing';
 const EVENT_TASK_BLOCKED='task_blocked';
 const EVENT_TASK_OVERDUE='task_overdue';
 const EVENT_ROUTE_INVALID='workflow_route_invalid';
-const LEGACY_EVENTS=['tracking_stale'];
+const LEGACY_EVENTS=['tracking_stale','shipsgo_tracking_failed',EVENT_TRACKING_RETIRED];
 
 function cronAuthorized(req){const secret=process.env.CRON_SECRET;return Boolean(secret)&&req.headers.authorization===`Bearer ${secret}`;}
 function severityForPriority(priority){return ['critical','high'].includes(String(priority||'').toLowerCase())?'critical':'warning';}
@@ -45,30 +43,6 @@ async function processClientAlerts(conditions,now,nowMs){
   }
   for(const row of conditions.values())if(row.event_type===EVENT_CLIENT&&!seen.has(row.dedupe_key))changed+=countChanged(await closeCondition(row,'entity_not_present',now));
   return {checked:(clients||[]).length,changed};
-}
-
-async function processTrackingAlerts(conditions,now,nowMs){
-  const shipments=await supabase('shipments',{query:'?select=id,client_id,container_number,shipsgo_status,shipsgo_link_mode,last_event_at,created_at,active,clients(id,name)&active=eq.true&order=created_at.asc&limit=5000'});
-  const seen=new Set();let changed=0;
-  for(const shipment of shipments||[]){
-    const key=alertKey(EVENT_TRACKING,shipment.id);seen.add(key);const previous=conditions.get(key);
-    const manual=shipment.shipsgo_status==='manual'||shipment.shipsgo_link_mode==='manual';
-    const reference=validDate(shipment.last_event_at||shipment.created_at);
-    const activeCondition=!manual&&reference&&nowMs-reference.getTime()>=TRACKING_ALERT_AFTER;
-    if(!activeCondition){if(previous)changed+=countChanged(await closeCondition(previous,manual?'manual_mode_enabled':'tracking_updated',now));continue;}
-    const hours=elapsedHours(reference,nowMs),interval=Math.max(1,Math.floor(hours/12));
-    const result=await reconcileAlert({
-      dedupeKey:key,conditionActive:true,eventType:EVENT_TRACKING,clientId:shipment.client_id||null,shipmentId:shipment.id,entityType:'shipment',entityId:shipment.id,
-      severity:'critical',title:`Tracking sin actualización por ${hours} horas`,
-      message:`El contenedor ${shipment.container_number} no recibe una actualización automática desde hace ${hours} horas.`,
-      dueAt:new Date(reference.getTime()+TRACKING_ALERT_AFTER).toISOString(),
-      payload:{container_number:shipment.container_number,client_name:shipment.clients?.name||null,hours_without_update:hours,reference_at:reference.toISOString(),repeat_interval:interval,required_action:'review_or_enable_manual'},
-      trigger:Boolean(previous&&(repeatDue(previous,TRACKING_REPEAT_EVERY,nowMs)||Number(previous.payload?.hours_without_update||0)!==hours)),now
-    });
-    changed+=countChanged(result);
-  }
-  for(const row of conditions.values())if(row.event_type===EVENT_TRACKING&&!seen.has(row.dedupe_key))changed+=countChanged(await closeCondition(row,'shipment_inactive_or_missing',now));
-  return {checked:(shipments||[]).length,changed};
 }
 
 async function processTaskExceptionAlerts(conditions,now,nowMs){
@@ -131,18 +105,18 @@ async function retireLegacyAlerts(conditions,now){
   let changed=0;
   for(const row of conditions.values()){
     if(row.event_type===EVENT_CUSTOMS_LEGACY)changed+=countChanged(await closeCondition(row,'superseded_by_task_workflow',now));
-    if(LEGACY_EVENTS.includes(row.event_type))changed+=countChanged(await closeCondition(row,'legacy_alert_retired',now));
+    if(LEGACY_EVENTS.includes(row.event_type))changed+=countChanged(await closeCondition(row,'external_tracking_retired',now));
   }
   return changed;
 }
 
 async function runCheck(){
   const now=new Date().toISOString(),nowMs=Date.now();
-  const conditions=await loadConditionMap([EVENT_CLIENT,EVENT_TRACKING,EVENT_CUSTOMS_LEGACY,EVENT_TASK_BLOCKED,EVENT_TASK_OVERDUE,EVENT_ROUTE_INVALID,...LEGACY_EVENTS]);
-  const [clients,tracking,tasks,legacyResolved]=await Promise.all([
-    processClientAlerts(conditions,now,nowMs),processTrackingAlerts(conditions,now,nowMs),processTaskExceptionAlerts(conditions,now,nowMs),retireLegacyAlerts(conditions,now)
+  const conditions=await loadConditionMap([EVENT_CLIENT,EVENT_CUSTOMS_LEGACY,EVENT_TASK_BLOCKED,EVENT_TASK_OVERDUE,EVENT_ROUTE_INVALID,...LEGACY_EVENTS]);
+  const [clients,tasks,legacyResolved]=await Promise.all([
+    processClientAlerts(conditions,now,nowMs),processTaskExceptionAlerts(conditions,now,nowMs),retireLegacyAlerts(conditions,now)
   ]);
-  return {clients_checked:clients.checked,tracking_checked:tracking.checked,tasks_checked:tasks.tasks_checked,routes_checked:tasks.routes_checked,client_alerts_changed:clients.changed,tracking_alerts_changed:tracking.changed,task_alerts_changed:tasks.changed,legacy_alerts_changed:legacyResolved};
+  return {clients_checked:clients.checked,tasks_checked:tasks.tasks_checked,routes_checked:tasks.routes_checked,client_alerts_changed:clients.changed,task_alerts_changed:tasks.changed,legacy_alerts_changed:legacyResolved,external_tracking_alerts_retired:true};
 }
 
 async function actOnAlert(admin,id,action,body={}){
@@ -161,7 +135,7 @@ export default async function handler(req,res){
       if(isCron||action==='check'){const result=await runCheck();await writeAudit(admin,'operational_alerts_check','system',null,result);return ok(res,result);}
       const registry=await supabase('operational_alert_conditions',{query:'?select=notification_id&limit=5000'});const ids=(registry||[]).map(row=>row.notification_id).filter(Boolean);
       if(!ids.length)return ok(res,{alerts:[]});
-      const rows=await supabase('notifications',{query:`?select=*,clients(id,name),shipments(id,container_number,shipsgo_status,last_event_at)&id=in.(${ids.join(',')})&alert_status=in.(pending,snoozed)&order=created_at.desc&limit=500`});
+      const rows=await supabase('notifications',{query:`?select=*,clients(id,name),shipments(id,container_number,last_status,last_event_at)&id=in.(${ids.join(',')})&alert_status=in.(pending,snoozed)&order=created_at.desc&limit=500`});
       return ok(res,{alerts:rows||[]});
     }
     if(req.method==='PATCH'){
