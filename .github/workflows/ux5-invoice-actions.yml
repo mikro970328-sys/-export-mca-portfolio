@@ -1,0 +1,36 @@
+name: UX5 Invoice Canonical Actions
+
+on:
+  pull_request:
+    paths:
+      - 'api/_invoice-actions.js'
+      - 'api/invoices.js'
+      - 'api/invoice-payments.js'
+      - 'admin/invoices.js'
+      - 'admin/invoices.html'
+      - 'supabase/migrations/20260831160000_ux5_invoice_financial_action_capabilities.sql'
+      - 'supabase/migrations/20260831160100_ux5_invoice_currency_precision.sql'
+      - 'supabase/tests/ux5_invoice_actions.sql'
+      - 'scripts/check-ux5-invoice-actions.mjs'
+      - '.github/workflows/ux5-invoice-actions.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-ux5-invoice-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate canonical Invoice action ownership
+        run: node scripts/check-ux5-invoice-actions.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/_invoice-actions.js
+          node --check api/invoices.js
+          node --check api/invoice-payments.js
+          node --check admin/invoices.js
+          node --check scripts/check-ux5-invoice-actions.mjs
+      - name: Validate Invoice API runtime imports
+        run: node --input-type=module -e "await Promise.all([import('./api/_invoice-actions.js'),import('./api/invoices.js'),import('./api/invoice-payments.js')]); console.log('Invoice API runtime imports OK')"

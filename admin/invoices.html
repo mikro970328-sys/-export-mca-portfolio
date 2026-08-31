@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Facturación y cobros · Export MCA</title>
-<link rel="stylesheet" href="/admin/purchases.css?v=20260830-ux2d">
+<link rel="stylesheet" href="/admin/purchases.css?v=20260831-ux5-invoice">
 </head>
 <body>
 <main class="wrap">
-  <div class="head"><div><h1>Facturación y cobros</h1><div class="muted">Facturas de cobro al cliente y dinero recibido. Los documentos oficiales de Cuba se controlan por contenedor en Tracking.</div></div><button id="newInvoice" class="btn orange">+ Nueva factura</button></div>
+  <div class="head"><div><h1>Facturación y cobros</h1><div class="muted">Facturas financieras al cliente y dinero recibido. Los documentos oficiales de Cuba se controlan por contenedor en Tracking.</div></div><button id="newInvoice" class="btn orange">+ Nueva factura</button></div>
   <div id="metrics" class="metrics"></div>
   <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar factura, venta o cliente"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="paid">Pagadas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="invoiceList" class="orders has-explicit-count"></div></section>
 </main>
@@ -28,6 +28,10 @@
 <label>Notas</label><textarea id="pNotes"></textarea>
 <div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="payment">Cancelar</button><button id="savePayment" class="btn orange">Registrar cobro</button></div><div id="paymentMsg" class="msg"></div></div></div>
 
-<script src="/admin/invoices.js?v=20260830-ux2d"></script>
+<div id="decisionModal" class="modal hidden"><div class="dialog compact"><div class="dialog-head"><div><h2 id="decisionTitle">Confirmar acción</h2><div id="decisionCopy" class="muted"></div></div><button class="btn" data-close="decision">✕</button></div>
+<div id="decisionReasonWrap" class="hidden"><label>Motivo</label><textarea id="decisionReason" placeholder="Motivo del reverso"></textarea></div>
+<div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="decision">Cancelar</button><button id="decisionAccept" class="btn orange">Continuar</button></div><div id="decisionMsg" class="msg"></div></div></div>
+
+<script src="/admin/invoices.js?v=20260831-ux5-invoice"></script>
 </body>
 </html>
