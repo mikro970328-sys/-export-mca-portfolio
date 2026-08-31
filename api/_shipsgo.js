@@ -92,7 +92,7 @@ export async function registerShipsGo(containerNumber, knownTrackingId = null) {
   }
 }
 
-async function assertShipmentTrackingCanBeDeleted(shipmentId) {
+export async function assertShipmentTrackingCanBeDeleted(shipmentId) {
   if (!shipmentId) return;
   const linked = await supabase('loads', {
     query: `?select=id,load_number,status&shipment_id=eq.${encodeURIComponent(shipmentId)}&limit=1`
@@ -101,14 +101,12 @@ async function assertShipmentTrackingCanBeDeleted(shipmentId) {
     const error = new Error(`LOAD_SHIPMENT_DELETE_BLOCKED:${linked[0].load_number || linked[0].id}`);
     error.status = 409;
     error.domain_block = true;
+    error.load_reference = linked[0].load_number || linked[0].id;
     throw error;
   }
 }
 
 export async function deleteShipsGoTracking(shipment) {
-  // ERP domain guard is authoritative and runs before any provider side effect.
-  await assertShipmentTrackingCanBeDeleted(shipment?.id);
-
   let trackingId = shipment.shipsgo_tracking_id || null;
   if (!trackingId) {
     try {
