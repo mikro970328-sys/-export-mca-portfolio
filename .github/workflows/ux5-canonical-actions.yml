@@ -1,0 +1,29 @@
+name: UX5 Canonical Actions
+
+on:
+  pull_request:
+    paths:
+      - 'api/purchases.js'
+      - 'admin/purchases.js'
+      - 'supabase/migrations/20260831122500_ux5_purchase_order_action_capabilities.sql'
+      - 'supabase/migrations/20260831122600_ux5_purchase_order_edit_assertion.sql'
+      - 'supabase/tests/ux5_purchase_order_actions.sql'
+      - 'scripts/check-ux5-canonical-actions.mjs'
+      - '.github/workflows/ux5-canonical-actions.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-ux5-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate canonical action ownership
+        run: node scripts/check-ux5-canonical-actions.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/purchases.js
+          node --check admin/purchases.js
+          node --check scripts/check-ux5-canonical-actions.mjs
