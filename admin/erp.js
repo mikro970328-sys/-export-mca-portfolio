@@ -158,19 +158,25 @@
     window.dispatchEvent(new CustomEvent('export-mca:admin-ready'));
   };
 
+  const buttonAvailable = id => {
+    const button = document.querySelector(`[data-section="${id}"]`);
+    return Boolean(button && !button.hidden && !button.classList.contains('hidden') && !button.disabled);
+  };
+
   const ensureVisibleSection = () => {
-    const visible = [...document.querySelectorAll('.app-section')].find(section => !section.classList.contains('hidden'));
+    const visible = [...document.querySelectorAll('.app-section')].find(section => !section.classList.contains('hidden') && buttonAvailable(section.id));
     if (visible) return visible.id;
     const saved = localStorage.getItem('export_mca_current_section');
+    const firstAllowed = window.ExportMcaAccessControl?.firstAllowedSection?.();
     const candidates = [
       saved,
+      firstAllowed,
       accessCan('dashboard.read') ? 'dashboardSection' : null,
       ...[...document.querySelectorAll('[data-section]')].map(button => button.dataset.section)
     ].filter(Boolean);
     for (const id of [...new Set(candidates)]) {
       const section = document.getElementById(id);
-      const button = document.querySelector(`[data-section="${id}"]`);
-      if (!section?.classList.contains('app-section') || !button || button.hidden || button.classList.contains('hidden') || button.disabled) continue;
+      if (!section?.classList.contains('app-section') || !buttonAvailable(id)) continue;
       if (typeof window.showSection === 'function' && window.showSection(id) !== false) return id;
     }
     return null;
@@ -206,16 +212,22 @@
     booted = true;
     root.classList.add('admin-preparing');
     removeLegacyAdminControls();
+    let authenticatedShellReady = false;
 
     bootPromise = (async () => {
       await accessStylesPromise;
       await loadScript('/admin/access-control-administration.js?v=20260830-p3', 'data-access-control-administration');
       if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
       await window.ExportMcaAccessControl.initialize();
+      window.ExportMcaAccessControl?.applyNavigation?.();
+
+      ensureVisibleSection();
+      revealAdminShell();
+      authenticatedShellReady = true;
 
       if (accessCan('dashboard.read')) {
         await loadStylesheet('/admin/dashboard-executive.css?v=20260830-p11', 'data-dashboard-executive-style');
-        await loadScript('/admin/dashboard-operational-state.js?v=20260830-hotfix1', 'data-dashboard-operational-state');
+        await loadScript('/admin/dashboard-operational-state.js?v=20260830-hotfix2', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
         await loadScript('/admin/containers-module.js?v=20260830-ux2d', 'data-containers-module');
@@ -246,21 +258,20 @@
       window.ExportMcaAccessControl?.applyNavigation?.();
       await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
       await loadScript('/admin/operational-navigation.js?v=20260830-ux2d', 'data-operational-navigation');
-      await loadScript('/admin/admin-data-loader.js?v=20260830-hotfix1', 'data-admin-data-loader');
+      await loadScript('/admin/admin-data-loader.js?v=20260830-hotfix2', 'data-admin-data-loader');
       window.ExportMcaAccessControl?.applyNavigation?.();
+      ensureVisibleSection();
 
       if (!window.ExportMcaAdminData?.loadCore) {
         throw new Error('El cargador inicial de datos no está disponible.');
       }
 
-      await window.ExportMcaAdminData.loadCore();
+      const coreResult = await window.ExportMcaAdminData.loadCore();
+      if (coreResult?.errors?.length) console.warn('[admin boot] core data degraded', coreResult.errors);
 
       if (accessCan('dashboard.read') && typeof window.initializeOperationalDashboard === 'function') {
         window.initializeOperationalDashboard();
       }
-
-      revealAdminShell();
-      ensureVisibleSection();
 
       if (accessCan('dashboard.read')) {
         window.ExportMcaAdminData.loadDashboard().catch(error => {
@@ -275,10 +286,16 @@
       return true;
     })().catch(error => {
       console.error('[admin boot]', error);
-      showLoginState();
+      root.classList.remove('admin-preparing');
       booted = false;
       bootPromise = null;
-      return false;
+      if (!authenticatedShellReady) {
+        showLoginState();
+        return false;
+      }
+      window.dispatchEvent(new CustomEvent('export-mca:admin-degraded', { detail:{ message:String(error?.message || 'Módulo no disponible') } }));
+      ensureVisibleSection();
+      return true;
     });
 
     return bootPromise;
