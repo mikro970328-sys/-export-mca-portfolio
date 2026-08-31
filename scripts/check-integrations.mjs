@@ -18,7 +18,6 @@ const retiredFiles=[
 for(const file of retiredFiles)if(exists(file))failures.push(`${file}: ShipsGo retirado no puede permanecer en runtime`);
 
 const runtimeFiles=[
-  'api/shipments.js',
   'api/shipments-register.js',
   'api/loads.js',
   'api/direct-shipment-dispatch.js',
@@ -32,16 +31,36 @@ const runtimeFiles=[
 for(const file of runtimeFiles){
   if(!exists(file)){failures.push(`${file}: falta owner runtime`);continue;}
   forbid(file,/shipsgo/i,'no puede conservar dependencia, copy ni acción ShipsGo');
-  forbid(file,/\/api\/tracking-mode/i,'no puede conservar modo automático/manual de proveedor');
+  forbid(file,/\/api\/tracking-mode/i,'no puede conservar modo de proveedor');
   forbid(file,/retry_shipsgo/i,'no puede conservar reconexión a proveedor');
 }
+
+// Scan all active API/admin runtime. ShipsGo text is allowed only in explicit historical/tombstone owners.
+const shipsGoTextAllowlist=new Set([
+  'api/tracking-alerts.js',          // closes historical alert cycles
+  'api/shipments.js',                // rejects the retired legacy action explicitly
+  'admin/shipment-timeline.js'       // renders immutable historical provider events
+]);
+function walkRuntime(dir){
+  const absolute=path.join(root,dir);
+  if(!fs.existsSync(absolute))return;
+  for(const entry of fs.readdirSync(absolute,{withFileTypes:true})){
+    const rel=path.join(dir,entry.name).replaceAll('\\','/');
+    if(entry.isDirectory()){walkRuntime(rel);continue;}
+    if(!/\.(?:js|mjs|html|json)$/.test(entry.name))continue;
+    const src=read(rel);
+    if(/shipsgo/i.test(src)&&!shipsGoTextAllowlist.has(rel))failures.push(`${rel}: referencia ShipsGo residual fuera de allowlist histórica`);
+  }
+}
+walkRuntime('api');
+walkRuntime('admin');
 
 const notificationOwner='api/_notification-delivery.js';
 for(const text of ["new Set(['DEPA', 'RELEASE'])",'whatsappDeliveryKey','claim_notification_dispatch','release_notification_dispatch_claim'])requireText(notificationOwner,text);
 for(const blocked of ['LOAD','ARRV','DISC','DELIVERED','GTOT'])forbid(notificationOwner,new RegExp(`['\"]${blocked}['\"]`),`no puede habilitar ${blocked} para WhatsApp`);
 
 const manual='api/manual-tracking-event.js';
-for(const text of ['TWILIO_DEPARTED_CONTENT_SID','TWILIO_RELEASE_CONTENT_SID','whatsappMilestoneAllowed','tracking_source:\'erp\''])requireText(manual,text);
+for(const text of ['TWILIO_DEPARTED_CONTENT_SID','TWILIO_RELEASE_CONTENT_SID','whatsappMilestoneAllowed',"tracking_source:'erp'"])requireText(manual,text);
 for(const forbidden of ['TWILIO_CONTENT_SID','TWILIO_DELIVERED_CONTENT_SID','TWILIO_REGISTERED_CONTENT_SID'])forbid(manual,new RegExp(forbidden),`no puede usar ${forbidden}`);
 requireText(manual,"load: { order:1, status:'Cargado en el buque', eventType:'LOAD' }");
 requireText(manual,"arrived: { order:3, status:'Llegó al puerto', eventType:'ARRV' }");
@@ -51,8 +70,9 @@ requireText(manual,"delivered: { order:6, status:'Entregado', eventType:'DELIVER
 const shipments='api/shipments.js';
 for(const text of ["tracking_source:'erp'",'assertShipmentCanBeDeleted','TWILIO_RELEASE_CONTENT_SID',"claimNotificationDelivery(shipment.id,'RELEASE'"])requireText(shipments,text);
 forbid(shipments,/registerShipsGo|deleteShipsGoTracking|activateTracking\s*\(/,'no puede llamar tracking externo');
-requireText(shipments,"body.action === 'send_test_whatsapp') return fail(res,410",'debe bloquear envío arbitrario de WhatsApp');
-requireText(shipments,"action === 'manual_notification') return fail(res,410",'debe bloquear plantillas manuales arbitrarias');
+requireText(shipments,"body.action === 'send_test_whatsapp') return fail(res,410",'debe bloquear envío arbitrario de WhatsApp heredado');
+requireText(shipments,"action === 'manual_notification') return fail(res,410",'debe bloquear plantillas manuales heredadas');
+requireText(shipments,"action === 'retry_shipsgo') return fail(res,410",'debe bloquear reconexión heredada sin llamar proveedor');
 
 const clients='api/clients.js';
 requireText(clients,'TWILIO_WELCOME_CONTENT_SID','debe conservar bienvenida Twilio');
@@ -73,6 +93,18 @@ requireText(alerts,"closeCondition(row,'external_tracking_retired'",'debe retira
 const manualAlerts='api/manual-tracking-alerts.js';
 requireText(manualAlerts,"tracking_source:'erp'",'supervisión debe usar tracking ERP');
 forbid(manualAlerts,/shipsgo_status|shipsgo_link_mode/i,'supervisión ERP no puede filtrar por proveedor');
+
+const migration='supabase/migrations/20260831102000_p19_retire_shipsgo_limit_whatsapp.sql';
+if(!exists(migration))failures.push(`${migration}: falta migración P19`);
+else{
+  for(const text of ["v_key not in ('tracking:DEPA','tracking:RELEASE')","NOTIFICATION_DELIVERY_KEY_NOT_ALLOWED","'external_tracking_retired'","'shipsgo_tracking_failed'"])requireText(migration,text);
+}
+const fixture='supabase/tests/p19_integration_scope.sql';
+if(!exists(fixture))failures.push(`${fixture}: falta fixture P19`);
+else{
+  for(const text of ['begin;','rollback;','P19_LOAD_CLAIM_WAS_NOT_BLOCKED','P19_DELIVERED_CLAIM_WAS_NOT_BLOCKED','shipment_fixture_residue','claim_fixture_residue'])requireText(fixture,text);
+  forbid(fixture,/\bcommit\s*;/i,'fixture reversible no puede hacer COMMIT');
+}
 
 const env=read('.env.example');
 for(const required of ['TWILIO_WELCOME_CONTENT_SID','TWILIO_DEPARTED_CONTENT_SID','TWILIO_RELEASE_CONTENT_SID','TWILIO_STATUS_CALLBACK_URL'])if(!env.includes(required))failures.push(`.env.example: falta ${required}`);
