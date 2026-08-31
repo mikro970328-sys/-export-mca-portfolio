@@ -1,6 +1,6 @@
 import { authorizeAdmin, fail, ok, readJson, sendWhatsApp, supabase } from './_lib.js';
 import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
-import { deleteShipsGoTracking, registerShipsGo } from './_shipsgo.js';
+import { assertShipmentTrackingCanBeDeleted, deleteShipsGoTracking, registerShipsGo } from './_shipsgo.js';
 
 const cleanText = value => String(value ?? '').trim() || null;
 const cleanClientId = value => cleanText(value);
@@ -133,20 +133,42 @@ export default async function handler(req, res) {
       const shipment = rows?.[0];
       if (!shipment) return fail(res, 404, 'Contenedor no encontrado');
 
-      let shipsgoResult;
       try {
-        shipsgoResult = await deleteShipsGoTracking(shipment);
+        await assertShipmentTrackingCanBeDeleted(shipment.id);
       } catch (error) {
-        await audit('shipment_delete_blocked_shipsgo', shipment, { container_number:shipment.container_number, shipsgo_tracking_id:shipment.shipsgo_tracking_id || null, actor:admin.username, error:error.message });
-        return fail(res, 502, 'No se pudo borrar el tracking en ShipsGo. El contenedor no fue eliminado del ERP.', error.message);
+        if (error.domain_block || String(error.message || '').startsWith('LOAD_SHIPMENT_DELETE_BLOCKED:')) {
+          await audit('shipment_delete_blocked_load', shipment, {
+            container_number:shipment.container_number,
+            actor:admin.username,
+            load_reference:error.load_reference || null
+          });
+          return fail(res, 409, 'No se puede eliminar este contenedor porque está vinculado a un Cargue.', error.load_reference ? `Cargue: ${error.load_reference}` : undefined);
+        }
+        throw error;
       }
 
-      await audit('shipment_deleted', shipment, { container_number:shipment.container_number, shipsgo_tracking_id:shipsgoResult.tracking_id || shipment.shipsgo_tracking_id || null, shipsgo_deleted:shipsgoResult.deleted, actor:admin.username, deletion_scope:'erp_and_shipsgo' });
       await supabase('notifications', { method:'DELETE', query:`?shipment_id=eq.${encodeURIComponent(id)}` });
       await supabase('shipment_history', { method:'DELETE', query:`?shipment_id=eq.${encodeURIComponent(id)}` });
       const deleted = await supabase('shipments', { method:'DELETE', query:`?id=eq.${encodeURIComponent(id)}&select=id,container_number` });
       if (!deleted?.length) return fail(res, 404, 'Contenedor no encontrado');
-      return ok(res, { deleted:true, shipment:deleted[0], shipsgo_deleted:shipsgoResult.deleted, shipsgo_tracking_id:shipsgoResult.tracking_id || null, shipsgo_reason:shipsgoResult.reason || null });
+
+      const shipsgoResult = await deleteShipsGoTracking(shipment);
+      await audit('shipment_deleted', shipment, {
+        container_number:shipment.container_number,
+        shipsgo_tracking_id:shipsgoResult.tracking_id || shipment.shipsgo_tracking_id || null,
+        shipsgo_deleted:Boolean(shipsgoResult.deleted),
+        shipsgo_cleanup_reason:shipsgoResult.reason || null,
+        shipsgo_cleanup_error:shipsgoResult.error || null,
+        actor:admin.username,
+        deletion_scope:'erp_authoritative_provider_cleanup_best_effort'
+      });
+      return ok(res, {
+        deleted:true,
+        shipment:deleted[0],
+        shipsgo_deleted:Boolean(shipsgoResult.deleted),
+        shipsgo_tracking_id:shipsgoResult.tracking_id || null,
+        shipsgo_reason:shipsgoResult.reason || null
+      });
     }
 
     if (req.method === 'POST') {
