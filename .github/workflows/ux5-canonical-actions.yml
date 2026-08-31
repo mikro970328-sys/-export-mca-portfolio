@@ -27,3 +27,5 @@ jobs:
           node --check api/purchases.js
           node --check admin/purchases.js
           node --check scripts/check-ux5-canonical-actions.mjs
+      - name: Validate Purchase API runtime imports
+        run: node --input-type=module -e "await import('./api/purchases.js')"

@@ -26,12 +26,15 @@ for(const text of [
 requireText('DB edit mutation owner',editMigration,"perform public.assert_purchase_order_action(v_po.id,'edit')");
 
 for(const text of [
-  "hasPermission(admin,'procurement.write')",
-  "hasPermission(admin,'warehouse.write')",
+  'loadAdminAccessContext',
+  "permissionSet.has('procurement.write')",
+  "permissionSet.has('warehouse.write')",
+  "admin?.role==='master_admin'",
   "supabase('purchase_order_action_capabilities'",
   'capabilities:capabilitiesByPo.get(order.id)',
   "key.startsWith('receive_')?'warehouse.write':'procurement.write'"
 ])requireText('API capability contract',api,text);
+forbid('API capability contract',api,/\bhasPermission\s*\(/,'no debe depender de un helper hasPermission paralelo/inexistente');
 
 for(const text of [
   "function capability(order,key)",

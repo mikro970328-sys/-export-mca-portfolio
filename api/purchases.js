@@ -1,14 +1,16 @@
-import { authorizeAdmin, fail, hasPermission, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, loadAdminAccessContext, ok, readJson, supabase, writeAudit } from './_lib.js';
 
 const text=(value,max=2000)=>String(value??'').trim().slice(0,max);
 const rpcRow=value=>Array.isArray(value)?(value[0]||null):(value||null);
 const PO_SELECT='id,po_number,supplier_id,warehouse_id,order_date,expected_at,currency,supplier_reference,status,notes,created_by,created_at,updated_at,supplier:suppliers(id,name,legal_name,country,active),warehouse:warehouses(id,code,name,city,country,active)';
 
-function permissionAwareCapabilities(raw,admin){
+function permissionAwareCapabilities(raw,access){
   const state=raw&&typeof raw==='object'?JSON.parse(JSON.stringify(raw)):{actions:{}};
   const actions=state.actions&&typeof state.actions==='object'?state.actions:{};
-  const procurementWritable=hasPermission(admin,'procurement.write');
-  const warehouseWritable=hasPermission(admin,'warehouse.write');
+  const permissionSet=new Set(access?.permissions||[]);
+  const master=access?.master===true;
+  const procurementWritable=master||permissionSet.has('procurement.write');
+  const warehouseWritable=master||permissionSet.has('warehouse.write');
   for(const [key,entry] of Object.entries(actions)){
     if(!entry||typeof entry!=='object')continue;
     const required=key.startsWith('receive_')?'warehouse.write':'procurement.write';
@@ -22,6 +24,9 @@ function permissionAwareCapabilities(raw,admin){
 }
 
 async function listOrders(admin){
+  const access=admin?.role==='master_admin'
+    ? {master:true,permissions:[]}
+    : {master:false,...await loadAdminAccessContext(admin?.admin_id)};
   const [orders,progress,items,allocations,capabilities]=await Promise.all([
     supabase('purchase_orders',{query:`?select=${PO_SELECT}&order=created_at.desc&limit=1000`}),
     supabase('purchase_order_progress',{query:'?select=*&order=po_number.desc&limit=1000'}),
@@ -30,7 +35,7 @@ async function listOrders(admin){
     supabase('purchase_order_action_capabilities',{query:'?select=purchase_order_id,capabilities&limit=1000'})
   ]);
   const progressByPo=new Map((progress||[]).map(row=>[row.purchase_order_id,row]));
-  const capabilitiesByPo=new Map((capabilities||[]).map(row=>[row.purchase_order_id,permissionAwareCapabilities(row.capabilities,admin)]));
+  const capabilitiesByPo=new Map((capabilities||[]).map(row=>[row.purchase_order_id,permissionAwareCapabilities(row.capabilities,access)]));
   const allocationsByItem=new Map();
   for(const allocation of allocations||[]){
     if(!allocationsByItem.has(allocation.purchase_order_item_id))allocationsByItem.set(allocation.purchase_order_item_id,[]);
