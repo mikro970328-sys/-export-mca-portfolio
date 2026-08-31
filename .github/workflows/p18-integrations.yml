@@ -15,6 +15,7 @@ on:
       - 'supabase/tests/p18_integrations.sql'
       - 'scripts/check-integrations.mjs'
       - 'scripts/check-integration-event-identity.mjs'
+      - 'scripts/check-b9-public-boundaries.mjs'
       - '.github/workflows/p18-integrations.yml'
   workflow_dispatch:
 
@@ -38,10 +39,13 @@ jobs:
           node --check api/shipments.js
           node --check scripts/check-integrations.mjs
           node --check scripts/check-integration-event-identity.mjs
+          node --check scripts/check-b9-public-boundaries.mjs
       - name: Check P18 ownership contract
         run: node scripts/check-integrations.mjs
       - name: Verify provider event identity
         run: node scripts/check-integration-event-identity.mjs
+      - name: Preserve P16 public boundary hardening
+        run: node scripts/check-b9-public-boundaries.mjs
       - name: Preserve P9 alert lifecycle
         run: node scripts/check-operational-alert-lifecycle.mjs
       - name: Preserve P15 privilege boundary
