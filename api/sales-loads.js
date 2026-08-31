@@ -1,4 +1,5 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { loadSalesActionCapabilities } from './_sales-actions.js';
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const number = value => {
@@ -8,22 +9,29 @@ const number = value => {
 };
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
 
-async function getOrder(orderId) {
-  const [orders, items, progress] = await Promise.all([
+function requireCapability(capabilities, key) {
+  const action = capabilities?.actions?.[key] || null;
+  if (action?.allowed === true) return;
+  throw new Error(action?.reason || 'SO_ACTION_NOT_ALLOWED');
+}
+
+async function getOrder(orderId, admin) {
+  const [orders, items, progress, capabilities] = await Promise.all([
     supabase('sales_orders', { query:`?select=id,so_number,client_id,importer_id,status,currency,client:clients(id,name,company,mipyme_name),importer:importers(id,name)&id=eq.${encodeURIComponent(orderId)}&limit=1` }),
     supabase('sales_order_items', { query:`?select=id,sales_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_price,product:products(id,sku,name,brand,unit,package_format)&sales_order_id=eq.${encodeURIComponent(orderId)}&order=created_at.asc` }),
-    supabase('sales_order_item_progress', { query:`?select=*&sales_order_id=eq.${encodeURIComponent(orderId)}` })
+    supabase('sales_order_item_progress', { query:`?select=*&sales_order_id=eq.${encodeURIComponent(orderId)}` }),
+    loadSalesActionCapabilities(admin, orderId)
   ]);
   const order = orders?.[0] || null;
   if (!order) return null;
   const progressByItem = new Map((progress || []).map(row => [row.sales_order_item_id, row]));
-  return { ...order, items:(items || []).map(item => ({ ...item, progress:progressByItem.get(item.id) || null })) };
+  return { ...order, capabilities, items:(items || []).map(item => ({ ...item, progress:progressByItem.get(item.id) || null })) };
 }
 
-async function loadOptions(orderId) {
-  const order = await getOrder(orderId);
+async function loadOptions(orderId, admin) {
+  const order = await getOrder(orderId, admin);
   if (!order) throw new Error('SO_NOT_FOUND');
-  if (order.status !== 'confirmed') throw new Error('SO_NOT_CONFIRMED');
+  requireCapability(order.capabilities, 'allocate_load');
 
   const productIds = new Set(order.items.map(item => item.product_id));
   const [warehouses, balances] = await Promise.all([
@@ -37,18 +45,18 @@ async function loadOptions(orderId) {
     available_pallets:Number(source.physical_pallets || 0) - Number(source.reserved_pallets || 0)
   })).filter(source => source.available_quantity > 0 || source.available_pallets > 0);
 
-  return { order, warehouses:warehouses || [], sources };
+  return { order, capabilities:order.capabilities, warehouses:warehouses || [], sources };
 }
 
-async function linkCandidates(orderId) {
-  const order = await getOrder(orderId);
+async function linkCandidates(orderId, admin) {
+  const order = await getOrder(orderId, admin);
   if (!order) throw new Error('SO_NOT_FOUND');
-  if (order.status !== 'confirmed') throw new Error('SO_NOT_CONFIRMED');
+  requireCapability(order.capabilities, 'allocate_load');
   const candidates = await supabase('rpc/sales_order_linkable_existing_loads', {
     method:'POST',
     body:{ p_sales_order_id:orderId }
   });
-  return { order, candidates:Array.isArray(candidates) ? candidates : [] };
+  return { order, capabilities:order.capabilities, candidates:Array.isArray(candidates) ? candidates : [] };
 }
 
 function cleanLoadLines(lines) {
@@ -77,6 +85,7 @@ function translatedError(raw) {
   const translations = [
     ['SO_NOT_FOUND','Sales Order no encontrada.'],
     ['SO_NOT_CONFIRMED','La Sales Order debe estar confirmada para trabajar con Cargues.'],
+    ['SO_NO_UNALLOCATED_FULFILLMENT','La Sales Order ya no tiene mercancía pendiente para asignar a Cargues.'],
     ['SO_ITEM_NOT_IN_ORDER','Una de las líneas no pertenece a esta Sales Order.'],
     ['SO_LOAD_DUPLICATE_SALES_ITEM','Una línea de la Sales Order está repetida en el Cargue.'],
     ['SO_ALLOCATION_EXCEEDS_ORDER','La cantidad seleccionada excede el saldo pendiente de la Sales Order.'],
@@ -97,7 +106,9 @@ function translatedError(raw) {
     ['NO_EXACT_SALES_LINE_MATCH','La mercancía del Cargue no coincide exactamente con el saldo pendiente de la Sales Order.'],
     ['AMBIGUOUS_SALES_LINE_MATCH','Hay más de una línea de venta compatible; no se puede vincular automáticamente.'],
     ['LOAD_SALES_CONTEXT_MISMATCH','El cliente o importadora del Cargue no coincide con la Sales Order.'],
-    ['LOAD_SALES_CONTEXT_SHIPMENT_MISMATCH','El cliente o importadora del contenedor no coincide con la Sales Order.']
+    ['LOAD_SALES_CONTEXT_SHIPMENT_MISMATCH','El cliente o importadora del contenedor no coincide con la Sales Order.'],
+    ['PERMISSION_REQUIRED','No tienes permiso para ejecutar esta acción.'],
+    ['SO_ACTION_NOT_ALLOWED','La Sales Order no admite esta acción en su estado actual.']
   ];
   return translations.find(([key]) => raw.includes(key))?.[1] || raw;
 }
@@ -111,8 +122,8 @@ export default async function handler(req, res) {
       const orderId = text(req.query?.sales_order_id, 80);
       if (!orderId) return fail(res, 400, 'Falta la Sales Order');
       const mode = text(req.query?.mode, 60).toLowerCase();
-      if (mode === 'link_candidates') return ok(res, await linkCandidates(orderId));
-      return ok(res, await loadOptions(orderId));
+      if (mode === 'link_candidates') return ok(res, await linkCandidates(orderId, admin));
+      return ok(res, await loadOptions(orderId, admin));
     }
 
     if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
@@ -120,6 +131,9 @@ export default async function handler(req, res) {
     const action = text(body.action, 60).toLowerCase();
     const orderId = text(body.sales_order_id, 80);
     if (!orderId) throw new Error('SO_REQUIRED');
+
+    const capabilities = await loadSalesActionCapabilities(admin, orderId);
+    requireCapability(capabilities, 'allocate_load');
 
     if (action === 'link_existing_load') {
       const loadId = text(body.load_id, 80);
@@ -140,7 +154,7 @@ export default async function handler(req, res) {
         load_number:linked.load_number,
         allocation_count:linked.allocation_count
       });
-      return ok(res, { linked, order:await getOrder(orderId) });
+      return ok(res, { linked, order:await getOrder(orderId, admin) });
     }
 
     if (action !== 'create_load') return fail(res, 400, 'Acción de Cargue no válida');
@@ -158,7 +172,7 @@ export default async function handler(req, res) {
     const load = rpcRow(result);
     if (!load?.id) throw new Error('No se pudo crear el Cargue');
     await writeAudit(admin, 'load_created_from_sales_order', 'load', load.id, { sales_order_id:orderId, load_number:load.load_number, warehouse_id:warehouseId });
-    return ok(res, { load, order:await getOrder(orderId) });
+    return ok(res, { load, order:await getOrder(orderId, admin) });
   } catch (error) {
     const raw = String(error.message || 'No se pudo procesar el Cargue');
     console.error('[sales-loads]', error);
