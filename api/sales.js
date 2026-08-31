@@ -1,19 +1,19 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
-import { loadSalesActionCapabilityMap } from './_sales-actions.js';
+import { loadSalesActionCapabilityMap, loadSalesWriteAccess } from './_sales-actions.js';
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
 
 const SO_SELECT = 'id,so_number,client_id,importer_id,order_date,requested_at,currency,customer_reference,status,notes,created_by,created_at,updated_at,client:clients(id,name,company,mipyme_name,active),importer:importers(id,name,active)';
 
-async function listOrders(admin) {
+async function listOrders(admin, writableOverride = null) {
   const [orders, progress, items, itemProgress, allocations, capabilityMap] = await Promise.all([
     supabase('sales_orders', { query:`?select=${SO_SELECT}&order=created_at.desc&limit=1000` }),
     supabase('sales_order_progress', { query:'?select=*&order=so_number.desc&limit=1000' }),
     supabase('sales_order_items', { query:'?select=id,sales_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_price,notes,created_at,updated_at,product:products(id,sku,name,brand,category,unit,package_format,default_units_per_pallet)&order=created_at.asc&limit=5000' }),
     supabase('sales_order_item_progress', { query:'?select=*&limit=5000' }),
     supabase('sales_fulfillment_allocations', { query:'?select=id,sales_order_item_id,load_item_id,allocated_quantity,allocated_pallets,created_at,load_item:load_items(id,load_id,product_id,planned_quantity,planned_pallets,unit,load:loads(id,load_number,status,shipment_id,client_id,importer_id))&order=created_at.asc&limit=5000' }),
-    loadSalesActionCapabilityMap(admin)
+    loadSalesActionCapabilityMap(admin, writableOverride)
   ]);
 
   const progressByOrder = new Map((progress || []).map(row => [row.sales_order_id, row]));
@@ -43,14 +43,15 @@ async function listOrders(admin) {
 }
 
 async function bootstrap(admin) {
+  const writeAccess = await loadSalesWriteAccess(admin);
   const [orders, clients, importers, clientImporters, products] = await Promise.all([
-    listOrders(admin),
+    listOrders(admin, writeAccess),
     supabase('clients', { query:'?select=id,name,company,mipyme_name,active&active=eq.true&order=name.asc&limit=1000' }),
     supabase('importers', { query:'?select=id,name,active&active=eq.true&order=name.asc&limit=1000' }),
     supabase('client_importers', { query:'?select=client_id,importer_id&limit=5000' }),
     supabase('products', { query:'?select=id,sku,name,brand,category,unit,package_format,default_units_per_pallet,active&active=eq.true&order=name.asc&limit=2000' })
   ]);
-  return { orders, clients:clients || [], importers:importers || [], client_importers:clientImporters || [], products:products || [] };
+  return { orders, clients:clients || [], importers:importers || [], client_importers:clientImporters || [], products:products || [], write_access:writeAccess };
 }
 
 function cleanLines(lines) {
@@ -113,7 +114,7 @@ export default async function handler(req, res) {
       if (!id) return ok(res, data);
       const order = data.orders.find(item => String(item.id) === id);
       if (!order) return fail(res, 404, 'Sales Order no encontrada');
-      return ok(res, { order, clients:data.clients, importers:data.importers, client_importers:data.client_importers, products:data.products });
+      return ok(res, { order, clients:data.clients, importers:data.importers, client_importers:data.client_importers, products:data.products, write_access:data.write_access });
     }
 
     if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
@@ -135,7 +136,7 @@ export default async function handler(req, res) {
       const order = rpcRow(result);
       if (!order?.id) throw new Error('No se pudo crear la Sales Order');
       await writeAudit(admin,'sales_order_created','sales_order',order.id,{ so_number:order.so_number, client_id:order.client_id });
-      return ok(res,{ order:(await listOrders(admin)).find(item => item.id === order.id) || order });
+      return ok(res,{ order:(await listOrders(admin, true)).find(item => item.id === order.id) || order });
     }
 
     if (action === 'replace_plan') {
@@ -154,7 +155,7 @@ export default async function handler(req, res) {
       }});
       const order = rpcRow(result);
       await writeAudit(admin,'sales_order_updated','sales_order',orderId,{ so_number:order?.so_number || null });
-      return ok(res,{ order:(await listOrders(admin)).find(item => item.id === orderId) || order });
+      return ok(res,{ order:(await listOrders(admin, true)).find(item => item.id === orderId) || order });
     }
 
     if (['confirm','cancel','close'].includes(action)) {
@@ -163,7 +164,7 @@ export default async function handler(req, res) {
       const result = await supabase('rpc/transition_sales_order', { method:'POST', body:{ p_sales_order_id:orderId, p_action:action } });
       const order = rpcRow(result);
       await writeAudit(admin,`sales_order_${action}`,'sales_order',orderId,{ so_number:order?.so_number || null });
-      return ok(res,{ order:(await listOrders(admin)).find(item => item.id === orderId) || order });
+      return ok(res,{ order:(await listOrders(admin, true)).find(item => item.id === orderId) || order });
     }
 
     return fail(res,400,'Acción de Ventas no válida');
