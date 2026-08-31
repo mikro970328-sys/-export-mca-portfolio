@@ -1,0 +1,44 @@
+name: P17 Session and Audit Hardening
+
+on:
+  pull_request:
+    paths:
+      - 'api/_lib.js'
+      - 'api/login.js'
+      - 'api/account.js'
+      - 'api/admins.js'
+      - 'api/access-control.js'
+      - 'admin/account-administration.js'
+      - 'supabase/migrations/20260831005*.sql'
+      - 'supabase/tests/p17_session_audit_hardening.sql'
+      - 'scripts/check-session-audit-hardening.mjs'
+      - 'scripts/check-session-version-runtime.mjs'
+      - '.github/workflows/p17-session-audit-hardening.yml'
+  workflow_dispatch:
+
+jobs:
+  session-audit-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax check changed JavaScript
+        run: |
+          node --check api/_lib.js
+          node --check api/login.js
+          node --check api/account.js
+          node --check api/admins.js
+          node --check api/access-control.js
+          node --check admin/account-administration.js
+          node --check scripts/check-session-audit-hardening.mjs
+          node --check scripts/check-session-version-runtime.mjs
+      - name: Check P17 ownership contract
+        run: node scripts/check-session-audit-hardening.mjs
+      - name: Verify session-version runtime behavior
+        run: node scripts/check-session-version-runtime.mjs
+      - name: Preserve P15 privilege boundary
+        run: node scripts/check-b9-database-privileges.mjs
+      - name: Preserve B9 API boundary inventory
+        run: node scripts/audit-b9-api-boundaries.mjs

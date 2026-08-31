@@ -1,4 +1,4 @@
-import { authenticateAdmin, fail, hashPassword, loadAdminAccessContext, ok, readJson, supabase, verifyPassword, writeAudit } from './_lib.js';
+import { authenticateAdmin, createToken, fail, hashPassword, loadAdminAccessContext, ok, readJson, supabase, verifyPassword, writeAudit } from './_lib.js';
 
 const publicFields = 'id,full_name,username,role,is_active,last_login_at,password_changed_at,created_at,updated_at,access_role_id';
 
@@ -36,27 +36,31 @@ export default async function handler(req, res) {
       }
 
       const { salt, hash } = hashPassword(newPassword);
-      const changedAt = new Date().toISOString();
-      await supabase('admin_users', {
-        method: 'PATCH',
-        query: `?id=eq.${encodeURIComponent(admin.admin_id)}`,
+      const changedRows = await supabase('rpc/change_own_admin_password', {
+        method: 'POST',
         body: {
-          password_salt: salt,
-          password_hash: hash,
-          password_changed_at: changedAt,
-          failed_attempts: 0,
-          locked_until: null,
-          updated_at: changedAt
+          p_admin_user_id: admin.admin_id,
+          p_expected_password_hash: account.password_hash,
+          p_password_salt: salt,
+          p_password_hash: hash
         }
       });
+      const changed = changedRows?.[0] || null;
+      if (!changed?.session_version) throw new Error('SESSION_VERSION_MISSING');
 
-      await writeAudit(admin, 'change_own_password', 'admin_user', admin.admin_id, {});
-      return ok(res, { updated: true, password_changed_at: changedAt });
+      const token = createToken({ ...admin, session_version: Number(changed.session_version) });
+      return ok(res, {
+        updated: true,
+        password_changed_at: changed.password_changed_at,
+        token
+      });
     }
 
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
     if (error.message === 'PASSWORD_TOO_SHORT') return fail(res, 400, 'La contraseña debe tener al menos 10 caracteres');
+    if (error.message.includes('PASSWORD_STATE_CHANGED')) return fail(res, 409, 'La contraseña cambió en otra sesión. Inicia sesión nuevamente.');
+    if (error.message.includes('ADMIN_USER_UNAVAILABLE')) return fail(res, 403, 'La cuenta no está disponible');
     return fail(res, 500, 'No se pudo actualizar la cuenta', error.message);
   }
 }
