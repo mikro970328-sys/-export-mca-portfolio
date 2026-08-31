@@ -41,4 +41,4 @@ jobs:
       - name: Preserve P15 privilege boundary
         run: node scripts/check-b9-database-privileges.mjs
       - name: Preserve B9 API boundary inventory
-        run: node scripts/audit-api-boundaries.mjs
+        run: node scripts/audit-b9-api-boundaries.mjs
