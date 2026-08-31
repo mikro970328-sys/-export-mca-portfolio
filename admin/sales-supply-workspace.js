@@ -4,7 +4,7 @@
 
   const byId=id=>document.getElementById(id);
   const token=()=>localStorage.getItem('export_mca_token')||'';
-  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
   const fmt=value=>value===null||value===undefined||value===''?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:3}).format(Number(value));
   const dateTime=value=>value?new Date(value).toLocaleString('es-US'):'—';
   const localDateTime=()=>{const now=new Date(),offset=now.getTimezoneOffset()*60000;return new Date(now.getTime()-offset).toISOString().slice(0,16);};
@@ -194,7 +194,7 @@
 
   function createDirect(item,allocation){
     if(!item||!allocation)return;
-    openForm({title:'Nuevo contenedor Direct Ship',subtitle:'Se registra en Contenedores y hereda cliente e importadora de la venta.',saveLabel:'Registrar contenedor',html:`<div class="sales-supply-form"><div><label>Contenedor / referencia *</label><input id="supplyNewContainer" maxlength="40"></div><div><label>Naviera</label><input id="supplyNewCarrier"></div><div><label>Booking</label><input id="supplyNewBooking"></div><div><label>B/L</label><input id="supplyNewBol"></div><div><label>Fecha de salida planificada</label><input id="supplyNewDeparture" type="date"></div><div class="full sales-supply-helper">Si el número tiene formato ISO, el ERP intentará activar ShipsGo. La mercancía no se considera despachada hasta marcar el despacho real.</div></div>`,onSave:async()=>{const result=await request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({action:'create',sales_order_id:state.salesOrderId,container_number:byId('supplyNewContainer').value,carrier:byId('supplyNewCarrier').value,booking_number:byId('supplyNewBooking').value,bol_number:byId('supplyNewBol').value,departure_date:byId('supplyNewDeparture').value})});await fetchSupply();setTimeout(()=>linkDirect(item,findProcurement(allocation.id)?.allocation||allocation,result.shipment?.id),0);}});
+    openForm({title:'Nuevo contenedor Direct Ship',subtitle:'Se registra en Contenedores y hereda cliente e importadora de la venta.',saveLabel:'Registrar contenedor',html:`<div class="sales-supply-form"><div><label>Contenedor / referencia *</label><input id="supplyNewContainer" maxlength="40"></div><div><label>Naviera</label><input id="supplyNewCarrier"></div><div><label>Booking</label><input id="supplyNewBooking"></div><div><label>B/L</label><input id="supplyNewBol"></div><div><label>Fecha de salida planificada</label><input id="supplyNewDeparture" type="date"></div><div class="full sales-supply-helper">El ERP registrará el contenedor bajo seguimiento canónico interno. La mercancía no se considera despachada hasta marcar el despacho real.</div></div>`,onSave:async()=>{const result=await request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({action:'create',sales_order_id:state.salesOrderId,container_number:byId('supplyNewContainer').value,carrier:byId('supplyNewCarrier').value,booking_number:byId('supplyNewBooking').value,bol_number:byId('supplyNewBol').value,departure_date:byId('supplyNewDeparture').value})});await fetchSupply();setTimeout(()=>linkDirect(item,findProcurement(allocation.id)?.allocation||allocation,result.shipment?.id),0);}});
   }
 
   function dispatchDirect(shipmentId){
