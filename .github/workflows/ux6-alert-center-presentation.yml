@@ -1,0 +1,32 @@
+name: UX6 Alert Center Presentation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/operational-alert-center.js'
+      - 'scripts/check-ux6-alert-center-presentation.mjs'
+      - '.github/workflows/ux6-alert-center-presentation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-alert-center-presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate UX6 alert center presentation
+        run: node scripts/check-ux6-alert-center-presentation.mjs
+      - name: Validate alert center syntax
+        run: |
+          node --check admin/operational-alert-center.js
+          node --check scripts/check-ux6-alert-center-presentation.mjs
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
+      - name: Preserve operational alert lifecycle
+        run: node scripts/check-operational-alert-lifecycle.mjs
+      - name: Preserve user notification ownership
+        run: node scripts/check-user-notifications.mjs
+      - name: Preserve integration ownership
+        run: node scripts/check-integrations.mjs

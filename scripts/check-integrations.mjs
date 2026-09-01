@@ -39,8 +39,7 @@ for(const file of runtimeFiles){
 const shipsGoTextAllowlist=new Set([
   'api/tracking-alerts.js',
   'api/shipments.js',
-  'admin/shipment-timeline.js',
-  'admin/operational-alert-center.js'
+  'admin/shipment-timeline.js'
 ]);
 function walkRuntime(dir){
   const absolute=path.join(root,dir);
@@ -56,9 +55,10 @@ function walkRuntime(dir){
 walkRuntime('api');
 walkRuntime('admin');
 
-const historicalAlertCenter=read('admin/operational-alert-center.js');
-if(!historicalAlertCenter.includes("shipsgo_tracking_failed:'Error ShipsGo'"))failures.push('admin/operational-alert-center.js: debe conservar etiqueta histórica del proveedor para auditoría');
-forbid('admin/operational-alert-center.js',/\/api\/(?:shipsgo|tracking-mode)|retry_shipsgo|SHIPSGO_(?:API|TOKEN|WEBHOOK|CREATE|SEARCH|DELETE|CONFIG)/i,'allowlist histórica no puede esconder consumo activo del proveedor');
+// UX-6 presentation must not expose the retired provider. Historical closure/audit
+// remains enforced below in tracking-alerts, the P19 migration and reversible fixture.
+forbid('admin/operational-alert-center.js',/shipsgo/i,'presentación activa no puede exponer proveedor retirado');
+forbid('admin/operational-alert-center.js',/\/api\/(?:shipsgo|tracking-mode)|retry_shipsgo|SHIPSGO_(?:API|TOKEN|WEBHOOK|CREATE|SEARCH|DELETE|CONFIG)/i,'presentación activa no puede consumir el proveedor retirado');
 
 const notificationOwner='api/_notification-delivery.js';
 for(const text of ["new Set(['DEPA', 'RELEASE'])",'whatsappDeliveryKey','claim_notification_dispatch','release_notification_dispatch_claim'])requireText(notificationOwner,text);
@@ -150,4 +150,4 @@ if(failures.length){
   console.error('P19 integration scope gate failed:\n'+failures.map(x=>`- ${x}`).join('\n'));
   process.exit(1);
 }
-console.log('P19 integration scope gate passed: ShipsGo retired; WhatsApp limited to manual/repeatable welcome plus automatic departure and release; shipment actions respect UX-5 canonical DB ownership.');
+console.log('P19 integration scope gate passed: ShipsGo retired; historical closure remains in backend/audit while active UI stays provider-neutral; WhatsApp limited to manual/repeatable welcome plus automatic departure and release; shipment actions respect UX-5 canonical DB ownership.');
