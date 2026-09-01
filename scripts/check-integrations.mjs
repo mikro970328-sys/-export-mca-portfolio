@@ -38,8 +38,7 @@ for(const file of runtimeFiles){
 // Only immutable history/tombstones may still name the retired provider.
 const shipsGoTextAllowlist=new Set([
   'api/tracking-alerts.js',
-  'api/shipments.js',
-  'admin/shipment-timeline.js'
+  'api/shipments.js'
 ]);
 function walkRuntime(dir){
   const absolute=path.join(root,dir);
