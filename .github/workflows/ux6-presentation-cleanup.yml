@@ -1,0 +1,25 @@
+name: UX6 Presentation Cleanup
+
+on:
+  pull_request:
+    paths:
+      - 'admin/**'
+      - 'scripts/check-ux6-presentation-cleanup.mjs'
+      - '.github/workflows/ux6-presentation-cleanup.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-presentation-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate duplicate cleanup and user-facing flow
+        run: node scripts/check-ux6-presentation-cleanup.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/sales-existing-load-link-v2.js
+          node --check admin/financial-traceability-loader.js
+          node --check scripts/check-ux6-presentation-cleanup.mjs
