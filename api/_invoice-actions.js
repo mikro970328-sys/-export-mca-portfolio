@@ -21,9 +21,9 @@ export async function loadFinanceWriteAccess(admin){
   return (context.permissions||[]).includes('finance.write');
 }
 
-export async function loadInvoiceFinanceCapabilityMaps(admin){
+export async function loadInvoiceFinanceCapabilityMaps(admin,writeAccessOverride=null){
   const [writeAccess,invoiceRows,paymentRows]=await Promise.all([
-    loadFinanceWriteAccess(admin),
+    writeAccessOverride===null?loadFinanceWriteAccess(admin):Promise.resolve(writeAccessOverride===true),
     supabase('invoice_action_capabilities',{query:'?select=invoice_id,capabilities&limit=2000'}),
     supabase('payment_action_capabilities',{query:'?select=payment_id,invoice_id,capabilities&limit=5000'})
   ]);
