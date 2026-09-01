@@ -44,9 +44,11 @@ if(core.includes('Promise.all(jobs)')&&!core.includes('settled('))failures.push(
 requireText(loader,'window.loadAll = loadAll;','compatibilidad legacy bajo owner nuevo');
 
 requireText(dashboard,'function renderLoading()','estado loading dashboard');
-requireText(dashboard,'function renderError(error)','estado error dashboard');
+requireText(dashboard,'function renderError()','estado error dashboard');
+requireText(dashboard,'No pudimos actualizar los indicadores en este momento.','mensaje operativo de error dashboard');
 requireText(dashboard,'id="dashboardRetry"','acción de reintento dashboard');
 requireText(dashboard,"else renderLoading();",'initialize nunca deja dashboard vacío');
+forbid(dashboard,/error\?\.message/,'dashboard no debe renderizar error técnico crudo');
 forbid(dashboard,/insertAdjacentHTML\(['"]afterbegin['"]/,'dashboard no debe acumular errores encima de contenido vacío');
 
 requireText(inbox,"$('operationalAlertBellWrap')?.remove();",'retiro de bell P9');

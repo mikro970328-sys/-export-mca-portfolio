@@ -18,7 +18,7 @@ assert(migration.includes('net_cash_flow'), 'P11: falta cash flow neto backend')
 assert(migration.includes('coalesce(cc.cash_collected,0) - coalesce(sc.cash_paid,0) as net_cash_flow'), 'P11: net cash flow debe calcularse en DB');
 assert(migration.includes('contribution_margin_pct'), 'P11: falta porcentaje de contribución backend');
 assert(migration.includes('sales_order_contribution_incomplete_count'), 'P11: falta excepción de contribución incompleta');
-assert(migration.includes("'balance_basis', 'current_snapshot'"), 'P11: AR/AP deben conservar semántica snapshot');
+assert(migration.includes("'balance_basis', 'current_snapshot'"), 'P11: AR/AP deben conservar semántica snapshot en backend');
 assert(migration.includes('create or replace view public.executive_operational_attention'), 'P11: falta read model de P8/P9');
 assert(migration.includes('operational_task_attention'), 'P11: tasks deben derivarse de P8');
 assert(migration.includes('operational_alert_conditions'), 'P11: alertas deben derivarse del registry P9');
@@ -51,10 +51,13 @@ assert(!/cash_collected\s*[-+]\s*.*cash_paid|cash_paid\s*[-+]\s*.*cash_collected
 assert(!/gross_margin\s*\/|contribution_margin\s*\//.test(ui), 'P11: porcentajes financieros no pueden recalcularse en frontend');
 assert(ui.includes('OperationalNavigation?.openEntity'), 'P11: tracking debe delegar navegación a P6');
 assert(ui.includes('NavigationShell'), 'P11: módulos deben abrirse mediante owner de navegación');
-assert(ui.includes('snapshot actual'), 'P11: UI debe etiquetar AR/AP como snapshot');
-assert(ui.includes('no se aplica'), 'P11: UI debe hacer explícito que no hay FX');
+assert(ui.includes('Saldos de cuentas: <b>actuales</b>'), 'P11: UI debe explicar que CxC/CxP usan saldos actuales');
+assert(ui.includes('Conversión de moneda: <b>no aplicada</b>') && ui.includes('Sin conversión de moneda'), 'P11: UI debe explicar que no hay conversión de moneda');
+assert(!ui.includes('public.executive_dashboard_rollup'), 'P11: UI no debe exponer nombres SQL internos');
+assert(!ui.includes('Calculado por backend') && !ui.includes('cash posted'), 'P11: UI no debe exponer lenguaje de implementación financiera');
+assert(!/error\?\.message/.test(ui), 'P11: dashboard no debe renderizar mensajes técnicos crudos');
 assert(ui.includes('renderLoading()'), 'P11: dashboard debe tener estado loading explícito');
-assert(ui.includes('renderError(error)'), 'P11: dashboard debe tener error recuperable explícito');
+assert(ui.includes('renderError()'), 'P11: dashboard debe tener error recuperable explícito');
 assert(ui.includes('dashboardRetry'), 'P11: dashboard debe ofrecer reintento sin bloquear el ERP');
 assert(css.includes('.executive-finance-grid'), 'P11: stylesheet del dashboard incompleto');
 assert(erp.includes("loadStylesheet('/admin/dashboard-executive.css?v=20260830-p11'"), 'P11: bootstrap no carga stylesheet dashboard');

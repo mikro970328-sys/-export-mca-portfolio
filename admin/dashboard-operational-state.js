@@ -38,7 +38,7 @@
     const selected=state.filters;
     const capabilities=options.capabilities||{};
     return `<section class="executive-filter-card">
-      <div class="executive-filter-head"><div><h2>Dashboard ejecutivo</h2><p>Actividad por período. AR y AP se muestran como saldos actuales.</p></div><div class="executive-filter-actions"><button type="button" class="alt" id="dashboardResetFilters">Limpiar</button><button type="button" id="dashboardApplyFilters">Aplicar filtros</button></div></div>
+      <div class="executive-filter-head"><div><h2>Dashboard ejecutivo</h2><p>Actividad por período. Las cuentas por cobrar y por pagar se muestran con su saldo actual.</p></div><div class="executive-filter-actions"><button type="button" class="alt" id="dashboardResetFilters">Limpiar</button><button type="button" id="dashboardApplyFilters">Aplicar filtros</button></div></div>
       <div class="executive-filters">
         <label>Desde<input id="dashboardStartDate" type="date" value="${esc(selected.start_date)}"></label>
         <label>Hasta<input id="dashboardEndDate" type="date" value="${esc(selected.end_date)}"></label>
@@ -47,7 +47,7 @@
         ${capabilities.suppliers?`<label>Proveedor<select id="dashboardSupplier"><option value="">Todos</option>${optionRows(options.suppliers,row=>row.legal_name?`${row.name} · ${row.legal_name}`:row.name)}</select></label>`:''}
         ${capabilities.products?`<label>Producto<select id="dashboardProduct"><option value="">Todos</option>${optionRows(options.products,row=>[row.sku,row.name,row.brand].filter(Boolean).join(' · '))}</select></label>`:''}
       </div>
-      <div class="executive-filter-basis"><span>Período: <b>${esc(currentPeriodLabel(data.executive))}</b></span><span>Base AR/AP: <b>snapshot actual</b></span><span>FX: <b>no se aplica</b></span></div>
+      <div class="executive-filter-basis"><span>Período: <b>${esc(currentPeriodLabel(data.executive))}</b></span><span>Saldos de cuentas: <b>actuales</b></span><span>Conversión de moneda: <b>no aplicada</b></span></div>
     </section>`;
   }
 
@@ -61,7 +61,7 @@
     const balances=executive.balances_by_currency||[];
     const byBalance=new Map(balances.map(row=>[String(row.currency),row]));
     const currencies=[...new Set([...activity.map(row=>String(row.currency)),...balances.map(row=>String(row.currency))])].filter(Boolean).sort();
-    if(!currencies.length)return '<section class="executive-section"><div class="executive-section-head"><div><h3>Finanzas por moneda</h3><p>No hay actividad financiera para los filtros seleccionados.</p></div></div><div class="executive-empty">Sin datos financieros para este período.</div></section>';
+    if(!currencies.length)return '<section class="executive-section"><div class="executive-section-head"><div><h3>Finanzas por moneda</h3></div></div><div class="executive-empty">No hay movimientos financieros para los filtros seleccionados.</div></section>';
 
     const panels=currencies.map(currency=>{
       const a=activity.find(row=>String(row.currency)===currency)||{};
@@ -69,19 +69,19 @@
       const marginReady=Number(a.margin_eligible_invoice_count||0)>0;
       const contributionReady=Number(a.contribution_eligible_order_count||0)>0;
       const marginDetail=marginReady?`${integer(a.margin_eligible_invoice_count)} factura(s) elegible(s) · ${percent(a.gross_margin_pct)}`:`${integer(a.margin_incomplete_invoice_count||0)} factura(s) sin rentabilidad completa`;
-      const contributionDetail=contributionReady?`${integer(a.contribution_eligible_order_count)} SO elegible(s) · ${percent(a.contribution_margin_pct)}`:`${integer(a.contribution_incomplete_order_count||0)} SO sin contribución comparable`;
+      const contributionDetail=contributionReady?`${integer(a.contribution_eligible_order_count)} venta(s) elegible(s) · ${percent(a.contribution_margin_pct)}`:`${integer(a.contribution_incomplete_order_count||0)} venta(s) sin contribución comparable`;
       return `<article class="executive-currency-panel">
-        <div class="executive-currency-head"><div><span>Moneda</span><h3>${esc(currency)}</h3></div><div class="executive-snapshot-chip">Sin conversión FX</div></div>
+        <div class="executive-currency-head"><div><span>Moneda</span><h3>${esc(currency)}</h3></div><div class="executive-snapshot-chip">Sin conversión de moneda</div></div>
         <div class="executive-finance-grid">
           ${metricCard('Ventas emitidas',money(a.issued_sales,currency),`${integer(a.issued_invoice_count)} factura(s)`)}
-          ${metricCard('Ventas confirmadas',money(a.booked_sales_order_value,currency),`${integer(a.so_confirmed_count)} SO confirmada(s)`)}
-          ${metricCard('Compras comprometidas',money(a.po_committed_value,currency),`${integer(a.po_committed_count)} PO comprometida(s)`)}
+          ${metricCard('Ventas confirmadas',money(a.booked_sales_order_value,currency),`${integer(a.so_confirmed_count)} venta(s) confirmada(s)`)}
+          ${metricCard('Compras comprometidas',money(a.po_committed_value,currency),`${integer(a.po_committed_count)} compra(s) comprometida(s)`)}
           ${metricCard('Cobrado',money(a.cash_collected,currency),`${integer(a.customer_payment_count)} cobro(s)`,'positive')}
           ${metricCard('Pagado',money(a.cash_paid,currency),`${integer(a.supplier_payment_count)} pago(s)`)}
-          ${metricCard('Flujo neto de caja',money(a.net_cash_flow,currency),'Calculado por backend con cash posted',Number(a.net_cash_flow||0)<0?'negative':'positive')}
-          ${metricCard('AR actual',money(b.ar_balance,currency),`${integer(b.open_ar_invoice_count)} factura(s) abierta(s) · ${integer(b.overdue_ar_count)} vencida(s)`)}
-          ${metricCard('AP actual',money(b.ap_balance,currency),`${integer(b.open_ap_bill_count)} cuenta(s) abierta(s) · ${integer(b.overdue_ap_count)} vencida(s)`)}
-          ${metricCard('COGS reconocido',marginReady?money(a.recognized_cogs,currency):'No disponible',marginDetail)}
+          ${metricCard('Flujo neto de caja',money(a.net_cash_flow,currency),'Cobros contabilizados menos pagos contabilizados',Number(a.net_cash_flow||0)<0?'negative':'positive')}
+          ${metricCard('Cuentas por cobrar',money(b.ar_balance,currency),`${integer(b.open_ar_invoice_count)} factura(s) abierta(s) · ${integer(b.overdue_ar_count)} vencida(s)`)}
+          ${metricCard('Cuentas por pagar',money(b.ap_balance,currency),`${integer(b.open_ap_bill_count)} cuenta(s) abierta(s) · ${integer(b.overdue_ap_count)} vencida(s)`)}
+          ${metricCard('Costo de ventas reconocido',marginReady?money(a.recognized_cogs,currency):'No disponible',marginDetail)}
           ${metricCard('Margen bruto',marginReady?money(a.gross_margin,currency):'No disponible',marginDetail,marginReady&&Number(a.gross_margin||0)<0?'negative':'')}
           ${metricCard('Contribución',contributionReady?money(a.contribution_margin,currency):'No disponible',contributionDetail,contributionReady&&Number(a.contribution_margin||0)<0?'negative':'')}
           ${metricCard('Costos directos elegibles',contributionReady?money(a.contribution_direct_cost,currency):'No disponible',contributionDetail)}
@@ -114,16 +114,16 @@
     const task=data.work_attention?.tasks;
     const alerts=data.work_attention?.alerts;
     const rows=[
-      ['AR vencido',financial.overdue_ar_count||0,'invoices'],
-      ['AP vencido',financial.overdue_ap_count||0,'payables'],
+      ['Cuentas por cobrar vencidas',financial.overdue_ar_count||0,'invoices'],
+      ['Cuentas por pagar vencidas',financial.overdue_ap_count||0,'payables'],
       ['Rentabilidad de factura incompleta',financial.invoice_profitability_incomplete_count||0,'costs'],
       ['Contribución de venta incompleta',financial.sales_order_contribution_incomplete_count||0,'costs'],
-      ['Pagos proveedor sin aplicar',financial.supplier_unapplied_payment_count||0,'payables'],
-      ['PO con exceso de recepción',financial.po_receipt_excess_count||0,'purchases'],
-      ['PO con valor incompleto',financial.po_order_value_incomplete_count||0,'purchases'],
-      ['SO con despacho parcial',financial.sales_order_partial_dispatch_count||0,'sales']
+      ['Pagos a proveedor sin aplicar',financial.supplier_unapplied_payment_count||0,'payables'],
+      ['Compras con exceso de recepción',financial.po_receipt_excess_count||0,'purchases'],
+      ['Compras con valor incompleto',financial.po_order_value_incomplete_count||0,'purchases'],
+      ['Ventas con despacho parcial',financial.sales_order_partial_dispatch_count||0,'sales']
     ];
-    if(task){ rows.push(['Tareas bloqueadas',task.blocked,'tasks'],['Tareas vencidas',task.overdue,'tasks'],['Routing incompatible',task.routing,'tasks']); }
+    if(task){ rows.push(['Tareas bloqueadas',task.blocked,'tasks'],['Tareas vencidas',task.overdue,'tasks'],['Tareas con flujo incompatible',task.routing,'tasks']); }
     if(alerts)rows.push(['Alertas críticas',alerts.critical,'alerts']);
     const active=rows.filter(row=>Number(row[1]||0)>0);
     return `<section class="executive-section"><div class="executive-section-head"><div><h3>Excepciones que requieren atención</h3><p>Solo desviaciones; el trabajo normal permanece en Tareas.</p></div></div>${active.length?`<div class="executive-exception-list">${active.map(([label,value,target])=>`<button type="button" data-dashboard-open="${target}"><span>${esc(label)}</span><strong>${integer(value)}</strong></button>`).join('')}</div>`:'<div class="executive-empty">No hay excepciones activas en los indicadores disponibles.</div>'}</section>`;
@@ -149,7 +149,7 @@
       supplier_id:period.supplier_id||'',
       product_id:period.product_id||''
     };
-    section.innerHTML=`<div class="executive-dashboard">${filterBar(data)}${financeByCurrency(data)}${operationalSummary(data)}${exceptionsPanel(data)}${activityPanel(data)}<div class="executive-generated">Actualizado ${esc(dateLabel(data.generated_at))} · Fuente financiera: ${esc(executive.owner||'public.executive_dashboard_rollup')}</div></div>`;
+    section.innerHTML=`<div class="executive-dashboard">${filterBar(data)}${financeByCurrency(data)}${operationalSummary(data)}${exceptionsPanel(data)}${activityPanel(data)}<div class="executive-generated">Actualizado ${esc(dateLabel(data.generated_at))} · Datos financieros consolidados por la plataforma.</div></div>`;
     restoreSelect('dashboardClient',state.filters.client_id);
     restoreSelect('dashboardSupplier',state.filters.supplier_id);
     restoreSelect('dashboardProduct',state.filters.product_id);
@@ -175,11 +175,10 @@
     section.innerHTML='<section class="executive-section"><div class="executive-section-head"><div><h3>Cargando dashboard</h3><p>La plataforma ya está disponible. Estamos actualizando los indicadores ejecutivos.</p></div></div><div class="executive-empty">Cargando indicadores…</div></section>';
   }
 
-  function renderError(error) {
+  function renderError() {
     const section=$('dashboardSection');
     if(!section)return;
-    const message=esc(error?.message||'No se pudo cargar el dashboard.');
-    section.innerHTML=`<section class="executive-section"><div class="executive-section-head"><div><h3>Dashboard temporalmente no disponible</h3><p>${message}</p></div><button type="button" class="alt" id="dashboardRetry">Reintentar</button></div><div class="executive-empty">El resto del ERP sigue disponible desde el menú.</div></section>`;
+    section.innerHTML='<section class="executive-section"><div class="executive-section-head"><div><h3>Dashboard temporalmente no disponible</h3><p>No pudimos actualizar los indicadores en este momento.</p></div><button type="button" class="alt" id="dashboardRetry">Reintentar</button></div><div class="executive-empty">El resto del ERP sigue disponible desde el menú.</div></section>';
     $('dashboardRetry')?.addEventListener('click',()=>reloadDashboard(state.filters));
   }
 
@@ -197,7 +196,7 @@
       return true;
     } catch(error) {
       console.error('[executive dashboard]',error);
-      renderError(error);
+      renderError();
       return false;
     } finally {
       state.loading=false;
