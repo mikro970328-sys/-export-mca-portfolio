@@ -1,0 +1,31 @@
+name: UX6 Retired Expedientes UI
+
+on:
+  pull_request:
+    paths:
+      - 'admin/expedientes-module.js'
+      - 'admin/invoice-expediente.js'
+      - 'admin/commercial-documents-shell.js'
+      - 'admin/commercial-documents-loads.js'
+      - 'admin/commercial-documents-invoices.js'
+      - 'admin/containers-module.js'
+      - 'admin/sales-workspace.js'
+      - 'scripts/check-frontend-ownership.mjs'
+      - 'scripts/check-ux6-retired-expedientes-ui.mjs'
+      - '.github/workflows/ux6-retired-expedientes-ui.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-retired-expedientes-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node scripts/check-ux6-retired-expedientes-ui.mjs
+      - run: node scripts/check-frontend-ownership.mjs
+      - run: node scripts/check-cuba-documentation.mjs
+      - run: node scripts/check-ux5-shipment-actions.mjs
+      - name: Validate gate syntax
+        run: node --check scripts/check-ux6-retired-expedientes-ui.mjs
