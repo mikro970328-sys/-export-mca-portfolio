@@ -22,7 +22,7 @@
 
   function edit(salesOrderId) {
     const order = getOrder(salesOrderId);
-    if (!order || order.status !== 'draft') return false;
+    if (order?.capabilities?.actions?.edit?.allowed !== true) return false;
     closeWorkspace();
     openOrder(order);
     return true;
@@ -31,6 +31,9 @@
   async function transition(salesOrderId, action) {
     const order = getOrder(salesOrderId);
     if (!order) throw new Error('Venta no encontrada.');
+    if (order?.capabilities?.actions?.[action]?.allowed !== true) {
+      throw new Error('La acción ya no está disponible para esta venta.');
+    }
     await api('/api/sales', {
       method:'POST',
       body:JSON.stringify({ action, sales_order_id:order.id })
@@ -41,7 +44,7 @@
 
   function createLoad(salesOrderId) {
     const order = getOrder(salesOrderId);
-    if (!order || !hasUnallocated(order)) return false;
+    if (order?.capabilities?.actions?.allocate_load?.allowed !== true) return false;
     closeWorkspace();
     openLoad(order);
     return true;
@@ -67,7 +70,6 @@
 
   window.SalesOrderController = Object.freeze({
     getOrder,
-    hasUnallocated,
     refresh,
     edit,
     transition,

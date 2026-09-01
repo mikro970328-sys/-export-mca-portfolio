@@ -1,4 +1,6 @@
-import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
+import { authorizeAdmin, fail, loadAdminAccessContext, ok, supabase } from './_lib.js';
+import { loadSalesActionCapabilities } from './_sales-actions.js';
+import { loadInvoiceFinanceCapabilityMaps } from './_invoice-actions.js';
 
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const text=(value,max=2000)=>String(value??'').trim().slice(0,max);
@@ -14,10 +16,10 @@ async function rows(path,query){const result=await supabase(path,{query});return
 function normalizeSummary(row){if(!row)return null;if(!row.billing_currency_comparable)return row;return {...row,issued_invoice_total:row.issued_invoice_total??0,collected_amount:row.collected_amount??0,balance_due:row.balance_due??0};}
 function financialSummary(summary,financeReadable){if(!summary||financeReadable)return summary;const restricted={...summary};for(const field of FINANCIAL_SUMMARY_FIELDS)delete restricted[field];return restricted;}
 function mergeItems(items,fulfillmentProgress,invoiceProgress){const fulfillmentById=new Map(fulfillmentProgress.map(row=>[String(row.sales_order_item_id),row])),invoiceById=new Map(invoiceProgress.map(row=>[String(row.sales_order_item_id),row]));return items.map(item=>({...item,fulfillment:fulfillmentById.get(String(item.id))||null,invoicing:invoiceById.get(String(item.id))||null}));}
-function mergeInvoices(invoices,financialProgress,invoiceItems){const financialById=new Map(financialProgress.map(row=>[String(row.invoice_id),row])),itemsByInvoice=new Map();for(const item of invoiceItems){const key=String(item.invoice_id);if(!itemsByInvoice.has(key))itemsByInvoice.set(key,[]);itemsByInvoice.get(key).push(item);}return invoices.map(invoice=>({...invoice,financial:financialById.get(String(invoice.id))||null,items:itemsByInvoice.get(String(invoice.id))||[]}));}
-async function hasPermission(admin,permissionKey){if(admin.role==='master_admin')return true;const permissionRows=await rows('admin_effective_permissions',`?select=permission_key&admin_user_id=eq.${encodeURIComponent(admin.admin_id)}&permission_key=eq.${encodeURIComponent(permissionKey)}&limit=1`);return Boolean(permissionRows.length);}
+function mergeInvoices(invoices,financialProgress,invoiceItems,capabilityMap=new Map()){const financialById=new Map(financialProgress.map(row=>[String(row.invoice_id),row])),itemsByInvoice=new Map();for(const item of invoiceItems){const key=String(item.invoice_id);if(!itemsByInvoice.has(key))itemsByInvoice.set(key,[]);itemsByInvoice.get(key).push(item);}return invoices.map(invoice=>({...invoice,financial:financialById.get(String(invoice.id))||null,items:itemsByInvoice.get(String(invoice.id))||[],capabilities:capabilityMap.get(invoice.id)||{actions:{}}}));}
+async function workspaceAccess(admin){if(admin.role==='master_admin')return{documentsReadable:true,financeReadable:true,financeWritable:true,salesWritable:true};const context=await loadAdminAccessContext(admin.admin_id),permissions=new Set(context.permissions||[]);return{documentsReadable:permissions.has('documents.read'),financeReadable:permissions.has('finance.read'),financeWritable:permissions.has('finance.write'),salesWritable:permissions.has('sales.write')};}
 
-async function workspace(salesOrderId,{documentsReadable=false,financeReadable=false,financeWritable=false}={}){
+async function workspace(salesOrderId,{documentsReadable=false,financeReadable=false,financeWritable=false,salesCapabilities={actions:{}},invoiceCapabilityMap=new Map()}={}){
   const summaryRows=await rows('sales_order_workspace_summary',`?select=*&sales_order_id=eq.${salesOrderId}&limit=1`);
   const authoritativeSummary=normalizeSummary(summaryRows[0]||null);if(!authoritativeSummary)return null;
   const [itemRows,itemProgress,itemInvoiceProgress,logistics,invoices,invoiceFinancial]=await Promise.all([
@@ -44,7 +46,8 @@ async function workspace(salesOrderId,{documentsReadable=false,financeReadable=f
     financial_access:{read:financeReadable,write:financeWritable},
     items:mergeItems(itemRows,itemProgress,itemInvoiceProgress),
     logistics,
-    billing:{invoices:mergeInvoices(invoices,invoiceFinancial,invoiceItems),invoice_payments:invoicePayments,contextual_operation_payments:contextualOperationPayments},
+    capabilities:salesCapabilities,
+    billing:{invoices:mergeInvoices(invoices,invoiceFinancial,invoiceItems,invoiceCapabilityMap),invoice_payments:invoicePayments,contextual_operation_payments:contextualOperationPayments},
     costs:{allocations:financeReadable?directCosts:[]},
     document_access:{read:documentsReadable},
     document_readiness:documentReadiness,
@@ -57,14 +60,15 @@ export default async function handler(req,res){
   const admin=await authorizeAdmin(req,res,'sales.read');if(!admin)return;if(req.method!=='GET')return fail(res,405,'Método no permitido');
   try{
     const salesOrderId=requiredUuid(req.query?.sales_order_id||req.query?.id);
-    const [documentsReadable,financeReadable,financeWritePermission]=await Promise.all([
-      hasPermission(admin,'documents.read'),
-      hasPermission(admin,'finance.read'),
-      hasPermission(admin,'finance.write')
+    const access=await workspaceAccess(admin);
+    const financeWritable=access.financeReadable&&access.financeWritable;
+    const [salesCapabilities,invoiceCapabilityBundle]=await Promise.all([
+      loadSalesActionCapabilities(admin,salesOrderId,access.salesWritable),
+      loadInvoiceFinanceCapabilityMaps(admin,financeWritable)
     ]);
-    const data=await workspace(salesOrderId,{documentsReadable,financeReadable,financeWritable:financeReadable&&financeWritePermission});
+    const data=await workspace(salesOrderId,{...access,financeWritable,salesCapabilities,invoiceCapabilityMap:invoiceCapabilityBundle.invoice_capabilities});
     if(!data)return fail(res,404,'Sales Order no encontrada');
     return ok(res,{workspace:data});
   }
-  catch(error){const raw=String(error.message||'No se pudo cargar el workspace de la venta');console.error('[sales-workspace]',error);if(raw.includes('SALES_WORKSPACE_ID_INVALID'))return fail(res,400,'Sales Order inválida');return fail(res,400,raw);}
+  catch(error){const raw=String(error.message||'No se pudo cargar el workspace de la venta');console.error('[sales-workspace]',error);if(raw.includes('SALES_WORKSPACE_ID_INVALID'))return fail(res,400,'Sales Order inválida');return fail(res,500,'No se pudo cargar el workspace de la venta');}
 }
