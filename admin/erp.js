@@ -186,7 +186,10 @@
     const tasks = [];
 
     if (accessCan('clients.read')) {
-      tasks.push(loadScript('/admin/clients-module.js?v=20260830-ux2d', 'data-clients-module'));
+      tasks.push(
+        loadStylesheet('/admin/clients-module.css?v=20260901-ux6owner1', 'data-clients-module-style')
+          .then(() => loadScript('/admin/clients-module.js?v=20260901-ux6owner1', 'data-clients-module'))
+      );
     }
     if (accessCan('reports.read')) {
       tasks.push(loadScript('/admin/module-export-controls.js', 'data-module-export-controls'));

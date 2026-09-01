@@ -1,0 +1,35 @@
+name: UX6 Clients Owner
+
+on:
+  pull_request:
+    paths:
+      - 'admin/clients-module.js'
+      - 'admin/clients-module.css'
+      - 'admin/erp.js'
+      - 'api/clients.js'
+      - 'scripts/check-ux6-clients-owner.mjs'
+      - '.github/workflows/ux6-clients-owner.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-clients-owner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate Clients presentation ownership
+        run: node scripts/check-ux6-clients-owner.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/clients-module.js
+          node --check api/clients.js
+          node --check admin/erp.js
+          node --check scripts/check-ux6-clients-owner.mjs
+      - name: Preserve access-control boundary
+        run: node scripts/check-access-control.mjs
+      - name: Preserve admin shell resilience
+        run: node scripts/check-admin-shell-resilience.mjs
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
