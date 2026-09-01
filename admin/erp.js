@@ -234,7 +234,8 @@
         await loadScript('/admin/dashboard-operational-state.js?v=20260830-hotfix2', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
-        await loadScript('/admin/containers-module.js?v=20260830-ux2d', 'data-containers-module');
+        await loadStylesheet('/admin/containers-module.css?v=20260901-ux6owner1', 'data-containers-module-style');
+        await loadScript('/admin/containers-module.js?v=20260901-ux6owner1', 'data-containers-module');
       }
       if (accessCan('logistics.write')) {
         await loadScript('/admin/registration-form-shell.js?v=20260817-uxc1', 'data-registration-form-shell');
