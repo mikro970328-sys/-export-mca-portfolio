@@ -7,6 +7,24 @@
   const byId = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   const MANAGEMENT_KEYS = ['administration.users.manage','administration.roles.manage','administration.teams.manage'];
+  const SAFE_ACCOUNT_ERRORS = new Set([
+    'La cuenta no está disponible',
+    'Escribe tu contraseña actual',
+    'Escribe la nueva contraseña',
+    'La nueva contraseña debe ser diferente a la actual',
+    'La contraseña actual no es correcta',
+    'La contraseña debe tener al menos 10 caracteres',
+    'La contraseña cambió en otra sesión. Inicia sesión nuevamente.',
+    'No tienes permiso para realizar esta acción',
+    'Administrador inválido',
+    'No hay cambios para guardar',
+    'No se pudo renovar la sesión segura. Inicia sesión nuevamente.'
+  ]);
+
+  function safeAccountMessage(error, fallback) {
+    const message = String(error?.message || '').trim();
+    return SAFE_ACCOUNT_ERRORS.has(message) ? message : fallback;
+  }
 
   function getCurrentUser() {
     try {
@@ -43,40 +61,8 @@
       }
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || data.details || 'Error');
+    if (!response.ok) throw new Error(data.error || 'No se pudo completar la operación');
     return data;
-  }
-
-  function installStyles() {
-    if (byId('accountAdministrationStyles')) return;
-    const style = document.createElement('style');
-    style.id = 'accountAdministrationStyles';
-    style.textContent = `
-      .account-layout{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:18px}
-      .account-card h2{margin-top:0;color:var(--navy)}
-      .account-card h3{margin:0 0 4px;color:var(--navy)}
-      .account-intro{color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:18px}
-      .account-profile{display:grid;gap:12px}
-      .account-field{padding:12px 0;border-bottom:1px solid var(--line)}
-      .account-field:last-child{border-bottom:0}
-      .account-field-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:5px}
-      .account-field-value{font-size:15px;font-weight:800;color:var(--text);word-break:break-word}
-      .account-role-pill{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;background:#edf3ff;color:var(--navy);font-size:12px;font-weight:900}
-      .account-security-form{max-width:520px}
-      .account-security-form .account-help{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
-      .account-security-actions{display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap}
-      .account-security-actions button{min-width:180px}
-      .account-security-status{font-size:12px;margin-top:10px;min-height:18px}
-      .account-session-admin{grid-column:1/-1}
-      .account-session-grid{display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,1.4fr) auto;gap:10px;align-items:end}
-      .account-session-grid button{min-height:42px}
-      .sidebar-foot .sidebar-user{margin-bottom:10px}
-      .sidebar-foot #logout{width:100%;display:flex;align-items:center;justify-content:center;gap:9px}
-      body.sidebar-collapsed .sidebar-foot #logout .nav-label{display:none}
-      body.sidebar-collapsed .sidebar-foot #logout{width:42px;min-width:42px;height:42px;padding:0;margin-inline:auto}
-      @media(max-width:760px){.account-layout{grid-template-columns:1fr}.account-security-actions button{width:100%}.account-session-admin{grid-column:auto}.account-session-grid{grid-template-columns:1fr}}
-    `;
-    document.head.appendChild(style);
   }
 
   function ensureAccountSection() {
@@ -163,7 +149,10 @@
       event.preventDefault();
       if (typeof window.showSection === 'function') window.showSection('accountSection');
       updatePageTitle('accountSection');
-      loadAccount().catch(error => setStatus(error.message, false));
+      loadAccount().catch(error => {
+        console.error('ACCOUNT_LOAD_FAILED', error);
+        setStatus(safeAccountMessage(error, 'No se pudo cargar la cuenta. Intenta nuevamente.'), false);
+      });
     };
   }
 
@@ -253,7 +242,8 @@
       setStatus('Contraseña actualizada. Las sesiones anteriores quedaron cerradas.', true);
       await loadAccount();
     } catch (error) {
-      setStatus(error.message || 'No se pudo actualizar la contraseña.', false);
+      console.error('ACCOUNT_PASSWORD_UPDATE_FAILED', error);
+      setStatus(safeAccountMessage(error, 'No se pudo actualizar la contraseña. Intenta nuevamente.'), false);
     } finally {
       if (button) button.disabled = false;
     }
@@ -278,7 +268,8 @@
       setSessionStatus('Sesiones anteriores revocadas correctamente.', true);
       await loadSessionTargets();
     } catch (error) {
-      setSessionStatus(error.message || 'No se pudieron revocar las sesiones.', false);
+      console.error('ACCOUNT_SESSION_REVOCATION_FAILED', error);
+      setSessionStatus(safeAccountMessage(error, 'No se pudieron revocar las sesiones. Intenta nuevamente.'), false);
     } finally {
       if (button) button.disabled = false;
     }
@@ -304,7 +295,6 @@
   }
 
   function mount() {
-    installStyles();
     ensureAccountSection();
     ensureAdministrationNavigation();
     syncAccessUiState();
@@ -314,7 +304,10 @@
     window.addEventListener('export-mca:section-changed', event => {
       const id = event.detail?.id;
       updatePageTitle(id);
-      if (id === 'accountSection') loadAccount().catch(error => setStatus(error.message, false));
+      if (id === 'accountSection') loadAccount().catch(error => {
+        console.error('ACCOUNT_SECTION_REFRESH_FAILED', error);
+        setStatus(safeAccountMessage(error, 'No se pudo actualizar la información de la cuenta.'), false);
+      });
     });
     window.addEventListener('export-mca:navigation-shell-changed', syncAccessUiState);
     window.addEventListener('export-mca:admin-ready', syncAccessUiState);
