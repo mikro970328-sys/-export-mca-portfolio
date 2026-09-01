@@ -1,0 +1,28 @@
+name: UX6 Dashboard Presentation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/dashboard-operational-state.js'
+      - 'admin/dashboard-alert-cleanup.js'
+      - 'admin/erp.js'
+      - 'scripts/check-ux6-dashboard-presentation.mjs'
+      - '.github/workflows/ux6-dashboard-presentation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-dashboard-presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate dashboard operational presentation
+        run: node scripts/check-ux6-dashboard-presentation.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/dashboard-operational-state.js
+          node --check scripts/check-ux6-dashboard-presentation.mjs
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
