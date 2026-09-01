@@ -1,4 +1,5 @@
 import { authorizeAdmin, fail, ok, readJson, supabase } from './_lib.js';
+import { loadWarehouseReceiptActionCapabilityMap } from './_warehouse-actions.js';
 
 const text = value => String(value ?? '').trim();
 const numberOrNull = value => value === '' || value === null || value === undefined ? null : Number(value);
@@ -13,6 +14,20 @@ const normalizeUnit = (value, fallback = 'unidades') => {
   if (!candidate || isNumericText(candidate)) return text(fallback) && !isNumericText(fallback) ? text(fallback) : 'unidades';
   return candidate;
 };
+const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
+
+function translatedError(raw) {
+  const messages = [
+    ['PERMISSION_REQUIRED','No tienes permiso para ejecutar esta acción de almacén.'],
+    ['WR_NOT_FOUND','La recepción no existe.'],
+    ['WR_NOT_RECEIVED','La recepción ya no está disponible para anular.'],
+    ['WR_HAS_INVENTORY_HISTORY','No se puede anular porque la recepción ya tiene movimientos de inventario.'],
+    ['WR_ASSIGNED_TO_LOAD','No se puede anular porque mercancía de esta recepción está asignada a un Cargue activo.'],
+    ['WR_ACTION_INVALID','Acción de recepción inválida.'],
+    ['WR_ACTION_NOT_ALLOWED','La acción ya no está disponible para esta recepción.']
+  ];
+  return messages.find(([key]) => raw.includes(key))?.[1] || raw;
+}
 
 async function audit(admin, action, entityType, entityId, details = {}) {
   try {
@@ -23,13 +38,14 @@ async function audit(admin, action, entityType, entityId, details = {}) {
   } catch {}
 }
 
-async function loadAll() {
-  const [warehouses, rawProducts, suppliers, receipts, rawItems] = await Promise.all([
+async function loadAll(admin) {
+  const [warehouses, rawProducts, suppliers, receipts, rawItems, receiptAccess] = await Promise.all([
     supabase('warehouses', { query:'?select=*&order=active.desc,name.asc' }),
     supabase('products', { query:'?select=*&order=active.desc,name.asc' }),
     supabase('suppliers', { query:'?select=id,name,legal_name,email,phone,address,country,tax_id,notes,active&order=active.desc,name.asc' }),
     supabase('warehouse_receipts', { query:'?select=*,warehouse:warehouses(id,code,name,country,city),supplier:suppliers(id,name)&order=received_at.desc,created_at.desc' }),
-    supabase('warehouse_receipt_items', { query:'?select=*,product:products(id,sku,name,brand,category,package_format,unit,default_units_per_pallet)&order=created_at.asc' })
+    supabase('warehouse_receipt_items', { query:'?select=*,product:products(id,sku,name,brand,category,package_format,unit,default_units_per_pallet)&order=created_at.asc' }),
+    loadWarehouseReceiptActionCapabilityMap(admin)
   ]);
 
   const products = (rawProducts || []).map(product => ({
@@ -49,7 +65,12 @@ async function loadAll() {
     warehouses: warehouses || [],
     products,
     suppliers: suppliers || [],
-    receipts: (receipts || []).map(receipt => ({ ...receipt, items:byReceipt.get(receipt.id) || [] }))
+    receipts: (receipts || []).map(receipt => ({
+      ...receipt,
+      items:byReceipt.get(receipt.id) || [],
+      capabilities:receiptAccess.map.get(String(receipt.id)) || { actions:{}, write_access:receiptAccess.write_access }
+    })),
+    write_access:receiptAccess.write_access
   };
 }
 
@@ -58,7 +79,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const admin = await authorizeAdmin(req, res, 'warehouse.read');
       if (!admin) return;
-      return ok(res, await loadAll());
+      return ok(res, await loadAll(admin));
     }
 
     if (req.method === 'POST') {
@@ -215,10 +236,14 @@ export default async function handler(req, res) {
         return ok(res, { product:rows?.[0] });
       }
       if (action === 'cancel_receipt') {
-        const rows = await supabase('warehouse_receipts', { method:'PATCH', query:`?id=eq.${encodeURIComponent(id)}&status=eq.received&select=*`, body:{ status:'cancelled', updated_at:new Date().toISOString() } });
-        if (!rows?.length) throw new Error('La recepción no existe o ya fue cancelada');
-        await audit(admin, 'warehouse_receipt_cancelled', 'warehouse_receipt', id, { receipt_number:rows[0].receipt_number });
-        return ok(res, { receipt:rows[0] });
+        const result = await supabase('rpc/cancel_warehouse_receipt_canonical', { method:'POST', body:{
+          p_receipt_id:id,
+          p_actor:admin.admin_id || null
+        } });
+        const receipt = rpcRow(result);
+        if (!receipt?.id) throw new Error('WR_NOT_FOUND');
+        await audit(admin, 'warehouse_receipt_cancelled', 'warehouse_receipt', id, { receipt_number:receipt.receipt_number });
+        return ok(res, { receipt });
       }
       return fail(res, 400, 'Acción no reconocida');
     }
@@ -226,6 +251,7 @@ export default async function handler(req, res) {
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
     console.error('WAREHOUSE_API_ERROR', error);
-    return fail(res, 400, error.message || 'No se pudo procesar la operación de almacén');
+    const raw = String(error.message || 'No se pudo procesar la operación de almacén');
+    return fail(res, 400, translatedError(raw));
   }
 }
