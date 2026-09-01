@@ -1,12 +1,13 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { loadCostChargeCapabilityMap } from './_cost-actions.js';
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
 const ALLOCATION_TARGETS = ['purchase_order_id','warehouse_receipt_id','load_id','shipment_id','operation_id','sales_order_id','sales_order_item_id'];
 const BASES = new Set(['manual','quantity','pallets','value','weight']);
 
-function translatedError(raw) {
-  const messages = [
+const COST_ERROR_TRANSLATIONS = [
+    ['JSON_INVALID','La solicitud no tiene un formato válido.'],
     ['COST_CHARGE_ACTOR_REQUIRED','No se pudo identificar al administrador que realiza la operación.'],
     ['COST_CHARGE_ACTOR_INVALID','El administrador no está activo.'],
     ['COST_CHARGE_NOT_FOUND','Cargo de costo no encontrado.'],
@@ -16,6 +17,7 @@ function translatedError(raw) {
     ['COST_CHARGE_AMOUNT_INVALID','El monto del cargo debe ser mayor que cero.'],
     ['COST_CHARGE_CURRENCY_INVALID','La moneda debe ser un código de tres letras.'],
     ['COST_CHARGE_ALLOCATIONS_INVALID','La distribución del cargo no es válida.'],
+    ['COST_CHARGE_TOO_MANY_ALLOCATIONS','La distribución tiene demasiadas líneas.'],
     ['COST_CHARGE_ALLOCATION_INVALID','Una línea de distribución no es válida.'],
     ['COST_CHARGE_ALLOCATION_AMOUNT_INVALID','Cada monto distribuido debe ser mayor que cero.'],
     ['COST_CHARGE_ALLOCATION_BASIS_INVALID','La base informativa de distribución no es válida.'],
@@ -27,9 +29,28 @@ function translatedError(raw) {
     ['COST_CHARGE_ALLOCATIONS_LOCKED','La distribución de un cargo contabilizado no puede modificarse.'],
     ['COST_CHARGE_HEADER_LOCKED','El cargo contabilizado ya no puede modificarse.'],
     ['COST_CHARGE_CANNOT_VOID','El cargo no puede anularse en su estado actual.'],
-    ['COST_CHARGE_STATUS_FINAL','El cargo anulado es final y conserva su historia.']
-  ];
-  return messages.find(([key]) => raw.includes(key))?.[1] || raw;
+    ['COST_CHARGE_STATUS_FINAL','El cargo anulado es final y conserva su historia.'],
+    ['COST_CHARGE_ACTION_INVALID','La acción solicitada no es válida para Costos.'],
+    ['COST_CHARGE_ACTION_NOT_ALLOWED','La acción ya no está disponible para este cargo.']
+];
+const SAFE_COST_INPUT_PATTERNS = [
+  /^La distribución (?:del cargo no es válida|tiene demasiadas líneas)$/i,
+  /^Indica un monto válido en la distribución \d+$/i,
+  /^Base inválida en la distribución \d+$/i,
+  /^Selecciona exactamente un objetivo en la distribución \d+$/i,
+  /^Selecciona una (?:categoría|etapa)$/i,
+  /^El monto debe ser mayor que cero$/i,
+  /^La moneda debe tener tres letras$/i,
+  /^Falta el cargo(?: a modificar)?$/i
+];
+
+function translatedError(raw) {
+  const translated = COST_ERROR_TRANSLATIONS.find(([key]) => raw.includes(key));
+  if (translated) return { code:translated[0], message:translated[1], status:400 };
+  if (SAFE_COST_INPUT_PATTERNS.some(pattern => pattern.test(raw))) {
+    return { code:'COST_INPUT_INVALID', message:raw, status:400 };
+  }
+  return { code:'COST_UNEXPECTED_ERROR', message:'No se pudo procesar Costos. Intenta nuevamente.', status:500 };
 }
 
 function cleanAllocations(value) {
@@ -48,14 +69,15 @@ function cleanAllocations(value) {
   });
 }
 
-async function bootstrap() {
+async function bootstrap(admin) {
   const [
-    charges, allocations, progress, suppliers,
+    capabilityBundle, charges, allocations, progress, suppliers,
     purchaseOrders, receipts, loads, shipments, operations,
     salesOrders, salesOrderItems, products,
     poCosts, wrCosts, loadCogs, postedAllocations,
     loadDirect, shipmentDirect, operationDirect, salesOrderDirect
   ] = await Promise.all([
+    loadCostChargeCapabilityMap(admin),
     supabase('cost_charges', { query:'?select=id,cost_number,category,stage,amount,currency,incurred_date,supplier_id,reference,status,notes,created_by,posted_by,voided_by,posted_at,voided_at,created_at,updated_at&order=created_at.desc&limit=2000' }),
     supabase('cost_charge_allocations', { query:'?select=id,cost_charge_id,amount,basis,purchase_order_id,warehouse_receipt_id,load_id,shipment_id,operation_id,sales_order_id,sales_order_item_id,notes,created_by,created_at&order=created_at.asc&limit=10000' }),
     supabase('cost_charge_progress', { query:'?select=*&order=incurred_date.desc&limit=2000' }),
@@ -87,11 +109,13 @@ async function bootstrap() {
   const chargesDecorated = (charges || []).map(row => ({
     ...row,
     allocations:allocationsByCharge.get(row.id) || [],
-    progress:progressByCharge.get(row.id) || null
+    progress:progressByCharge.get(row.id) || null,
+    capabilities:capabilityBundle.map.get(String(row.id)) || { actions:{}, write_access:capabilityBundle.write_access }
   }));
 
   return {
     charges:chargesDecorated,
+    write_access:capabilityBundle.write_access,
     targets:{
       suppliers:suppliers || [],
       purchase_orders:purchaseOrders || [],
@@ -117,10 +141,10 @@ async function bootstrap() {
 }
 
 export default async function handler(req, res) {
-  const admin = await authorizeAdmin(req, res, req.method === 'GET' ? 'finance.read' : 'finance.write');
-  if (!admin) return;
   try {
-    if (req.method === 'GET') return ok(res, await bootstrap());
+    const admin = await authorizeAdmin(req, res, req.method === 'GET' ? 'finance.read' : 'finance.write');
+    if (!admin) return;
+    if (req.method === 'GET') return ok(res, await bootstrap(admin));
     if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
 
     const body = await readJson(req);
@@ -139,7 +163,7 @@ export default async function handler(req, res) {
       if (!/^[A-Z]{3}$/.test(currency)) throw new Error('La moneda debe tener tres letras');
 
       const rpc = action === 'replace'
-        ? 'rpc/replace_cost_charge'
+        ? 'rpc/replace_cost_charge_canonical'
         : action === 'create_posted'
           ? 'rpc/create_posted_cost_charge'
           : 'rpc/create_cost_charge';
@@ -178,16 +202,17 @@ export default async function handler(req, res) {
     if (action === 'post' || action === 'void') {
       const id = text(body.cost_charge_id, 80);
       if (!id) throw new Error('Falta el cargo');
-      const rpc = action === 'post' ? 'rpc/post_cost_charge' : 'rpc/void_cost_charge';
+      const rpc = action === 'post' ? 'rpc/post_cost_charge_canonical' : 'rpc/void_cost_charge_canonical';
       const result = rpcRow(await supabase(rpc, { method:'POST', body:{ p_cost_charge_id:id, p_actor:actor } }));
       await writeAudit(admin, `cost_charge_${action}`, 'cost_charge', id, { cost_number:result?.cost_number || null });
       return ok(res, { charge:result });
     }
 
-    return fail(res, 400, 'Acción de Costos no válida');
+    return fail(res, 400, 'Acción de Costos no válida', { code:'COST_ACTION_INVALID' });
   } catch (error) {
     const raw = String(error.message || 'No se pudo procesar Costos');
+    const failure = translatedError(raw);
     console.error('[costs]', error);
-    return fail(res, 400, translatedError(raw));
+    return fail(res, failure.status, failure.message, { code:failure.code });
   }
 }
