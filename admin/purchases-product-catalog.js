@@ -22,7 +22,6 @@
     button.type = 'button';
     button.className = 'btn product-create-inline';
     button.textContent = '+ Nuevo producto';
-    button.style.marginTop = '7px';
     button.onclick = () => openQuickProduct(line);
     field.appendChild(button);
   }
@@ -90,7 +89,9 @@
       await refreshProductSelectors(created.product.id);
       closeQuickProduct();
     } catch (error) {
-      if (msg) msg.textContent = error?.message || 'No se pudo crear el producto';
+      console.error('PURCHASE_PRODUCT_CREATE_FAILED', { error });
+      const message = typeof safePurchaseMessage === 'function' ? safePurchaseMessage(error, 'No se pudo crear el producto. Intenta nuevamente.') : 'No se pudo crear el producto. Intenta nuevamente.';
+      if (msg) msg.textContent = message;
     } finally {
       if (button) button.disabled = false;
     }
