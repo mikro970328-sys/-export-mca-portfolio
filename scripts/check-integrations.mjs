@@ -103,12 +103,12 @@ else if(/sendWelcome\s*\(|sendWhatsApp\s*\(/.test(clientPost))failures.push('api
 
 const clientsUiFile='admin/clients-module.js';
 const clientsUi=read(clientsUiFile);
-for(const text of ["action==='welcome')welcome(id)",'Reenviar bienvenida','Enviar bienvenida'])requireText(clientsUiFile,text,'debe conservar acción manual Enviar/Reenviar bienvenida');
+for(const text of ["action==='welcome')sendWelcome(id)",'async function sendWelcome(id)','Reenviar bienvenida','Enviar bienvenida'])requireText(clientsUiFile,text,'debe conservar acción manual Enviar/Reenviar bienvenida en ClientsModule');
 const saveStart=clientsUi.indexOf('async function save()');
-const menuStart=clientsUi.indexOf('function ensureMenu()',saveStart);
-const saveBlock=saveStart>=0&&menuStart>saveStart?clientsUi.slice(saveStart,menuStart):'';
+const nextOwnerFunction=clientsUi.indexOf('function clientDecision(',saveStart);
+const saveBlock=saveStart>=0&&nextOwnerFunction>saveStart?clientsUi.slice(saveStart,nextOwnerFunction):'';
 if(!saveBlock)failures.push('admin/clients-module.js: no se pudo aislar flujo Guardar cliente');
-else if(/\bwelcome\s*\(|resend_welcome/.test(saveBlock))failures.push('admin/clients-module.js: Guardar cliente no puede disparar bienvenida');
+else if(/\bsendWelcome\s*\(|resend_welcome/.test(saveBlock))failures.push('admin/clients-module.js: Guardar cliente no puede disparar bienvenida');
 
 const twilio='api/twilio-status.js';
 for(const text of ['validateTwilioRequest({','rpc/reconcile_twilio_delivery_status'])requireText(twilio,text);
