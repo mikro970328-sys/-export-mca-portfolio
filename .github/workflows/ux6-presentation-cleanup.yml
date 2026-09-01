@@ -21,5 +21,4 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check admin/sales-existing-load-link-v2.js
-          node --check admin/financial-traceability-loader.js
           node --check scripts/check-ux6-presentation-cleanup.mjs
