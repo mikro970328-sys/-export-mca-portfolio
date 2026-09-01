@@ -1,0 +1,34 @@
+name: UX5 Warehouse Receipt Actions
+
+on:
+  pull_request:
+    paths:
+      - 'api/_warehouse-actions.js'
+      - 'api/warehouse.js'
+      - 'admin/warehouse.html'
+      - 'admin/warehouse.js'
+      - 'supabase/migrations/20260901004000_ux5_warehouse_receipt_action_capabilities.sql'
+      - 'supabase/tests/ux5_warehouse_receipt_actions.sql'
+      - 'scripts/check-ux5-warehouse-receipt-actions.mjs'
+      - '.github/workflows/ux5-warehouse-receipt-actions.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-warehouse-receipt-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate canonical action ownership
+        run: node scripts/check-ux5-warehouse-receipt-actions.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/_warehouse-actions.js
+          node --check api/warehouse.js
+          node --check admin/warehouse.js
+          node --check scripts/check-ux5-warehouse-receipt-actions.mjs
+      - name: Validate API runtime imports
+        run: |
+          node -e "Promise.all([import('./api/_warehouse-actions.js'),import('./api/warehouse.js')]).then(()=>console.log('warehouse receipt ESM imports: OK'))"
