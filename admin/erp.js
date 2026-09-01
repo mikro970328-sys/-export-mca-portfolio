@@ -238,7 +238,8 @@
       }
       if (accessCan('logistics.write')) {
         await loadScript('/admin/registration-form-shell.js?v=20260817-uxc1', 'data-registration-form-shell');
-        await loadScript('/admin/shipment-editor.js?v=20260817-importers1', 'data-shipment-editor');
+        await loadStylesheet('/admin/shipment-editor.css?v=20260901-ux6owner1', 'data-shipment-editor-style');
+        await loadScript('/admin/shipment-editor.js?v=20260901-ux6owner1', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260817-uxc2', 'data-modal-dismissal');
       await themePromise;
