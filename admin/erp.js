@@ -192,7 +192,8 @@
       tasks.push(loadScript('/admin/module-export-controls.js', 'data-module-export-controls'));
     }
     if (accessCan('notifications.read')) {
-      let alertChain = loadScript('/admin/operational-alert-center.js?v=20260830-hotfix1', 'data-operational-alert-center');
+      let alertChain = loadStylesheet('/admin/operational-alert-center.css?v=20260901-ux6style1', 'data-operational-alert-center-style')
+        .then(() => loadScript('/admin/operational-alert-center.js?v=20260901-ux6style1', 'data-operational-alert-center'));
       if (accessCan('notifications.manage')) {
         alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260830-p9', 'data-alert-phase2-stability'));
       }
