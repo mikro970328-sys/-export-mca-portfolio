@@ -56,8 +56,8 @@ end;
 $$;
 
 -- Case 2: allocation to any non-cancelled Cargue blocks cancellation even with no movement history.
-insert into public.loads(id,load_serial,load_number,warehouse_id,status,notes)
-select '18550000-0000-4000-8000-000000000021'::uuid,18550001,'UX5-WR-LOAD-1855',warehouse_id,'draft','UX5 WR active-load fixture'
+insert into public.loads(id,load_number,warehouse_id,status,notes)
+select '18550000-0000-4000-8000-000000000021'::uuid,'UX5-WR-LOAD-1855',warehouse_id,'draft','UX5 WR active-load fixture'
 from public.warehouse_receipts where id='18550000-0000-4000-8000-000000000002'::uuid;
 
 insert into public.load_items(id,load_id,product_id,planned_quantity,planned_pallets,unit,notes)
