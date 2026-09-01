@@ -14,8 +14,12 @@ for(const field of [
   'direct_cost_charge_count','direct_cost_amount','contribution_margin','contribution_margin_pct','contribution_status'
 ]) requireText('backend financial redaction',api,`'${field}'`);
 for(const text of [
-  "hasPermission(admin,'finance.read')",
-  "hasPermission(admin,'finance.write')",
+  'loadAdminAccessContext',
+  "permissions.has('finance.read')",
+  "permissions.has('finance.write')",
+  'workspaceAccess(admin)',
+  'const financeWritable=access.financeReadable&&access.financeWritable',
+  'loadInvoiceFinanceCapabilityMaps(admin,financeWritable)',
   'financialSummary(authoritativeSummary,financeReadable)',
   'financial_access:{read:financeReadable,write:financeWritable}',
   '!financeReadable?Promise.resolve([])',
