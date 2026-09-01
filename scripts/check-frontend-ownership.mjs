@@ -31,7 +31,12 @@ const retiredOwners = [
   'admin/responsive-columns-control.js',
   'admin/client-extra-fields.js',
   'admin/client-actions-menu.js',
-  'admin/client-information.js'
+  'admin/client-information.js',
+  'admin/expedientes-module.js',
+  'admin/invoice-expediente.js',
+  'admin/commercial-documents-shell.js',
+  'admin/commercial-documents-loads.js',
+  'admin/commercial-documents-invoices.js'
 ];
 
 const errors = [];
