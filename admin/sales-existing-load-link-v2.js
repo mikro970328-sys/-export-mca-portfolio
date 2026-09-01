@@ -6,6 +6,7 @@
   const token = () => localStorage.getItem('export_mca_token') || '';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const num = value => Number(value || 0);
+  const statusLabel = value => ({draft:'Borrador',reserved:'Reservado',loading:'En carga',loaded:'Cargado',dispatched:'Despachado',cancelled:'Cancelado'})[String(value||'').toLowerCase()] || 'Sin estado';
   let selectedOrderId = '';
   let linking = false;
 
@@ -59,12 +60,13 @@
       const overlay=document.createElement('div');
       overlay.className='existing-load-decision';
       overlay.innerHTML=`<div class="existing-load-decision-box" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p>${esc(copy)}</p><div class="existing-load-decision-actions"><button type="button" class="btn" data-decision-cancel>Cancelar</button><button type="button" class="btn orange" data-decision-accept>${esc(accept)}</button></div></div>`;
-      const finish=value=>{overlay.remove();resolve(value)};
+      let done=false;
+      const finish=value=>{if(done)return;done=true;document.removeEventListener('keydown',onKey);overlay.remove();resolve(value)};
+      const onKey=event=>{if(event.key==='Escape')finish(false)};
       overlay.querySelector('[data-decision-cancel]').onclick=()=>finish(false);
       overlay.querySelector('[data-decision-accept]').onclick=()=>finish(true);
       overlay.addEventListener('click',event=>{if(event.target===overlay)finish(false)});
-      const onKey=event=>{if(event.key==='Escape'){document.removeEventListener('keydown',onKey);finish(false)}};
-      document.addEventListener('keydown',onKey,{once:true});
+      document.addEventListener('keydown',onKey);
       document.body.appendChild(overlay);
       overlay.querySelector('[data-decision-accept]')?.focus();
     });
@@ -92,7 +94,7 @@
     try{
       const data=await request(`/api/sales-loads?mode=link_candidates&sales_order_id=${encodeURIComponent(selectedOrderId)}`);
       const candidates=Array.isArray(data.candidates)?data.candidates:[];
-      list.innerHTML=candidates.length?candidates.map(row=>`<div class="existing-load-card"><div><b>${esc(row.load_number || 'Cargue')}</b><div class="meta">Estado: ${esc(row.load_status || '—')} · Contenedor: ${esc(row.container_number || 'Sin asignar')} · Almacén: ${esc(row.warehouse_name || '—')}</div><div class="items">${esc(row.item_summary || '')}</div></div><button type="button" class="btn orange" data-link-load="${esc(row.load_id)}" data-link-number="${esc(row.load_number || 'Cargue')}">Vincular</button></div>`).join(''):'<div class="empty">No hay Cargues que coincidan exactamente con esta venta.</div>';
+      list.innerHTML=candidates.length?candidates.map(row=>`<div class="existing-load-card"><div><b>${esc(row.load_number || 'Cargue')}</b><div class="meta">Estado: ${esc(statusLabel(row.load_status))} · Contenedor: ${esc(row.container_number || 'Sin asignar')} · Almacén: ${esc(row.warehouse_name || '—')}</div><div class="items">${esc(row.item_summary || '')}</div></div><button type="button" class="btn orange" data-link-load="${esc(row.load_id)}" data-link-number="${esc(row.load_number || 'Cargue')}">Vincular</button></div>`).join(''):'<div class="empty">No hay Cargues que coincidan exactamente con esta venta.</div>';
       list.querySelectorAll('[data-link-load]').forEach(button=>button.onclick=()=>linkCandidate(button.dataset.linkLoad,button.dataset.linkNumber));
     }catch(error){list.innerHTML='<div class="empty">No se pudieron consultar los Cargues.</div>';msg.textContent=error.message}
   }
