@@ -240,7 +240,8 @@
       await loadScript('/admin/modal-dismissal.js?v=20260817-uxc2', 'data-modal-dismissal');
       await themePromise;
       await iconSystemPromise;
-      await loadScript('/admin/account-administration.js?v=20260830-p3', 'data-account-administration');
+      await loadStylesheet('/admin/account-administration.css?v=20260901-ux6style1', 'data-account-administration-style');
+      await loadScript('/admin/account-administration.js?v=20260901-ux6style1', 'data-account-administration');
       await navigationStylesPromise;
       await loadScript('/admin/navigation-shell.js?v=20260830-p3', 'data-navigation-shell');
 
