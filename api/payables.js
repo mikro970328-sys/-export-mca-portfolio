@@ -1,10 +1,12 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { loadSupplierApCapabilityMaps, loadSupplierBillCapabilities } from './_supplier-ap-actions.js';
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
 
 function translatedError(raw) {
   const messages = [
+    ['PERMISSION_REQUIRED','No tienes permiso para ejecutar esta acción financiera.'],
     ['SUPPLIER_BILL_PO_NOT_FOUND','Purchase Order no encontrada.'],
     ['SUPPLIER_BILL_PO_NOT_BILLABLE','La Purchase Order debe estar emitida, confirmada o cerrada.'],
     ['SUPPLIER_BILL_HAS_NO_ITEMS','Agrega al menos una línea a la factura del proveedor.'],
@@ -20,8 +22,11 @@ function translatedError(raw) {
     ['SUPPLIER_BILL_HEADER_LOCKED','La factura contabilizada ya no puede modificarse.'],
     ['SUPPLIER_BILL_INVOICE_NUMBER_REQUIRED','Indica el número de factura del proveedor antes de contabilizar.'],
     ['SUPPLIER_BILL_HAS_ACTIVE_PAYMENTS','Revierte o desasigna primero los pagos aplicados antes de anular.'],
+    ['SUPPLIER_BILL_ALREADY_PAID','Esta factura ya está completamente pagada.'],
+    ['SUPPLIER_BILL_NOT_POSTED','Solo se puede pagar una factura contabilizada.'],
     ['SUPPLIER_BILL_CANNOT_VOID','La factura no puede anularse en su estado actual.'],
-    ['SUPPLIER_BILL_ACTION_INVALID','Acción de factura de proveedor inválida.']
+    ['SUPPLIER_BILL_ACTION_INVALID','Acción de factura de proveedor inválida.'],
+    ['SUPPLIER_BILL_ACTION_NOT_ALLOWED','La acción ya no está disponible para esta factura.']
   ];
   return messages.find(([key]) => raw.includes(key))?.[1] || raw;
 }
@@ -47,7 +52,7 @@ function cleanLines(lines) {
   });
 }
 
-async function loadBills() {
+async function loadBills(capabilityMap = new Map()) {
   const [bills, items, financial] = await Promise.all([
     supabase('supplier_bills', { query:'?select=id,bill_number,purchase_order_id,supplier_id,supplier_invoice_number,bill_date,due_date,currency,status,notes,posted_at,voided_at,created_at,updated_at,supplier:suppliers(id,name,legal_name),purchase_order:purchase_orders(id,po_number,status,supplier_reference)&order=created_at.desc&limit=1000' }),
     supabase('supplier_bill_items', { query:'?select=id,supplier_bill_id,purchase_order_item_id,product_id,unit,billed_quantity,po_unit_cost_snapshot,unit_cost,entered_line_total,currency,line_total,notes,product:products(id,sku,name,brand)&order=created_at.asc&limit=5000' }),
@@ -56,14 +61,15 @@ async function loadBills() {
   const itemsByBill = new Map();
   for (const item of items || []) {
     if (!itemsByBill.has(item.supplier_bill_id)) itemsByBill.set(item.supplier_bill_id, []);
-    itemsByBill.get(item.supplier_bill_id).push({
-      ...item,
-      line_total:item.entered_line_total ?? item.line_total,
-      pricing_mode:item.entered_line_total == null ? 'unit' : 'total'
-    });
+    itemsByBill.get(item.supplier_bill_id).push({ ...item, line_total:item.entered_line_total ?? item.line_total, pricing_mode:item.entered_line_total == null ? 'unit' : 'total' });
   }
   const financialByBill = new Map((financial || []).map(row => [row.supplier_bill_id,row]));
-  return (bills || []).map(bill => ({ ...bill, items:itemsByBill.get(bill.id) || [], financial:financialByBill.get(bill.id) || null }));
+  return (bills || []).map(bill => ({
+    ...bill,
+    items:itemsByBill.get(bill.id) || [],
+    financial:financialByBill.get(bill.id) || null,
+    capabilities:capabilityMap.get(String(bill.id)) || { actions:{} }
+  }));
 }
 
 async function loadPurchaseOrders() {
@@ -81,9 +87,10 @@ async function loadPurchaseOrders() {
   return (orders || []).map(order => ({ ...order, items:itemsByOrder.get(order.id) || [] }));
 }
 
-async function bootstrap() {
-  const [bills, purchase_orders] = await Promise.all([loadBills(), loadPurchaseOrders()]);
-  return { bills, purchase_orders };
+async function bootstrap(admin) {
+  const capabilities = await loadSupplierApCapabilityMaps(admin);
+  const [bills, purchase_orders] = await Promise.all([loadBills(capabilities.bill_capabilities), loadPurchaseOrders()]);
+  return { bills, purchase_orders, write_access:capabilities.write_access };
 }
 
 export default async function handler(req, res) {
@@ -91,12 +98,12 @@ export default async function handler(req, res) {
   if (!admin) return;
   try {
     if (req.method === 'GET') {
-      const data = await bootstrap();
+      const data = await bootstrap(admin);
       const id = text(req.query?.id,80);
       if (!id) return ok(res,data);
       const bill = data.bills.find(row => String(row.id) === id);
       if (!bill) return fail(res,404,'Factura de proveedor no encontrada');
-      return ok(res,{ bill, purchase_orders:data.purchase_orders });
+      return ok(res,{ bill, purchase_orders:data.purchase_orders, write_access:data.write_access });
     }
     if (req.method !== 'POST') return fail(res,405,'Método no permitido');
 
@@ -118,14 +125,15 @@ export default async function handler(req, res) {
       const bill = rpcRow(result);
       if (!bill?.id) throw new Error('No se pudo crear la factura del proveedor');
       await writeAudit(admin,'supplier_bill_created','supplier_bill',bill.id,{ bill_number:bill.bill_number, purchase_order_id:poId });
-      return ok(res,{ bill:(await loadBills()).find(row => row.id === bill.id) || bill });
+      const loaded=(await loadBills(new Map([[String(bill.id),await loadSupplierBillCapabilities(admin,bill.id)]]))).find(row => row.id === bill.id) || bill;
+      return ok(res,{ bill:loaded });
     }
 
     if (action === 'replace_plan') {
       const billId = text(body.supplier_bill_id,80);
       const poId = text(body.purchase_order_id,80);
       if (!billId || !poId) throw new Error('Falta la factura o la Purchase Order');
-      const result = await supabase('rpc/replace_supplier_bill_plan', { method:'POST', body:{
+      const result = await supabase('rpc/replace_supplier_bill_plan_canonical', { method:'POST', body:{
         p_supplier_bill_id:billId,
         p_purchase_order_id:poId,
         p_lines:cleanLines(body.lines),
@@ -136,16 +144,18 @@ export default async function handler(req, res) {
       }});
       const bill = rpcRow(result);
       await writeAudit(admin,'supplier_bill_updated','supplier_bill',billId,{ bill_number:bill?.bill_number || null });
-      return ok(res,{ bill:(await loadBills()).find(row => row.id === billId) || bill });
+      const loaded=(await loadBills(new Map([[String(billId),await loadSupplierBillCapabilities(admin,billId)]]))).find(row => row.id === billId) || bill;
+      return ok(res,{ bill:loaded });
     }
 
     if (action === 'post' || action === 'void') {
       const billId = text(body.supplier_bill_id,80);
       if (!billId) throw new Error('Falta la factura del proveedor');
-      const result = await supabase('rpc/transition_supplier_bill', { method:'POST', body:{ p_supplier_bill_id:billId, p_action:action, p_actor:admin.admin_id || null } });
+      const result = await supabase('rpc/transition_supplier_bill_canonical', { method:'POST', body:{ p_supplier_bill_id:billId, p_action:action, p_actor:admin.admin_id || null } });
       const bill = rpcRow(result);
       await writeAudit(admin,`supplier_bill_${action}`,'supplier_bill',billId,{ bill_number:bill?.bill_number || null });
-      return ok(res,{ bill:(await loadBills()).find(row => row.id === billId) || bill });
+      const loaded=(await loadBills(new Map([[String(billId),await loadSupplierBillCapabilities(admin,billId)]]))).find(row => row.id === billId) || bill;
+      return ok(res,{ bill:loaded });
     }
 
     return fail(res,400,'Acción de Cuentas por pagar no válida');
