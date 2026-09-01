@@ -1,0 +1,24 @@
+.account-layout{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:18px}
+.account-card h2{margin-top:0;color:var(--navy)}
+.account-card h3{margin:0 0 4px;color:var(--navy)}
+.account-intro{color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:18px}
+.account-profile{display:grid;gap:12px}
+.account-field{padding:12px 0;border-bottom:1px solid var(--line)}
+.account-field:last-child{border-bottom:0}
+.account-field-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:5px}
+.account-field-value{font-size:15px;font-weight:800;color:var(--text);word-break:break-word}
+.account-role-pill{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;background:#edf3ff;color:var(--navy);font-size:12px;font-weight:900}
+.account-security-form{max-width:520px}
+.account-security-form .account-help{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
+.account-security-actions{display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.account-security-actions button{min-width:180px}
+.account-security-status{font-size:12px;margin-top:10px;min-height:18px}
+.account-session-admin{grid-column:1/-1}
+.account-session-grid{display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,1.4fr) auto;gap:10px;align-items:end}
+.account-session-grid button{min-height:42px}
+.account-security-form input:focus-visible,.account-session-grid input:focus-visible,.account-session-grid select:focus-visible,.account-security-actions button:focus-visible,.account-session-grid button:focus-visible{outline:3px solid rgba(6,32,74,.2);outline-offset:2px}
+.sidebar-foot .sidebar-user{margin-bottom:10px}
+.sidebar-foot #logout{width:100%;display:flex;align-items:center;justify-content:center;gap:9px}
+body.sidebar-collapsed .sidebar-foot #logout .nav-label{display:none}
+body.sidebar-collapsed .sidebar-foot #logout{width:42px;min-width:42px;height:42px;padding:0;margin-inline:auto}
+@media(max-width:760px){.account-layout{grid-template-columns:1fr}.account-security-actions button{width:100%}.account-session-admin{grid-column:auto}.account-session-grid{grid-template-columns:1fr}}

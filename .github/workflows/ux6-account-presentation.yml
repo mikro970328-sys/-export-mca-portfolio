@@ -1,0 +1,33 @@
+name: UX6 Account Presentation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/account-administration.js'
+      - 'admin/account-administration.css'
+      - 'admin/erp.js'
+      - 'scripts/check-ux6-account-presentation.mjs'
+      - '.github/workflows/ux6-account-presentation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-account-presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate account presentation ownership
+        run: node scripts/check-ux6-account-presentation.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/account-administration.js
+          node --check admin/erp.js
+          node --check scripts/check-ux6-account-presentation.mjs
+      - name: Preserve access-control boundary
+        run: node scripts/check-access-control.mjs
+      - name: Preserve admin shell resilience
+        run: node scripts/check-admin-shell-resilience.mjs
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
