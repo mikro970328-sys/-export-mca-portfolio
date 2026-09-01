@@ -1,0 +1,32 @@
+name: UX6 Containers Presentation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/containers-module.js'
+      - 'admin/containers-module.css'
+      - 'admin/erp.js'
+      - 'scripts/check-ux6-containers-presentation.mjs'
+      - '.github/workflows/ux6-containers-presentation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-containers-presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node scripts/check-ux6-containers-presentation.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/containers-module.js
+          node --check admin/erp.js
+          node --check scripts/check-ux6-containers-presentation.mjs
+      - run: node scripts/check-ux5-shipment-actions.mjs
+      - run: node scripts/check-frontend-ownership.mjs
+      - run: node scripts/check-integrations.mjs
+      - run: node scripts/check-cuba-documentation.mjs
+      - run: node scripts/check-shipment-importer-independence.mjs
+      - run: node scripts/check-admin-shell-resilience.mjs
