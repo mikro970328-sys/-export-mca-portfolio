@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const read=path=>fs.readFileSync(path,'utf8');
 const migration=read('supabase/migrations/20260901001500_ux5_supplier_ap_action_capabilities.sql');
+const hardening=read('supabase/migrations/20260901002000_ux5_supplier_ap_view_privilege_hardening.sql');
 const helper=read('api/_supplier-ap-actions.js');
 const billsApi=read('api/payables.js');
 const paymentsApi=read('api/supplier-payments.js');
@@ -33,10 +34,15 @@ for(const token of [
   'revoke execute on function public.pay_supplier_bill',
   'revoke execute on function public.reverse_supplier_payment',
   'revoke execute on function public.replace_supplier_payment_applications',
-  'grant select on public.supplier_bill_action_capabilities to service_role',
-  'grant select on public.supplier_payment_action_capabilities to service_role',
   "set search_path to 'public','pg_temp'"
 ])requireText(migration,token,'DB supplier AP action owner');
+
+for(const token of [
+  'revoke all on public.supplier_bill_action_capabilities from service_role',
+  'revoke all on public.supplier_payment_action_capabilities from service_role',
+  'grant select on public.supplier_bill_action_capabilities to service_role',
+  'grant select on public.supplier_payment_action_capabilities to service_role'
+])requireText(hardening,token,'Supplier AP capability view hardening');
 
 for(const token of [
   "from './_invoice-actions.js'",
