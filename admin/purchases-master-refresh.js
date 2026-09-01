@@ -10,8 +10,10 @@
       await load();
       openOrder();
     } catch (error) {
+      console.error('PURCHASES_MASTER_REFRESH_FAILED', { error });
       const target = document.getElementById('orderList');
-      if (target) target.innerHTML = `<div class="empty">${typeof esc === 'function' ? esc(error?.message || 'No se pudieron actualizar los proveedores.') : 'No se pudieron actualizar los proveedores.'}</div>`;
+      const message = typeof safePurchaseMessage === 'function' ? safePurchaseMessage(error, 'No se pudieron actualizar los proveedores. Intenta nuevamente.') : 'No se pudieron actualizar los proveedores. Intenta nuevamente.';
+      if (target) target.innerHTML = `<div class="empty">${typeof esc === 'function' ? esc(message) : 'No se pudieron actualizar los proveedores. Intenta nuevamente.'}</div>`;
     } finally {
       button.disabled = false;
       button.textContent = label;

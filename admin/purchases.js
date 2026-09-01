@@ -3,12 +3,32 @@ if(!token)location.href='/admin/';
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let orders=[],suppliers=[],warehouses=[],products=[],view='open',editing=null,detailOrder=null,receiving=null,receivingMode='remaining',lineSeq=0;
+let purchaseDecisionResolve=null,purchaseDecisionReturnFocus=null;
+const SAFE_PURCHASE_ERROR_PATTERNS=[/^Sesión vencida$/i,/^No tienes permiso/i,/^No autorizado$/i,/^Agrega /i,/^Selecciona /i,/^Falta /i,/^Fecha y hora inválida$/i,/^Proveedor /i,/^El proveedor /i,/^Almacén /i,/^El almacén /i,/^Uno de los productos /i,/^La PO /i,/^Cada línea /i,/^Las (?:líneas|unidades) /i,/^Solo una PO /i,/^La mercancía /i,/^El ajuste /i,/^Una misma recepción /i,/^La recepción /i,/^Indica /i,/^El peso /i,/^No se puede /i,/^Acción de /i,/^Transición de /i,/^Esta (?:PO|Purchase Order) /i,/^No se pudo procesar Compras/i];
 
 async function api(path,opt={}){
   const r=await fetch(path,{...opt,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',...(opt.headers||{})}}),d=await r.json().catch(()=>({}));
   if(r.status===401){localStorage.removeItem('export_mca_token');location.href='/admin/';throw new Error('Sesión vencida');}
-  if(!r.ok)throw new Error(d.error||'Error');
+  if(!r.ok){const error=new Error(d.error||'No se pudo procesar la operación');error.code=d.details?.code||null;error.status=r.status;throw error;}
   return d;
+}
+function safePurchaseMessage(error,fallback='No se pudo completar la acción. Intenta nuevamente.'){
+  const message=String(error?.message||'').trim();
+  return SAFE_PURCHASE_ERROR_PATTERNS.some(pattern=>pattern.test(message))?message:fallback;
+}
+function closePurchaseDecision(value=false){
+  const modal=$('purchaseDecisionModal'),resolve=purchaseDecisionResolve,returnFocus=purchaseDecisionReturnFocus;
+  purchaseDecisionResolve=null;purchaseDecisionReturnFocus=null;modal?.classList.add('hidden');modal?.setAttribute('aria-hidden','true');
+  if(returnFocus instanceof HTMLElement)returnFocus.focus();
+  resolve?.(value);
+}
+function purchaseDecision({title,copy,accept='Continuar',danger=false}){
+  if(purchaseDecisionResolve)closePurchaseDecision(false);
+  const modal=$('purchaseDecisionModal'),acceptButton=$('purchaseDecisionAccept');
+  if(!modal||!acceptButton)return Promise.resolve(false);
+  $('purchaseDecisionTitle').textContent=title;$('purchaseDecisionCopy').textContent=copy;$('purchaseDecisionMsg').textContent='';acceptButton.textContent=accept;acceptButton.className=`btn ${danger?'danger':'primary'}`;
+  purchaseDecisionReturnFocus=document.activeElement;modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');
+  return new Promise(resolve=>{purchaseDecisionResolve=resolve;acceptButton.focus();});
 }
 const n=v=>Number(v||0);
 const fmt=v=>new Intl.NumberFormat('en-US',{maximumFractionDigits:3}).format(n(v));
@@ -59,7 +79,7 @@ function openOrder(order=null){
   editing=order||null;$('orderTitle').textContent=order?`Editar ${order.po_number}`:'Nueva Purchase Order';$('oSupplier').value=order?.supplier_id||'';$('oWarehouse').value=order?.warehouse_id||'';$('oCurrency').value=order?.currency||'USD';$('oDate').value=order?.order_date||localDateToday();$('oExpected').value=toLocalInput(order?.expected_at);$('oReference').value=order?.supplier_reference||'';$('oNotes').value=order?.notes||'';$('orderLines').innerHTML='';(order?.items?.length?order.items:[{}]).forEach(i=>addLine(i));$('orderMsg').textContent='';$('orderModal').classList.remove('hidden');
 }
 function closeModal(name){$(name+'Modal').classList.add('hidden');if(name==='order')editing=null;if(name==='detail')detailOrder=null;if(name==='receive'){receiving=null;receivingMode='remaining';}}
-async function saveOrder(){const btn=$('saveOrder');try{btn.disabled=true;$('orderMsg').textContent='';const body={action:editing?'replace_plan':'create_plan',purchase_order_id:editing?.id,supplier_id:$('oSupplier').value,warehouse_id:$('oWarehouse').value,order_date:$('oDate').value,expected_at:localToIso($('oExpected').value),currency:$('oCurrency').value,supplier_reference:$('oReference').value,notes:$('oNotes').value,lines:collectLines()};await api('/api/purchases',{method:'POST',body:JSON.stringify(body)});closeModal('order');await load();}catch(e){$('orderMsg').textContent=e.message;}finally{btn.disabled=false;}}
+async function saveOrder(){const btn=$('saveOrder');try{btn.disabled=true;$('orderMsg').textContent='';const body={action:editing?'replace_plan':'create_plan',purchase_order_id:editing?.id,supplier_id:$('oSupplier').value,warehouse_id:$('oWarehouse').value,order_date:$('oDate').value,expected_at:localToIso($('oExpected').value),currency:$('oCurrency').value,supplier_reference:$('oReference').value,notes:$('oNotes').value,lines:collectLines()};await api('/api/purchases',{method:'POST',body:JSON.stringify(body)});closeModal('order');await load();}catch(error){console.error('PURCHASE_ORDER_SAVE_FAILED',{purchase_order_id:editing?.id||null,error});$('orderMsg').textContent=safePurchaseMessage(error,'No se pudo guardar la Purchase Order. Intenta nuevamente.');}finally{btn.disabled=false;}}
 function itemProgress(item){const active=(item.allocations||[]).filter(a=>a.receipt_item?.receipt?.status==='received'),rq=active.reduce((s,a)=>s+n(a.received_quantity),0),rp=active.reduce((s,a)=>s+n(a.received_pallets),0),complete=(n(item.ordered_quantity)===0||rq>=n(item.ordered_quantity))&&(n(item.ordered_pallets)===0||rp>=n(item.ordered_pallets));return {rq,rp,status:rq===0&&rp===0?'Pendiente':complete?'Recibido':'Parcial'};}
 function openDetail(id){
   detailOrder=orders.find(o=>o.id===id);if(!detailOrder)return;const o=detailOrder;$('detailTitle').textContent=o.po_number;$('detailSubtitle').textContent=`${o.supplier?.name||'—'} · ${commercialLabel(o.status)} · ${receiptLabel(o.progress?.receipt_status)}`;
@@ -78,11 +98,16 @@ async function detailAction(action){
   if(action==='edit'){closeModal('detail');openOrder(detailOrder);return;}
   if(action==='receive'){const order=detailOrder;closeModal('detail');openReceive(order,'remaining');return;}
   if(action==='receive_excess'){const order=detailOrder;closeModal('detail');openReceive(order,'excess');return;}
-  const key=action==='issue'?'issue':action==='confirm'?'confirm':action==='close'?'close':action==='cancel'?'cancel':null;
-  if(!key||!can(detailOrder,key))return;
-  const label={issue:'emitir',confirm:'confirmar',cancel:'cancelar',close:'cerrar'}[action];
-  if(!confirm(`¿Confirmas ${label} ${detailOrder.po_number}?`))return;
-  try{await api('/api/purchases',{method:'POST',body:JSON.stringify({action,purchase_order_id:detailOrder.id})});closeModal('detail');await load();}catch(e){$('detailMsg').textContent=e.message;}
+  const config={
+    issue:{capability:'issue',title:'Emitir Purchase Order',copy:'La PO quedará emitida y su plan de mercancía dejará de admitir edición.',accept:'Emitir PO'},
+    confirm:{capability:'confirm',title:'Confirmar Purchase Order',copy:'La PO quedará confirmada y disponible para su recepción física.',accept:'Confirmar PO'},
+    close:{capability:'close',title:'Cerrar Purchase Order',copy:'La PO quedará cerrada cuando su recepción ya esté completa.',accept:'Cerrar PO'},
+    cancel:{capability:'cancel',title:'Cancelar Purchase Order',copy:'La PO quedará cancelada. Esta acción solo se permite cuando no existen recepciones activas.',accept:'Cancelar PO',danger:true}
+  }[action],order=detailOrder;
+  if(!config||!order||!can(order,config.capability))return;
+  if(!await purchaseDecision(config))return;
+  if(!can(order,config.capability))return;
+  try{await api('/api/purchases',{method:'POST',body:JSON.stringify({action,purchase_order_id:order.id})});closeModal('detail');await load();}catch(error){console.error('PURCHASE_ORDER_TRANSITION_FAILED',{purchase_order_id:order.id,action,error});$('detailMsg').textContent=safePurchaseMessage(error);}
 }
 function openReceive(order,mode='remaining'){
   const key=mode==='excess'?'receive_excess':'receive_remaining';
@@ -93,8 +118,10 @@ function openReceive(order,mode='remaining'){
 function receiptLines(){return [...document.querySelectorAll('[data-receive-item]')].map(div=>({purchase_order_item_id:div.dataset.receiveItem,received_quantity:div.querySelector('.rrQty').value,received_pallets:div.querySelector('.rrPallets').value,units_per_pallet:div.querySelector('.rrUpp').value,lot_number:div.querySelector('.rrLot').value})).filter(x=>n(x.received_quantity)>0||n(x.received_pallets)>0);}
 async function submitReceipt(allowOver=receivingMode==='excess'){
   const btn=$('saveReceipt');
-  try{btn.disabled=true;$('receiveMsg').textContent='';const body={action:'receive',warehouse_id:$('rWarehouse').value,received_at:localToIso($('rReceivedAt').value),reference_number:$('rReference').value,truck_reference:$('rTruck').value,driver_name:$('rDriver').value,notes:$('rNotes').value,allow_over_receipt:allowOver,lines:receiptLines()};const d=await api('/api/purchases',{method:'POST',body:JSON.stringify(body)});$('receiveMsg').className='msg ok';$('receiveMsg').textContent=`${d.receipt.receipt_number} registrada correctamente.`;await load();setTimeout(()=>closeModal('receive'),500);}catch(e){if(receivingMode==='remaining'&&!allowOver&&String(e.message).includes('requiere confirmación explícita')&&confirm('La cantidad excede lo ordenado. ¿Confirmas registrar el exceso?')){btn.disabled=false;return submitReceipt(true);}$('receiveMsg').className='msg';$('receiveMsg').textContent=e.message;}finally{btn.disabled=false;}
+  try{btn.disabled=true;$('receiveMsg').textContent='';const body={action:'receive',warehouse_id:$('rWarehouse').value,received_at:localToIso($('rReceivedAt').value),reference_number:$('rReference').value,truck_reference:$('rTruck').value,driver_name:$('rDriver').value,notes:$('rNotes').value,allow_over_receipt:allowOver,lines:receiptLines()};const d=await api('/api/purchases',{method:'POST',body:JSON.stringify(body)});$('receiveMsg').className='msg ok';$('receiveMsg').textContent=`${d.receipt.receipt_number} registrada correctamente.`;await load();setTimeout(()=>closeModal('receive'),500);}catch(error){if(receivingMode==='remaining'&&!allowOver&&error.code==='PO_OVER_RECEIPT_REQUIRES_CONFIRMATION'){const accepted=await purchaseDecision({title:'Confirmar sobre-recepción',copy:'La cantidad indicada excede lo ordenado. Confirma solo si la mercancía adicional entró físicamente al almacén.',accept:'Registrar exceso',danger:true});if(accepted)return await submitReceipt(true);return;}$('receiveMsg').className='msg';console.error('PURCHASE_RECEIPT_SAVE_FAILED',{purchase_order_id:receiving?.id||null,allow_over_receipt:allowOver,error});$('receiveMsg').textContent=safePurchaseMessage(error,'No se pudo registrar la recepción. Intenta nuevamente.');}finally{btn.disabled=false;}
 }
 
-$('newOrder').onclick=()=>openOrder();$('addOrderLine').onclick=()=>addLine();$('saveOrder').onclick=saveOrder;$('saveReceipt').onclick=()=>submitReceipt();$('refresh').onclick=load;$('search').oninput=render;document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x===b));render();});document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));['order','detail','receive'].forEach(name=>$(name+'Modal').onclick=e=>{if(e.target===$(name+'Modal'))closeModal(name);});
-load().catch(e=>$('orderList').innerHTML=`<div class="empty">${esc(e.message)}</div>`);
+async function refreshPurchases(){const button=$('refresh');try{button.disabled=true;await load();}catch(error){console.error('PURCHASES_REFRESH_FAILED',{error});$('orderList').innerHTML=`<div class="empty">${esc(safePurchaseMessage(error,'No se pudieron actualizar las compras. Intenta nuevamente.'))}</div>`;}finally{button.disabled=false;}}
+$('newOrder').onclick=()=>openOrder();$('addOrderLine').onclick=()=>addLine();$('saveOrder').onclick=saveOrder;$('saveReceipt').onclick=()=>submitReceipt();$('refresh').onclick=refreshPurchases;$('search').oninput=render;document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x===b));render();});document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));['order','detail','receive'].forEach(name=>$(name+'Modal').onclick=e=>{if(e.target===$(name+'Modal'))closeModal(name);});
+$('purchaseDecisionCancel').onclick=()=>closePurchaseDecision(false);$('purchaseDecisionAccept').onclick=()=>closePurchaseDecision(true);$('purchaseDecisionModal').onclick=event=>{if(event.target===$('purchaseDecisionModal'))closePurchaseDecision(false);};document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('purchaseDecisionModal').classList.contains('hidden'))closePurchaseDecision(false);});
+load().catch(error=>{console.error('PURCHASES_INITIAL_LOAD_FAILED',{error});$('orderList').innerHTML=`<div class="empty">${esc(safePurchaseMessage(error,'No se pudieron cargar las compras. Intenta nuevamente.'))}</div>`;});
