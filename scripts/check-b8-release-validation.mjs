@@ -30,22 +30,24 @@ assert(dashApi.includes("authorizeAdmin(req,res,'dashboard.read')"),'P13: Dashbo
 assert(reportApi.includes("authorizeAdmin(req,res,'reports.read')"),'P13: Reportes perdió reports.read');
 assert(dashOwner.includes('rpc/executive_dashboard_rollup'),'P13: Dashboard no usa rollup B8');
 assert(reportApi.includes('rpc/executive_report_dataset'),'P13: Reportes no usa dataset B8.4');
-assert(p11.includes("'balance_basis', 'current_snapshot'"),'P13: AR/AP perdió semántica snapshot');
+assert(p11.includes("'balance_basis', 'current_snapshot'"),'P13: AR/AP perdió semántica snapshot en backend');
 assert(p12.includes("'currency_policy','separate_no_fx'"),'P13: Reportes perdió política no-FX');
 assert(p12.includes("v_basis := 'current_snapshot'"),'P13: inventario no conserva snapshot actual');
 
 for (const ui of [dashUi,reportUi]) {
   assert(!/cash_collected\s*[-+]\s*.*cash_paid|gross_margin\s*\/|contribution_margin\s*\//.test(ui),'P13: frontend contiene matemática financiera prohibida');
 }
-assert(dashUi.includes('snapshot actual'),'P13: Dashboard no etiqueta snapshot');
+assert(dashUi.includes('Saldos de cuentas: <b>actuales</b>'),'P13: Dashboard no comunica saldos actuales');
 assert(reportUi.includes('snapshot actual'),'P13: Reportes no etiqueta snapshot');
-assert(dashUi.toLowerCase().includes('no se aplica'),'P13: Dashboard no declara no-FX');
+assert(dashUi.includes('Conversión de moneda: <b>no aplicada</b>') && dashUi.includes('Sin conversión de moneda'),'P13: Dashboard no declara política sin conversión');
 assert(reportUi.includes('FX: no se aplica'),'P13: Reportes no declara no-FX');
+assert(!dashUi.includes('public.executive_dashboard_rollup'),'P13: Dashboard expone nombre SQL interno');
+assert(!/error\?\.message/.test(dashUi),'P13: Dashboard expone error técnico crudo');
 assert(reportUi.includes('response.blob()') && reportUi.includes('Authorization:`Bearer ${token()}`'),'P13: CSV no conserva descarga autenticada');
 assert(!/[?&]token=/.test(reportUi),'P13: frontend expone token en URL');
 
 console.log('P13 B8.5 release validation gate: OK');
 console.log('- Fixture es transaccional, determinista y termina en ROLLBACK.');
 console.log('- Dashboard y Reportes conservan owners B8 y permisos separados.');
-console.log('- Monedas permanecen separadas; no FX ni matemática financiera en frontend.');
-console.log('- Snapshot actual y CSV autenticado permanecen explícitos.');
+console.log('- Monedas permanecen separadas; no hay conversión ni matemática financiera en frontend.');
+console.log('- Saldos actuales y CSV autenticado permanecen explícitos.');
