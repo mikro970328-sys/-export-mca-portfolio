@@ -1,0 +1,36 @@
+name: UX6 Retired Alert Hotfixes
+
+on:
+  pull_request:
+    paths:
+      - 'admin/tracking-alert-center.js'
+      - 'admin/phase4-hotfix-navigation-bell.js'
+      - 'admin/phase4-operational-indicators.js'
+      - 'admin/erp.js'
+      - 'admin/operational-alert-center.js'
+      - 'admin/operational-navigation.js'
+      - 'admin/containers-module.js'
+      - 'scripts/check-ux6-retired-alert-hotfixes.mjs'
+      - '.github/workflows/ux6-retired-alert-hotfixes.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-retired-hotfixes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate retired alert/hotfix owners
+        run: node scripts/check-ux6-retired-alert-hotfixes.mjs
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
+      - name: Preserve operational alert lifecycle
+        run: node scripts/check-operational-alert-lifecycle.mjs
+      - name: Preserve user notification ownership
+        run: node scripts/check-user-notifications.mjs
+      - name: Preserve integration ownership
+        run: node scripts/check-integrations.mjs
+      - name: Validate gate syntax
+        run: node --check scripts/check-ux6-retired-alert-hotfixes.mjs
