@@ -53,7 +53,7 @@ async function sendWelcome(client) {
     await supabase('clients', { method: 'PATCH', query: `?id=eq.${client.id}`, body: { welcome_status: 'failed', welcome_error: error.message, updated_at: new Date().toISOString() } });
     await persistWelcomeNotification(client, { status: 'failed', error: error.message, template_sid: contentSid });
     await audit('welcome_failed', client.id, { error: error.message });
-    return { status: 'failed', error: error.message };
+    return { status: 'failed' };
   }
 }
 
@@ -132,7 +132,8 @@ export default async function handler(req, res) {
     }
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
-    const message = error.message === 'PHONE_INVALID' ? 'Número de WhatsApp inválido. Usa formato internacional, por ejemplo +5351234567.' : error.message;
-    return fail(res, 400, message);
+    if (error.message === 'PHONE_INVALID') return fail(res, 400, 'Número de WhatsApp inválido. Usa formato internacional, por ejemplo +5351234567.');
+    console.error('CLIENTS_API_FAILED', error);
+    return fail(res, 500, 'No se pudo completar la operación del cliente');
   }
 }
