@@ -7,6 +7,7 @@ on:
       - 'admin/dashboard-alert-cleanup.js'
       - 'admin/erp.js'
       - 'scripts/check-executive-dashboard.mjs'
+      - 'scripts/check-b8-release-validation.mjs'
       - 'scripts/check-ux6-dashboard-presentation.mjs'
       - '.github/workflows/ux6-dashboard-presentation.yml'
   workflow_dispatch:
@@ -23,10 +24,13 @@ jobs:
         run: node scripts/check-ux6-dashboard-presentation.mjs
       - name: Validate P11 executive dashboard contract
         run: node scripts/check-executive-dashboard.mjs
+      - name: Validate P13 release contract
+        run: node scripts/check-b8-release-validation.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check admin/dashboard-operational-state.js
           node --check scripts/check-executive-dashboard.mjs
+          node --check scripts/check-b8-release-validation.mjs
           node --check scripts/check-ux6-dashboard-presentation.mjs
       - name: Validate frontend ownership
         run: node scripts/check-frontend-ownership.mjs
