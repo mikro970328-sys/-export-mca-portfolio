@@ -1,0 +1,46 @@
+name: UX6 Purchases Presentation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/purchases-master-refresh.js'
+      - 'admin/purchases-product-catalog.js'
+      - 'admin/purchases.css'
+      - 'admin/purchases.html'
+      - 'admin/purchases.js'
+      - 'api/purchases.js'
+      - 'scripts/check-ux6-purchases-presentation.mjs'
+      - '.github/workflows/ux6-purchases-presentation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-purchases-presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate Purchases UX-6 owner
+        run: node scripts/check-ux6-purchases-presentation.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/purchases.js
+          node --check admin/purchases.js
+          node --check admin/purchases-master-refresh.js
+          node --check admin/purchases-product-catalog.js
+          node --check scripts/check-ux6-purchases-presentation.mjs
+      - name: Validate Purchase API runtime import
+        run: node --input-type=module -e "await import('./api/purchases.js'); console.log('Purchase API runtime import OK')"
+      - name: Validate canonical Purchase actions
+        run: node scripts/check-ux5-canonical-actions.mjs
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
+      - name: Validate admin shell
+        run: node scripts/check-admin-shell-resilience.mjs
+      - name: Audit API boundaries
+        run: node scripts/audit-b9-api-boundaries.mjs
+      - name: Validate database privileges
+        run: node scripts/check-b9-database-privileges.mjs
+      - name: Validate integrations
+        run: node scripts/check-integrations.mjs
