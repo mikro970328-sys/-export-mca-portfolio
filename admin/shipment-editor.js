@@ -5,6 +5,12 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   const norm = value => String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
   const validReference = value => Boolean(value) && value.length <= 40 && /^[A-Z0-9][A-Z0-9 ._/-]*$/.test(value);
+  const SAFE_EDITOR_ERRORS = new Set([
+    'No tienes permiso para realizar esta acción',
+    'No autorizado',
+    'El contenedor ya no está disponible',
+    'Esa referencia ya está registrada en otra operación activa.'
+  ]);
   let current = null;
   let saving = false;
 
@@ -47,15 +53,9 @@
     return window.importerState;
   }
 
-  function installStyles() {
-    if (byId('shipmentEditorStyles')) return;
-    const style = document.createElement('style');
-    style.id = 'shipmentEditorStyles';
-    style.textContent = `
-      .shipment-editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px}.shipment-editor-grid .full{grid-column:1/-1}.shipment-editor-grid label{margin-top:0}.shipment-editor-section{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}.shipment-editor-section h3{margin:0 0 14px;color:var(--navy)}.shipment-editor-info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.shipment-editor-card{padding:12px;border:1px solid var(--line);border-radius:10px;background:#f8fafc}.shipment-editor-card b{display:block;color:var(--navy);margin-bottom:4px}.shipment-editor-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.shipment-editor-error{padding:10px 12px;margin-bottom:14px;border-radius:8px;background:#fff0ef;border:1px solid #efb0aa;color:var(--bad)}.shipment-editor-help{font-size:11px;color:var(--muted);margin-top:5px}
-      @media(max-width:720px){.shipment-editor-grid,.shipment-editor-info{grid-template-columns:1fr}.shipment-editor-grid .full{grid-column:auto}.shipment-editor-footer{display:grid;grid-template-columns:1fr}.shipment-editor-footer button{width:100%}}
-    `;
-    document.head.appendChild(style);
+  function safeEditorMessage(error, fallback = 'No se pudieron guardar los cambios. Intenta nuevamente.') {
+    const message = String(error?.message || '').trim();
+    return SAFE_EDITOR_ERRORS.has(message) ? message : fallback;
   }
 
   function clientOptions(selected) {
@@ -175,7 +175,8 @@
       await window.ContainersModule?.syncImporters?.();
       window.closeModal?.();
     } catch (error) {
-      setError(error.message);
+      console.error('SHIPMENT_EDITOR_SAVE_FAILED', error);
+      setError(safeEditorMessage(error));
     } finally {
       saving = false;
       if (button?.isConnected) {
@@ -189,8 +190,12 @@
     const shipment = rows().find(item => String(item.id) === String(id));
     if (!shipment) throw new Error('No se encontró el contenedor.');
     current = shipment;
-    await ensureImporterState();
-    installStyles();
+    try {
+      await ensureImporterState();
+    } catch (error) {
+      console.error('SHIPMENT_EDITOR_IMPORTERS_LOAD_FAILED', error);
+      throw new Error('No se pudo preparar el editor de contenedores. Intenta nuevamente.');
+    }
     window.openModal?.(`Editar contenedor · ${shipment.container_number}`, html(shipment));
     byId('shipmentEditorCancel').onclick = () => window.closeModal?.();
     byId('shipmentEditorSave').onclick = save;
