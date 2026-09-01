@@ -64,7 +64,9 @@ if(Object.values(files).every(file=>fs.existsSync(path.join(root,file)))){
 
   if(!readinessApi.includes("authorizeAdmin(req,res,'documents.read')"))failures.push('readiness API: debe exigir documents.read');
   for(const required of [
-    "hasPermission(admin,'documents.read')",
+    'loadAdminAccessContext',
+    "permissions.has('documents.read')",
+    'workspaceAccess(admin)',
     'documentsReadable&&shipmentIds.length',
     'document_access:{read:documentsReadable}'
   ]) if(!salesApi.includes(required))failures.push(`api/sales-workspace.js: falta gate documental ${required}`);
