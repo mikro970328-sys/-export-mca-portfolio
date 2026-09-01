@@ -3,7 +3,7 @@ import { loadAdminAccessContext, supabase } from './_lib.js';
 const clone=value=>value&&typeof value==='object'?JSON.parse(JSON.stringify(value)):{actions:{}};
 
 async function effectivePermissions(admin){
-  if(admin?.role==='master_admin')return new Set(['warehouse.read','warehouse.write']);
+  if(admin?.role==='master_admin')return new Set(['warehouse.read','warehouse.write','procurement.write']);
   const access=await loadAdminAccessContext(admin?.admin_id);
   return new Set(access?.permissions||[]);
 }
@@ -30,7 +30,8 @@ export async function loadWarehouseReceiptActionCapabilityMap(admin){
   const rows=await supabase('warehouse_receipt_action_capabilities',{query:'?select=receipt_id,capabilities&limit=5000'});
   return {
     map:new Map((rows||[]).map(row=>[String(row.receipt_id),maskWarehouseReceiptActionCapabilities(row.capabilities,permissions)])),
-    write_access:permissions.has('warehouse.write')
+    write_access:permissions.has('warehouse.write'),
+    product_write_access:permissions.has('procurement.write')
   };
 }
 
