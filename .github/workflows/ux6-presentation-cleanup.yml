@@ -22,3 +22,15 @@ jobs:
         run: |
           node --check admin/sales-existing-load-link-v2.js
           node --check scripts/check-ux6-presentation-cleanup.mjs
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
+      - name: Validate admin shell resilience
+        run: node scripts/check-admin-shell-resilience.mjs
+      - name: Validate API security boundaries
+        run: node scripts/audit-b9-api-boundaries.mjs
+      - name: Validate database privilege hardening
+        run: node scripts/check-b9-database-privileges.mjs
+      - name: Validate public boundary hardening
+        run: node scripts/check-b9-public-boundaries.mjs
+      - name: Validate integration ownership
+        run: node scripts/check-integrations.mjs
