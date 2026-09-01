@@ -37,7 +37,7 @@
     if (byId('existingLoadLinkV2Styles')) return;
     const style = document.createElement('style');
     style.id='existingLoadLinkV2Styles';
-    style.textContent=`.existing-load-list{display:grid;gap:10px;margin-top:14px}.existing-load-card{border:1px solid #dde3ea;border-radius:10px;padding:14px;background:#fff;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.existing-load-card .meta{font-size:12px;color:#667085;margin-top:5px;line-height:1.45}.existing-load-card .items{font-size:13px;margin-top:7px}.existing-load-note{padding:10px 12px;border-radius:8px;background:#f8fafc;border:1px solid #e5e7eb;margin-top:12px;font-size:12px;color:#475467}@media(max-width:720px){.existing-load-card{grid-template-columns:1fr}.existing-load-card button{width:100%}}`;
+    style.textContent=`.existing-load-list{display:grid;gap:10px;margin-top:14px}.existing-load-card{border:1px solid #dde3ea;border-radius:10px;padding:14px;background:#fff;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.existing-load-card .meta{font-size:12px;color:#667085;margin-top:5px;line-height:1.45}.existing-load-card .items{font-size:13px;margin-top:7px}.existing-load-note{padding:10px 12px;border-radius:8px;background:#f8fafc;border:1px solid #e5e7eb;margin-top:12px;font-size:12px;color:#475467}.existing-load-decision{position:fixed;inset:0;z-index:2600;background:rgba(16,24,40,.5);display:flex;align-items:center;justify-content:center;padding:18px}.existing-load-decision.hidden{display:none}.existing-load-decision-box{width:min(520px,100%);background:#fff;border:1px solid #dde3ea;border-radius:14px;padding:18px;box-shadow:0 24px 70px rgba(16,24,40,.22)}.existing-load-decision-box h3{margin:0;color:#06204a}.existing-load-decision-box p{margin:9px 0 0;color:#475467;line-height:1.5}.existing-load-decision-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}@media(max-width:720px){.existing-load-card{grid-template-columns:1fr}.existing-load-card button{width:100%}.existing-load-decision{align-items:flex-end;padding:0}.existing-load-decision-box{border-radius:20px 20px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom))}}`;
     document.head.appendChild(style);
   }
 
@@ -51,6 +51,23 @@
     modal.querySelector('[data-existing-close]').onclick=close;
     modal.addEventListener('click',event=>{if(event.target===modal)close()});
     byId('existingLoadOrder').onchange=event=>{selectedOrderId=event.target.value;loadCandidates()};
+  }
+
+  function decision({title,copy,accept='Vincular'}) {
+    return new Promise(resolve => {
+      document.querySelector('.existing-load-decision')?.remove();
+      const overlay=document.createElement('div');
+      overlay.className='existing-load-decision';
+      overlay.innerHTML=`<div class="existing-load-decision-box" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p>${esc(copy)}</p><div class="existing-load-decision-actions"><button type="button" class="btn" data-decision-cancel>Cancelar</button><button type="button" class="btn orange" data-decision-accept>${esc(accept)}</button></div></div>`;
+      const finish=value=>{overlay.remove();resolve(value)};
+      overlay.querySelector('[data-decision-cancel]').onclick=()=>finish(false);
+      overlay.querySelector('[data-decision-accept]').onclick=()=>finish(true);
+      overlay.addEventListener('click',event=>{if(event.target===overlay)finish(false)});
+      const onKey=event=>{if(event.key==='Escape'){document.removeEventListener('keydown',onKey);finish(false)}};
+      document.addEventListener('keydown',onKey,{once:true});
+      document.body.appendChild(overlay);
+      overlay.querySelector('[data-decision-accept]')?.focus();
+    });
   }
 
   function close() { byId('existingLoadModal')?.classList.add('hidden'); }
@@ -83,8 +100,9 @@
   async function linkCandidate(loadId,loadNumber) {
     if(linking || !selectedOrderId || !loadId)return;
     const order=currentOrders().find(row=>String(row.id)===String(selectedOrderId));
-    if(!confirm(`¿Vincular ${loadNumber} con ${order?.so_number || 'esta venta'}?\n\nSolo reconstruye trazabilidad comercial. No crea movimientos nuevos de inventario.`))return;
-    linking=true;const msg=byId('existingLoadMsg');msg.textContent='Vinculando…';
+    const approved=await decision({title:`Vincular ${loadNumber}`,copy:`Se relacionará con ${order?.so_number || 'esta venta'} sin volver a reservar, cargar ni despachar inventario.`});
+    if(!approved)return;
+    linking=true;const msg=byId('existingLoadMsg');msg.className='msg';msg.textContent='Vinculando…';
     try{
       const result=await request('/api/sales-loads',{method:'POST',body:JSON.stringify({action:'link_existing_load',sales_order_id:selectedOrderId,load_id:loadId})});
       await window.SalesOrderController?.refresh?.();
