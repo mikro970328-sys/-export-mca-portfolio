@@ -1,0 +1,61 @@
+name: UX6 Sales Explicit Owner
+
+on:
+  pull_request:
+    paths:
+      - 'admin/sales.css'
+      - 'admin/sales.html'
+      - 'admin/sales.js'
+      - 'admin/sales-order-ux.js'
+      - 'admin/sales-workspace.js'
+      - 'admin/sales-existing-load-link-v2.js'
+      - 'api/sales.js'
+      - 'api/sales-order-ux.js'
+      - 'api/sales-loads.js'
+      - 'scripts/check-ux6-presentation-cleanup.mjs'
+      - 'scripts/check-ux6-sales-explicit-owner.mjs'
+      - '.github/workflows/ux6-sales-explicit-owner.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-sales-owner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate explicit Sales owner
+        run: node scripts/check-ux6-sales-explicit-owner.mjs
+      - name: Validate canonical Sales actions
+        run: node scripts/check-ux5-sales-actions.mjs
+      - name: Validate Sales workspace
+        run: node scripts/check-ux6-sales-workspace-presentation.mjs
+      - name: Validate UX-6 cleanup
+        run: node scripts/check-ux6-presentation-cleanup.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/sales.js
+          node --check admin/sales-order-ux.js
+          node --check admin/sales-workspace.js
+          node --check admin/sales-existing-load-link-v2.js
+          node --check api/sales.js
+          node --check api/sales-order-ux.js
+          node --check api/sales-loads.js
+          node --check scripts/check-ux6-sales-explicit-owner.mjs
+      - name: Validate API runtime imports
+        run: node --input-type=module -e "await Promise.all([import('./api/_sales-actions.js'),import('./api/sales.js'),import('./api/sales-order-ux.js'),import('./api/sales-loads.js')]); console.log('Sales runtime imports OK')"
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
+      - name: Validate admin shell
+        run: node scripts/check-admin-shell-resilience.mjs
+      - name: Audit API boundaries
+        run: node scripts/audit-b9-api-boundaries.mjs
+      - name: Validate database privileges
+        run: node scripts/check-b9-database-privileges.mjs
+      - name: Validate public boundary
+        run: node scripts/check-b9-public-boundaries.mjs
+      - name: Validate integrations
+        run: node scripts/check-integrations.mjs
