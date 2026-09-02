@@ -234,7 +234,7 @@
 
       if (accessCan('dashboard.read')) {
         await loadStylesheet('/admin/dashboard-executive.css?v=20260902-ux7shell1', 'data-dashboard-executive-style');
-        await loadScript('/admin/dashboard-operational-state.js?v=20260902-ux6b1', 'data-dashboard-operational-state');
+        await loadScript('/admin/dashboard-operational-state.js?v=20260902-greeting1', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
         await loadStylesheet('/admin/containers-module.css?v=20260901-ux6owner1', 'data-containers-module-style');
