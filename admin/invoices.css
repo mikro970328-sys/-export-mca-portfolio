@@ -1,0 +1,4 @@
+.invoice-lines-toolbar{padding:12px 0 0;border:0}
+.invoice-modal-actions{justify-content:flex-end;margin-top:14px}
+.invoice-count{text-align:right;margin-top:12px;font-weight:800}
+.invoice-count.is-empty{margin-top:10px;font-weight:400}
