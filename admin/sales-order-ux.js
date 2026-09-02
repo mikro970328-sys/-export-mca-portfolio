@@ -16,6 +16,18 @@
   const currentEditing = () => {
     try { return typeof editing !== 'undefined' ? editing : null; } catch { return null; }
   };
+  const SAFE_ORDER_ERROR_PATTERNS = [
+    /^(?:Selecciona|Indica|Agrega|Falta|No tienes|Esta Sales Order|Solo una Sales Order|El cliente|Cliente|Importador|La cantidad|Los pallets|El precio|El total|Fecha y hora)/i,
+    /^No se pudo procesar Ventas$/i
+  ];
+  const safeOrderMessage = (error,fallback='No se pudo completar la operación. Intenta nuevamente.') => {
+    const message = String(error?.message || '').trim();
+    return message && SAFE_ORDER_ERROR_PATTERNS.some(pattern => pattern.test(message)) ? message : fallback;
+  };
+  const reportOrderError = (context,error,fallback) => {
+    console.error('SALES_ORDER_UI_FAILED',{context,error});
+    return safeOrderMessage(error,fallback);
+  };
 
   let clientPage = 1;
   let clientHasMore = false;
@@ -130,7 +142,7 @@
       byId('clientNext').disabled = !clientHasMore;
     } catch (error) {
       list.innerHTML = '<div class="empty">No se pudieron cargar los clientes.</div>';
-      byId('clientPickerMsg').textContent = error.message;
+      byId('clientPickerMsg').textContent = reportOrderError('clients',error,'No se pudieron cargar los clientes. Intenta nuevamente.');
     }
   }
 
@@ -152,7 +164,7 @@
       syncClientButton();
       closeClientPicker();
     } catch (error) {
-      byId('clientPickerMsg').textContent = error.message;
+      byId('clientPickerMsg').textContent = reportOrderError('client-context',error,'No se pudo seleccionar el cliente. Intenta nuevamente.');
     }
   }
 
@@ -284,7 +296,7 @@
         <div class="sales-stock-warning" data-stock-warning></div><div class="sales-stock-note">La Sales Order no reserva inventario. La reserva ocurre después al crear el Cargue.</div>`;
       updateStockWarning(line);
     } catch (error) {
-      stock.innerHTML = `<div class="sales-stock-title">Existencia por almacén</div><div class="sales-stock-warning">${esc(error.message)}</div>`;
+      stock.innerHTML = `<div class="sales-stock-title">Existencia por almacén</div><div class="sales-stock-warning">${esc(reportOrderError('inventory',error,'No se pudo consultar la existencia. Intenta nuevamente.'))}</div>`;
     }
   }
 
@@ -373,6 +385,10 @@
       button.disabled = true;
       msg.textContent = '';
       const edit = currentEditing();
+      let writable = false;
+      try { writable = typeof writeAccess !== 'undefined' && writeAccess === true; } catch {}
+      if (!writable) throw new Error('No tienes permiso para modificar ventas.');
+      if (edit && edit?.capabilities?.actions?.edit?.allowed !== true) throw new Error('Esta Sales Order ya no admite edición.');
       const clientId = byId('oClient')?.value || '';
       if (!clientId) throw new Error('Selecciona un cliente.');
       const body = {
@@ -389,12 +405,20 @@
       };
       await uxApi('/api/sales-order-ux',{method:'POST',body:JSON.stringify(body)});
       try { closeModal('order'); } catch { byId('orderModal')?.classList.add('hidden'); }
-      try { await load(); } catch { location.reload(); }
+      try { await load(); } catch (error) { console.error('SALES_ORDER_REFRESH_FAILED',{error}); location.reload(); }
     } catch (error) {
-      msg.textContent = error.message;
+      msg.textContent = reportOrderError('save',error,'No se pudo guardar la venta. Revisa los datos e intenta nuevamente.');
     } finally {
       button.disabled = false;
     }
+  }
+
+  function onOrderOpen() {
+    ensureClientPickerButton();
+    ensureClientPickerModal();
+    syncClientButton();
+    decorateAllLines();
+    void hydrateExactPricing();
   }
 
   function bind() {
@@ -403,21 +427,15 @@
     decorateAllLines();
     if (byId('saveOrder')) byId('saveOrder').onclick = saveOrderUx;
     if (byId('oCurrency')) byId('oCurrency').addEventListener('input',refreshOrderTotalPreview);
-
-    const lines = byId('orderLines');
-    if (lines) new MutationObserver(() => setTimeout(decorateAllLines,0)).observe(lines,{childList:true,subtree:false});
     const modal = byId('orderModal');
-    if (modal) new MutationObserver(() => {
-      if (!modal.classList.contains('hidden')) {
-        setTimeout(() => {
-          ensureClientPickerButton();
-          syncClientButton();
-          decorateAllLines();
-          hydrateExactPricing();
-        },0);
-      }
-    }).observe(modal,{attributes:true,attributeFilter:['class']});
+    if (modal && !modal.classList.contains('hidden')) onOrderOpen();
   }
 
+  window.SalesOrderUX = Object.freeze({
+    mountLine:decorateLine,
+    onOrderOpen,
+    refreshTotal:refreshOrderTotalPreview,
+    owner:'sales-order-ux.js'
+  });
   bind();
 })();
