@@ -37,6 +37,10 @@ for(const token of ['function decision(','statusLabel(row.load_status)','sales-e
   if(!linkV2.includes(token))errors.push(`Sales load-link V2 falta ${token}`);
 }
 if(linkV2.includes('Estado: ${esc(row.load_status'))errors.push('Sales load-link V2 todavía expone el código de estado crudo.');
+if(/function\s+ensureStyles|createElement\(['"]style|style\.textContent/.test(linkV2))errors.push('Sales load-link V2 todavía inyecta estilos en runtime.');
+if(/function\s+hasPending|order\?\.status\s*===|unallocated_(?:quantity|pallets)/.test(linkV2))errors.push('Sales load-link V2 todavía infiere disponibilidad desde estado o saldos frontend.');
+if(!linkV2.includes("order?.capabilities?.actions?.allocate_load?.allowed === true"))errors.push('Sales load-link V2 no consume allocate_load canónico.');
+if(/(?:textContent|innerHTML)\s*=\s*(?:esc\s*\(\s*)?error(?:\?\.)?\.message/.test(linkV2))errors.push('Sales load-link V2 todavía muestra error.message crudo.');
 if(/expediente/i.test(linkV2))errors.push('Sales load-link V2 no debe exponer Expedientes.');
 
 if(errors.length){
