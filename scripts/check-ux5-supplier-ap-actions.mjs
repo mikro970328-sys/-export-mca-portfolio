@@ -7,7 +7,6 @@ const helper=read('api/_supplier-ap-actions.js');
 const billsApi=read('api/payables.js');
 const paymentsApi=read('api/supplier-payments.js');
 const ui=read('admin/payables.js');
-const paymentUx=read('admin/payables-payment-ux.js');
 const fixture=read('supabase/tests/ux5_supplier_ap_actions.sql');
 const errors=[];
 const requireText=(source,needle,label)=>{if(!source.includes(needle))errors.push(`${label}: falta ${needle}`);};
@@ -96,18 +95,19 @@ for(const token of [
 ])forbidText(ui,token,'Payables UI action-state inference');
 
 for(const token of [
-  "const actionAllowed = (row,action) => row?.capabilities?.actions?.[action]?.allowed === true",
-  "function billPayAllowed(id) { return actionAllowed(state.bills.get(String(id)),'pay'); }",
-  'state.writeAccess = data?.write_access === true',
-  'if (!bill || !billPayAllowed(billId)) return',
-  'if (!billPayAllowed(button.dataset.directPayBill)) button.remove()'
-])requireText(paymentUx,token,'Payables direct-payment UX');
-forbidText(paymentUx,"bill.status === 'posted' && billBalance",'Payables direct-payment action-state inference');
+  "actionAllowed(bill,'pay')",
+  "if(mode==='direct'&&(!bill||!actionAllowed(bill,'pay')))return",
+  "if(state.paymentMode==='direct'&&(!bill||!actionAllowed(bill,'pay')))return",
+  "body.action='pay_bill'",
+  'state.advancePurchaseOrders = Array.isArray(payments.advance_purchase_orders)'
+])requireText(ui,token,'Payables direct-payment owner');
+forbidText(ui,"bill.status === 'posted' && billBalance",'Payables direct-payment action-state inference');
 
-for(const source of [ui,paymentUx]){
+for(const source of [ui]){
   if(/\b(?:prompt|alert|confirm)\s*\(/.test(source))errors.push('Payables UI: no debe usar diálogos nativos en el flujo modernizado');
   if(/expediente/i.test(source))errors.push('Payables UI: no debe reintroducir Expedientes');
 }
+if(fs.existsSync('admin/payables-payment-ux.js'))errors.push('Payables UI: el decorador payables-payment-ux.js debe permanecer retirado');
 
 for(const token of [
   'begin;',
