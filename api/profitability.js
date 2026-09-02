@@ -32,10 +32,10 @@ async function bootstrap() {
 }
 
 export default async function handler(req, res) {
-  const admin = await authorizeAdmin(req, res, 'finance.read');
-  if (!admin) return;
-  if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
   try {
+    const admin = await authorizeAdmin(req, res, 'finance.read');
+    if (!admin) return;
+    if (req.method !== 'GET') return fail(res, 405, 'Método no permitido');
     return ok(res, await bootstrap());
   } catch (error) {
     console.error('[profitability]', error);

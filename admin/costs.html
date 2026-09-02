@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Costos / Landed Cost · Export MCA</title>
-<link rel="stylesheet" href="/admin/costs.css">
-<link rel="stylesheet" href="/admin/profitability.css">
+<title>Costos operativos · Export MCA</title>
+<link rel="stylesheet" href="/admin/costs.css?v=20260901-ux6owner1">
+<link rel="stylesheet" href="/admin/profitability.css?v=20260901-ux6owner1">
 </head>
 <body>
 <main class="wrap">
   <div class="head">
     <div>
-      <h1>Costos / Landed Cost</h1>
-      <div class="muted">Cargos adicionales, costo reconocido de mercancía, COGS y rentabilidad derivados desde PostgreSQL. Sin conversión FX automática.</div>
+      <h1>Costos operativos</h1>
+      <div class="muted">Cargos adicionales, costo reconocido de mercancía y rentabilidad, sin mezclar monedas ni hacer conversiones automáticas.</div>
     </div>
-    <div class="actions"><button id="newCharge" class="btn orange">+ Cargo de costo</button></div>
+    <div class="actions"><button id="newCharge" class="btn orange hidden" type="button">+ Cargo de costo</button></div>
   </div>
   <div id="metrics" class="metrics"></div>
   <section class="panel">
@@ -22,12 +22,13 @@
       <input id="search" class="search" placeholder="Buscar CC, referencia, PO, WR, Cargue, contenedor, operación, SO o factura">
       <div class="tabs">
         <button class="btn active" data-view="charges">Cargos</button>
-        <button class="btn" data-view="landed">Landed / WR</button>
-        <button class="btn" data-view="cogs">COGS / Cargues</button>
+        <button class="btn" data-view="landed">Costo recibido</button>
+        <button class="btn" data-view="cogs">Costo de Cargues</button>
         <button id="profitabilityTab" class="btn" type="button">Rentabilidad</button>
       </div>
-      <button id="refresh" class="btn">↻</button>
+      <button id="refresh" class="btn" type="button" aria-label="Actualizar Costos">↻</button>
     </div>
+    <div id="pageMsg" class="msg page-msg" role="status" aria-live="polite"></div>
     <div id="content"></div>
     <div id="profitabilityContent" class="hidden"></div>
   </section>
@@ -36,8 +37,8 @@
 <div id="chargeModal" class="modal hidden">
   <div class="dialog">
     <div class="dialog-head">
-      <div><h2 id="chargeTitle">Nuevo cargo de costo</h2><div class="muted">El cargo es independiente del Supplier Bill de mercancía y debe distribuirse al 100% antes de contabilizar.</div></div>
-      <button class="btn" data-close="charge">✕</button>
+      <div><h2 id="chargeTitle">Nuevo cargo de costo</h2><div class="muted">El cargo es independiente de la factura del proveedor y debe distribuirse al 100% antes de contabilizar.</div></div>
+      <button class="btn" data-close="charge" type="button" aria-label="Cerrar formulario">✕</button>
     </div>
     <div class="grid3">
       <div><label>Categoría *</label><select id="cCategory"></select></div>
@@ -53,25 +54,25 @@
       <div><label>Referencia externa</label><input id="cReference" maxlength="300"></div>
       <div><label>Notas</label><input id="cNotes" maxlength="2000"></div>
     </div>
-    <div class="toolbar" style="padding:14px 0 0;border:0">
-      <div><b>Distribución</b><div class="muted">Cada línea apunta exactamente a una PO, WR, Cargue, Shipment u Operación. La base es informativa.</div></div>
+    <div class="toolbar charge-allocation-toolbar">
+      <div><b>Distribución</b><div class="muted">Cada línea apunta a una orden de compra, recepción de almacén, Cargue, Contenedor u Operación. La base es informativa.</div></div>
       <button id="addAllocation" class="btn" type="button">+ Distribución</button>
     </div>
     <div id="allocationEditor" class="allocation-editor"></div>
-    <div class="actions" style="justify-content:flex-end;margin-top:14px">
+    <div class="actions charge-form-actions">
       <button class="btn" data-close="charge">Cancelar</button>
       <button id="saveCharge" class="btn orange">Guardar cargo</button>
     </div>
-    <div id="chargeMsg" class="msg"></div>
+    <div id="chargeMsg" class="msg" role="status" aria-live="polite"></div>
   </div>
 </div>
 
 <div id="detailModal" class="modal hidden">
   <div class="dialog compact">
-    <div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div>
+    <div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail" type="button" aria-label="Cerrar detalle">✕</button></div>
     <div id="detailBody"></div>
-    <div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div>
-    <div id="detailMsg" class="msg"></div>
+    <div id="detailActions" class="actions detail-actions"></div>
+    <div id="detailMsg" class="msg" role="status" aria-live="polite"></div>
   </div>
 </div>
 
@@ -85,7 +86,18 @@
   </div>
 </div>
 
-<script src="/admin/costs.js"></script>
-<script src="/admin/profitability.js"></script>
+<div id="costDecisionModal" class="modal cost-decision-modal hidden" role="dialog" aria-modal="true" aria-labelledby="costDecisionTitle" aria-describedby="costDecisionCopy">
+  <div class="dialog compact cost-decision-dialog">
+    <h2 id="costDecisionTitle">Confirmar acción</h2>
+    <p id="costDecisionCopy" class="cost-decision-copy"></p>
+    <div class="actions cost-decision-actions">
+      <button id="costDecisionCancel" class="btn" type="button">Volver</button>
+      <button id="costDecisionAccept" class="btn primary" type="button">Continuar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/admin/costs.js?v=20260901-ux6owner1"></script>
+<script src="/admin/profitability.js?v=20260901-ux6owner1"></script>
 </body>
 </html>

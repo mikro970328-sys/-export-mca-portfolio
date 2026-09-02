@@ -17,14 +17,35 @@
   const short = value => value ? String(value).slice(0,8) : '—';
   const coverageLabel = value => ({ actual:'Actual', partial_actual:'Parcial real', estimated:'Estimado', incomplete_allocation:'Incompleto' }[value] || value || 'Incompleto');
   const statusLabels = {
-    comparable:'Comparable', no_fulfillment:'Sin fulfillment', incomplete_cogs:'COGS incompleto', currency_mismatch:'Moneda no comparable',
+    comparable:'Comparable', no_fulfillment:'Sin preparación logística', incomplete_cogs:'Costo de mercancía incompleto', currency_mismatch:'Moneda no comparable',
     cancelled:'Cancelado', no_sales_allocation:'Sin venta asignada', revenue_multi_currency:'Venta multimoneda',
     merchandise_currency_mismatch:'Moneda mercancía distinta', direct_cost_multi_currency:'Costos directos multimoneda',
     direct_cost_currency_mismatch:'Moneda de costos distinta', no_issued_revenue:'Sin ingreso emitido'
   };
-  const statusLabel = value => statusLabels[value] || value || 'Pendiente';
+  const statusLabel = value => statusLabels[value] || 'Pendiente de revisión';
   const statusClass = value => value === 'comparable' ? 'ok' : ['no_fulfillment','no_sales_allocation','no_issued_revenue','cancelled'].includes(value) ? 'warn' : 'bad';
   const statusPill = value => `<span class="profit-status ${statusClass(value)}">${esc(statusLabel(value))}</span>`;
+  const entityStatusLabel = value => ({
+    draft:'Borrador',confirmed:'Confirmada',cancelled:'Cancelada',closed:'Cerrada',issued:'Emitida',
+    loading:'En preparación',loaded:'Preparada',dispatched:'Despachada',delivered:'Entregada',
+    partially_paid:'Pago parcial',paid:'Pagada',void:'Anulada',posted:'Contabilizado'
+  }[value] || 'Estado registrado');
+  const categoryLabel = value => ({
+    domestic_trucking:'Transporte terrestre',ocean_freight:'Flete marítimo',insurance:'Seguro',
+    customs_duties:'Aranceles / aduana',port_terminal:'Puerto / terminal',warehouse:'Almacén',
+    inspection:'Inspección',brokerage:'Gestión aduanal',nationalization:'Nacionalización',
+    commission:'Comisión',gifts:'Obsequios',documentation:'Documentación',bank_fee:'Cargo bancario',other:'Otro'
+  }[value] || 'Otra categoría');
+  const stageLabel = value => ({ inbound:'Entrada',fulfillment:'Preparación',destination:'Destino',overhead:'Gastos generales' }[value] || 'Otra etapa');
+  const targetLabel = value => ({
+    purchase_order:'Orden de compra',warehouse_receipt:'Recepción de almacén',load:'Cargue',
+    shipment:'Contenedor',operation:'Operación',sales_order:'Orden de venta',sales_order_item:'Producto de la venta'
+  }[value] || 'Objetivo operativo');
+  const SAFE_PROFIT_ERROR_PATTERNS = [/^Sesión vencida$/i,/^No autorizado$/i,/^No tienes permiso /i,/^No se pudo cargar la rentabilidad\.?$/i];
+  function safeProfitabilityMessage(error) {
+    const value = String(error?.message || '').trim();
+    return SAFE_PROFIT_ERROR_PATTERNS.some(pattern => pattern.test(value)) ? value : 'No se pudo cargar la rentabilidad. Intenta nuevamente.';
+  }
 
   async function request(url) {
     const response = await fetch(url, { headers:{ ...(token() ? { Authorization:`Bearer ${token()}` } : {}) } });
@@ -50,7 +71,8 @@
       state.loaded = true;
       if (state.active) render();
     } catch (error) {
-      if (state.active) $('profitabilityContent').innerHTML = `<div class="empty">${esc(error.message)}</div>`;
+      console.error('[PROFITABILITY_LOAD_FAILED]',error);
+      if (state.active) $('profitabilityContent').innerHTML = `<div class="empty">${esc(safeProfitabilityMessage(error))}</div>`;
     } finally {
       state.loading = false;
     }
@@ -116,16 +138,16 @@
 
   function renderSalesOrder(row) {
     return `<article class="profit-card">
-      <div class="profit-card-head"><div><div class="profit-title">${esc(row.so_number)}</div><div class="profit-sub">${esc(clientName(row.client_id))} · ${esc(row.sales_order_status || '')}</div></div>${statusPill(row.profitability_status)}</div>
+      <div class="profit-card-head"><div><div class="profit-title">${esc(row.so_number)}</div><div class="profit-sub">${esc(clientName(row.client_id))} · ${esc(entityStatusLabel(row.sales_order_status))}</div></div>${statusPill(row.profitability_status)}</div>
       <div class="profit-grid">
         ${cell('Valor total SO',money(row.order_total,row.sales_currency))}
         ${cell('Venta atribuida',money(row.attributed_sales_revenue,row.sales_currency),'emphasis')}
         ${cell('Valor no atribuido',money(row.unattributed_order_value,row.sales_currency))}
-        ${cell('COGS mercancía',money(row.recognized_merchandise_cogs,row.cogs_currency))}
+        ${cell('Costo de mercancía',money(row.recognized_merchandise_cogs,row.cogs_currency))}
         ${cell('Margen bruto',money(row.gross_margin,row.sales_currency),row.gross_margin != null ? 'positive' : 'warning')}
         ${cell('Margen %',pct(row.gross_margin_pct),row.gross_margin_pct != null ? 'positive' : 'warning')}
       </div>
-      <div class="profit-sub" style="margin-top:8px">Coverage: ${esc(coverageLabel(row.merchandise_cost_coverage))}. El margen se calcula solo sobre la venta físicamente atribuida a Cargues activos.</div>
+      <div class="profit-sub profit-sub-spaced">Cobertura: ${esc(coverageLabel(row.merchandise_cost_coverage))}. El margen se calcula solo sobre la venta físicamente atribuida a Cargues activos.</div>
       <div class="profit-actions">${traceButton('so',row.sales_order_id)}</div>
     </article>`;
   }
@@ -135,13 +157,13 @@
       <div class="profit-card-head"><div><div class="profit-title">${esc(row.invoice_number)}</div><div class="profit-sub">SO ${esc(short(row.sales_order_id))}${row.operation_id?` · Operación ${esc(short(row.operation_id))}`:''}</div></div>${statusPill(row.profitability_status)}</div>
       <div class="profit-grid">
         ${cell('Ingreso emitido',money(row.invoice_total,row.invoice_currency),'emphasis')}
-        ${cell('COGS mercancía',money(row.recognized_merchandise_cogs,row.cogs_currency))}
+        ${cell('Costo de mercancía',money(row.recognized_merchandise_cogs,row.cogs_currency))}
         ${cell('Margen bruto',money(row.gross_margin,row.invoice_currency),row.gross_margin != null ? 'positive' : 'warning')}
         ${cell('Margen %',pct(row.gross_margin_pct),row.gross_margin_pct != null ? 'positive' : 'warning')}
         ${cell('Líneas',String(row.invoice_item_count ?? 0))}
-        ${cell('Coverage',coverageLabel(row.merchandise_cost_coverage))}
+        ${cell('Cobertura',coverageLabel(row.merchandise_cost_coverage))}
       </div>
-      <div class="profit-sub" style="margin-top:8px">Los Cost Charges no se prorratean a la Factura sin una asignación explícita; este es margen bruto de mercancía.</div>
+      <div class="profit-sub profit-sub-spaced">Los cargos directos no se reparten a una factura sin una asignación explícita; este es el margen bruto de mercancía.</div>
       <div class="profit-actions">${traceButton('invoice',row.invoice_id)}</div>
     </article>`;
   }
@@ -154,32 +176,32 @@
 
   function renderLoad(row) {
     return `<article class="profit-card">
-      <div class="profit-card-head"><div><div class="profit-title">${esc(row.load_number)}</div><div class="profit-sub">${esc(row.load_status || '')}${row.operation_id?` · Operación ${esc(short(row.operation_id))}`:''}</div></div>${statusPill(row.profitability_status)}</div>
+      <div class="profit-card-head"><div><div class="profit-title">${esc(row.load_number)}</div><div class="profit-sub">${esc(entityStatusLabel(row.load_status))}${row.operation_id?` · Operación ${esc(short(row.operation_id))}`:''}</div></div>${statusPill(row.profitability_status)}</div>
       <div class="profit-grid">
         ${cell('Venta atribuida',money(row.attributed_sales_revenue,row.revenue_currency),'emphasis')}
-        ${cell('COGS mercancía',money(row.recognized_merchandise_cogs,row.cogs_currency))}
+        ${cell('Costo de mercancía',money(row.recognized_merchandise_cogs,row.cogs_currency))}
         ${cell('Margen antes de directos',money(row.gross_margin_before_direct_costs,row.revenue_currency))}
         ${cell('Costos directos',directCostText(row))}
         ${cell('Margen contribución',money(row.contribution_margin,row.revenue_currency),row.contribution_margin != null ? 'positive' : 'warning')}
         ${cell('Contribución %',pct(row.contribution_margin_pct),row.contribution_margin_pct != null ? 'positive' : 'warning')}
       </div>
-      <div class="profit-sub" style="margin-top:8px">Solo descuenta Cost Charges posted cuyo target explícito es este Cargue. No hereda costos de Shipment u Operación.</div>
+      <div class="profit-sub profit-sub-spaced">Solo descuenta cargos contabilizados asignados explícitamente a este Cargue. No hereda costos del Contenedor ni de la Operación.</div>
       <div class="profit-actions">${traceButton('load',row.load_id)}</div>
     </article>`;
   }
 
   function renderOperation(row) {
     return `<article class="profit-card">
-      <div class="profit-card-head"><div><div class="profit-title">${esc(row.operation_code)}</div><div class="profit-sub">${esc(row.operation_status || '')}${row.container_number?` · ${esc(row.container_number)}`:''}</div></div>${statusPill(row.profitability_status)}</div>
+      <div class="profit-card-head"><div><div class="profit-title">${esc(row.operation_code)}</div><div class="profit-sub">${esc(entityStatusLabel(row.operation_status))}${row.container_number?` · ${esc(row.container_number)}`:''}</div></div>${statusPill(row.profitability_status)}</div>
       <div class="profit-grid">
-        ${cell('Ingreso Facturas issued',money(row.issued_revenue,row.revenue_currency),'emphasis')}
-        ${cell('COGS mercancía',money(row.recognized_merchandise_cogs,row.cogs_currency))}
+        ${cell('Ingreso facturado',money(row.issued_revenue,row.revenue_currency),'emphasis')}
+        ${cell('Costo de mercancía',money(row.recognized_merchandise_cogs,row.cogs_currency))}
         ${cell('Margen antes de directos',money(row.gross_margin_before_direct_costs,row.revenue_currency))}
         ${cell('Costos directos jerarquía',directCostText(row))}
         ${cell('Margen contribución',money(row.contribution_margin,row.revenue_currency),row.contribution_margin != null ? 'positive' : 'warning')}
         ${cell('Contribución %',pct(row.contribution_margin_pct),row.contribution_margin_pct != null ? 'positive' : 'warning')}
       </div>
-      <div class="profit-sub" style="margin-top:8px">Directos = allocations posted con target Operación + Shipments hijos + Cargues hijos. Cada allocation conserva un único target, sin doble conteo ni FX.</div>
+      <div class="profit-sub profit-sub-spaced">Los costos directos reúnen los cargos contabilizados de la Operación, sus Contenedores y sus Cargues. Cada cargo mantiene un único destino, sin doble conteo ni conversión de moneda.</div>
       <div class="profit-actions">${traceButton('operation',row.operation_id)}</div>
     </article>`;
   }
@@ -190,9 +212,9 @@
     const renderers = { sales_orders:renderSalesOrder, invoices:renderInvoice, loads:renderLoad, operations:renderOperation };
     const cards = rows.length ? rows.map(renderers[state.subview]).join('') : '<div class="empty">No hay registros para esta vista o búsqueda.</div>';
     $('profitabilityContent').innerHTML = `<div class="profit-shell">
-      <div class="profit-note"><b>Rentabilidad derivada.</b> PostgreSQL decide cobertura, comparabilidad y margen. El navegador solo presenta resultados: no suma monedas, no hace FX y no reparte Cost Charges entre entidades.</div>
+      <div class="profit-note"><b>Rentabilidad calculada por el ERP.</b> Las reglas financieras determinan cobertura, comparabilidad y margen. Esta vista no suma monedas incompatibles ni reparte cargos entre entidades.</div>
       <div class="profit-toolbar"><div class="profit-tabs">
-        <button class="btn ${state.subview==='sales_orders'?'active':''}" data-profit-subview="sales_orders">Sales Orders</button>
+        <button class="btn ${state.subview==='sales_orders'?'active':''}" data-profit-subview="sales_orders">Órdenes de venta</button>
         <button class="btn ${state.subview==='invoices'?'active':''}" data-profit-subview="invoices">Facturas</button>
         <button class="btn ${state.subview==='loads'?'active':''}" data-profit-subview="loads">Cargues</button>
         <button class="btn ${state.subview==='operations'?'active':''}" data-profit-subview="operations">Operaciones</button>
@@ -243,18 +265,18 @@
   const navButton = (kind,label) => `<button class="btn" type="button" data-profit-nav="${esc(kind)}">${esc(label)}</button>`;
   function sourceHtml(row) {
     const productId = row.product_id || row.invoice_product_id;
-    const bill = row.supplier_bill_number ? `${row.supplier_bill_number}${row.supplier_invoice_number?` · ${row.supplier_invoice_number}`:''}` : 'Sin Supplier Bill posted';
+    const bill = row.supplier_bill_number ? `${row.supplier_bill_number}${row.supplier_invoice_number?` · ${row.supplier_invoice_number}`:''}` : 'Sin factura de proveedor contabilizada';
     const poCost = row.po_unit_cost == null ? '—' : money(row.po_unit_cost,row.po_currency);
     const billCost = row.supplier_bill_unit_cost == null ? '—' : money(row.supplier_bill_unit_cost,row.supplier_bill_currency);
     const recognized = row.recognized_unit_cogs == null ? '—' : money(row.recognized_unit_cogs,row.recognized_cogs_currency);
     return `<div class="trace-row">
-      <div class="trace-row-head"><div><b>${esc(productName(productId))}</b><div class="profit-sub">Coverage ${esc(coverageLabel(row.cost_coverage))}</div></div><div><b>COGS unitario: ${esc(recognized)}</b></div></div>
+      <div class="trace-row-head"><div><b>${esc(productName(productId))}</b><div class="profit-sub">Cobertura ${esc(coverageLabel(row.cost_coverage))}</div></div><div><b>Costo unitario reconocido: ${esc(recognized)}</b></div></div>
       <div class="trace-chain">
         <div class="trace-node"><b>Cargue</b><span>${esc(row.load_number || short(row.load_id))}</span></div>
-        <div class="trace-node"><b>Warehouse Receipt</b><span>${esc(row.receipt_number || short(row.warehouse_receipt_id))}</span></div>
-        <div class="trace-node"><b>Purchase Order</b><span>${esc(row.po_number || short(row.purchase_order_id))}<br>${esc(poCost)}</span></div>
-        <div class="trace-node"><b>Supplier Bill posted</b><span>${esc(bill)}<br>${esc(billCost)}</span></div>
-        <div class="trace-node"><b>Asignación física</b><span>Load ${esc(row.load_allocated_quantity ?? '—')} · SO ${esc(row.sales_allocated_quantity ?? '—')}</span></div>
+        <div class="trace-node"><b>Recepción de almacén</b><span>${esc(row.receipt_number || short(row.warehouse_receipt_id))}</span></div>
+        <div class="trace-node"><b>Orden de compra</b><span>${esc(row.po_number || short(row.purchase_order_id))}<br>${esc(poCost)}</span></div>
+        <div class="trace-node"><b>Factura de proveedor</b><span>${esc(bill)}<br>${esc(billCost)}</span></div>
+        <div class="trace-node"><b>Asignación física</b><span>Cargue ${esc(row.load_allocated_quantity ?? '—')} · Venta ${esc(row.sales_allocated_quantity ?? '—')}</span></div>
       </div>
       <div class="trace-nav">
         ${row.load_id?navButton('loads','Abrir Cargues'):''}
@@ -266,7 +288,7 @@
   }
 
   function chargeHtml(row) {
-    return `<div class="trace-charge"><div><b>${esc(row.cost_number)}</b></div><div>${esc(row.category)} · ${esc(row.stage)}<div class="profit-sub">Target ${esc(row.target_type)} · ${esc(row.target_reference || short(row.target_id))}</div></div><div class="amount">${esc(money(row.allocated_amount,row.currency))}</div><div>${navButton('costs','Abrir Costos')}</div></div>`;
+    return `<div class="trace-charge"><div><b>${esc(row.cost_number)}</b></div><div>${esc(categoryLabel(row.category))} · ${esc(stageLabel(row.stage))}<div class="profit-sub">${esc(targetLabel(row.target_type))} · ${esc(row.target_reference || short(row.target_id))}</div></div><div class="amount">${esc(money(row.allocated_amount,row.currency))}</div><div>${navButton('costs','Abrir Costos')}</div></div>`;
   }
 
   function traceHeading(type,id) {
@@ -281,12 +303,12 @@
     const charges = relatedCharges(type,id,sources);
     $('profitTraceTitle').textContent = `Trazabilidad · ${traceHeading(type,id)}`;
     $('profitTraceSubtitle').textContent = type === 'so' || type === 'invoice'
-      ? 'Fuentes de mercancía y Cost Charges relacionados como contexto. Los cargos no se prorratean a este margen.'
+      ? 'Fuentes de mercancía y cargos relacionados como contexto. Los cargos no se reparten automáticamente en este margen.'
       : type === 'load'
-        ? 'Fuentes de mercancía y Cost Charges directos incluidos cuando el target es este Cargue.'
-        : 'Fuentes de Facturas/COGS y Cost Charges resueltos desde Operación, Shipments y Cargues hijos.';
-    $('profitTraceBody').innerHTML = `<div class="trace-section"><h3>Cadena de mercancía</h3><div class="trace-note">SO/Factura → Cargue → WR → PO → Supplier Bill posted. El costo reconocido mostrado es el que PostgreSQL usa en COGS.</div><div class="trace-list">${sources.length?sources.map(sourceHtml).join(''):'<div class="empty compact">No hay cadena de mercancía atribuida todavía.</div>'}</div></div>
-      <div class="trace-section"><h3>Cost Charges relacionados</h3><div class="trace-note">Se listan por allocation explícita y moneda original; esta vista no convierte ni suma monedas incompatibles.</div><div class="trace-list">${charges.length?charges.map(chargeHtml).join(''):'<div class="empty compact">No hay Cost Charges posted relacionados.</div>'}</div></div>`;
+        ? 'Fuentes de mercancía y cargos directos incluidos cuando están asignados a este Cargue.'
+        : 'Fuentes de facturación, costo de mercancía y cargos de la Operación, sus Contenedores y sus Cargues.';
+    $('profitTraceBody').innerHTML = `<div class="trace-section"><h3>Cadena de mercancía</h3><div class="trace-note">Venta o factura → Cargue → recepción de almacén → orden de compra → factura de proveedor. Se muestra el costo reconocido por las reglas financieras del ERP.</div><div class="trace-list">${sources.length?sources.map(sourceHtml).join(''):'<div class="empty compact">No hay cadena de mercancía atribuida todavía.</div>'}</div></div>
+      <div class="trace-section"><h3>Cargos relacionados</h3><div class="trace-note">Se listan por asignación explícita y moneda original; esta vista no convierte ni suma monedas incompatibles.</div><div class="trace-list">${charges.length?charges.map(chargeHtml).join(''):'<div class="empty compact">No hay cargos contabilizados relacionados.</div>'}</div></div>`;
     $('profitTraceModal').classList.remove('hidden');
   }
 

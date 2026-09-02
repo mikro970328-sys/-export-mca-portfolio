@@ -1,0 +1,57 @@
+name: UX6 Costs Presentation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/costs.css'
+      - 'admin/costs.html'
+      - 'admin/costs.js'
+      - 'admin/profitability.css'
+      - 'admin/profitability.js'
+      - 'api/_cost-actions.js'
+      - 'api/costs.js'
+      - 'api/profitability.js'
+      - 'supabase/migrations/20260901184000_ux6_cost_charge_action_capabilities.sql'
+      - 'supabase/tests/ux6_cost_charge_actions.sql'
+      - 'scripts/check-ux6-costs-presentation.mjs'
+      - '.github/workflows/ux6-costs-presentation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-costs-presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate Costs UX-6 owner
+        run: node scripts/check-ux6-costs-presentation.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/_cost-actions.js
+          node --check api/costs.js
+          node --check api/profitability.js
+          node --check admin/costs.js
+          node --check admin/profitability.js
+          node --check scripts/check-ux6-costs-presentation.mjs
+      - name: Validate API runtime imports
+        run: node --input-type=module -e "await Promise.all([import('./api/_cost-actions.js'),import('./api/costs.js'),import('./api/profitability.js')]); console.log('Costs API runtime imports OK')"
+      - name: Validate profitability contract
+        run: node scripts/check-sales-order-profitability.mjs
+      - name: Validate UX-6 presentation cleanup
+        run: node scripts/check-ux6-presentation-cleanup.mjs
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
+      - name: Validate admin shell
+        run: node scripts/check-admin-shell-resilience.mjs
+      - name: Audit API boundaries
+        run: node scripts/audit-b9-api-boundaries.mjs
+      - name: Validate database privileges
+        run: node scripts/check-b9-database-privileges.mjs
+      - name: Validate public boundary
+        run: node scripts/check-b9-public-boundaries.mjs
+      - name: Validate integrations
+        run: node scripts/check-integrations.mjs
