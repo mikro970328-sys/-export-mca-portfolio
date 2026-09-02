@@ -1,0 +1,48 @@
+name: UX6 Access Feedback
+
+on:
+  pull_request:
+    paths:
+      - 'admin/access-control-administration.js'
+      - 'admin/access-control.css'
+      - 'admin/erp.js'
+      - 'api/access-control.js'
+      - 'api/admins.js'
+      - 'scripts/check-access-control.mjs'
+      - 'scripts/check-ux6-shell-ownership.mjs'
+      - 'scripts/check-ux6b-native-workspace-foundation.mjs'
+      - 'scripts/check-ux6-access-feedback.mjs'
+      - '.github/workflows/ux6-access-feedback.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-access-feedback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate Access feedback
+        run: node scripts/check-ux6-access-feedback.mjs
+      - name: Preserve Access and shell ownership
+        run: |
+          node scripts/check-access-control.mjs
+          node scripts/check-ux6-shell-ownership.mjs
+          node scripts/check-ux6b-native-workspace-foundation.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/check-admin-shell-resilience.mjs
+      - name: Preserve security and integrations
+        run: |
+          node scripts/audit-b9-api-boundaries.mjs
+          node scripts/check-b9-database-privileges.mjs
+          node scripts/check-b9-public-boundaries.mjs
+          node scripts/check-integrations.mjs
+      - name: Validate JavaScript syntax and imports
+        run: |
+          node --check admin/access-control-administration.js
+          node --check admin/erp.js
+          node --check scripts/check-ux6-access-feedback.mjs
+          node --input-type=module -e "await Promise.all([import('./api/account.js'),import('./api/admins.js'),import('./api/access-control.js')]); console.log('Access runtime imports OK')"

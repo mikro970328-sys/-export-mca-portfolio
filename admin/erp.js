@@ -143,7 +143,7 @@
     else document.head.appendChild(link);
   });
 
-  const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260830-p3', 'data-access-control-style');
+  const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260902-ux6access1', 'data-access-control-style');
   const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260817-e1', 'data-ui-icon-system');
 
   const accessCan = permission => window.ExportMcaAccessControl?.can?.(permission) !== false;
@@ -223,7 +223,7 @@
 
     bootPromise = (async () => {
       await accessStylesPromise;
-      await loadScript('/admin/access-control-administration.js?v=20260902-ux6b1', 'data-access-control-administration');
+      await loadScript('/admin/access-control-administration.js?v=20260902-ux6access1', 'data-access-control-administration');
       if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
       await window.ExportMcaAccessControl.initialize();
       window.ExportMcaAccessControl?.applyNavigation?.();

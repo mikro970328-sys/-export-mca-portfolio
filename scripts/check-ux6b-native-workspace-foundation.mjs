@@ -109,7 +109,7 @@ requireText(registration,"owner: 'registration-form-shell.js'",'Registro conserv
 for(const ref of [
   "/admin/clients-module.js?v=20260902-ux6b1",
   "/admin/operational-alert-center.js?v=20260902-ux6b1",
-  "/admin/access-control-administration.js?v=20260902-ux6b1",
+  "/admin/access-control-administration.js?v=20260902-ux6access1",
   "/admin/registration-form-shell.js?v=20260902-ux6b1",
   "/admin/account-administration.js?v=20260902-ux6b1",
   "/admin/tasks-workspace.js?v=20260902-ux6tasks1"
