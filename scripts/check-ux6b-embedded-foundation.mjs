@@ -44,6 +44,7 @@ forbid(css,/@import/i,'la base visual depende de una importación tardía');
 forbid(css,/\b(?:fetch|MutationObserver|prompt|alert|confirm)\b/,'la base visual mezcla comportamiento de JavaScript');
 forbid(css,/erp-module-publications/,'la base compartida conserva reglas propietarias de Publicaciones');
 forbid(css,/erp-module-inventory/,'la base compartida conserva reglas propietarias de Inventario');
+forbid(css,/erp-module-loads/,'la base compartida conserva reglas propietarias de Cargues');
 
 const openingBraces=(css.match(/{/g)||[]).length;
 const closingBraces=(css.match(/}/g)||[]).length;

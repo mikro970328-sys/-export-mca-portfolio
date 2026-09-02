@@ -228,38 +228,6 @@
     observeChanges(document.getElementById('orderList'), () => nav.invalidateLinks?.());
   }
 
-  function initLoads() {
-    const nav = parentNav();
-    if (!nav || typeof window.openLoad !== 'function') return;
-    const originalOpenLoad = window.openLoad;
-    let currentLoadId = null;
-    async function renderContext(loadId = currentLoadId) {
-      const modal = document.getElementById('drawerModal');
-      if (!loadId || !modal || modal.classList.contains('hidden')) return;
-      const [load, sales] = await Promise.all([nav.loadById(loadId),nav.salesOrdersForLoad(loadId)]);
-      if (!load || modal.classList.contains('hidden')) return;
-      const body = document.getElementById('drawerBody');
-      if (!body) return;
-      ['loadOperationalSales','loadOperationalSources','loadOperationalDownstream'].forEach(id => document.getElementById(id)?.remove());
-      if (parentCan('sales.read')) {
-        const salesBlock = block('Sales Orders',sales.map(order => ({label:`${order.so_number} · ${order.so_status || 'sin estado'}`,action:() => nav.openSales({ salesOrderId:order.sales_order_id })})),'Este Cargue no está vinculado a una Sales Order.');
-        salesBlock.id = 'loadOperationalSales';body.appendChild(salesBlock);
-      }
-      if (parentCan('warehouse.read')) {
-        const sourceBlock = block('Warehouse Receipts de origen',(load.receipt_numbers || []).map(receiptNumber => ({label:receiptNumber,action:() => nav.openInventoryReceipt(receiptNumber)})),'Este Cargue no tiene WR resolubles.');
-        sourceBlock.id = 'loadOperationalSources';body.appendChild(sourceBlock);
-      }
-      const downstream = load.shipment_id ? [{label:`Contenedor · ${load.container_number || load.load_number}`,action:() => nav.openTracking({ shipmentId:load.shipment_id })}] : [];
-      const downstreamBlock = block('Contenedor / Tracking',downstream,'Este Cargue todavía no tiene un contenedor vinculado.');
-      downstreamBlock.id = 'loadOperationalDownstream';body.appendChild(downstreamBlock);
-    }
-    window.openLoad = loadId => { currentLoadId = loadId; const result = originalOpenLoad(loadId); requestAnimationFrame(() => renderContext(loadId).catch(error => console.error('[load operational context]', error))); return result; };
-    window.openOperationalLoad = loadId => window.openLoad(loadId);
-    const modal = document.getElementById('drawerModal');
-    if (modal) new MutationObserver(() => renderContext().catch(error => console.error('[load operational context]', error))).observe(modal, { attributes:true, attributeFilter:['class'] });
-    observeChanges(document.getElementById('loadRows'), () => nav.invalidateLinks?.());
-  }
-
   function initWarehouse() {
     const nav = parentNav();
     if (!nav) return;
@@ -325,7 +293,6 @@
   if (path.endsWith('/admin/suppliers.html')) { moduleName='suppliers';initSuppliers(); }
   else if (path.endsWith('/admin/purchases.html')) { moduleName='purchases';initPurchases(); }
   else if (path.endsWith('/admin/sales.html')) { moduleName='sales';initSales(); }
-  else if (path.endsWith('/admin/loads.html')) { moduleName='loads';initLoads(); }
   else if (path.endsWith('/admin/warehouse.html')) { moduleName='warehouse';initWarehouse(); }
   else if (path.endsWith('/admin/invoices.html')) { moduleName='invoices';initInvoices(); }
   else if (path.endsWith('/admin/payables.html')) { moduleName='payables';initPayables(); }

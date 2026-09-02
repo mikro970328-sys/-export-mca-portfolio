@@ -6,9 +6,14 @@ on:
       - 'admin/loads.css'
       - 'admin/loads.html'
       - 'admin/loads.js'
+      - 'admin/embedded-foundation.css'
+      - 'admin/operational-navigation.js'
+      - 'admin/operational-context-bridge.js'
       - 'api/loads.js'
       - 'scripts/check-ux5-load-actions.mjs'
       - 'scripts/check-ux6-loads-presentation.mjs'
+      - 'scripts/check-ux7-loads-visual-owner.mjs'
+      - 'scripts/check-contextual-sync.mjs'
       - '.github/workflows/ux6-loads-presentation.yml'
   workflow_dispatch:
 
@@ -23,7 +28,9 @@ jobs:
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate Loads UX-6 owner
-        run: node scripts/check-ux6-loads-presentation.mjs
+        run: |
+          node scripts/check-ux6-loads-presentation.mjs
+          node scripts/check-ux7-loads-visual-owner.mjs
       - name: Validate canonical Load actions
         run: node scripts/check-ux5-load-actions.mjs
       - name: Validate JavaScript syntax
@@ -32,10 +39,15 @@ jobs:
           node --check admin/loads.js
           node --check scripts/check-ux5-load-actions.mjs
           node --check scripts/check-ux6-loads-presentation.mjs
+          node --check scripts/check-ux7-loads-visual-owner.mjs
+          node --check admin/operational-navigation.js
+          node --check admin/operational-context-bridge.js
       - name: Validate API runtime imports
         run: node --input-type=module -e "await Promise.all([import('./api/_load-actions.js'),import('./api/loads.js')]); console.log('Loads API runtime imports OK')"
       - name: Validate frontend ownership
-        run: node scripts/check-frontend-ownership.mjs
+        run: |
+          node scripts/check-contextual-sync.mjs
+          node scripts/check-frontend-ownership.mjs
       - name: Validate admin shell
         run: node scripts/check-admin-shell-resilience.mjs
       - name: Audit API boundaries

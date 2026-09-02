@@ -660,14 +660,6 @@ body.erp-module-page{
   letter-spacing:-.025em;
 }
 
-.erp-module-page.erp-module-loads #drawerModal,
-.erp-module-page.erp-module-loads #planModal,
-.erp-module-page.erp-module-loads #containerModal{
-  align-items:stretch;
-  justify-content:flex-end;
-  padding:0;
-}
-
 .erp-module-page .drawer{
   width:min(860px,100%);
   height:100%;
