@@ -4,25 +4,60 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ventas · Export MCA</title>
-<link rel="stylesheet" href="/admin/sales.css?v=20260902-ux6owner1">
-<link rel="stylesheet" href="/admin/sales-order-ux.css?v=20260829-1">
-<link rel="stylesheet" href="/admin/sales-workspace.css?v=20260901-ux6owner1">
-<link rel="stylesheet" href="/admin/sales-supply-workspace.css?v=20260902-ux6supply1">
-<link rel="stylesheet" href="/admin/sales-customer-finance.css?v=20260902-ux6owner1">
+<link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+<link rel="stylesheet" href="/admin/sales.css?v=20260902-ux7sales1">
+<link rel="stylesheet" href="/admin/sales-order-ux.css?v=20260902-ux7sales1">
+<link rel="stylesheet" href="/admin/sales-workspace.css?v=20260902-ux7sales1">
+<link rel="stylesheet" href="/admin/sales-supply-workspace.css?v=20260902-ux7sales1">
+<link rel="stylesheet" href="/admin/sales-customer-finance.css?v=20260902-ux7sales1">
 <script>
 document.__salesWorkspaceOwnsDetail = true;
 document.__financialSalesContextInstalled = true;
 </script>
 </head>
-<body class="erp-module-page erp-module-sales">
-<main class="wrap">
-  <header class="head module-hero sales-page-head"><div class="module-heading sales-page-heading"><div class="sales-page-kicker">Operación comercial</div><h1>Ventas</h1><p class="muted">Cada venta reúne cliente, mercancía, logística, facturación, cobros, costos y documentos del contenedor sin duplicar sus fuentes.</p></div><button id="newOrder" class="btn orange sales-primary-action">+ Nueva venta</button></header>
-  <div id="metrics" class="metrics"></div>
-  <section class="panel sales-list-panel"><div class="toolbar sales-list-toolbar"><input id="search" class="search" placeholder="Buscar venta, cliente, referencia o producto"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="closed">Cerradas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn sales-refresh" aria-label="Actualizar ventas" title="Actualizar ventas">↻</button></div><div id="orderList" class="orders has-explicit-count"></div></section>
+<body class="erp-module-page erp-module-sales" data-owner="sales.js">
+<main class="wrap sales-shell">
+  <header class="head module-hero sales-page-head" aria-labelledby="salesPageTitle">
+    <div class="module-heading sales-page-heading">
+      <div class="sales-page-kicker">Comercial · Operación integral</div>
+      <h1 id="salesPageTitle">Ventas</h1>
+      <p>Cada venta conecta cliente, mercancía, logística, facturación, cobros, costos y documentos del contenedor en un solo recorrido.</p>
+    </div>
+    <div class="module-actions">
+      <button id="newOrder" class="btn orange sales-primary-action" type="button">Nueva venta</button>
+    </div>
+  </header>
+
+  <section id="metrics" class="metrics sales-metrics" aria-label="Resumen de ventas"></section>
+  <div id="salesAccessNote" class="sales-access-note" role="note" hidden>Puedes consultar y dar seguimiento a las ventas, pero tu perfil no permite crear ni modificarlas.</div>
+
+  <section class="panel sales-list-panel" aria-labelledby="salesListTitle">
+    <div class="sales-list-heading">
+      <div>
+        <span class="sales-eyebrow">Cartera comercial</span>
+        <h2 id="salesListTitle">Ventas registradas</h2>
+        <p>Consulta el avance comercial, logístico y financiero de cada operación.</p>
+      </div>
+    </div>
+    <div class="toolbar sales-list-toolbar">
+      <label class="sales-search-field" for="search">
+        <span class="sales-visually-hidden">Buscar ventas</span>
+        <input id="search" class="search" type="search" autocomplete="off" placeholder="Buscar venta, cliente, referencia o producto">
+      </label>
+      <div class="tabs sales-view-tabs" role="group" aria-label="Filtrar ventas">
+        <button class="btn active" type="button" data-view="open" aria-pressed="true">Abiertas</button>
+        <button class="btn" type="button" data-view="draft" aria-pressed="false">Borradores</button>
+        <button class="btn" type="button" data-view="closed" aria-pressed="false">Cerradas</button>
+        <button class="btn" type="button" data-view="all" aria-pressed="false">Todas</button>
+      </div>
+      <button id="refresh" class="btn sales-refresh" type="button" aria-label="Actualizar ventas" title="Actualizar ventas"><span aria-hidden="true">↻</span></button>
+    </div>
+    <div id="orderList" class="orders has-explicit-count sales-order-list" aria-live="polite"></div>
+  </section>
 </main>
 
-<div id="orderModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="orderTitle">Nueva venta</h2><div class="muted">Aquí defines qué vendiste, a quién, cuánto y por qué valor. El inventario se reserva después al preparar el Cargue.</div></div><button class="btn" data-close="order">✕</button></div>
+<div id="orderModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="orderTitle"><div class="dialog sales-order-dialog"><div class="dialog-head"><div><span class="sales-dialog-kicker">Operación comercial</span><h2 id="orderTitle">Nueva venta</h2><div class="muted">Define qué vendiste, a quién, cuánto y por qué valor. El inventario se reserva después al preparar el Cargue.</div></div><button class="btn sales-close-button" type="button" data-close="order" aria-label="Cerrar formulario de venta">✕</button></div>
 <div class="grid3"><div><label>Cliente *</label><select id="oClient"></select></div><div><label>Importador</label><select id="oImporter"></select></div><div><label>Moneda *</label><input id="oCurrency" value="USD" maxlength="3"></div></div>
 <div class="grid3"><div><label>Fecha de venta</label><input id="oDate" type="date"></div><div><label>Fecha objetivo</label><input id="oRequested" type="datetime-local"></div><div><label>Referencia del cliente</label><input id="oReference"></div></div>
 <label>Notas</label><textarea id="oNotes"></textarea>
@@ -30,17 +65,17 @@ document.__financialSalesContextInstalled = true;
 <div id="orderLines"></div>
 <div class="actions sales-modal-actions"><button class="btn" data-close="order">Cancelar</button><button id="saveOrder" class="btn orange">Guardar venta</button></div><div id="orderMsg" class="msg" role="status" aria-live="polite"></div></div></div>
 
-<div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><div class="actions sales-detail-header-actions"><button id="openCustomerFinance" type="button" class="btn hidden">Anticipos / Proformas</button><button id="openSupplyWorkspace" type="button" class="btn hidden">Abastecimiento</button><button class="btn" data-close="detail">✕</button></div></div><div id="detailBody"></div><div id="detailActions" class="actions sales-modal-actions"></div><div id="detailMsg" class="msg" role="status" aria-live="polite"></div></div></div>
+<div id="detailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailTitle"><div class="dialog"><div class="dialog-head"><div><span class="sales-dialog-kicker">Workspace de venta</span><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><div class="actions sales-detail-header-actions"><button id="openCustomerFinance" type="button" class="btn hidden">Anticipos / Proformas</button><button id="openSupplyWorkspace" type="button" class="btn hidden">Abastecimiento</button><button class="btn sales-close-button" type="button" data-close="detail" aria-label="Cerrar detalle de venta">✕</button></div></div><div id="detailBody"></div><div id="detailActions" class="actions sales-modal-actions"></div><div id="detailMsg" class="msg" role="status" aria-live="polite"></div></div></div>
 
-<div id="loadModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="loadTitle">Preparar Cargue</h2><div class="muted">Selecciona cantidades por WR. La reserva física y la trazabilidad Venta → Cargue → WR se guardan juntas.</div></div><button class="btn" data-close="load">✕</button></div>
+<div id="loadModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="loadTitle"><div class="dialog sales-load-dialog"><div class="dialog-head"><div><span class="sales-dialog-kicker">Logística vinculada</span><h2 id="loadTitle">Preparar Cargue</h2><div class="muted">Selecciona cantidades por WR. La reserva física y la trazabilidad Venta → Cargue → WR se guardan juntas.</div></div><button class="btn sales-close-button" type="button" data-close="load" aria-label="Cerrar preparación de Cargue">✕</button></div>
 <div class="grid"><div><label>Almacén *</label><select id="lWarehouse"></select></div><div><label>Fecha programada</label><input id="lScheduled" type="datetime-local"></div></div>
 <label>Notas del Cargue</label><textarea id="lNotes"></textarea>
 <div id="loadLines" class="detail-items"></div>
 <div class="actions sales-modal-actions"><button class="btn" data-close="load">Cancelar</button><button id="saveLoad" class="btn orange">Crear Cargue</button></div><div id="loadMsg" class="msg" role="status" aria-live="polite"></div></div></div>
 
-<script src="/admin/sales.js?v=20260902-ux6owner1"></script>
-<script src="/admin/sales-order-ux.js?v=20260902-ux6owner1"></script>
-<script src="/admin/sales-workspace.js?v=20260902-ux6owner2"></script>
+<script src="/admin/sales.js?v=20260902-ux7sales1"></script>
+<script src="/admin/sales-order-ux.js?v=20260902-ux7sales1"></script>
+<script src="/admin/sales-workspace.js?v=20260902-ux7sales1"></script>
 <script src="/admin/sales-supply-workspace.js?v=20260902-ux6supply1"></script>
 <script src="/admin/sales-customer-finance.js?v=20260902-ux6owner1"></script>
 <script src="/admin/sales-controller.js?v=20260901-ux6owner1"></script>

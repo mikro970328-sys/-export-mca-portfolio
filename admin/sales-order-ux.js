@@ -54,12 +54,15 @@
     const modal = document.createElement('div');
     modal.id = 'clientPickerModal';
     modal.className = 'modal hidden';
+    modal.setAttribute('role','dialog');
+    modal.setAttribute('aria-modal','true');
+    modal.setAttribute('aria-labelledby','clientPickerTitle');
     modal.innerHTML = `<div class="dialog client-picker-dialog">
-      <div class="dialog-head"><div><h2>Seleccionar cliente</h2><div class="muted">Busca por nombre o empresa y navega las páginas de clientes activos.</div></div><button type="button" class="btn" data-client-close>✕</button></div>
-      <input id="clientPickerSearch" class="client-picker-search" placeholder="Buscar cliente o empresa">
+      <div class="dialog-head"><div><span class="sales-dialog-kicker">Directorio comercial</span><h2 id="clientPickerTitle">Seleccionar cliente</h2><div class="muted">Busca por nombre o empresa y navega las páginas de clientes activos.</div></div><button type="button" class="btn sales-close-button" data-client-close aria-label="Cerrar selector de clientes">✕</button></div>
+      <label class="sales-visually-hidden" for="clientPickerSearch">Buscar cliente o empresa</label><input id="clientPickerSearch" class="client-picker-search" type="search" autocomplete="off" placeholder="Buscar cliente o empresa">
       <div id="clientPickerList" class="client-picker-list"></div>
       <div class="client-picker-footer"><button id="clientPrev" type="button" class="btn">← Anterior</button><span id="clientPageLabel" class="muted">Página 1</span><button id="clientNext" type="button" class="btn">Siguiente →</button></div>
-      <div id="clientPickerMsg" class="msg"></div>
+      <div id="clientPickerMsg" class="msg" role="status" aria-live="polite"></div>
     </div>`;
     document.body.appendChild(modal);
     modal.querySelector('[data-client-close]').onclick = closeClientPicker;
@@ -83,8 +86,12 @@
     button.type = 'button';
     button.id = 'oClientPickerButton';
     button.className = 'client-picker-button';
+    button.setAttribute('aria-haspopup','dialog');
+    button.setAttribute('aria-controls','clientPickerModal');
+    button.setAttribute('aria-expanded','false');
     button.innerHTML = '<strong>Seleccionar cliente</strong><span>Buscar ›</span>';
     select.insertAdjacentElement('afterend', button);
+    select.hidden = true;
     button.onclick = openClientPicker;
     syncClientButton();
   }
@@ -113,12 +120,16 @@
     byId('clientPickerSearch').value = '';
     byId('clientPickerMsg').textContent = '';
     byId('clientPickerModal').classList.remove('hidden');
+    byId('oClientPickerButton')?.setAttribute('aria-expanded','true');
     await loadClientPage();
     setTimeout(() => byId('clientPickerSearch')?.focus(), 0);
   }
 
   function closeClientPicker() {
     byId('clientPickerModal')?.classList.add('hidden');
+    const button=byId('oClientPickerButton');
+    button?.setAttribute('aria-expanded','false');
+    button?.focus();
   }
 
   async function loadClientPage() {
