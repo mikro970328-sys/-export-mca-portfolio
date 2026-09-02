@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const files = {
   html: 'admin/publications.html',
@@ -35,7 +36,7 @@ for (const text of [
   '<link rel="stylesheet" href="/admin/publications.css?v=20260902-ux7publications1">',
   '<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">',
   '<body class="erp-module-page erp-module-publications" data-owner="publications.js">',
-  '<script src="/admin/publications.js?v=20260902-ux7publications1" defer></script>',
+  '<script src="/admin/publications.js?v=20260902-ux7publications2" defer></script>',
   'class="metrics publications-metrics"',
   'id="readOnlyNote"',
   'id="publicationDecision" class="modal hidden" role="alertdialog"',
@@ -80,6 +81,13 @@ forbid(foundation, /erp-module-publications/, 'la base compartida conserva regla
 
 for (const text of [
   "owner: 'publications.js'",
+  "const embeddedMode = new URLSearchParams(location.search).get('embedded') === '1';",
+  'function redirectToAdminLogin()',
+  "window.top.location.replace('/admin/index.html');",
+  'function startPublications(',
+  'function handleStoredSession(',
+  "window.addEventListener('storage', handleStoredSession)",
+  'embedded: embeddedMode',
   'const SAFE_PUBLICATION_ERRORS = new Set([',
   'function safePublicationMessage(',
   'PUBLICATIONS_UI_FAILED',
@@ -106,6 +114,58 @@ forbid(owner, /\.style(?:\.|\[)/, 'publications.js vuelve a mutar estilos direct
 forbid(owner, /document\.createElement\(['"]style['"]\)|style\.textContent/, 'publications.js vuelve a inyectar CSS');
 forbid(owner, /\bMutationObserver\b/, 'publications.js vuelve a observar y recomponer el DOM');
 forbid(owner, /\b(?:prompt|alert|confirm)\s*\(/, 'publications.js vuelve a usar diálogos nativos');
+forbid(owner, /location\.replace\(['"]\/admin\/pwa\.html['"]\)/, 'Publicaciones vuelve a montar el ERP completo dentro del iframe');
+forbid(owner, /if\s*\(!token\)\s*location\.(?:href|replace)/, 'Publicaciones redirige el iframe antes de que el shell complete el inicio de sesión');
+
+const embeddedListeners = new Map();
+const embeddedRedirects = [];
+let embeddedFetches = 0;
+const embeddedWindow = {
+  top: {
+    location: {
+      replace(path) {
+        embeddedRedirects.push(`top:${path}`);
+      }
+    }
+  },
+  addEventListener(type, handler) {
+    embeddedListeners.set(type, handler);
+  },
+  removeEventListener(type) {
+    embeddedListeners.delete(type);
+  }
+};
+
+vm.runInNewContext(owner, {
+  URLSearchParams,
+  console,
+  document: { getElementById: () => null },
+  fetch: async () => {
+    embeddedFetches += 1;
+    throw new Error('No debe consultar la API antes de recibir la sesión');
+  },
+  localStorage: {
+    getItem: () => null,
+    removeItem: () => {}
+  },
+  location: {
+    search: '?embedded=1',
+    replace(path) {
+      embeddedRedirects.push(`self:${path}`);
+    }
+  },
+  window: embeddedWindow
+}, { filename: files.owner });
+
+if (embeddedRedirects.length) {
+  failures.push(`Publicaciones embebida sin sesión redirige prematuramente: ${embeddedRedirects.join(', ')}`);
+}
+if (!embeddedListeners.has('storage')) {
+  failures.push('Publicaciones embebida sin sesión no espera el token del shell');
+}
+if (embeddedFetches) {
+  failures.push('Publicaciones embebida consulta la API antes de que el shell complete el inicio de sesión');
+}
 
 for (const text of [
   'async function canWritePublications(admin)',
