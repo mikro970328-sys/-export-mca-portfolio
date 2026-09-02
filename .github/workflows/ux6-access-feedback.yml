@@ -6,6 +6,7 @@ on:
       - 'admin/access-control-administration.js'
       - 'admin/access-control.css'
       - 'admin/erp.js'
+      - 'admin/index.html'
       - 'api/access-control.js'
       - 'api/admins.js'
       - 'scripts/check-access-control.mjs'

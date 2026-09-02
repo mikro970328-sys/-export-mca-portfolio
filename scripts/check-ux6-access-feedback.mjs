@@ -3,6 +3,7 @@ import fs from 'node:fs';
 const files={
   owner:'admin/access-control-administration.js',
   styles:'admin/access-control.css',
+  index:'admin/index.html',
   loader:'admin/erp.js',
   accessApi:'api/access-control.js',
   adminsApi:'api/admins.js',
@@ -17,6 +18,7 @@ for(const file of Object.values(files))if(!fs.existsSync(file))failures.push(`fa
 
 const owner=read(files.owner);
 const styles=read(files.styles);
+const index=read(files.index);
 const loader=read(files.loader);
 const accessApi=read(files.accessApi);
 const adminsApi=read(files.adminsApi);
@@ -59,6 +61,7 @@ requireText(loader,"/admin/access-control.css?v=20260902-ux6access1",'revisión 
 requireText(loader,"/admin/access-control-administration.js?v=20260902-ux6access1",'revisión del owner de Accesos');
 requireText(loader,"await window.ExportMcaAccessControl.initialize()",'inicialización del contexto de acceso');
 requireText(styles,'.access-modal-message{margin:0 16px 12px}','feedback visible dentro del diálogo de Accesos');
+requireText(index,'/admin/erp.js?v=20260902-ux6access1','revisión del loader ERP');
 
 for(const [source,label] of [[accessApi,'api/access-control.js'],[adminsApi,'api/admins.js']]){
   requireText(source,'authorizeAdmin(',`${label} conserva autorización backend`);
