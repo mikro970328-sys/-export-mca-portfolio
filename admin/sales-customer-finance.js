@@ -20,6 +20,10 @@
   const nativeWorkspace = window.SalesWorkspace || null;
   const can = (owner,action) => owner?.capabilities?.actions?.[action]?.allowed === true;
   const canSalesOrder = action => state.salesOrderCapabilities?.actions?.[action]?.allowed === true;
+  const SAFE_CUSTOMER_FINANCE_ERROR_PATTERNS = [
+    /^(?:Venta|Proforma|Anticipo|Factura|Aplicación|Reembolso|El monto|La venta|El anticipo|La factura|No hay|Revierte|Indica|No tienes|Esta venta|Este anticipo|El navegador|Sesión vencida|Acción de|Método no permitido)/i,
+    /^No se (?:pudo procesar Proformas|pudieron procesar los anticipos)(?:\. Intenta nuevamente\.)?$/i
+  ];
 
   const STATUS_LABELS = Object.freeze({
     posted:'Activo', reversed:'Revertido', draft:'Borrador', issued:'Emitida', void:'Anulada',
@@ -33,11 +37,21 @@
   }
 
   function statusText(value) {
-    return STATUS_LABELS[value] || value || '—';
+    return STATUS_LABELS[value] || 'Estado no disponible';
   }
 
   function status(value) {
     return `<span class="sales-finance-status ${statusClass(value)}">${esc(statusText(value))}</span>`;
+  }
+
+  function safeCustomerFinanceMessage(error, fallback = 'No se pudo completar la operación. Intenta nuevamente.') {
+    const message = String(error?.message || '').trim();
+    return message && SAFE_CUSTOMER_FINANCE_ERROR_PATTERNS.some(pattern => pattern.test(message)) ? message : fallback;
+  }
+
+  function reportCustomerFinanceError(context, error, fallback) {
+    console.error('CUSTOMER_FINANCE_UI_FAILED', { context, error });
+    return safeCustomerFinanceMessage(error, fallback);
   }
 
   async function request(path, options = {}) {
@@ -76,7 +90,7 @@
       const modal = document.createElement('div');
       modal.id = 'salesFinanceModal';
       modal.className = 'modal hidden sales-finance-modal';
-      modal.innerHTML = `<div class="dialog"><div class="dialog-head"><div><h2 id="salesFinanceTitle">Anticipos y Proformas</h2><div id="salesFinanceSubtitle" class="muted"></div></div><button type="button" class="btn" data-cf-close-main>Cerrar</button></div><div id="salesFinanceBody" class="sales-finance-body"></div><div id="salesFinanceMsg" class="msg" style="margin:0 18px 14px"></div></div>`;
+      modal.innerHTML = `<div class="dialog"><div class="dialog-head"><div><h2 id="salesFinanceTitle">Anticipos y Proformas</h2><div id="salesFinanceSubtitle" class="muted"></div></div><button type="button" class="btn" data-cf-close-main>Cerrar</button></div><div id="salesFinanceBody" class="sales-finance-body"></div><div id="salesFinanceMsg" class="msg"></div></div>`;
       document.body.appendChild(modal);
       modal.querySelector('[data-cf-close-main]').onclick = () => modal.classList.add('hidden');
       modal.addEventListener('click', event => { if (event.target === modal) modal.classList.add('hidden'); });
@@ -86,7 +100,7 @@
       const modal = document.createElement('div');
       modal.id = 'salesFinanceFormModal';
       modal.className = 'modal hidden sales-finance-modal';
-      modal.innerHTML = `<div class="dialog" style="width:min(650px,95vw)"><div class="dialog-head"><div><h2 id="salesFinanceFormTitle"></h2><div id="salesFinanceFormSubtitle" class="muted"></div></div><button type="button" class="btn" data-cf-form-close>Cerrar</button></div><div class="sales-finance-body"><div id="salesFinanceFormBody"></div><div class="sales-finance-form-actions"><button type="button" class="btn" data-cf-form-close>Cancelar</button><button type="button" id="salesFinanceFormSave" class="btn orange" data-cf-busy>Guardar</button></div><div id="salesFinanceFormMsg" class="msg"></div></div></div>`;
+      modal.innerHTML = `<div class="dialog sales-finance-form-dialog"><div class="dialog-head"><div><h2 id="salesFinanceFormTitle"></h2><div id="salesFinanceFormSubtitle" class="muted"></div></div><button type="button" class="btn" data-cf-form-close>Cerrar</button></div><div class="sales-finance-body"><div id="salesFinanceFormBody"></div><div class="sales-finance-form-actions"><button type="button" class="btn" data-cf-form-close>Cancelar</button><button type="button" id="salesFinanceFormSave" class="btn orange" data-cf-busy>Guardar</button></div><div id="salesFinanceFormMsg" class="msg"></div></div></div>`;
       document.body.appendChild(modal);
       modal.querySelectorAll('[data-cf-form-close]').forEach(button => { button.onclick = () => modal.classList.add('hidden'); });
       modal.addEventListener('click', event => { if (event.target === modal) modal.classList.add('hidden'); });
@@ -96,7 +110,7 @@
       const modal = document.createElement('div');
       modal.id = 'salesFinanceDecisionModal';
       modal.className = 'modal hidden sales-finance-modal';
-      modal.innerHTML = `<div class="dialog" style="width:min(520px,94vw)"><div class="dialog-head"><div><h2 id="salesFinanceDecisionTitle"></h2></div><button type="button" class="btn" data-cf-decision-close>Cerrar</button></div><div class="sales-finance-body"><div id="salesFinanceDecisionCopy" class="sales-finance-meta" style="font-size:12px"></div><div class="sales-finance-form-actions"><button type="button" class="btn" data-cf-decision-close>Cancelar</button><button type="button" id="salesFinanceDecisionAccept" class="btn orange" data-cf-busy>Continuar</button></div><div id="salesFinanceDecisionMsg" class="msg"></div></div></div>`;
+      modal.innerHTML = `<div class="dialog sales-finance-decision-dialog"><div class="dialog-head"><div><h2 id="salesFinanceDecisionTitle"></h2></div><button type="button" class="btn" data-cf-decision-close>Cerrar</button></div><div class="sales-finance-body"><div id="salesFinanceDecisionCopy" class="sales-finance-meta sales-finance-decision-copy"></div><div class="sales-finance-form-actions"><button type="button" class="btn" data-cf-decision-close>Cancelar</button><button type="button" id="salesFinanceDecisionAccept" class="btn orange" data-cf-busy>Continuar</button></div><div id="salesFinanceDecisionMsg" class="msg"></div></div></div>`;
       document.body.appendChild(modal);
       modal.querySelectorAll('[data-cf-decision-close]').forEach(button => { button.onclick = () => modal.classList.add('hidden'); });
       modal.addEventListener('click', event => { if (event.target === modal) modal.classList.add('hidden'); });
@@ -119,7 +133,7 @@
         byId('salesFinanceFormModal').classList.add('hidden');
         await refreshAll({ refreshNative:true });
       } catch (error) {
-        byId('salesFinanceFormMsg').textContent = error.message;
+        byId('salesFinanceFormMsg').textContent = reportCustomerFinanceError('form_save', error);
       } finally {
         setBusy(false);
       }
@@ -142,7 +156,7 @@
         byId('salesFinanceDecisionModal').classList.add('hidden');
         await refreshAll({ refreshNative:true });
       } catch (error) {
-        byId('salesFinanceDecisionMsg').textContent = error.message;
+        byId('salesFinanceDecisionMsg').textContent = reportCustomerFinanceError('decision_accept', error);
       } finally {
         setBusy(false);
       }
@@ -318,7 +332,7 @@
       return;
     }
     const items = (row.items || []).map(item => `<tr><td>${esc(item.sku || '')}</td><td>${esc(item.description)}</td><td class="num">${esc(item.quantity)}</td><td>${esc(item.unit)}</td><td class="num">${esc(money(item.unit_price,row.currency))}</td><td class="num">${esc(money(item.line_total,row.currency))}</td></tr>`).join('');
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(row.proforma_number)}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#172033;margin:0;background:#fff}.page{max-width:850px;margin:0 auto;padding:42px}.top{display:flex;justify-content:space-between;gap:30px;border-bottom:3px solid #f58220;padding-bottom:16px}.brand{font-size:22px;font-weight:800;color:#06204a}.doc{text-align:right}.doc h1{margin:0;color:#06204a;font-size:24px}.meta{margin-top:4px;color:#667085;font-size:12px}.notice{margin:18px 0;padding:10px 12px;background:#f7f9fc;border:1px solid #dfe5ec;font-size:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:20px 0}.label{font-size:10px;text-transform:uppercase;color:#667085;font-weight:700}.value{margin-top:4px;font-weight:600}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{padding:9px 7px;border-bottom:1px solid #e5e8ed;text-align:left;font-size:12px}th{font-size:10px;text-transform:uppercase;color:#667085;background:#f7f9fc}.num{text-align:right}.total{margin-top:18px;text-align:right;font-size:18px;font-weight:800;color:#06204a}.notes{margin-top:24px;font-size:12px;color:#475467}.footer{margin-top:40px;border-top:1px solid #e5e8ed;padding-top:12px;font-size:10px;color:#667085}@media print{.page{padding:24px}.no-print{display:none}}</style></head><body><div class="page"><div class="top"><div><div class="brand">EXPORT MCA LLC</div><div class="meta">Miami, Florida, USA<br>info@exportmca.com · +1 (786) 800-0735</div></div><div class="doc"><h1>PROFORMA INVOICE</h1><div class="meta">${esc(row.proforma_number)}<br>${esc(date(row.issue_date))}${row.valid_until ? ` · Valid until ${esc(date(row.valid_until))}` : ''}</div></div></div><div class="notice">Commercial quotation / payment request. This document is not the final financial invoice and does not by itself create accounts receivable.</div><div class="grid"><div><div class="label">Buyer</div><div class="value">${esc(clientName)}</div></div><div><div class="label">Consignee / Importer</div><div class="value">${esc(importerName)}</div></div><div><div class="label">Sales Order</div><div class="value">${esc(state.finance?.progress?.so_number || '—')}</div></div><div><div class="label">Currency</div><div class="value">${esc(row.currency)}</div></div>${row.customer_reference ? `<div><div class="label">Customer reference</div><div class="value">${esc(row.customer_reference)}</div></div>` : ''}</div><table><thead><tr><th>SKU</th><th>Description</th><th class="num">Qty</th><th>Unit</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead><tbody>${items}</tbody></table><div class="total">Total ${esc(money(row.financial?.total,row.currency))}</div>${row.notes ? `<div class="notes"><b>Notes / terms</b><br>${esc(row.notes)}</div>` : ''}<div class="footer">Generated from immutable Proforma snapshot ${esc(row.proforma_number)}.</div><div class="no-print" style="margin-top:20px;text-align:right"><button onclick="window.print()">Print / Save PDF</button></div></div></body></html>`);
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(row.proforma_number)}</title><link rel="stylesheet" href="/admin/proforma-print.css?v=20260902-ux6owner1"></head><body><div class="page"><div class="top"><div><div class="brand">EXPORT MCA LLC</div><div class="meta">Miami, Florida, USA<br>info@exportmca.com · +1 (786) 800-0735</div></div><div class="doc"><h1>PROFORMA INVOICE</h1><div class="meta">${esc(row.proforma_number)}<br>${esc(date(row.issue_date))}${row.valid_until ? ` · Valid until ${esc(date(row.valid_until))}` : ''}</div></div></div><div class="notice">Commercial quotation / payment request. This document is not the final financial invoice and does not by itself create accounts receivable.</div><div class="grid"><div><div class="label">Buyer</div><div class="value">${esc(clientName)}</div></div><div><div class="label">Consignee / Importer</div><div class="value">${esc(importerName)}</div></div><div><div class="label">Sales Order</div><div class="value">${esc(state.finance?.progress?.so_number || '—')}</div></div><div><div class="label">Currency</div><div class="value">${esc(row.currency)}</div></div>${row.customer_reference ? `<div><div class="label">Customer reference</div><div class="value">${esc(row.customer_reference)}</div></div>` : ''}</div><table><thead><tr><th>SKU</th><th>Description</th><th class="num">Qty</th><th>Unit</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead><tbody>${items}</tbody></table><div class="total">Total ${esc(money(row.financial?.total,row.currency))}</div>${row.notes ? `<div class="notes"><b>Notes / terms</b><br>${esc(row.notes)}</div>` : ''}<div class="footer">Generated from immutable Proforma snapshot ${esc(row.proforma_number)}.</div><div class="proforma-print-actions no-print"><button onclick="window.print()">Print / Save PDF</button></div></div></body></html>`);
     w.document.close();
   }
 
@@ -359,7 +373,8 @@
       await fetchData();
       render();
     } catch (error) {
-      byId('salesFinanceBody').innerHTML = `<div class="sales-finance-empty">${esc(error.message)}</div>`;
+      const message = reportCustomerFinanceError('open', error, 'No se pudo cargar Anticipos y Proformas. Intenta nuevamente.');
+      byId('salesFinanceBody').innerHTML = `<div class="sales-finance-empty">${esc(message)}</div>`;
     }
   }
 

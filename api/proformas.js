@@ -6,12 +6,13 @@ const text=(value,max=2000)=>String(value??'').trim().slice(0,max);
 const uuid=(value,label='ID')=>{const id=text(value,80);if(!UUID_RE.test(id))throw new Error(`${label}_INVALID`);return id;};
 const rpcRow=value=>Array.isArray(value)?value[0]||null:value||null;
 
-function friendly(error){
+function translatedError(error){
   const raw=String(error?.message||error||'');
   const map=[
-    ['SALES_ORDER_ID_INVALID','Venta inválida.'],['PROFORMA_ID_INVALID','Proforma inválida.'],['PROFORMA_SO_NOT_FOUND','Venta no encontrada.'],['PROFORMA_SO_NOT_CONFIRMED','La venta debe estar confirmada antes de crear o emitir una Proforma.'],['PROFORMA_SO_HAS_NO_ITEMS','La venta no tiene mercancía.'],['PROFORMA_NOT_FOUND','Proforma no encontrada.'],['PROFORMA_NOT_DRAFT','Solo una Proforma en borrador puede emitirse.'],['PROFORMA_HAS_NO_ITEMS','La Proforma no tiene mercancía.'],['PROFORMA_CANNOT_VOID','La Proforma no puede anularse en su estado actual.'],['PROFORMA_VOID_REASON_REQUIRED','Indica el motivo de anulación.'],['PROFORMA_ACTION_INVALID','Acción de Proforma inválida.'],['PERMISSION_REQUIRED','No tienes permiso para realizar esta acción.']
+    ['JSON_INVALID','La solicitud no tiene un formato válido.'],['SALES_ORDER_ID_INVALID','Venta inválida.'],['PROFORMA_ID_INVALID','Proforma inválida.'],['PROFORMA_SO_NOT_FOUND','Venta no encontrada.'],['PROFORMA_SO_NOT_CONFIRMED','La venta debe estar confirmada antes de crear o emitir una Proforma.'],['PROFORMA_SO_HAS_NO_ITEMS','La venta no tiene mercancía.'],['PROFORMA_NOT_FOUND','Proforma no encontrada.'],['PROFORMA_NOT_DRAFT','Solo una Proforma en borrador puede emitirse.'],['PROFORMA_HAS_NO_ITEMS','La Proforma no tiene mercancía.'],['PROFORMA_CANNOT_VOID','La Proforma no puede anularse en su estado actual.'],['PROFORMA_VOID_REASON_REQUIRED','Indica el motivo de anulación.'],['PROFORMA_ACTION_INVALID','Acción de Proforma inválida.'],['PERMISSION_REQUIRED','No tienes permiso para realizar esta acción.']
   ];
-  return map.find(([key])=>raw.includes(key))?.[1]||'No se pudo actualizar la Proforma.';
+  const matched=map.find(([key])=>raw.includes(key));
+  return matched?{code:matched[0],message:matched[1]}:null;
 }
 
 async function loadProformas(admin,salesOrderId){
@@ -56,5 +57,10 @@ export default async function handler(req,res){
       return ok(res,{proforma:row,...await loadProformas(admin,before.sales_order_id)});
     }
     return fail(res,400,'Acción de Proforma no válida.');
-  }catch(error){console.error('[proformas]',error);return fail(res,400,friendly(error));}
+  }catch(error){
+    console.error('[proformas]',error);
+    const translated=translatedError(error);
+    if(translated)return fail(res,400,translated.message,{code:translated.code});
+    return fail(res,500,'No se pudo procesar Proformas. Intenta nuevamente.',{code:'PROFORMA_UNEXPECTED_ERROR'});
+  }
 }
