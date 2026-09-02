@@ -66,7 +66,7 @@ const headEnd=index.indexOf('</head>');
 if(themeIndex<0||navigationIndex<0||foundationIndex<0||headEnd<0||!(themeIndex<navigationIndex&&navigationIndex<foundationIndex&&foundationIndex<headEnd)){
   failures.push('index.html debe cargar tema → navegación → base nativa dentro de head');
 }
-requireText(index,'/admin/erp.js?v=20260902-ux7shell1','revisión de caché del loader ERP');
+requireText(index,'/admin/erp.js?v=20260902-ux7clients1','revisión de caché del loader ERP');
 requireText(loader,"document.querySelector('link[data-native-workspace-foundation]')",'límite de cascada para estilos dinámicos');
 requireText(loader,'insertBefore(link, nativeFoundation)','estilos propietarios antes de la base compartida');
 
@@ -90,7 +90,6 @@ for(const [id,next] of [
 }
 
 for(const [source,label] of [
-  [clients,'Clientes'],
   [alerts,'Alertas'],
   [access,'Usuarios y acceso'],
   [account,'Mi cuenta'],
@@ -102,12 +101,18 @@ for(const [source,label] of [
   requireText(source,'native-workspace-kicker',`${label}: contexto compartido`);
 }
 
+for(const text of ['clients-workspace','clients-hero','clients-kicker','clients-summary']){
+  requireText(sectionMarkup('clientsSection','registerContainerSection'),text,`Clientes: owner visual ${text}`);
+}
+forbid(clients,/function\s+sectionHtml\s*\(|section\.innerHTML\s*=/,'Clientes vuelve a duplicar el markup compartido desde JavaScript');
+requireText(clients,"console.error('CLIENTS_MARKUP_MISSING')",'Clientes valida su markup canónico');
+
 forbid(registration,/document\.createElement\(['"]style['"]\)|style\.textContent|function\s+installStyles\s*\(/,'Registro de contenedores todavía inyecta CSS desde JavaScript');
 requireText(registration,"querySelector('.registration-card')",'Registro usa su superficie semántica');
 requireText(registration,"owner: 'registration-form-shell.js'",'Registro conserva owner de guía visual');
 
 for(const ref of [
-  "/admin/clients-module.js?v=20260902-ux6b1",
+  "/admin/clients-module.js?v=20260902-ux7clients1",
   "/admin/operational-alert-center.js?v=20260902-ux6alerts2",
   "/admin/access-control-administration.js?v=20260902-ux6access1",
   "/admin/registration-form-shell.js?v=20260902-ux6b1",
