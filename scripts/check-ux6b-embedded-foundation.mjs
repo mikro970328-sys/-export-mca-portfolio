@@ -33,7 +33,6 @@ for(const text of [
   '.erp-module-page .modal',
   '.erp-module-page .drawer',
   '.erp-module-page.erp-module-inventory .tabs',
-  '.erp-module-page.erp-module-publications .layout',
   '@media(max-width:980px)',
   '@media(max-width:720px)',
   '@media(max-width:520px)',
@@ -44,6 +43,7 @@ forbid(css,/font-family\s*:\s*Arial/i,'la base visual vuelve a usar Arial');
 forbid(css,/!important/i,'la base visual usa sobrescrituras !important');
 forbid(css,/@import/i,'la base visual depende de una importación tardía');
 forbid(css,/\b(?:fetch|MutationObserver|prompt|alert|confirm)\b/,'la base visual mezcla comportamiento de JavaScript');
+forbid(css,/erp-module-publications/,'la base compartida conserva reglas propietarias de Publicaciones');
 
 const openingBraces=(css.match(/{/g)||[]).length;
 const closingBraces=(css.match(/}/g)||[]).length;
@@ -53,7 +53,7 @@ for(const [module,file] of Object.entries(modules)){
   const html=read(file);
   const refCount=html.split(foundationRef).length-1;
   if(refCount!==1)failures.push(`${file} debe cargar una sola vez ${foundationRef}; encontró ${refCount}`);
-  requireText(html,`<body class="erp-module-page erp-module-${module}">`,`${module}: scope visual del body`);
+  requireText(html,`<body class="erp-module-page erp-module-${module}"`,`${module}: scope visual del body`);
   requireText(html,'module-hero',`${module}: cabecera del módulo`);
   if(!html.includes('module-kicker')&&!html.includes('sales-page-kicker'))failures.push(`${file} no declara jerarquía contextual`);
 
@@ -61,7 +61,7 @@ for(const [module,file] of Object.entries(modules)){
   const lastInlineStyle=html.lastIndexOf('</style>');
   const headEnd=html.indexOf('</head>');
   if(foundationIndex<0||foundationIndex<lastInlineStyle||headEnd<foundationIndex){
-    failures.push(`${file} debe cargar la base visual al final de head, después de sus estilos propietarios`);
+    failures.push(`${file} debe cargar la base visual dentro de head y después de cualquier bloque inline heredado`);
   }
 }
 

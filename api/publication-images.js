@@ -4,6 +4,7 @@ import { authorizeAdmin, fail, ok, readJson } from './_lib.js';
 const BUCKET = 'publication-images';
 const MAX_BYTES = 1572864;
 const MIME_EXT = { 'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp' };
+const SAFE_IMAGE_ERRORS = new Set(['URL de imagen inválida']);
 
 function config() {
   const url = process.env.SUPABASE_URL;
@@ -17,6 +18,13 @@ function storagePathFromUrl(value, baseUrl) {
   const prefix = `${baseUrl}/storage/v1/object/public/${BUCKET}/`;
   if (!raw.startsWith(prefix)) throw new Error('URL de imagen inválida');
   return decodeURIComponent(raw.slice(prefix.length));
+}
+
+function imageFailure(error) {
+  const raw = String(error?.message || '');
+  if (raw === 'JSON_INVALID') return { status:400, message:'La solicitud no tiene un formato válido', code:'PUBLICATION_IMAGE_REQUEST_INVALID' };
+  if (SAFE_IMAGE_ERRORS.has(raw)) return { status:400, message:raw, code:'PUBLICATION_IMAGE_VALIDATION_FAILED' };
+  return { status:500, message:'No se pudo procesar la imagen. Intenta nuevamente.', code:'PUBLICATION_IMAGE_UNEXPECTED_ERROR' };
 }
 
 export default async function handler(req, res) {
@@ -53,6 +61,8 @@ export default async function handler(req, res) {
     }
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
-    return fail(res, 400, error.message || 'No se pudo procesar la imagen');
+    console.error('PUBLICATION_IMAGE_API_ERROR', error);
+    const failure = imageFailure(error);
+    return fail(res, failure.status, failure.message, { code:failure.code });
   }
 }
