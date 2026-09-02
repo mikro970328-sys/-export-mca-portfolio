@@ -101,8 +101,12 @@ async function runLifecycle(action,loadId,admin){
 
 function translatedError(raw){
   const translations=[
+    ['JSON_INVALID','La solicitud no tiene un formato válido.'],
     ['PERMISSION_REQUIRED','No tienes permiso para ejecutar esta acción.'],
+    ['LOAD_ACTION_INVALID','La acción de Cargue no es válida.'],
     ['LOAD_ACTION_NOT_ALLOWED','El cargue no admite esta acción en su estado actual.'],
+    ['LOAD_NOT_FOUND','Cargue no encontrado.'],
+    ['LOAD_QUANTITY_INVALID','La cantidad o los pallets seleccionados no son válidos.'],
     ['CONTAINER_REFERENCE_INVALID','La referencia del contenedor no es válida. Usa letras/números y, si necesitas, espacios, guion, punto, slash o underscore.'],
     ['LOAD_SHIPMENT_CLIENT_MISMATCH','El cliente del contenedor no coincide con el cliente de la venta vinculada al cargue.'],
     ['LOAD_SHIPMENT_IMPORTER_MISMATCH','La importadora del contenedor no coincide con la importadora de la venta vinculada al cargue.'],
@@ -125,7 +129,9 @@ function translatedError(raw){
     ['WAREHOUSE_REQUIRED','Selecciona un almacén.']
   ];
   const matched=translations.find(([key])=>raw.includes(key));
-  return matched?.[1]||((raw.includes('duplicate key')||raw.includes('23505'))?'Esa referencia de contenedor ya tiene una operación activa.':raw);
+  if(matched)return matched[1];
+  if(raw.includes('duplicate key')||raw.includes('23505'))return 'Esa referencia de contenedor ya tiene una operación activa.';
+  return null;
 }
 
 export default async function handler(req,res){
@@ -191,6 +197,8 @@ export default async function handler(req,res){
   }catch(error){
     const raw=String(error.message||'Error de Cargue');
     console.error('[loads]',error);
-    return fail(res,400,translatedError(raw));
+    const translated=translatedError(raw);
+    if(translated)return fail(res,400,translated);
+    return fail(res,500,'No se pudo procesar Cargues');
   }
 }
