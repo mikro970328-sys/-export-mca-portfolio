@@ -17,6 +17,12 @@ const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.
 const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
 requireText(html,'/admin/sales.css?v=20260902-ux6owner1','CSS dedicado y versionado');
+for(const asset of [
+  '/admin/sales.js?v=20260902-ux6owner1',
+  '/admin/sales-order-ux.js?v=20260902-ux6owner1',
+  '/admin/sales-workspace.js?v=20260902-ux6owner2',
+  '/admin/sales-existing-load-link-v2.js?v=20260902-ux6owner1'
+])requireText(html,asset,`asset revisado ${asset}`);
 requireText(html,'sales-page-kicker','jerarquía visual de Ventas');
 requireText(html,'role="status" aria-live="polite"','feedback accesible');
 forbid(html,/\sstyle=/i,'sales.html conserva estilos inline');

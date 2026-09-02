@@ -90,7 +90,7 @@ for(const text of [
 
 for(const asset of [
   '/admin/sales-workspace.css?v=20260901-ux6owner1',
-  '/admin/sales-workspace.js?v=20260901-ux6owner1',
+  '/admin/sales-workspace.js?v=20260902-ux6owner2',
   '/admin/sales-controller.js?v=20260901-ux6owner1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 
