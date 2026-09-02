@@ -1,0 +1,54 @@
+name: UX6 Invoices Presentation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/invoices.css'
+      - 'admin/invoices.html'
+      - 'admin/invoices.js'
+      - 'api/invoices.js'
+      - 'api/invoice-payments.js'
+      - 'scripts/check-ux5-invoice-actions.mjs'
+      - 'scripts/check-ux6-invoices-presentation.mjs'
+      - '.github/workflows/ux6-invoices-presentation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-invoices-presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate Invoices UX-6 owner
+        run: node scripts/check-ux6-invoices-presentation.mjs
+      - name: Validate canonical Invoice actions
+        run: node scripts/check-ux5-invoice-actions.mjs
+      - name: Validate Customer Finance ownership
+        run: |
+          node scripts/check-sales-customer-finance.mjs
+          node scripts/check-ux5-customer-finance-actions.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/invoices.js
+          node --check api/invoices.js
+          node --check api/invoice-payments.js
+          node --check scripts/check-ux5-invoice-actions.mjs
+          node --check scripts/check-ux6-invoices-presentation.mjs
+      - name: Validate API runtime imports
+        run: node --input-type=module -e "await Promise.all([import('./api/_invoice-actions.js'),import('./api/invoices.js'),import('./api/invoice-payments.js')]); console.log('Invoice API runtime imports OK')"
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
+      - name: Validate admin shell
+        run: node scripts/check-admin-shell-resilience.mjs
+      - name: Audit API boundaries
+        run: node scripts/audit-b9-api-boundaries.mjs
+      - name: Validate database privileges
+        run: node scripts/check-b9-database-privileges.mjs
+      - name: Validate public boundary
+        run: node scripts/check-b9-public-boundaries.mjs
+      - name: Validate integrations
+        run: node scripts/check-integrations.mjs
