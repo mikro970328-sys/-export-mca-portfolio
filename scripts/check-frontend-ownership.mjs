@@ -142,6 +142,10 @@ for (const fragment of [
   'window.__modalDismissalInstalled',
   "owner: 'modal-dismissal.js'",
   'requestClose',
+  'confirmDiscard',
+  'modal-dismissal-decision',
+  'Seguir editando',
+  'Descartar cambios',
   "event.key !== 'Escape'",
   'event.target === modal',
   'Hay cambios sin guardar'
@@ -154,7 +158,9 @@ for (const forbidden of [
   'fetch(',
   'window.openModal =',
   'window.closeModal =',
-  'innerHTML ='
+  'innerHTML =',
+  'window.confirm(',
+  '.style.'
 ]) {
   if (modalDismissal.includes(forbidden)) errors.push(`modal-dismissal.js invade apertura/contenido del modal: ${forbidden}`);
 }

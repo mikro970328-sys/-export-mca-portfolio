@@ -28,7 +28,7 @@ const alerts=read(files.alerts);
 const access=read(files.access);
 const account=read(files.account);
 const tasks=read(files.tasks);
-const foundationRef='/admin/native-workspace-foundation.css?v=20260902-ux6b1';
+const foundationRef='/admin/native-workspace-foundation.css?v=20260902-ux6c1';
 
 for(const text of [
   '.native-workspace-shell{',
@@ -66,7 +66,7 @@ const headEnd=index.indexOf('</head>');
 if(themeIndex<0||navigationIndex<0||foundationIndex<0||headEnd<0||!(themeIndex<navigationIndex&&navigationIndex<foundationIndex&&foundationIndex<headEnd)){
   failures.push('index.html debe cargar tema → navegación → base nativa dentro de head');
 }
-requireText(index,'/admin/erp.js?v=20260902-ux6b1','revisión de caché del loader ERP');
+requireText(index,'/admin/erp.js?v=20260902-ux6c1','revisión de caché del loader ERP');
 requireText(loader,"document.querySelector('link[data-native-workspace-foundation]')",'límite de cascada para estilos dinámicos');
 requireText(loader,'insertBefore(link, nativeFoundation)','estilos propietarios antes de la base compartida');
 
