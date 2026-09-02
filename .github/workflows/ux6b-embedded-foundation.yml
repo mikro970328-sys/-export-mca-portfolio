@@ -10,7 +10,12 @@ on:
       - 'admin/inventory.html'
       - 'admin/loads.html'
       - 'admin/publications.html'
+      - 'admin/publications.css'
+      - 'admin/publications.js'
+      - 'api/publications.js'
+      - 'api/publication-images.js'
       - 'scripts/check-ux6b-embedded-foundation.mjs'
+      - 'scripts/check-ux7-publications-visual-owner.mjs'
       - '.github/workflows/ux6b-embedded-foundation.yml'
   workflow_dispatch:
 
@@ -25,7 +30,9 @@ jobs:
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate the shared visual owner
-        run: node scripts/check-ux6b-embedded-foundation.mjs
+        run: |
+          node scripts/check-ux6b-embedded-foundation.mjs
+          node scripts/check-ux7-publications-visual-owner.mjs
       - name: Preserve operational owners
         run: |
           node scripts/check-ux6-sales-explicit-owner.mjs
@@ -44,4 +51,6 @@ jobs:
           node scripts/check-b9-public-boundaries.mjs
           node scripts/check-integrations.mjs
       - name: Validate gate syntax
-        run: node --check scripts/check-ux6b-embedded-foundation.mjs
+        run: |
+          node --check scripts/check-ux6b-embedded-foundation.mjs
+          node --check scripts/check-ux7-publications-visual-owner.mjs
