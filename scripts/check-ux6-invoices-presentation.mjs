@@ -13,19 +13,24 @@ const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.
 const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
 for(const text of [
-  '/admin/invoices.css?v=20260902-ux6owner1',
+  '/admin/invoices.css?v=20260902-ux6owner2',
   '/admin/invoices.js?v=20260902-ux6owner1',
   'invoice-lines-toolbar',
   'invoice-modal-actions'
 ])requireText(html,text,`HTML ${text}`);
 forbid(html,/\sstyle=/i,'Facturas conserva estilos inline en HTML');
+forbid(html,/purchases\.css/i,'Facturas vuelve a depender del CSS de Compras');
 
 for(const text of [
   '.invoice-lines-toolbar',
   '.invoice-modal-actions',
   '.invoice-count',
-  '.invoice-count.is-empty'
+  '.invoice-count.is-empty',
+  '.erp-module-invoices .orders > .row',
+  '.erp-module-invoices .summary',
+  '.erp-module-invoices .detail-item'
 ])requireText(css,text,`CSS ${text}`);
+forbid(css,/@import/i,'Facturas conserva una importación CSS tardía');
 
 for(const text of [
   'SAFE_INVOICE_ERROR_PATTERNS',

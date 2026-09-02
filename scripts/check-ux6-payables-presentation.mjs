@@ -21,7 +21,7 @@ if(!failures.length){
   const ux5=read('scripts/check-ux5-supplier-ap-actions.mjs');
   const workflow=read('.github/workflows/ux6-payables-presentation.yml');
 
-  requireText(html,'/admin/payables.css?v=20260902-ux6owner1','Payables HTML owner CSS');
+  requireText(html,'/admin/payables.css?v=20260902-ux6owner2','Payables HTML owner CSS');
   requireText(html,'id="newAdvancePayment"','Payables HTML anticipo explícito');
   requireText(html,'id="pOpenBalanceHint"','Payables HTML ayuda de saldo');
   requireText(html,'role="status"','Payables HTML feedback accesible');
@@ -63,7 +63,8 @@ if(!failures.length){
     forbid(source,/messages\.find\([^\n]+\)\?\.\[1\]\s*\|\|\s*raw/,`${label} devuelve error técnico crudo`);
   }
 
-  for(const token of ['@import url(\'/admin/purchases.css?v=20260828-3\')','.ap-head','.ap-toolbar','.ap-payment-hint','.allocation-amount','@media(max-width:680px)'])requireText(css,token,'Payables CSS dedicado');
+  for(const token of ['.ap-head','.ap-toolbar','.ap-payment-hint','.allocation-amount','.erp-module-payables .orders > .row','.erp-module-payables .summary','@media(max-width:680px)'])requireText(css,token,'Payables CSS dedicado');
+  forbid(css,/@import|purchases\.css/i,'Payables conserva dependencia visual de Compras');
   requireText(ux5,"if(fs.existsSync('admin/payables-payment-ux.js'))",'Gate UX5 reconoce owner consolidado');
   requireText(workflow,'npm install --ignore-scripts --no-audit --no-fund','Workflow instala dependencias');
   requireText(workflow,'node scripts/check-ux6-payables-presentation.mjs','Workflow ejecuta gate UX6 AP');
