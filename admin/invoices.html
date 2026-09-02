@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Facturación y cobros · Export MCA</title>
 <link rel="stylesheet" href="/admin/purchases.css?v=20260831-ux5-invoice">
+<link rel="stylesheet" href="/admin/invoices.css?v=20260902-ux6owner1">
 </head>
 <body>
 <main class="wrap">
@@ -16,22 +17,22 @@
 <div id="invoiceModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="invoiceTitle">Nueva factura de cobro</h2><div class="muted">Selecciona la venta y las cantidades a facturar. Esta factura financiera es independiente de los documentos aduanales del contenedor.</div></div><button class="btn" data-close="invoice">✕</button></div>
 <div class="grid3"><div><label>Venta *</label><select id="iSalesOrder"></select></div><div><label>Fecha de factura</label><input id="iIssueDate" type="date"></div><div><label>Fecha vencimiento</label><input id="iDueDate" type="date"></div></div>
 <label>Notas</label><textarea id="iNotes"></textarea>
-<div class="toolbar" style="padding:12px 0 0;border:0"><div><b>Líneas a facturar</b><div class="muted">Solo cantidades todavía disponibles para facturar.</div></div></div>
+<div class="toolbar invoice-lines-toolbar"><div><b>Líneas a facturar</b><div class="muted">Solo cantidades todavía disponibles para facturar.</div></div></div>
 <div id="invoiceLines" class="detail-items"></div>
-<div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="invoice">Cancelar</button><button id="saveInvoice" class="btn orange">Guardar borrador</button></div><div id="invoiceMsg" class="msg"></div></div></div>
+<div class="actions invoice-modal-actions"><button class="btn" data-close="invoice">Cancelar</button><button id="saveInvoice" class="btn orange">Guardar borrador</button></div><div id="invoiceMsg" class="msg"></div></div></div>
 
-<div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div><div id="detailMsg" class="msg"></div></div></div>
+<div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions invoice-modal-actions"></div><div id="detailMsg" class="msg"></div></div></div>
 
 <div id="paymentModal" class="modal hidden"><div class="dialog compact"><div class="dialog-head"><div><h2 id="paymentTitle">Registrar cobro</h2><div id="paymentSubtitle" class="muted"></div></div><button class="btn" data-close="payment">✕</button></div>
 <div class="grid"><div><label>Monto *</label><input id="pAmount" type="number" min="0" step="0.01"></div><div><label>Fecha del cobro</label><input id="pDate" type="date"></div></div>
 <div class="grid"><div><label>Método</label><select id="pMethod"><option value="wire">Wire</option><option value="ach">ACH</option><option value="check">Check</option><option value="cash">Cash</option><option value="other">Otro</option></select></div><div><label>Referencia</label><input id="pReference" placeholder="Wire, ACH, check, etc."></div></div>
 <label>Notas</label><textarea id="pNotes"></textarea>
-<div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="payment">Cancelar</button><button id="savePayment" class="btn orange">Registrar cobro</button></div><div id="paymentMsg" class="msg"></div></div></div>
+<div class="actions invoice-modal-actions"><button class="btn" data-close="payment">Cancelar</button><button id="savePayment" class="btn orange">Registrar cobro</button></div><div id="paymentMsg" class="msg"></div></div></div>
 
 <div id="decisionModal" class="modal hidden"><div class="dialog compact"><div class="dialog-head"><div><h2 id="decisionTitle">Confirmar acción</h2><div id="decisionCopy" class="muted"></div></div><button class="btn" data-close="decision">✕</button></div>
 <div id="decisionReasonWrap" class="hidden"><label>Motivo</label><textarea id="decisionReason" placeholder="Motivo del reverso"></textarea></div>
-<div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="decision">Cancelar</button><button id="decisionAccept" class="btn orange">Continuar</button></div><div id="decisionMsg" class="msg"></div></div></div>
+<div class="actions invoice-modal-actions"><button class="btn" data-close="decision">Cancelar</button><button id="decisionAccept" class="btn orange">Continuar</button></div><div id="decisionMsg" class="msg"></div></div></div>
 
-<script src="/admin/invoices.js?v=20260831-ux5-invoice"></script>
+<script src="/admin/invoices.js?v=20260902-ux6owner1"></script>
 </body>
 </html>
