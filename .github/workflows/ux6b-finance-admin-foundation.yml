@@ -1,0 +1,51 @@
+name: UX6B Finance Admin Foundation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/embedded-foundation.css'
+      - 'admin/invoices.html'
+      - 'admin/payables.html'
+      - 'admin/costs.html'
+      - 'admin/reports.html'
+      - 'admin/suppliers.html'
+      - 'admin/products.html'
+      - 'scripts/check-ux6b-embedded-foundation.mjs'
+      - 'scripts/check-ux6b-finance-admin-foundation.mjs'
+      - '.github/workflows/ux6b-finance-admin-foundation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-finance-admin-foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate shared visual coverage
+        run: |
+          node scripts/check-ux6b-embedded-foundation.mjs
+          node scripts/check-ux6b-finance-admin-foundation.mjs
+      - name: Preserve finance owners
+        run: |
+          node scripts/check-ux6-invoices-presentation.mjs
+          node scripts/check-ux5-invoice-actions.mjs
+          node scripts/check-ux6-payables-presentation.mjs
+          node scripts/check-ux5-supplier-ap-actions.mjs
+          node scripts/check-ux6-costs-presentation.mjs
+          node scripts/check-sales-order-profitability.mjs
+          node scripts/check-executive-reports.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/check-admin-shell-resilience.mjs
+      - name: Preserve security boundaries
+        run: |
+          node scripts/audit-b9-api-boundaries.mjs
+          node scripts/check-b9-public-boundaries.mjs
+          node scripts/check-integrations.mjs
+      - name: Validate gate syntax
+        run: |
+          node --check scripts/check-ux6b-embedded-foundation.mjs
+          node --check scripts/check-ux6b-finance-admin-foundation.mjs

@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cuentas por pagar · Export MCA</title>
 <link rel="stylesheet" href="/admin/payables.css?v=20260902-ux6owner1">
+<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
 </head>
-<body>
+<body class="erp-module-page erp-module-payables">
 <main class="wrap ap-wrap">
-  <div class="head ap-head"><div><span class="ap-kicker">Finanzas de proveedores</span><h1>Cuentas por pagar</h1><div class="muted">Facturas, anticipos y pagos a proveedores. El inventario se mantiene separado.</div></div><div class="actions ap-head-actions"><button id="newPayment" class="btn" type="button">Pago manual</button><button id="newAdvancePayment" class="btn" type="button">Anticipo</button><button id="newBill" class="btn orange" type="button">Factura de proveedor</button></div></div>
+  <div class="head module-hero ap-head"><div class="module-heading"><span class="module-kicker ap-kicker">Finanzas de proveedores</span><h1>Cuentas por pagar</h1><div class="muted">Facturas, anticipos y pagos a proveedores. El inventario se mantiene separado.</div></div><div class="actions module-actions ap-head-actions"><button id="newPayment" class="btn" type="button">Pago manual</button><button id="newAdvancePayment" class="btn" type="button">Anticipo</button><button id="newBill" class="btn orange" type="button">Factura de proveedor</button></div></div>
   <div id="metrics" class="metrics"></div>
   <section class="panel ap-panel"><div class="toolbar ap-toolbar"><input id="search" class="search" placeholder="Buscar factura, PO, proveedor o pago"><div class="tabs"><button class="btn active" type="button" data-entity="bills">Facturas</button><button class="btn" type="button" data-entity="payments">Pagos</button></div><div id="viewTabs" class="tabs"></div><button id="refresh" class="btn ap-refresh" type="button" aria-label="Actualizar Cuentas por pagar">Actualizar</button></div><div id="list" class="orders"><div class="empty">Cargando Cuentas por pagar…</div></div></section>
 </main>

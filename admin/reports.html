@@ -5,15 +5,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Reportes · Export MCA</title>
 <link rel="stylesheet" href="/admin/reports.css?v=20260830-p12">
+<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
 </head>
-<body>
+<body class="erp-module-page erp-module-reports">
 <main class="reports-wrap">
-  <header class="reports-head">
-    <div>
+  <header class="reports-head module-hero">
+    <div class="module-heading">
+      <div class="module-kicker">Análisis ejecutivo</div>
       <h1>Reportes</h1>
-      <p>Reportes ejecutivos sobre las fuentes B5/B6/B8. Monedas separadas, sin conversión FX.</p>
+      <p>Ventas, compras, inventario y finanzas en una vista ejecutiva. Monedas separadas, sin conversiones automáticas.</p>
     </div>
-    <div class="reports-actions">
+    <div class="reports-actions module-actions">
       <button id="refreshReport" type="button" class="btn secondary">↻ Actualizar</button>
       <button id="exportReport" type="button" class="btn primary">Exportar CSV</button>
     </div>
