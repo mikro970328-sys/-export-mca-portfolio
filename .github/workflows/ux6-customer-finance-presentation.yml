@@ -1,0 +1,55 @@
+name: UX6 Customer Finance Presentation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/sales.html'
+      - 'admin/sales-customer-finance.css'
+      - 'admin/sales-customer-finance.js'
+      - 'admin/proforma-print.css'
+      - 'api/customer-advances.js'
+      - 'api/proformas.js'
+      - 'scripts/check-sales-customer-finance.mjs'
+      - 'scripts/check-ux5-customer-finance-actions.mjs'
+      - 'scripts/check-ux6-customer-finance-presentation.mjs'
+      - '.github/workflows/ux6-customer-finance-presentation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-customer-finance-presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate Customer Finance UX-6 owner
+        run: node scripts/check-ux6-customer-finance-presentation.mjs
+      - name: Validate Customer Finance P2 owner
+        run: node scripts/check-sales-customer-finance.mjs
+      - name: Validate canonical Customer Finance actions
+        run: node scripts/check-ux5-customer-finance-actions.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/sales-customer-finance.js
+          node --check api/customer-advances.js
+          node --check api/proformas.js
+          node --check scripts/check-sales-customer-finance.mjs
+          node --check scripts/check-ux5-customer-finance-actions.mjs
+          node --check scripts/check-ux6-customer-finance-presentation.mjs
+      - name: Validate API runtime imports
+        run: node --input-type=module -e "await Promise.all([import('./api/_customer-finance-actions.js'),import('./api/customer-advances.js'),import('./api/proformas.js')]); console.log('Customer Finance API runtime imports OK')"
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
+      - name: Validate admin shell
+        run: node scripts/check-admin-shell-resilience.mjs
+      - name: Audit API boundaries
+        run: node scripts/audit-b9-api-boundaries.mjs
+      - name: Validate database privileges
+        run: node scripts/check-b9-database-privileges.mjs
+      - name: Validate public boundary
+        run: node scripts/check-b9-public-boundaries.mjs
+      - name: Validate integrations
+        run: node scripts/check-integrations.mjs
