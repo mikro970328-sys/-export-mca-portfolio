@@ -141,11 +141,6 @@
     document.head.appendChild(link);
   });
 
-  const themePromise = loadStylesheet('/admin/platform-theme.css?v=20260816-1', 'data-platform-theme').catch(error => {
-    console.error('[platform theme]', error);
-    return false;
-  });
-  const navigationStylesPromise = loadStylesheet('/admin/navigation-shell.css?v=20260902-ux6a1', 'data-navigation-shell-style');
   const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260830-p3', 'data-access-control-style');
   const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260817-e1', 'data-ui-icon-system');
 
@@ -236,8 +231,8 @@
       authenticatedShellReady = true;
 
       if (accessCan('dashboard.read')) {
-        await loadStylesheet('/admin/dashboard-executive.css?v=20260830-p11', 'data-dashboard-executive-style');
-        await loadScript('/admin/dashboard-operational-state.js?v=20260830-hotfix2', 'data-dashboard-operational-state');
+        await loadStylesheet('/admin/dashboard-executive.css?v=20260902-ux6b1', 'data-dashboard-executive-style');
+        await loadScript('/admin/dashboard-operational-state.js?v=20260902-ux6b1', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
         await loadStylesheet('/admin/containers-module.css?v=20260901-ux6owner1', 'data-containers-module-style');
@@ -249,11 +244,9 @@
         await loadScript('/admin/shipment-editor.js?v=20260901-ux6owner1', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260817-uxc2', 'data-modal-dismissal');
-      await themePromise;
       await iconSystemPromise;
       await loadStylesheet('/admin/account-administration.css?v=20260901-ux6style1', 'data-account-administration-style');
       await loadScript('/admin/account-administration.js?v=20260901-ux6style1', 'data-account-administration');
-      await navigationStylesPromise;
       await loadScript('/admin/navigation-shell.js?v=20260830-p3', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {

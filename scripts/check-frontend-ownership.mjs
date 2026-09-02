@@ -244,10 +244,12 @@ for (const fragment of [
   '/admin/modal-dismissal.js',
   '/admin/dashboard-operational-state.js',
   '/admin/navigation-shell.js',
-  '/admin/section-state.js',
-  '/admin/navigation-shell.css'
+  '/admin/section-state.js'
 ]) {
   if (!loader.includes(fragment)) errors.push(`El loader no carga el propietario requerido: ${fragment}`);
+}
+if (!index.includes('/admin/navigation-shell.css?v=20260902-ux6b1')) {
+  errors.push('index.html no carga el owner visual versionado de navegación desde head.');
 }
 if (loader.includes('/admin/expedientes-module.js')) errors.push('El loader todavía carga Expedientes, que UX-2D retiró del flujo operativo.');
 
