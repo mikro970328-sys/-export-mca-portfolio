@@ -149,7 +149,10 @@ function translatedError(raw) {
     ['SO_LINE_TOTAL_INVALID','El total de venta es inválido.'],
     ['SO_NOT_DRAFT','Solo una Sales Order en borrador puede editarse.']
   ];
-  return pairs.find(([key]) => raw.includes(key))?.[1] || raw;
+  const translated = pairs.find(([key]) => raw.includes(key))?.[1] || null;
+  if (translated) return translated;
+  if (/^(?:Agrega al menos una línea a la Sales Order|Selecciona el producto de la línea \d+|El total de venta de la línea \d+ no es válido|El precio unitario de la línea \d+ no es válido|Cliente no encontrado o inactivo|Acción de Sales Order inválida|Falta la Sales Order)$/.test(raw)) return raw;
+  return null;
 }
 
 export default async function handler(req,res) {
@@ -182,8 +185,10 @@ export default async function handler(req,res) {
     }
     return fail(res,405,'Método no permitido');
   } catch (error) {
-    const raw = String(error.message || 'No se pudo procesar Ventas');
+    const raw = String(error?.message || '');
+    const translated = translatedError(raw);
+    if (translated) return fail(res,400,translated);
     console.error('[sales-order-ux]',error);
-    return fail(res,400,translatedError(raw));
+    return fail(res,500,'No se pudo procesar Ventas');
   }
 }
