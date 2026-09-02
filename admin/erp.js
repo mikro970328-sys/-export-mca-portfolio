@@ -245,7 +245,7 @@
         await loadStylesheet('/admin/shipment-editor.css?v=20260901-ux6owner1', 'data-shipment-editor-style');
         await loadScript('/admin/shipment-editor.js?v=20260901-ux6owner1', 'data-shipment-editor');
       }
-      await loadScript('/admin/modal-dismissal.js?v=20260817-uxc2', 'data-modal-dismissal');
+      await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
       await iconSystemPromise;
       await loadStylesheet('/admin/account-administration.css?v=20260901-ux6style1', 'data-account-administration-style');
       await loadScript('/admin/account-administration.js?v=20260902-ux6b1', 'data-account-administration');
