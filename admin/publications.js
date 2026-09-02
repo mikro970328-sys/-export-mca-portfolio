@@ -1,5 +1,7 @@
 const $ = id => document.getElementById(id);
-const token = localStorage.getItem('export_mca_token') || '';
+let token = localStorage.getItem('export_mca_token') || '';
+const embeddedMode = new URLSearchParams(location.search).get('embedded') === '1';
+let moduleStarted = false;
 
 const state = {
   publications: [],
@@ -61,6 +63,16 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({
   "'": '&#39;'
 }[character]));
 
+function redirectToAdminLogin() {
+  localStorage.removeItem('export_mca_token');
+  localStorage.removeItem('export_mca_user');
+  if (embeddedMode && window.top !== window) {
+    window.top.location.replace('/admin/index.html');
+    return;
+  }
+  location.replace('/admin/index.html');
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -72,8 +84,7 @@ async function api(path, options = {}) {
   });
   const data = await response.json().catch(() => ({}));
   if (response.status === 401) {
-    localStorage.removeItem('export_mca_token');
-    location.replace('/admin/pwa.html');
+    redirectToAdminLogin();
     const error = new Error('Sesión vencida');
     error.status = 401;
     error.endpoint = String(path).split('?')[0];
@@ -493,8 +504,24 @@ function init() {
   load();
 }
 
+function startPublications(sessionToken = token) {
+  if (moduleStarted) return true;
+  token = String(sessionToken || '');
+  if (!token) return false;
+  moduleStarted = true;
+  init();
+  return true;
+}
+
+function handleStoredSession(event) {
+  if (event.key !== 'export_mca_token' || !event.newValue) return;
+  window.removeEventListener('storage', handleStoredSession);
+  startPublications(event.newValue);
+}
+
 window.PublicationsModule = Object.freeze({
   owner: 'publications.js',
+  embedded: embeddedMode,
   safePublicationMessage,
   openDeleteDecision,
   closeDecision,
@@ -502,5 +529,7 @@ window.PublicationsModule = Object.freeze({
   load
 });
 
-if (!token) location.replace('/admin/pwa.html');
-else init();
+if (!startPublications()) {
+  if (embeddedMode) window.addEventListener('storage', handleStoredSession);
+  else redirectToAdminLogin();
+}
