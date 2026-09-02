@@ -6,6 +6,7 @@
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const state = { data:null, loading:false, filters:{ start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:'' } };
+  let greetingTimer=null;
 
   const number = value => new Intl.NumberFormat('es-US',{maximumFractionDigits:2}).format(Number(value || 0));
   const integer = value => new Intl.NumberFormat('es-US',{maximumFractionDigits:0}).format(Number(value || 0));
@@ -29,6 +30,34 @@
     } catch { return 'equipo'; }
   }
 
+  function greetingForHour(hour=new Date().getHours()) {
+    if(hour>=5 && hour<12)return 'Buenos días';
+    if(hour>=12 && hour<19)return 'Buenas tardes';
+    return 'Buenas noches';
+  }
+
+  function updateDashboardGreeting() {
+    const heading=$('dashboardGreeting');
+    if(heading)heading.textContent=`${greetingForHour()}, ${operatorName()}`;
+  }
+
+  function scheduleGreetingRefresh(now=new Date()) {
+    if(greetingTimer)clearTimeout(greetingTimer);
+    const next=new Date(now.getTime());
+    const hour=now.getHours();
+    if(hour<5)next.setHours(5,0,0,0);
+    else if(hour<12)next.setHours(12,0,0,0);
+    else if(hour<19)next.setHours(19,0,0,0);
+    else {
+      next.setDate(next.getDate()+1);
+      next.setHours(5,0,0,0);
+    }
+    greetingTimer=setTimeout(()=>{
+      updateDashboardGreeting();
+      scheduleGreetingRefresh();
+    },Math.max(1000,next.getTime()-now.getTime()));
+  }
+
   function dashboardIcon(target) {
     const icons={clients:'clients',containers:'container',tasks:'files',alerts:'bell'};
     const name=icons[target]||'operations';
@@ -37,7 +66,7 @@
 
   function dashboardIntro(data) {
     return `<header class="executive-intro">
-      <div><span class="executive-kicker">Resumen del negocio</span><h1>Buenos días, ${esc(operatorName())}</h1><p>Revisa el estado de la operación y atiende primero lo que necesita una decisión.</p></div>
+      <div><span class="executive-kicker">Resumen del negocio</span><h1 id="dashboardGreeting">${esc(greetingForHour())}, ${esc(operatorName())}</h1><p>Revisa el estado de la operación y atiende primero lo que necesita una decisión.</p></div>
       <div class="executive-live"><span aria-hidden="true"></span><div><b>Datos actualizados</b><small>${esc(dateLabel(data.generated_at))}</small></div></div>
     </header>`;
   }
@@ -264,5 +293,16 @@
   window.renderDashboardDetails = () => state.data ? renderDashboard(state.data) : false;
   window.renderStats=renderDashboard;
   window.initializeOperationalDashboard=initializeOperationalDashboard;
-  window.ExecutiveDashboard=Object.freeze({refresh:reloadDashboard,getState:()=>({...state}),owner:'dashboard-operational-state.js'});
+  window.ExecutiveDashboard=Object.freeze({refresh:reloadDashboard,refreshGreeting:updateDashboardGreeting,greetingForHour,getState:()=>({...state}),owner:'dashboard-operational-state.js'});
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden){
+      updateDashboardGreeting();
+      scheduleGreetingRefresh();
+    }
+  });
+  window.addEventListener('pageshow',()=>{
+    updateDashboardGreeting();
+    scheduleGreetingRefresh();
+  });
+  scheduleGreetingRefresh();
 })();

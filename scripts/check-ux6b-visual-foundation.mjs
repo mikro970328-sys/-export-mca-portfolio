@@ -101,7 +101,7 @@ for(const text of [
 ])requireText(dashboardCss,text,`presentación dashboard ${text}`);
 
 requireText(erp,"loadStylesheet('/admin/dashboard-executive.css?v=20260902-ux7shell1'",'CSS versionado de dashboard');
-requireText(erp,"loadScript('/admin/dashboard-operational-state.js?v=20260902-ux6b1'",'owner versionado de dashboard');
+requireText(erp,"loadScript('/admin/dashboard-operational-state.js?v=20260902-greeting1'",'owner versionado de dashboard');
 forbid(erp,/data-platform-theme|data-navigation-shell-style/,'erp.js no debe volver a cargar tarde la base visual estática');
 forbid(navigationJs,/\sstyle\s*=/i,'navigation-shell.js vuelve a crear iframes con estilos inline');
 forbid(dashboardJs,/\b(?:prompt|alert|confirm)\s*\(|MutationObserver|createElement\(['"]style['"]\)/,'dashboard introduce diálogo, observer o estilo inyectado');
