@@ -191,6 +191,12 @@
           .then(() => loadScript('/admin/clients-module.js?v=20260901-ux6owner1', 'data-clients-module'))
       );
     }
+    if (accessCan('administration.workers.read')) {
+      tasks.push(
+        loadStylesheet('/admin/workers-module.css?v=20260902-ux6owner1', 'data-workers-module-style')
+          .then(() => loadScript('/admin/workers-module.js?v=20260902-ux6owner1', 'data-workers-module'))
+      );
+    }
     if (accessCan('reports.read')) {
       tasks.push(loadScript('/admin/module-export-controls.js', 'data-module-export-controls'));
     }
