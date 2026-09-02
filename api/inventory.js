@@ -136,6 +136,8 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('INVENTORY_API_ERROR', error);
-    return fail(res, 400, error.message || 'No se pudo cargar el inventario');
+    return fail(res, 500, 'No se pudo cargar el inventario. Intenta nuevamente.', {
+      code:'INVENTORY_UNEXPECTED_ERROR'
+    });
   }
 }

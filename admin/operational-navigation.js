@@ -3,7 +3,7 @@
   window.__operationalNavigationInstalled=true;
 
   const normalize=value=>String(value||'').trim().toUpperCase();
-  const CONTEXT_SECTIONS=['suppliersSection','purchasesSection','salesSection','warehouseSection','inventorySection','loadsSection','invoicesSection','payablesSection'];
+  const CONTEXT_SECTIONS=['suppliersSection','purchasesSection','salesSection','warehouseSection','loadsSection','invoicesSection','payablesSection'];
   const BRIDGE_SRC='/admin/operational-context-bridge.js?v=20260830-p6';
   const ENTITY_ACCESS=Object.freeze({
     client:{label:'Clientes',permissions:['clients.read']},
@@ -138,7 +138,7 @@
   function openTracking(context={},options={}){section('containersSection');const shipment=findShipment(context);if(!shipment)return false;if(options.history!==false)writeContext('tracking',shipment.id,options);requestAnimationFrame(()=>window.ContainersModule?.openDetails?.(shipment));return true;}
   function openLoad({loadId=null}={},options={}){if(!loadId)return false;if(options.history!==false)writeContext('load',loadId,options);window.NavigationShell?.openLoads?.();installBridge('loadsSection').then(ready=>{if(ready&&callEmbedded('loadsSection','openOperationalLoad',[loadId]))return;callEmbedded('loadsSection','openLoad',[loadId]);}).catch(()=>callEmbedded('loadsSection','openLoad',[loadId]));return true;}
   async function openLoadForShipment(shipmentId,options={}){const link=await loadForShipment(shipmentId);return link?openLoad({loadId:link.load_id},options):false;}
-  function openInventoryReceipt(receiptNumber,options={}){const receipt=String(receiptNumber||'').trim();if(!receipt)return false;if(options.history!==false)writeContext('wr',receipt,options);window.NavigationShell?.openInventory?.();installBridge('inventorySection').catch(error=>console.error('[inventory bridge]',error));return callEmbedded('inventorySection','traceWR',[receipt]);}
+  function openInventoryReceipt(receiptNumber,options={}){const receipt=String(receiptNumber||'').trim();if(!receipt)return false;if(options.history!==false)writeContext('wr',receipt,options);window.NavigationShell?.openInventory?.();return callEmbedded('inventorySection','traceWR',[receipt]);}
   async function openWarehouseReceipt({receiptNumber=null}={},options={}){const receipt=await receiptByNumber(receiptNumber);if(!receipt?.id)return false;if(options.history!==false)writeContext('receipt',receipt.receipt_number,options);window.NavigationShell?.openWarehouse?.();return callContextEmbedded('warehouseSection','openOperationalReceipt',[receipt.id]);}
   function openWarehouseReceiptById(receiptId,options={}){if(!receiptId)return false;if(options.history!==false)writeContext('receipt_id',receiptId,options);window.NavigationShell?.openWarehouse?.();installBridge('warehouseSection').then(()=>callEmbedded('warehouseSection','openOperationalReceipt',[receiptId]));return true;}
   async function openPurchase({purchaseOrderId=null}={},options={}){if(!purchaseOrderId)return false;if(options.history!==false)writeContext('po',purchaseOrderId,options);window.NavigationShell?.openPurchases?.();return callContextEmbedded('purchasesSection','openOperationalPurchase',[purchaseOrderId]);}
