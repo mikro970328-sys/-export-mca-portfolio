@@ -9,8 +9,61 @@
   const canManage = () => window.ExportMcaAccessControl?.can?.('notifications.manage') === true;
   const labelType = value => ({task:'Tarea',alert:'Alerta',system:'Sistema'})[value] || value || 'Notificación';
   const labelStatus = value => ({pending:'Pendiente',in_progress:'En progreso',blocked:'Bloqueada',completed:'Completada',cancelled:'Cancelada',snoozed:'Pospuesta',resolved:'Resuelta',active:'Activa'})[value] || value || '-';
+  const historyStatusLabels = Object.freeze({pending:'Pendiente',queued:'En cola',accepted:'Aceptado',sent:'Enviado',delivered:'Entregado',read:'Leído',failed:'Fallido',undelivered:'No entregado'});
+  const historyTypeLabels = Object.freeze({welcome:'Bienvenida',registered:'Registro',release:'Liberación',delivered:'Entrega',tracking:'Seguimiento'});
+  const inboxErrorMessages = Object.freeze({
+    NOTIFICATION_NOT_FOUND:'La notificación ya no está disponible.',
+    NOTIFICATION_ACTOR_INVALID:'No tienes permiso para modificar esta notificación.',
+    NOTIFICATION_ACTION_INVALID:'La acción seleccionada no está disponible.',
+    NOTIFICATION_PHONE_INVALID:'El número de WhatsApp no es válido.',
+    NOTIFICATION_PHONE_REQUIRED:'Indica un número de WhatsApp para activar ese canal.',
+    NOTIFICATION_EMAIL_INVALID:'El correo no es válido.',
+    NOTIFICATION_EMAIL_REQUIRED:'Indica un correo para activar ese canal.',
+    NOTIFICATION_DESTINATION_UNAVAILABLE:'Esta notificación no tiene un destino operativo disponible.'
+  });
+  const safeInboxErrors = new Set([
+    'Identificador de notificación no válido',
+    'Notificación no encontrada',
+    'La cuenta actual no puede modificar notificaciones',
+    'Acción de notificación no válida',
+    'El número de WhatsApp no es válido',
+    'Indica un número de WhatsApp para activar ese canal',
+    'El correo no es válido',
+    'Indica un correo para activar ese canal',
+    'Falta el identificador de la notificación',
+    'Acción no válida',
+    'Las alertas operativas no se reenvían por WhatsApp',
+    'La notificación no tiene destinatario',
+    'No se pudo reenviar la notificación'
+  ]);
   const dateLabel = value => { const d=new Date(value||0); return Number.isNaN(d.getTime())?'-':d.toLocaleString('es-US',{dateStyle:'medium',timeStyle:'short'}); };
   const apiCall = (path, options={}) => typeof window.api === 'function' ? window.api(path,options) : Promise.reject(new Error('API no disponible'));
+
+  function safeInboxMessage(error,fallback='No se pudo completar la operación. Intenta nuevamente.',context='operation') {
+    const raw=String(error?.message||'').trim();
+    const publicMessage=raw.split(' · ')[0].trim();
+    const code=String(error?.code||raw.match(/NOTIFICATION_[A-Z0-9_]+/)?.[0]||'').trim();
+    const status=Number(error?.status||0);
+    if(inboxErrorMessages[code])return inboxErrorMessages[code];
+    if(status===401)return 'Tu sesión terminó. Inicia sesión nuevamente para continuar.';
+    if(status===403)return 'No tienes permiso para completar esta acción.';
+    if([400,404,409,422].includes(status)&&safeInboxErrors.has(publicMessage))return publicMessage;
+    if(status===400&&publicMessage.startsWith('Falta configurar la plantilla para '))return 'Falta configurar la plantilla de este tipo de mensaje.';
+    console.error('NOTIFICATION_INBOX_UI_FAILED',{context,status:status||null,code:code||null,error});
+    return fallback;
+  }
+
+  function historyStatus(row) {
+    const value=String(row.normalized_status||row.status||row.delivery_status||'pending').toLowerCase();
+    return Object.prototype.hasOwnProperty.call(historyStatusLabels,value)?value:'recorded';
+  }
+
+  function historyDetail(row,status) {
+    if(['failed','undelivered'].includes(status)||Boolean(row.error_message))return 'No se pudo entregar. Puedes reintentar el mensaje.';
+    if(['pending','queued','accepted'].includes(status))return 'Entrega pendiente.';
+    if(['sent','delivered','read'].includes(status))return 'Entrega confirmada.';
+    return 'Comunicación registrada.';
+  }
 
   function removeLegacyAlertBell() {
     $('operationalAlertBellWrap')?.remove();
@@ -91,12 +144,12 @@
   function renderPreferences() {
     const p=state.preferences||{};
     const check=(key,label,help)=>`<label class="notification-pref"><input type="checkbox" data-notification-pref="${key}" ${p[key]!==false?'checked':''}><span><b>${label}</b><small>${help}</small></span></label>`;
-    return `<div class="notification-preferences-grid">${check('in_app_enabled','Inbox dentro del ERP','Control maestro de notificaciones internas.')}${check('task_assignments_enabled','Asignaciones de tareas','Avisar cuando una tarea quede asignada a ti o a un equipo elegible.')}${check('operational_alerts_enabled','Alertas operativas','Recibir excepciones P9 que correspondan a tu trabajo.')}${check('escalations_enabled','Escalaciones','Recibir escalaciones cuando tengas responsabilidad de supervisión.')}</div><div class="notification-external-note">WhatsApp usa la integración Twilio existente, pero la entrega interna P10 no se activa hasta tener una plantilla específica aprobada. Email no se habilita sin definir primero un proveedor.</div><div class="notification-actions" style="margin-top:12px"><button id="saveNotificationPreferences" type="button">Guardar preferencias</button></div>`;
+    return `<div class="notification-preferences-grid">${check('in_app_enabled','Inbox dentro del ERP','Control maestro de notificaciones internas.')}${check('task_assignments_enabled','Asignaciones de tareas','Avisar cuando una tarea quede asignada a ti o a un equipo elegible.')}${check('operational_alerts_enabled','Alertas operativas','Recibir excepciones P9 que correspondan a tu trabajo.')}${check('escalations_enabled','Escalaciones','Recibir escalaciones cuando tengas responsabilidad de supervisión.')}</div><div class="notification-external-note">WhatsApp usa la integración Twilio existente, pero la entrega interna P10 no se activa hasta tener una plantilla específica aprobada. Email no se habilita sin definir primero un proveedor.</div><div class="notification-actions notification-preferences-actions"><button id="saveNotificationPreferences" type="button">Guardar preferencias</button></div>`;
   }
 
   function renderHistory() {
     if(!state.history.length)return '<div class="notification-empty">No hay historial de mensajería.</div>';
-    return `<div class="notification-history-table"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Destinatario</th><th>Estado</th><th>Error</th><th></th></tr></thead><tbody>${state.history.map(row=>{const status=String(row.normalized_status||row.status||row.delivery_status||'pending').toLowerCase();return `<tr><td>${esc(dateLabel(row.created_at))}</td><td>${esc(row.notification_type||row.event_type||row.event_status||'tracking')}</td><td>${esc(row.recipient||row.recipient_phone||row.clients?.phone||'-')}</td><td><span class="notification-history-status ${esc(status)}">${esc(status)}</span></td><td>${esc(row.error_message||'-')}</td><td>${canManage()&&['failed','undelivered','pending'].includes(status)?`<button type="button" class="alt" data-notification-retry="${esc(row.id)}">Reintentar</button>`:''}</td></tr>`;}).join('')}</tbody></table></div>`;
+    return `<div class="notification-history-table"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Destinatario</th><th>Estado</th><th>Detalle</th><th></th></tr></thead><tbody>${state.history.map(row=>{const status=historyStatus(row);return `<tr><td>${esc(dateLabel(row.created_at))}</td><td>${esc(historyTypeLabels[row.notification_type||row.event_type||row.event_status]||'Notificación')}</td><td>${esc(row.recipient||row.recipient_phone||row.clients?.phone||'-')}</td><td><span class="notification-history-status ${esc(status)}">${esc(historyStatusLabels[status]||'Registrado')}</span></td><td>${esc(historyDetail(row,status))}</td><td>${canManage()&&['failed','undelivered','pending'].includes(status)?`<button type="button" class="alt" data-notification-retry="${esc(row.id)}">Reintentar</button>`:''}</td></tr>`;}).join('')}</tbody></table></div>`;
   }
 
   function render() {
@@ -116,7 +169,7 @@
 
   async function loadHistory() {
     try { const result=await apiCall('/api/history?mode=notifications&scope=message'); state.history=result.notifications||[]; }
-    catch(error){ setMessage(error.message||'No se pudo cargar el historial.',true); }
+    catch(error){ setMessage(safeInboxMessage(error,'No se pudo cargar el historial. Intenta nuevamente.','load_history'),true); }
   }
 
   async function refresh({history=false}={}) {
@@ -126,23 +179,23 @@
       state.items=result.items||[]; state.counts=result.counts||state.counts; state.preferences=result.preferences||state.preferences; setMessage(''); renderBadge();
       if(history)await loadHistory();
       if(state.open)render();
-    } catch(error) { setMessage(error.message||'No se pudieron cargar las notificaciones.',true); if(state.open)render(); }
+    } catch(error) { setMessage(safeInboxMessage(error,'No se pudieron cargar las notificaciones. Intenta nuevamente.','refresh'),true); if(state.open)render(); }
     finally { state.busy=false; }
   }
 
   async function actItem(id,action) {
     try { await apiCall('/api/notification-inbox',{method:'PATCH',body:JSON.stringify({id,action})}); await refresh(); }
-    catch(error){setMessage(error.message||'No se pudo actualizar la notificación.',true);render();}
+    catch(error){setMessage(safeInboxMessage(error,'No se pudo actualizar la notificación. Intenta nuevamente.','item_action'),true);render();}
   }
 
   async function actAllRead() {
     try { await apiCall('/api/notification-inbox',{method:'PATCH',body:JSON.stringify({action:'mark_all_read'})}); await refresh(); }
-    catch(error){setMessage(error.message||'No se pudo actualizar el inbox.',true);render();}
+    catch(error){setMessage(safeInboxMessage(error,'No se pudo actualizar el inbox. Intenta nuevamente.','mark_all_read'),true);render();}
   }
 
   async function retryHistory(id) {
-    try { const result=await apiCall('/api/history?mode=notifications',{method:'PATCH',body:JSON.stringify({id,action:'retry'})}); setMessage(`Reintento enviado: ${result.status||'queued'}`); await loadHistory(); render(); }
-    catch(error){setMessage(error.message||'No se pudo reintentar el mensaje.',true);render();}
+    try { const result=await apiCall('/api/history?mode=notifications',{method:'PATCH',body:JSON.stringify({id,action:'retry'})}); const status=historyStatus({status:result.status});setMessage(`Reintento enviado · ${historyStatusLabels[status]||'En cola'}`); await loadHistory(); render(); }
+    catch(error){setMessage(safeInboxMessage(error,'No se pudo reintentar el mensaje. Intenta nuevamente.','retry_history'),true);render();}
   }
 
   async function savePreferences() {
@@ -150,7 +203,7 @@
     document.querySelectorAll('[data-notification-pref]').forEach(input=>{body[input.dataset.notificationPref]=input.checked;});
     body.whatsapp_enabled=false; body.email_enabled=false;
     try { const result=await apiCall('/api/notification-inbox',{method:'PATCH',body:JSON.stringify(body)}); state.preferences=result.preferences||state.preferences; setMessage('Preferencias guardadas.'); render(); }
-    catch(error){setMessage(error.message||'No se pudieron guardar las preferencias.',true);render();}
+    catch(error){setMessage(safeInboxMessage(error,'No se pudieron guardar las preferencias. Intenta nuevamente.','save_preferences'),true);render();}
   }
 
   async function openWork(id) {
@@ -162,8 +215,16 @@
       if(payload.task_id && window.TasksWorkspace?.open){ if(typeof window.showSection==='function')window.showSection('tasksSection'); await window.TasksWorkspace.open(payload.task_id); return; }
       if(item.entity_type==='operational_task' && item.entity_id && window.TasksWorkspace?.open){ if(typeof window.showSection==='function')window.showSection('tasksSection'); await window.TasksWorkspace.open(item.entity_id); return; }
       if(item.entity_type && item.entity_id && window.OperationalNavigation?.openEntity){ const opened=await window.OperationalNavigation.openEntity({type:item.entity_type,id:item.entity_id}); if(opened!==false)return; }
-      throw new Error('No hay un destino operativo disponible para esta notificación.');
-    } catch(error){ state.open=true; ensureShell(); $('notificationInboxOverlay').hidden=false; setMessage(error.message||'No se pudo abrir el trabajo.',true); await refresh(); }
+      const error=new Error('No hay un destino operativo disponible para esta notificación.');
+      error.code='NOTIFICATION_DESTINATION_UNAVAILABLE';
+      throw error;
+    } catch(error){
+      const message=safeInboxMessage(error,'No se pudo abrir el trabajo. Intenta nuevamente.','open_work');
+      state.open=true; ensureShell(); $('notificationInboxOverlay').hidden=false;
+      await refresh();
+      setMessage(message,true);
+      render();
+    }
   }
 
   async function openPanel() { ensureShell(); state.open=true; $('notificationInboxOverlay').hidden=false; document.body.classList.add('notification-inbox-open'); render(); await refresh(); }

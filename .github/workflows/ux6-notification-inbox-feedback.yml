@@ -1,0 +1,58 @@
+name: UX6 Notification Inbox Feedback
+
+on:
+  pull_request:
+    paths:
+      - 'admin/notification-inbox.js'
+      - 'admin/notification-inbox.css'
+      - 'admin/erp.js'
+      - 'admin/index.html'
+      - 'api/notification-inbox.js'
+      - 'api/history.js'
+      - 'scripts/check-user-notifications.mjs'
+      - 'scripts/check-admin-shell-resilience.mjs'
+      - 'scripts/check-frontend-ownership.mjs'
+      - 'scripts/check-ux6-shell-ownership.mjs'
+      - 'scripts/check-ux6b-native-workspace-foundation.mjs'
+      - 'scripts/check-ux6-access-feedback.mjs'
+      - 'scripts/check-ux6-tasks-feedback.mjs'
+      - 'scripts/check-ux6-modal-dismissal.mjs'
+      - 'scripts/check-ux6-notification-inbox-feedback.mjs'
+      - '.github/workflows/ux6-notification-inbox-feedback.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-notification-inbox-feedback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate Notification Inbox feedback
+        run: |
+          node scripts/check-ux6-notification-inbox-feedback.mjs
+          node scripts/check-user-notifications.mjs
+      - name: Preserve shell and frontend ownership
+        run: |
+          node scripts/check-admin-shell-resilience.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/check-ux6-shell-ownership.mjs
+          node scripts/check-ux6b-native-workspace-foundation.mjs
+          node scripts/check-ux6-access-feedback.mjs
+          node scripts/check-ux6-tasks-feedback.mjs
+          node scripts/check-ux6-modal-dismissal.mjs
+      - name: Preserve security and integrations
+        run: |
+          node scripts/audit-b9-api-boundaries.mjs
+          node scripts/check-b9-database-privileges.mjs
+          node scripts/check-b9-public-boundaries.mjs
+          node scripts/check-integrations.mjs
+      - name: Validate JavaScript syntax and imports
+        run: |
+          node --check admin/notification-inbox.js
+          node --check admin/erp.js
+          node --check scripts/check-ux6-notification-inbox-feedback.mjs
+          node --input-type=module -e "await Promise.all([import('./api/notification-inbox.js'),import('./api/history.js')]); console.log('Notification Inbox runtime imports OK')"
