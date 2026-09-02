@@ -7,6 +7,7 @@
 .alert-popover-list{max-height:420px;overflow:auto;padding:8px}
 .alert-popover-item{width:100%;display:block;text-align:left;background:#fff!important;color:var(--text)!important;border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;padding:12px!important}
 .alert-popover-item:hover{background:#f8fafc!important}
+.alert-item-meta{margin-top:4px}
 .alert-popover-foot{padding:12px;border-top:1px solid var(--line)}
 .alert-popover-foot button{width:100%}
 .alert-summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}

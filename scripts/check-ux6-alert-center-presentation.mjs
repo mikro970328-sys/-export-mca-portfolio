@@ -10,6 +10,9 @@ forbid(/setFeedback\s*\(\s*error(?:\?\.)?\.message/,'no se puede mostrar error.m
 forbid(/esc\s*\(\s*error(?:\?\.)?\.message/,'no se puede renderizar error.message crudo');
 forbid(/No se pudieron cargar las alertas:\s*\$\{/,'el estado de carga no puede interpolar errores técnicos');
 forbid(/Handoff sin routing|\(legacy\)|Tracking legacy|\bcanónicas\b/,'quedan etiquetas técnicas/legacy visibles');
+forbid(/esc\s*\(\s*row\.error_message/,'el historial no puede mostrar error_message del proveedor');
+forbid(/<th>Error<\/th>/,'el historial no puede presentar una columna de error técnico');
+forbid(/\sstyle\s*=/i,'el centro de alertas no puede conservar estilos inline');
 
 requireText('function retryMessageDialog(row)','modal controlado para reintento');
 requireText('data-message-retry-confirm','acción explícita de reintento');
@@ -21,6 +24,11 @@ requireText('No se pudo actualizar la alerta. Intenta nuevamente.','mensaje oper
 requireText("console.error('UNIFIED_ALERT_CENTER_LOAD_ERROR',error)",'diagnóstico técnico de carga');
 requireText('No se pudieron actualizar las alertas y mensajes. Intenta nuevamente.','feedback operativo de carga');
 requireText('No se pudieron actualizar las alertas en este momento.','empty state estable de carga');
+requireText('function messageDeliveryDetail(row,status)','traducción estable del estado de entrega');
+requireText("Boolean(row.error_message)",'error del proveedor usado solo como señal');
+requireText('No se pudo entregar. Puedes reintentar el mensaje.','detalle operativo de entrega fallida');
+requireText('Entrega pendiente.','detalle operativo de entrega pendiente');
+requireText('Entrega confirmada.','detalle operativo de entrega confirmada');
 requireText("workflow_route_invalid:'Flujo de trabajo sin destino'",'traducción de routing');
 requireText("shipment_customs_documents_missing:'Documentos Cuba pendientes'",'retiro de etiqueta legacy documentos');
 requireText("tracking_stale:'Tracking sin actualización'",'retiro de etiqueta tracking legacy');
