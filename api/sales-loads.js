@@ -83,6 +83,7 @@ function cleanLoadLines(lines) {
 
 function translatedError(raw) {
   const translations = [
+    ['SO_REQUIRED','Falta la Sales Order.'],
     ['SO_NOT_FOUND','Sales Order no encontrada.'],
     ['SO_NOT_CONFIRMED','La Sales Order debe estar confirmada para trabajar con Cargues.'],
     ['SO_NO_UNALLOCATED_FULFILLMENT','La Sales Order ya no tiene mercancía pendiente para asignar a Cargues.'],
@@ -110,7 +111,10 @@ function translatedError(raw) {
     ['PERMISSION_REQUIRED','No tienes permiso para ejecutar esta acción.'],
     ['SO_ACTION_NOT_ALLOWED','La Sales Order no admite esta acción en su estado actual.']
   ];
-  return translations.find(([key]) => raw.includes(key))?.[1] || raw;
+  const translated = translations.find(([key]) => raw.includes(key))?.[1] || null;
+  if (translated) return translated;
+  if (/^(?:Falta la línea de SO \d+|Falta el WR de la asignación \d+|Selecciona al menos un WR para la línea \d+)$/.test(raw)) return raw;
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -174,8 +178,10 @@ export default async function handler(req, res) {
     await writeAudit(admin, 'load_created_from_sales_order', 'load', load.id, { sales_order_id:orderId, load_number:load.load_number, warehouse_id:warehouseId });
     return ok(res, { load, order:await getOrder(orderId, admin) });
   } catch (error) {
-    const raw = String(error.message || 'No se pudo procesar el Cargue');
+    const raw = String(error?.message || '');
+    const translated = translatedError(raw);
+    if (translated) return fail(res,400,translated);
     console.error('[sales-loads]', error);
-    return fail(res, 400, translatedError(raw));
+    return fail(res,500,'No se pudo procesar el Cargue');
   }
 }
