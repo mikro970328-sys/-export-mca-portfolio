@@ -37,7 +37,8 @@ const retiredOwners = [
   'admin/invoice-expediente.js',
   'admin/commercial-documents-shell.js',
   'admin/commercial-documents-loads.js',
-  'admin/commercial-documents-invoices.js'
+  'admin/commercial-documents-invoices.js',
+  'admin/warehouse-embedded.js'
 ];
 
 const errors = [];

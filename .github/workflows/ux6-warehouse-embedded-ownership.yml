@@ -5,7 +5,10 @@ on:
     paths:
       - 'admin/navigation-shell.js'
       - 'admin/warehouse.html'
+      - 'admin/warehouse.js'
+      - 'admin/warehouse.css'
       - 'admin/warehouse-embedded.js'
+      - 'api/warehouse.js'
       - 'scripts/check-ux6-warehouse-embedded-ownership.mjs'
       - '.github/workflows/ux6-warehouse-embedded-ownership.yml'
   workflow_dispatch:
@@ -21,12 +24,16 @@ jobs:
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate Warehouse embedded ownership
-        run: node scripts/check-ux6-warehouse-embedded-ownership.mjs
+        run: |
+          node scripts/check-ux6-warehouse-embedded-ownership.mjs
+          node scripts/check-ux5-warehouse-receipt-actions.mjs
+          node scripts/check-ux6b-embedded-foundation.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check admin/navigation-shell.js
-          node --check admin/warehouse-embedded.js
+          node --check admin/warehouse.js
           node --check scripts/check-ux6-warehouse-embedded-ownership.mjs
+          node --input-type=module -e "await import('./api/warehouse.js'); console.log('Warehouse runtime import OK')"
       - name: Validate frontend ownership
         run: node scripts/check-frontend-ownership.mjs
       - name: Validate admin shell resilience

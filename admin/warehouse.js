@@ -1,6 +1,7 @@
 const $=id=>document.getElementById(id);
 const token=localStorage.getItem('export_mca_token')||'';
 if(!token)location.href='/admin/index.html';
+const embeddedMode=new URLSearchParams(location.search).get('embedded')==='1';
 
 let warehouses=[];
 let products=[];
@@ -11,8 +12,37 @@ let receiptView='active';
 let quickProductTarget=null;
 let warehouseWriteAccess=false;
 
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const actionAllowed=(receipt,action)=>receipt?.capabilities?.actions?.[action]?.allowed===true;
+const safeWarehouseErrors=new Set([
+  'Código, nombre y país son obligatorios',
+  'El nombre del producto es obligatorio',
+  'La unidad base debe ser texto, por ejemplo: paneles, cajas o unidades',
+  'Unidades por pallet inválidas',
+  'Peso unitario inválido',
+  'Selecciona el almacén que recibe la mercancía',
+  'Agrega al menos una línea de mercancía',
+  'El proveedor seleccionado no existe',
+  'El proveedor seleccionado está inactivo',
+  'Selecciona al menos un producto',
+  'Falta el identificador',
+  'La recepción no existe.',
+  'La recepción ya no está disponible para anular.',
+  'No se puede anular porque la recepción ya tiene movimientos de inventario.',
+  'No se puede anular porque mercancía de esta recepción está asignada a un Cargue activo.',
+  'Acción de recepción inválida.',
+  'La acción ya no está disponible para esta recepción.',
+  'Acción no reconocida'
+]);
+const safeWarehousePatterns=[
+  /^Selecciona el producto de la línea \d+$/,
+  /^El producto de la línea \d+ no existe$/,
+  /^Pallets de la línea \d+ inválido$/,
+  /^Unidades por pallet inválidas en la línea \d+$/,
+  /^Cantidad de la línea \d+ inválido$/,
+  /^Forma de recepción inválida en línea \d+$/,
+  /^(?:Peso neto|Peso bruto|Costo) inválido en línea \d+$/
+];
 
 async function api(path,opt={}){
   const r=await fetch(path,{...opt,headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,...(opt.headers||{})}});
@@ -20,10 +50,21 @@ async function api(path,opt={}){
   if(r.status===401){
     localStorage.removeItem('export_mca_token');
     location.href='/admin/index.html';
-    throw new Error('Sesión vencida');
+    const error=new Error('Sesión vencida');error.status=401;error.endpoint=String(path).split('?')[0];throw error;
   }
-  if(!r.ok)throw new Error(d.error||'Error');
+  if(!r.ok){const error=new Error(d.error||'No se pudo completar la operación de almacén.');error.status=r.status;error.code=d.code||d.reason_code||null;error.endpoint=String(path).split('?')[0];throw error;}
   return d;
+}
+
+function safeWarehouseMessage(error,fallback='No se pudo completar la operación. Intenta nuevamente.',context='operation'){
+  const message=String(error?.message||'').trim();
+  const status=Number(error?.status||0);
+  if(status===401||message==='Sesión vencida')return 'Tu sesión terminó. Inicia sesión nuevamente para continuar.';
+  if(status===403)return 'No tienes permiso para completar esta acción.';
+  if([400,404,409,422].includes(status)&&(safeWarehouseErrors.has(message)||safeWarehousePatterns.some(pattern=>pattern.test(message))))return message;
+  if(error?.code==='WAREHOUSE_PRODUCT_CREATE_EMPTY')return 'No se pudo crear el producto. Intenta nuevamente.';
+  console.error('WAREHOUSE_UI_FAILED',{context,status:status||null,code:error?.code||null,endpoint:error?.endpoint||null,error});
+  return fallback;
 }
 
 function note(id,text,ok=false){
@@ -40,7 +81,7 @@ function showNotice(message){
   if(!notice){
     notice=document.createElement('div');
     notice.id='warehouseNotice';
-    notice.style.cssText='position:fixed;right:18px;bottom:18px;z-index:80;max-width:420px;background:#06204a;color:#fff;padding:12px 14px;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.22);font-size:13px;font-weight:700';
+    notice.className='warehouse-notice hidden';
     document.body.appendChild(notice);
   }
   notice.textContent=message;
@@ -56,7 +97,7 @@ function decision({title,message,word='ANULAR',confirmLabel='Anular recepción'}
       modal=document.createElement('div');
       modal.id='warehouseDecision';
       modal.className='modal hidden';
-      modal.innerHTML='<div class="modalbox compact"><div class="toolbar"><div><h2 id="warehouseDecisionTitle" style="margin:0"></h2><div id="warehouseDecisionMessage" class="muted" style="margin-top:6px"></div></div><button id="warehouseDecisionClose" class="alt icon-btn" type="button" aria-label="Cerrar">×</button></div><label id="warehouseDecisionLabel" style="margin-top:16px"></label><input id="warehouseDecisionInput" autocomplete="off"><div class="actions" style="margin-top:14px"><button id="warehouseDecisionCancel" class="alt" type="button">Cancelar</button><button id="warehouseDecisionConfirm" class="danger" type="button" disabled></button></div></div>';
+      modal.innerHTML='<div class="modalbox compact"><div class="toolbar"><div><h2 id="warehouseDecisionTitle" class="warehouse-heading-reset"></h2><div id="warehouseDecisionMessage" class="muted warehouse-decision-message"></div></div><button id="warehouseDecisionClose" class="alt icon-btn" type="button" aria-label="Cerrar">×</button></div><label id="warehouseDecisionLabel" class="warehouse-decision-label"></label><input id="warehouseDecisionInput" autocomplete="off"><div class="actions warehouse-section-gap"><button id="warehouseDecisionCancel" class="alt" type="button">Cancelar</button><button id="warehouseDecisionConfirm" class="danger" type="button" disabled></button></div></div>';
       document.body.appendChild(modal);
     }
     const input=$('warehouseDecisionInput');
@@ -150,9 +191,9 @@ function openReceipt(){if(!warehouseWriteAccess)return showNotice('No tienes per
 function closeReceipt(){$('receiptModal').classList.add('hidden');}
 function openQuickProduct(lineId){quickProductTarget=lineId;['qpName','qpSku','qpUnit','qpBrand','qpUnitsPallet','qpFormat'].forEach(id=>$(id).value='');$('qpUnit').value='unidades';$('qpMsg').textContent='';$('quickProductModal').classList.remove('hidden');}
 function closeQuickProduct(){$('quickProductModal').classList.add('hidden');quickProductTarget=null;}
-function showReceipt(id){const r=receipts.find(x=>x.id===id);if(!r)return;const itemCards=(r.items||[]).map(i=>{const pallets=Number(i.pallets||0),quantity=Number(i.quantity||0);return `<div class="receipt-item"><div class="receipt-item-head"><div><div class="receipt-item-title">${esc(i.product?.name||'-')}</div><div class="muted">${esc(i.product?.sku||'Sin SKU')}</div></div><b>${entryLabel(i)}</b></div><div class="receipt-item-meta">${pallets>0?`<span><b>Pallets:</b> ${fmtNum(i.pallets)}</span>`:''}${pallets>0&&Number(i.units_per_pallet||0)>0?`<span><b>Unid./pallet:</b> ${fmtNum(i.units_per_pallet)}</span>`:''}${quantity>0?`<span><b>Total unidades:</b> ${fmtNum(i.quantity)} ${esc(displayUnit(i))}</span>`:''}${i.lot_number?`<span><b>Lote:</b> ${esc(i.lot_number)}</span>`:''}${i.gross_weight_kg?`<span><b>Peso bruto:</b> ${fmtNum(i.gross_weight_kg)} kg</span>`:''}</div></div>`;}).join('');$('detailTitle').textContent=r.receipt_number;$('detailBody').innerHTML=`<div class="detail-grid"><div class="detail-field"><b>Almacén</b>${esc(r.warehouse?.code||'')} · ${esc(r.warehouse?.name||'')}</div><div class="detail-field"><b>Recepción</b>${fmtDate(r.received_at)}</div><div class="detail-field"><b>Proveedor</b>${esc(r.supplier_name||r.supplier?.name||'-')}</div><div class="detail-field"><b>Camión / referencia</b>${esc(r.truck_reference||'-')}</div><div class="detail-field"><b>Chofer</b>${esc(r.driver_name||'-')}</div><div class="detail-field"><b>Referencia</b>${esc(r.reference_number||'-')}</div></div>${r.notes?`<div class="detail-field"><b>Notas</b>${esc(r.notes)}</div>`:''}<div style="margin-top:14px"><b>Mercancía recibida</b>${itemCards}</div>`;$('detailModal').classList.remove('hidden');}
-async function toggleWarehouse(id,active){if(!warehouseWriteAccess)return;await api('/api/warehouse',{method:'PATCH',body:JSON.stringify({action:'set_warehouse_active',id,active})});await load();}
-async function toggleProduct(id,active){await api('/api/warehouse',{method:'PATCH',body:JSON.stringify({action:'set_product_active',id,active})});await load();}
+function showReceipt(id){const r=receipts.find(x=>x.id===id);if(!r)return;const itemCards=(r.items||[]).map(i=>{const pallets=Number(i.pallets||0),quantity=Number(i.quantity||0);return `<div class="receipt-item"><div class="receipt-item-head"><div><div class="receipt-item-title">${esc(i.product?.name||'-')}</div><div class="muted">${esc(i.product?.sku||'Sin SKU')}</div></div><b>${entryLabel(i)}</b></div><div class="receipt-item-meta">${pallets>0?`<span><b>Pallets:</b> ${fmtNum(i.pallets)}</span>`:''}${pallets>0&&Number(i.units_per_pallet||0)>0?`<span><b>Unid./pallet:</b> ${fmtNum(i.units_per_pallet)}</span>`:''}${quantity>0?`<span><b>Total unidades:</b> ${fmtNum(i.quantity)} ${esc(displayUnit(i))}</span>`:''}${i.lot_number?`<span><b>Lote:</b> ${esc(i.lot_number)}</span>`:''}${i.gross_weight_kg?`<span><b>Peso bruto:</b> ${fmtNum(i.gross_weight_kg)} kg</span>`:''}</div></div>`;}).join('');$('detailTitle').textContent=r.receipt_number;$('detailBody').innerHTML=`<div class="detail-grid"><div class="detail-field"><b>Almacén</b>${esc(r.warehouse?.code||'')} · ${esc(r.warehouse?.name||'')}</div><div class="detail-field"><b>Recepción</b>${fmtDate(r.received_at)}</div><div class="detail-field"><b>Proveedor</b>${esc(r.supplier_name||r.supplier?.name||'-')}</div><div class="detail-field"><b>Camión / referencia</b>${esc(r.truck_reference||'-')}</div><div class="detail-field"><b>Chofer</b>${esc(r.driver_name||'-')}</div><div class="detail-field"><b>Referencia</b>${esc(r.reference_number||'-')}</div></div>${r.notes?`<div class="detail-field"><b>Notas</b>${esc(r.notes)}</div>`:''}<div class="warehouse-receipt-items"><b>Mercancía recibida</b>${itemCards}</div>`;$('detailModal').classList.remove('hidden');}
+async function toggleWarehouse(id,active){if(!warehouseWriteAccess)return;try{await api('/api/warehouse',{method:'PATCH',body:JSON.stringify({action:'set_warehouse_active',id,active})});await load();}catch(error){showNotice(safeWarehouseMessage(error,'No se pudo actualizar el almacén. Intenta nuevamente.','toggle_warehouse'));}}
+async function toggleProduct(id,active){try{await api('/api/warehouse',{method:'PATCH',body:JSON.stringify({action:'set_product_active',id,active})});await load();}catch(error){showNotice(safeWarehouseMessage(error,'No se pudo actualizar el producto. Intenta nuevamente.','toggle_product'));}}
 async function cancelReceipt(id,number){
   const receipt=receipts.find(row=>String(row.id)===String(id));
   if(!receipt||!actionAllowed(receipt,'cancel'))return showNotice(cancelReason(receipt));
@@ -161,13 +202,13 @@ async function cancelReceipt(id,number){
   try{
     await api('/api/warehouse',{method:'PATCH',body:JSON.stringify({action:'cancel_receipt',id})});
     await load();
-  }catch(error){showNotice(error.message);await load().catch(()=>{});}
+  }catch(error){showNotice(safeWarehouseMessage(error,'No se pudo anular la recepción. Intenta nuevamente.','cancel_receipt'));await load().catch(()=>{});}
 }
 
-$('saveWarehouse').onclick=async()=>{try{if(!warehouseWriteAccess)return;await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_warehouse',code:$('whCode').value,name:$('whName').value,country:$('whCountry').value,city:$('whCity').value,address:$('whAddress').value,notes:$('whNotes').value})});note('whMsg','Almacén creado.',true);['whCode','whName','whCountry','whCity','whAddress','whNotes'].forEach(id=>$(id).value='');await load();}catch(e){note('whMsg',e.message);}};
-$('saveProduct').onclick=async()=>{try{await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_product',sku:$('pSku').value,name:$('pName').value,brand:$('pBrand').value,category:$('pCategory').value,unit:$('pUnit').value,package_format:$('pFormat').value,default_units_per_pallet:$('pUnitsPallet').value,unit_weight_kg:$('pWeight').value,country_of_origin:$('pOrigin').value,hs_code:$('pHs').value,description:$('pDescription').value,notes:$('pNotes').value})});note('pMsg','Producto creado.',true);['pSku','pName','pBrand','pCategory','pUnit','pFormat','pUnitsPallet','pWeight','pOrigin','pHs','pDescription','pNotes'].forEach(id=>$(id).value='');await load();}catch(e){note('pMsg',e.message);}};
-$('saveQuickProduct').onclick=async()=>{const btn=$('saveQuickProduct');try{btn.disabled=true;const d=await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_product',name:$('qpName').value,sku:$('qpSku').value,unit:$('qpUnit').value,brand:$('qpBrand').value,default_units_per_pallet:$('qpUnitsPallet').value,package_format:$('qpFormat').value})});const product=d.product;if(!product?.id)throw new Error('No se pudo crear el producto');products=[{...product,active:product.active!==false},...products.filter(x=>x.id!==product.id)];renderProducts();refreshProductOptions();const div=document.querySelector(`[data-line="${quickProductTarget}"]`);if(div){div.querySelector('.line-product').value=product.id;applyProductToLine(div);}note('qpMsg','Producto creado.',true);setTimeout(closeQuickProduct,250);}catch(e){note('qpMsg',e.message);}finally{btn.disabled=false;}};
-$('saveReceipt').onclick=async()=>{const btn=$('saveReceipt');try{if(!warehouseWriteAccess)return;btn.disabled=true;const d=await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_receipt',warehouse_id:$('rWarehouse').value,received_at:$('rReceivedAt').value,supplier_id:$('rSupplier').value,reference_number:$('rReference').value,truck_reference:$('rTruck').value,driver_name:$('rDriver').value,notes:$('rNotes').value,items:collectLines()})});note('rMsg',`${d.receipt.receipt_number} registrada correctamente.`,true);await load();setTimeout(closeReceipt,450);}catch(e){note('rMsg',e.message);}finally{btn.disabled=!warehouseWriteAccess;}};
+$('saveWarehouse').onclick=async()=>{try{if(!warehouseWriteAccess)return;await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_warehouse',code:$('whCode').value,name:$('whName').value,country:$('whCountry').value,city:$('whCity').value,address:$('whAddress').value,notes:$('whNotes').value})});note('whMsg','Almacén creado.',true);['whCode','whName','whCountry','whCity','whAddress','whNotes'].forEach(id=>$(id).value='');await load();}catch(error){note('whMsg',safeWarehouseMessage(error,'No se pudo crear el almacén. Intenta nuevamente.','create_warehouse'));}};
+$('saveProduct').onclick=async()=>{try{await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_product',sku:$('pSku').value,name:$('pName').value,brand:$('pBrand').value,category:$('pCategory').value,unit:$('pUnit').value,package_format:$('pFormat').value,default_units_per_pallet:$('pUnitsPallet').value,unit_weight_kg:$('pWeight').value,country_of_origin:$('pOrigin').value,hs_code:$('pHs').value,description:$('pDescription').value,notes:$('pNotes').value})});note('pMsg','Producto creado.',true);['pSku','pName','pBrand','pCategory','pUnit','pFormat','pUnitsPallet','pWeight','pOrigin','pHs','pDescription','pNotes'].forEach(id=>$(id).value='');await load();}catch(error){note('pMsg',safeWarehouseMessage(error,'No se pudo crear el producto. Intenta nuevamente.','create_product'));}};
+$('saveQuickProduct').onclick=async()=>{const btn=$('saveQuickProduct');try{btn.disabled=true;const d=await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_product',name:$('qpName').value,sku:$('qpSku').value,unit:$('qpUnit').value,brand:$('qpBrand').value,default_units_per_pallet:$('qpUnitsPallet').value,package_format:$('qpFormat').value})});const product=d.product;if(!product?.id){const error=new Error('No se pudo crear el producto');error.code='WAREHOUSE_PRODUCT_CREATE_EMPTY';throw error;}products=[{...product,active:product.active!==false},...products.filter(x=>x.id!==product.id)];renderProducts();refreshProductOptions();const div=document.querySelector(`[data-line="${quickProductTarget}"]`);if(div){div.querySelector('.line-product').value=product.id;applyProductToLine(div);}note('qpMsg','Producto creado.',true);setTimeout(closeQuickProduct,250);}catch(error){note('qpMsg',safeWarehouseMessage(error,'No se pudo crear el producto. Intenta nuevamente.','create_quick_product'));}finally{btn.disabled=false;}};
+$('saveReceipt').onclick=async()=>{const btn=$('saveReceipt');try{if(!warehouseWriteAccess)return;btn.disabled=true;const d=await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_receipt',warehouse_id:$('rWarehouse').value,received_at:$('rReceivedAt').value,supplier_id:$('rSupplier').value,reference_number:$('rReference').value,truck_reference:$('rTruck').value,driver_name:$('rDriver').value,notes:$('rNotes').value,items:collectLines()})});note('rMsg',`${d.receipt.receipt_number} registrada correctamente.`,true);await load();setTimeout(closeReceipt,450);}catch(error){note('rMsg',safeWarehouseMessage(error,'No se pudo registrar la recepción. Intenta nuevamente.','create_receipt'));}finally{btn.disabled=!warehouseWriteAccess;}};
 
 $('newReceipt').onclick=openReceipt;
 $('closeReceipt').onclick=closeReceipt;
@@ -182,4 +223,19 @@ $('receiptModal').onclick=e=>{if(e.target===$('receiptModal'))closeReceipt();};
 $('detailModal').onclick=e=>{if(e.target===$('detailModal'))$('detailModal').classList.add('hidden');};
 $('quickProductModal').onclick=e=>{if(e.target===$('quickProductModal'))closeQuickProduct();};
 
-load().catch(e=>document.body.innerHTML=`<div class="wrap"><div class="card bad">${esc(e.message)}</div></div>`);
+function applyEmbeddedMode(){
+  if(!embeddedMode)return;
+  document.body.classList.add('warehouse-embedded');
+  const productTab=document.querySelector('.tab[data-tab="products"]');
+  if(productTab){productTab.setAttribute('aria-hidden','true');productTab.tabIndex=-1;}
+  $('productsPane')?.setAttribute('aria-hidden','true');
+  $('quickProductModal')?.setAttribute('aria-hidden','true');
+}
+
+applyEmbeddedMode();
+window.WarehouseModule=Object.freeze({embedded:embeddedMode,owner:'warehouse.js'});
+load().catch(error=>{
+  const message=safeWarehouseMessage(error,'No se pudo cargar Almacén. Intenta nuevamente.','load');
+  document.body.innerHTML=`<main class="wrap warehouse-load-error"><section class="card"><h1>Almacén</h1><p class="bad">${esc(message)}</p><button id="warehouseReload" type="button">Reintentar</button></section></main>`;
+  $('warehouseReload').onclick=()=>location.reload();
+});
