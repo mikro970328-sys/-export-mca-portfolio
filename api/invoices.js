@@ -6,14 +6,21 @@ const rpcRow=value=>Array.isArray(value)?(value[0]||null):(value||null);
 
 function translatedError(raw){
   const messages=[
+    ['JSON_INVALID','La solicitud no tiene un formato válido.'],
     ['INVOICE_SO_NOT_FOUND','Sales Order no encontrada.'],
     ['INVOICE_SO_NOT_BILLABLE','La Sales Order debe estar confirmada o cerrada para facturar.'],
     ['INVOICE_HAS_NO_ITEMS','Agrega al menos una línea a la factura.'],
     ['INVOICE_SO_ITEM_REQUIRED','Falta una línea de la Sales Order.'],
+    ['INVOICE_SO_ITEM_NOT_FOUND','Una línea de la Sales Order ya no existe.'],
+    ['INVOICE_SO_ITEM_MISMATCH','Una línea no pertenece a la Sales Order seleccionada.'],
     ['INVOICE_QUANTITY_INVALID','La cantidad a facturar debe ser mayor que cero.'],
     ['INVOICE_QUANTITY_EXCEEDS_SALES_ORDER','La cantidad supera lo disponible para facturar en la Sales Order.'],
+    ['INVOICE_ITEM_INVALID','Una línea de la factura no es válida.'],
+    ['INVOICE_TOO_MANY_ITEMS','La factura contiene demasiadas líneas.'],
+    ['INVOICE_PRODUCT_NOT_FOUND','Uno de los productos ya no existe.'],
     ['INVOICE_OPERATION_NOT_FOUND','La operación vinculada no existe.'],
     ['INVOICE_OPERATION_CLIENT_MISMATCH','La operación vinculada debe pertenecer al mismo cliente de la Sales Order.'],
+    ['INVOICE_OPERATION_REQUIRED','Vincula una operación antes de emitir la factura.'],
     ['INVOICE_NOT_FOUND','Factura no encontrada.'],
     ['INVOICE_NOT_DRAFT','Solo una factura en borrador puede editarse o emitirse.'],
     ['INVOICE_ITEMS_LOCKED','Las líneas de una factura emitida no pueden modificarse.'],
@@ -21,10 +28,16 @@ function translatedError(raw){
     ['INVOICE_HAS_POSTED_PAYMENTS','Revierte primero los cobros registrados antes de anular la factura.'],
     ['INVOICE_HAS_POSTED_ADVANCE_APPLICATIONS','Revierte primero los anticipos aplicados antes de anular la factura.'],
     ['INVOICE_CANNOT_VOID','La factura no puede anularse en su estado actual.'],
+    ['INVOICE_STATUS_FINAL','La factura ya no admite cambios.'],
+    ['INVOICE_STATUS_TRANSITION_INVALID','La factura no admite esa transición en su estado actual.'],
+    ['INVOICE_ACTION_NOT_ALLOWED','La factura no admite esta acción en su estado actual.'],
     ['INVOICE_ACTION_INVALID','Acción de factura inválida.'],
     ['PERMISSION_REQUIRED','No tienes permiso para realizar esta acción.']
   ];
-  return messages.find(([key])=>raw.includes(key))?.[1]||raw;
+  const matched=messages.find(([key])=>raw.includes(key));
+  if(matched)return {code:matched[0],message:matched[1]};
+  if(/^(?:Agrega al menos una línea a la factura|Falta la línea \d+ de la Sales Order|Indica una cantidad válida en la línea \d+|Selecciona una Sales Order|Falta la factura(?: o la Sales Order)?)$/.test(raw))return {code:'INVOICE_INPUT_INVALID',message:raw};
+  return null;
 }
 
 function cleanLines(lines){
@@ -146,5 +159,11 @@ export default async function handler(req,res){
     }
 
     return fail(res,400,'Acción de Facturación no válida');
-  }catch(error){const raw=String(error.message||'No se pudo procesar Facturación');console.error('[invoices]',error);return fail(res,400,translatedError(raw));}
+  }catch(error){
+    const raw=String(error?.message||error||'');
+    console.error('[invoices]',error);
+    const translated=translatedError(raw);
+    if(translated)return fail(res,400,translated.message,{code:translated.code});
+    return fail(res,500,'No se pudo procesar Facturación. Intenta nuevamente.',{code:'INVOICE_UNEXPECTED_ERROR'});
+  }
 }
