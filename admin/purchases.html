@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Compras · Export MCA</title>
 <link rel="stylesheet" href="/admin/purchases.css?v=20260901-ux6owner1">
+<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b2">
 </head>
-<body>
+<body class="erp-module-page erp-module-purchases">
 <main class="wrap">
-  <div class="head"><div><h1>Compras</h1><div class="muted">Purchase Orders y recepción física vinculada a WR.</div></div><button id="newOrder" class="btn orange">+ Nueva PO</button></div>
+  <div class="head module-hero"><div class="module-heading"><div class="module-kicker">Abastecimiento</div><h1>Compras</h1><div class="muted">Purchase Orders y recepción física vinculada a WR.</div></div><button id="newOrder" class="btn orange">+ Nueva PO</button></div>
   <div id="metrics" class="metrics"></div>
   <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar PO, proveedor, referencia o producto"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="closed">Cerradas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="orderList" class="orders"></div></section>
 </main>

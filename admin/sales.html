@@ -9,14 +9,15 @@
 <link rel="stylesheet" href="/admin/sales-workspace.css?v=20260901-ux6owner1">
 <link rel="stylesheet" href="/admin/sales-supply-workspace.css?v=20260830-p1">
 <link rel="stylesheet" href="/admin/sales-customer-finance.css?v=20260902-ux6owner1">
+<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b2">
 <script>
 document.__salesWorkspaceOwnsDetail = true;
 document.__financialSalesContextInstalled = true;
 </script>
 </head>
-<body>
+<body class="erp-module-page erp-module-sales">
 <main class="wrap">
-  <header class="head sales-page-head"><div class="sales-page-heading"><div class="sales-page-kicker">Operación comercial</div><h1>Ventas</h1><p class="muted">Cada venta reúne cliente, mercancía, logística, facturación, cobros, costos y documentos del contenedor sin duplicar sus fuentes.</p></div><button id="newOrder" class="btn orange sales-primary-action">+ Nueva venta</button></header>
+  <header class="head module-hero sales-page-head"><div class="module-heading sales-page-heading"><div class="sales-page-kicker">Operación comercial</div><h1>Ventas</h1><p class="muted">Cada venta reúne cliente, mercancía, logística, facturación, cobros, costos y documentos del contenedor sin duplicar sus fuentes.</p></div><button id="newOrder" class="btn orange sales-primary-action">+ Nueva venta</button></header>
   <div id="metrics" class="metrics"></div>
   <section class="panel sales-list-panel"><div class="toolbar sales-list-toolbar"><input id="search" class="search" placeholder="Buscar venta, cliente, referencia o producto"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="closed">Cerradas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn sales-refresh" aria-label="Actualizar ventas" title="Actualizar ventas">↻</button></div><div id="orderList" class="orders has-explicit-count"></div></section>
 </main>

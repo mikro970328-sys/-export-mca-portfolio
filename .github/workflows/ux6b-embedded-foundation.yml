@@ -1,0 +1,47 @@
+name: UX6B Embedded Foundation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/embedded-foundation.css'
+      - 'admin/sales.html'
+      - 'admin/purchases.html'
+      - 'admin/warehouse.html'
+      - 'admin/inventory.html'
+      - 'admin/loads.html'
+      - 'admin/publications.html'
+      - 'scripts/check-ux6b-embedded-foundation.mjs'
+      - '.github/workflows/ux6b-embedded-foundation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-embedded-foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate the shared visual owner
+        run: node scripts/check-ux6b-embedded-foundation.mjs
+      - name: Preserve operational owners
+        run: |
+          node scripts/check-ux6-sales-explicit-owner.mjs
+          node scripts/check-ux6-sales-workspace-presentation.mjs
+          node scripts/check-ux6-purchases-presentation.mjs
+          node scripts/check-ux5-canonical-actions.mjs
+          node scripts/check-ux6-loads-presentation.mjs
+          node scripts/check-ux5-load-actions.mjs
+          node scripts/check-ux5-warehouse-receipt-actions.mjs
+          node scripts/check-ux6-warehouse-embedded-ownership.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/check-admin-shell-resilience.mjs
+      - name: Preserve security boundaries
+        run: |
+          node scripts/audit-b9-api-boundaries.mjs
+          node scripts/check-b9-public-boundaries.mjs
+          node scripts/check-integrations.mjs
+      - name: Validate gate syntax
+        run: node --check scripts/check-ux6b-embedded-foundation.mjs
