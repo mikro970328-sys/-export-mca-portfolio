@@ -66,7 +66,7 @@ const headEnd=index.indexOf('</head>');
 if(themeIndex<0||navigationIndex<0||foundationIndex<0||headEnd<0||!(themeIndex<navigationIndex&&navigationIndex<foundationIndex&&foundationIndex<headEnd)){
   failures.push('index.html debe cargar tema → navegación → base nativa dentro de head');
 }
-requireText(index,'/admin/erp.js?v=20260902-ux6c1','revisión de caché del loader ERP');
+requireText(index,'/admin/erp.js?v=20260902-ux6tasks1','revisión de caché del loader ERP');
 requireText(loader,"document.querySelector('link[data-native-workspace-foundation]')",'límite de cascada para estilos dinámicos');
 requireText(loader,'insertBefore(link, nativeFoundation)','estilos propietarios antes de la base compartida');
 
@@ -112,7 +112,7 @@ for(const ref of [
   "/admin/access-control-administration.js?v=20260902-ux6b1",
   "/admin/registration-form-shell.js?v=20260902-ux6b1",
   "/admin/account-administration.js?v=20260902-ux6b1",
-  "/admin/tasks-workspace.js?v=20260902-ux6b1"
+  "/admin/tasks-workspace.js?v=20260902-ux6tasks1"
 ])requireText(loader,ref,`asset revisado ${ref}`);
 
 for(const source of [index,clients,alerts,access,account,tasks]){

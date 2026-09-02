@@ -1,0 +1,47 @@
+name: UX6 Tasks Feedback
+
+on:
+  pull_request:
+    paths:
+      - 'admin/tasks-workspace.js'
+      - 'admin/tasks-workspace.css'
+      - 'admin/erp.js'
+      - 'admin/index.html'
+      - 'scripts/check-task-engine.mjs'
+      - 'scripts/check-workflow-handoffs.mjs'
+      - 'scripts/check-ux6-tasks-feedback.mjs'
+      - 'scripts/check-ux6b-native-workspace-foundation.mjs'
+      - 'scripts/check-ux6-modal-dismissal.mjs'
+      - '.github/workflows/ux6-tasks-feedback.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-tasks-feedback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate safe Tasks feedback
+        run: node scripts/check-ux6-tasks-feedback.mjs
+      - name: Preserve Tasks and workflow ownership
+        run: |
+          node scripts/check-task-engine.mjs
+          node scripts/check-workflow-handoffs.mjs
+          node scripts/check-ux6b-native-workspace-foundation.mjs
+          node scripts/check-ux6-modal-dismissal.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/check-admin-shell-resilience.mjs
+      - name: Preserve access and public boundaries
+        run: |
+          node scripts/check-access-control.mjs
+          node scripts/audit-b9-api-boundaries.mjs
+          node scripts/check-b9-public-boundaries.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/tasks-workspace.js
+          node --check admin/erp.js
+          node --check scripts/check-ux6-tasks-feedback.mjs
