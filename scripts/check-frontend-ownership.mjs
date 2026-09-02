@@ -197,7 +197,7 @@ for (const forbidden of [
 }
 
 for (const fragment of [
-  '--sidebar-collapsed:82px',
+  '--sidebar-collapsed:80px',
   'body.sidebar-collapsed .sidebar',
   'body.sidebar-collapsed .main-shell',
   '@media(min-width:901px)',
@@ -255,7 +255,7 @@ for (const fragment of [
 ]) {
   if (!loader.includes(fragment)) errors.push(`El loader no carga el propietario requerido: ${fragment}`);
 }
-if (!index.includes('/admin/navigation-shell.css?v=20260902-ux6b1')) {
+if (!index.includes('/admin/navigation-shell.css?v=20260902-ux7shell1')) {
   errors.push('index.html no carga el owner visual versionado de navegación desde head.');
 }
 if (loader.includes('/admin/expedientes-module.js')) errors.push('El loader todavía carga Expedientes, que UX-2D retiró del flujo operativo.');
