@@ -1,4 +1,4 @@
-name: UX6 Warehouse Embedded Ownership
+name: UX7 Warehouse Visual Owner
 
 on:
   pull_request:
@@ -10,6 +10,7 @@ on:
       - 'admin/warehouse-embedded.js'
       - 'api/warehouse.js'
       - 'scripts/check-ux6-warehouse-embedded-ownership.mjs'
+      - 'scripts/check-ux7-warehouse-visual-owner.mjs'
       - '.github/workflows/ux6-warehouse-embedded-ownership.yml'
   workflow_dispatch:
 
@@ -23,8 +24,9 @@ jobs:
           node-version: '24'
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Validate Warehouse embedded ownership
+      - name: Validate Warehouse UX-7 owner
         run: |
+          node scripts/check-ux7-warehouse-visual-owner.mjs
           node scripts/check-ux6-warehouse-embedded-ownership.mjs
           node scripts/check-ux5-warehouse-receipt-actions.mjs
           node scripts/check-ux6b-embedded-foundation.mjs
@@ -33,6 +35,7 @@ jobs:
           node --check admin/navigation-shell.js
           node --check admin/warehouse.js
           node --check scripts/check-ux6-warehouse-embedded-ownership.mjs
+          node --check scripts/check-ux7-warehouse-visual-owner.mjs
           node --input-type=module -e "await import('./api/warehouse.js'); console.log('Warehouse runtime import OK')"
       - name: Validate frontend ownership
         run: node scripts/check-frontend-ownership.mjs

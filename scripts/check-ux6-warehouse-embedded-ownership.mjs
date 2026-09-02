@@ -34,24 +34,26 @@ for(const token of [
 if(/warehouseSection[\s\S]{0,300}addEventListener\(['"]load['"]/.test(shell))failures.push('navigation-shell no puede mutar Almacén después de cargar el iframe');
 
 for(const text of [
-  '<link rel="stylesheet" href="/admin/warehouse.css?v=20260902-ux6owner1">',
   '<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">',
-  '<body class="erp-module-page erp-module-warehouse">',
-  '<script src="/admin/warehouse.js?v=20260902-ux6owner1"></script>',
+  '<link rel="stylesheet" href="/admin/warehouse.css?v=20260902-ux7warehouse1">',
+  '<body class="erp-module-page erp-module-warehouse" data-owner="warehouse.js">',
+  '<script src="/admin/warehouse.js?v=20260902-ux7warehouse1" defer></script>',
+  '<script src="/admin/embedded-auto-refresh.js?v=20260902-ux7warehouse1" defer></script>',
   'warehouse-copy-standalone',
   'warehouse-copy-embedded'
 ])requireText(html,text,`HTML de Almacén ${text}`);
 forbid(html,/<style(?:\s|>)/i,'warehouse.html conserva una hoja de estilos embebida');
 forbid(html,/\sstyle\s*=/i,'warehouse.html conserva estilos inline');
 forbid(html,/warehouse-embedded\.js/,'warehouse.html vuelve a cargar el owner compensatorio retirado');
-const ownerCssIndex=html.indexOf('/admin/warehouse.css?v=20260902-ux6owner1');
 const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260902-ux6b3');
-if(ownerCssIndex<0||foundationIndex<0||ownerCssIndex>foundationIndex)failures.push('warehouse.css debe cargar antes de la base visual embebida');
+const ownerCssIndex=html.indexOf('/admin/warehouse.css?v=20260902-ux7warehouse1');
+if(ownerCssIndex<0||foundationIndex<0||foundationIndex>ownerCssIndex)failures.push('la base visual compartida debe cargar antes de warehouse.css');
 
 for(const text of [
   "const embeddedMode=new URLSearchParams(location.search).get('embedded')==='1'",
   'function applyEmbeddedMode()',
   "document.body.classList.add('warehouse-embedded')",
+  'productTab.hidden=true',
   "productTab.setAttribute('aria-hidden','true')",
   "owner:'warehouse.js'",
   'window.WarehouseModule=Object.freeze',
@@ -98,10 +100,11 @@ for(const selector of [
   '.warehouse-receipt-items',
   '.warehouse-load-error',
   '.warehouse-copy-embedded',
-  'body.warehouse-embedded .tab[data-tab="products"]',
-  'body.warehouse-embedded .product-picker button'
+  'body.warehouse-embedded #productsTab',
+  'body.warehouse-embedded .product-picker [data-new-product]'
 ])requireText(styles,selector,`CSS propietario ${selector}`);
 forbid(styles,/\b(?:fetch|MutationObserver|prompt|alert|confirm)\b/,'warehouse.css mezcla comportamiento de JavaScript');
+forbid(styles,/@import|!important|font-family\s*:\s*Arial|linear-gradient/i,'warehouse.css conserva una dependencia o sobrescritura visual legacy');
 
 for(const text of [
   "authorizeAdmin(req, res, 'warehouse.read')",
