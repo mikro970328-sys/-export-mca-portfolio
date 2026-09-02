@@ -1,10 +1,30 @@
-import { authorizeAdmin, createToken, fail, hashPassword, normalizeUsername, ok, readJson, supabase } from './_lib.js';
+import { authorizeAdmin, createToken, fail, hashPassword, loadAdminAccessContext, normalizeUsername, ok, readJson, supabase } from './_lib.js';
 
 const publicFields = 'id,full_name,username,role,is_active,last_login_at,created_at,updated_at,access_role_id';
 const workerFields = 'id,full_name,phone,position,is_active,deactivation_reason,deactivated_at,created_at,updated_at';
 const cleanPhone = value => String(value || '').trim().replace(/[^+\d]/g, '');
 const uniqueIds = values => [...new Set((Array.isArray(values) ? values : []).map(value => String(value || '').trim()).filter(Boolean))];
 const rpc = (name, body) => supabase(`rpc/${name}`, { method: 'POST', body });
+
+const workerCapability = (allowed, reasonCode = null) => ({ allowed, reason_code: allowed ? null : reasonCode });
+
+function workerCapabilities(worker, writeAccess) {
+  const active = worker?.is_active !== false;
+  return {
+    actions:{
+      history:workerCapability(true),
+      edit:workerCapability(writeAccess, 'WORKER_WRITE_PERMISSION_REQUIRED'),
+      deactivate:workerCapability(writeAccess && active, writeAccess ? 'WORKER_ALREADY_INACTIVE' : 'WORKER_WRITE_PERMISSION_REQUIRED'),
+      reactivate:workerCapability(writeAccess && !active, writeAccess ? 'WORKER_ALREADY_ACTIVE' : 'WORKER_WRITE_PERMISSION_REQUIRED')
+    }
+  };
+}
+
+async function workerWriteAccess(actor) {
+  if (actor?.role === 'master_admin') return true;
+  const access = await loadAdminAccessContext(actor?.admin_id);
+  return (access.permissions || []).includes('administration.workers.write');
+}
 
 async function loadUsers() {
   const [admins, memberships, roles, teamsCatalog] = await Promise.all([
@@ -49,8 +69,14 @@ export default async function handler(req, res) {
 
     if (resource === 'workers') {
       if (req.method === 'GET') {
-        const workers = await supabase('workers', { query: `?select=${workerFields}&order=full_name.asc` });
-        return ok(res, { workers: workers || [] });
+        const [workers, writeAccess] = await Promise.all([
+          supabase('workers', { query: `?select=${workerFields}&order=full_name.asc` }),
+          workerWriteAccess(actor)
+        ]);
+        return ok(res, {
+          write_access:writeAccess,
+          workers:(workers || []).map(worker => ({ ...worker, capabilities:workerCapabilities(worker, writeAccess) }))
+        });
       }
 
       const body = await readJson(req);
@@ -170,17 +196,19 @@ export default async function handler(req, res) {
 
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
-    if (error.message === 'USERNAME_INVALID' || error.message.includes('USERNAME_INVALID')) return fail(res, 400, 'El usuario debe tener entre 4 y 32 caracteres y solo usar letras, números, punto, guion o guion bajo');
-    if (error.message === 'PASSWORD_TOO_SHORT') return fail(res, 400, 'La contraseña debe tener al menos 10 caracteres');
-    if (error.message.includes('ACCESS_ROLE_INVALID')) return fail(res, 400, 'El rol seleccionado no está disponible');
-    if (error.message.includes('admin_users_username_unique')) return fail(res, 409, 'Ese nombre de usuario ya existe');
-    if (error.message.includes('workers_phone_unique')) return fail(res, 409, 'Ese teléfono ya está registrado');
-    if (error.message.includes('TEAM_INVALID')) return fail(res, 400, 'Uno de los equipos seleccionados no está disponible');
-    if (error.message.includes('LAST_MASTER_ADMIN_REQUIRED')) return fail(res, 409, 'Debe existir al menos una cuenta maestra activa');
-    if (error.message.includes('MASTER_ADMIN_CHANGE_FORBIDDEN')) return fail(res, 403, 'Solo el administrador maestro puede modificar otra cuenta maestra');
-    if (error.message.includes('SELF_DEACTIVATION_FORBIDDEN')) return fail(res, 400, 'No puedes desactivar tu propia cuenta');
-    if (error.message.includes('WORKER_DEACTIVATION_REASON_REQUIRED')) return fail(res, 400, 'El motivo de desactivación es obligatorio');
-    if (error.message.includes('ADMIN_PERMISSION_DENIED')) return fail(res, 403, 'No tienes permiso para realizar esta acción');
-    return fail(res, 500, 'No se pudo completar la operación', error.message);
+    const message = String(error?.message || '');
+    if (message.includes('USERNAME_INVALID')) return fail(res, 400, 'El usuario debe tener entre 4 y 32 caracteres y solo usar letras, números, punto, guion o guion bajo');
+    if (message.includes('PASSWORD_TOO_SHORT')) return fail(res, 400, 'La contraseña debe tener al menos 10 caracteres');
+    if (message.includes('ACCESS_ROLE_INVALID')) return fail(res, 400, 'El rol seleccionado no está disponible');
+    if (message.includes('admin_users_username_unique')) return fail(res, 409, 'Ese nombre de usuario ya existe');
+    if (message.includes('workers_phone_unique')) return fail(res, 409, 'Ese teléfono ya está registrado');
+    if (message.includes('TEAM_INVALID')) return fail(res, 400, 'Uno de los equipos seleccionados no está disponible');
+    if (message.includes('LAST_MASTER_ADMIN_REQUIRED')) return fail(res, 409, 'Debe existir al menos una cuenta maestra activa');
+    if (message.includes('MASTER_ADMIN_CHANGE_FORBIDDEN')) return fail(res, 403, 'Solo el administrador maestro puede modificar otra cuenta maestra');
+    if (message.includes('SELF_DEACTIVATION_FORBIDDEN')) return fail(res, 400, 'No puedes desactivar tu propia cuenta');
+    if (message.includes('WORKER_DEACTIVATION_REASON_REQUIRED')) return fail(res, 400, 'El motivo de desactivación es obligatorio');
+    if (message.includes('ADMIN_PERMISSION_DENIED')) return fail(res, 403, 'No tienes permiso para realizar esta acción');
+    console.error('[api/admins]', error);
+    return fail(res, 500, 'No se pudo completar la operación');
   }
 }
