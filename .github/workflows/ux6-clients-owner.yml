@@ -1,4 +1,4 @@
-name: UX6 Clients Owner
+name: UX7 Clients Visual Owner
 
 on:
   pull_request:
@@ -6,8 +6,10 @@ on:
       - 'admin/clients-module.js'
       - 'admin/clients-module.css'
       - 'admin/erp.js'
+      - 'admin/index.html'
       - 'api/clients.js'
       - 'scripts/check-ux6-clients-owner.mjs'
+      - 'scripts/check-ux6b-native-workspace-foundation.mjs'
       - '.github/workflows/ux6-clients-owner.yml'
   workflow_dispatch:
 
@@ -21,6 +23,8 @@ jobs:
           node-version: '24'
       - name: Validate Clients presentation ownership
         run: node scripts/check-ux6-clients-owner.mjs
+      - name: Preserve native workspace foundation
+        run: node scripts/check-ux6b-native-workspace-foundation.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check admin/clients-module.js

@@ -184,8 +184,8 @@
 
     if (accessCan('clients.read')) {
       tasks.push(
-        loadStylesheet('/admin/clients-module.css?v=20260901-ux6owner1', 'data-clients-module-style')
-          .then(() => loadScript('/admin/clients-module.js?v=20260902-ux6b1', 'data-clients-module'))
+        loadStylesheet('/admin/clients-module.css?v=20260902-ux7clients1', 'data-clients-module-style')
+          .then(() => loadScript('/admin/clients-module.js?v=20260902-ux7clients1', 'data-clients-module'))
       );
     }
     if (accessCan('administration.workers.read')) {
