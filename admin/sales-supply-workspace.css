@@ -19,7 +19,7 @@
 .sales-supply-route{display:inline-flex;align-items:center;border:1px solid #d5dde8;border-radius:999px;padding:4px 7px;font-size:10px;font-weight:800;color:#344054;background:#f8fafc}
 .sales-supply-route.direct{border-color:#bfd0e5;color:#244a83;background:#f3f7fd}.sales-supply-route.purchase{border-color:#e5d4ad;color:#805b12;background:#fffaf0}
 .sales-supply-detail{font-size:11px;color:#667085;margin-top:4px;line-height:1.45}
-.sales-supply-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.sales-supply-actions .btn{font-size:10px!important;padding:6px 8px!important;min-height:30px}
+.sales-supply-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.erp-module-sales .sales-supply-actions .btn{min-height:30px;padding:6px 8px;font-size:10px}
 .sales-supply-proc{margin-top:8px;padding:9px 10px;border-left:3px solid #d9e2ed;background:#fafbfd;border-radius:0 7px 7px 0}
 .sales-supply-proc-title{font-weight:800;font-size:11px;color:#253b5a}
 .sales-supply-direct-list{display:grid;gap:6px;margin-top:7px}.sales-supply-direct{padding:8px 9px;border:1px solid #e0e6ee;border-radius:7px;background:#fff}

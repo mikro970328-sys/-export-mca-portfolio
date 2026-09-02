@@ -55,7 +55,7 @@ for(const text of [
   '@media(max-width:700px)'
 ])requireText(css,text,`presentación dedicada ${text}`);
 
-requireText(html,'/admin/sales-supply-workspace.css?v=20260902-ux6supply1','revisión del CSS de Abastecimiento');
+requireText(html,'/admin/sales-supply-workspace.css?v=20260902-ux7sales1','revisión del CSS de Abastecimiento');
 requireText(html,'/admin/sales-supply-workspace.js?v=20260902-ux6supply1','revisión del JS de Abastecimiento');
 
 for(const text of [

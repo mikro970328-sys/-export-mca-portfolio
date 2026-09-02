@@ -6,6 +6,7 @@ const invoiceHelper=read('api/_invoice-actions.js');
 const workspace=read('admin/sales-workspace.js');
 const controller=read('admin/sales-controller.js');
 const css=read('admin/sales-workspace.css');
+const foundation=read('admin/embedded-foundation.css');
 const html=read('admin/sales.html');
 const profitabilityGate=read('scripts/check-sales-order-profitability.mjs');
 const cubaGate=read('scripts/check-cuba-documentation.mjs');
@@ -84,13 +85,13 @@ for(const text of [
   '.sales-ws-decision-overlay',
   '.sales-ws-decision-panel',
   '.sales-ws-decision-actions',
-  ':focus-visible',
   '@media(max-width:700px)'
 ]) requireText(css,text,`CSS ${text}`);
+requireText(foundation,'.erp-module-page button:focus-visible','foco accesible de la base visual');
 
 for(const asset of [
-  '/admin/sales-workspace.css?v=20260901-ux6owner1',
-  '/admin/sales-workspace.js?v=20260902-ux6owner2',
+  '/admin/sales-workspace.css?v=20260902-ux7sales1',
+  '/admin/sales-workspace.js?v=20260902-ux7sales1',
   '/admin/sales-controller.js?v=20260901-ux6owner1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 
