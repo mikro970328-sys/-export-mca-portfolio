@@ -32,7 +32,6 @@ for(const text of [
   '.erp-module-page input:focus',
   '.erp-module-page .modal',
   '.erp-module-page .drawer',
-  '.erp-module-page.erp-module-inventory .tabs',
   '@media(max-width:980px)',
   '@media(max-width:720px)',
   '@media(max-width:520px)',
@@ -44,6 +43,7 @@ forbid(css,/!important/i,'la base visual usa sobrescrituras !important');
 forbid(css,/@import/i,'la base visual depende de una importación tardía');
 forbid(css,/\b(?:fetch|MutationObserver|prompt|alert|confirm)\b/,'la base visual mezcla comportamiento de JavaScript');
 forbid(css,/erp-module-publications/,'la base compartida conserva reglas propietarias de Publicaciones');
+forbid(css,/erp-module-inventory/,'la base compartida conserva reglas propietarias de Inventario');
 
 const openingBraces=(css.match(/{/g)||[]).length;
 const closingBraces=(css.match(/}/g)||[]).length;

@@ -292,31 +292,6 @@
     observeChanges(document.getElementById('receiptList'), () => nav.invalidateLinks?.());
   }
 
-  function initInventory() {
-    const nav = parentNav();
-    if (!nav) return;
-    async function renderOrigin(receiptNumber) {
-      if (!receiptNumber) return;
-      let card = document.getElementById('purchaseOriginCard');
-      if (!card) { card = document.createElement('section');card.id='purchaseOriginCard';card.className='card hidden';document.getElementById('traceView')?.prepend(card); }
-      let commercialCard = document.getElementById('salesUsageCard');
-      if (!commercialCard) { commercialCard=document.createElement('section');commercialCard.id='salesUsageCard';commercialCard.className='card hidden';card.after(commercialCard); }
-      const [purchases, loads, sales] = await Promise.all([nav.purchaseOrdersForReceipt(receiptNumber),nav.loadsForReceipt(receiptNumber),nav.salesOrdersForReceipt(receiptNumber)]);
-      card.innerHTML='';card.appendChild(block(`Origen de compra · ${receiptNumber}`,parentCan('procurement.read')?purchases.map(po => ({label:po.po_number,action:() => nav.openPurchase({ purchaseOrderId:po.purchase_order_id })})):[],'No hay una PO visible para tu rol.'));card.classList.remove('hidden');
-      const commercialItems=[];
-      if(parentCan('logistics.read'))commercialItems.push(...loads.map(load => ({label:load.load_number,action:() => nav.openLoad({loadId:load.load_id})})));
-      if(parentCan('sales.read'))commercialItems.push(...sales.map(order => ({label:order.so_number,action:() => nav.openSales({salesOrderId:order.sales_order_id})})));
-      commercialCard.innerHTML='';commercialCard.appendChild(block(`Salida comercial · ${receiptNumber}`,commercialItems,'Este WR todavía no tiene salida comercial visible.'));commercialCard.classList.remove('hidden');
-    }
-    const originalTraceWR = typeof window.traceWR === 'function' ? window.traceWR : null;
-    if (originalTraceWR) window.traceWR = receiptNumber => { const result=originalTraceWR(receiptNumber);renderOrigin(String(receiptNumber||'').trim()).catch(error=>console.error('[inventory operational origin]',error));return result; };
-    const title = document.getElementById('relatedLoadsTitle');
-    if (title) {
-      const updateFromTitle = () => { const match=title.textContent.match(/·\s*(WR-[A-Z0-9-]+)/i);if(match?.[1])renderOrigin(match[1]).catch(error=>console.error('[inventory operational origin]',error)); };
-      new MutationObserver(updateFromTitle).observe(title,{childList:true,subtree:true});updateFromTitle();
-    }
-  }
-
   function initInvoices() {
     window.openOperationalInvoiceCollection = invoiceId => {
       if (typeof window.openOperationalInvoice !== 'function') return false;
@@ -352,7 +327,6 @@
   else if (path.endsWith('/admin/sales.html')) { moduleName='sales';initSales(); }
   else if (path.endsWith('/admin/loads.html')) { moduleName='loads';initLoads(); }
   else if (path.endsWith('/admin/warehouse.html')) { moduleName='warehouse';initWarehouse(); }
-  else if (path.endsWith('/admin/inventory.html')) { moduleName='inventory';initInventory(); }
   else if (path.endsWith('/admin/invoices.html')) { moduleName='invoices';initInvoices(); }
   else if (path.endsWith('/admin/payables.html')) { moduleName='payables';initPayables(); }
 
