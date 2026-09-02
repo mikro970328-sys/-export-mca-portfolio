@@ -5,6 +5,7 @@ const rpcRow=value=>Array.isArray(value)?(value[0]||null):(value||null);
 
 function translatedError(raw){
   const messages=[
+    ['JSON_INVALID','La solicitud no tiene un formato válido.'],
     ['PAYMENT_AMOUNT_INVALID','El monto del cobro debe ser mayor que cero.'],
     ['PAYMENT_INVOICE_NOT_FOUND','Factura no encontrada.'],
     ['PAYMENT_INVOICE_NOT_ISSUED','Solo se pueden registrar cobros contra facturas emitidas.'],
@@ -14,10 +15,17 @@ function translatedError(raw){
     ['PAYMENT_NOT_FOUND','Cobro no encontrado.'],
     ['PAYMENT_ALREADY_REVERSED','Ese cobro ya fue revertido.'],
     ['PAYMENT_STATUS_FINAL','Ese cobro ya está finalizado.'],
+    ['PAYMENT_ACTION_NOT_ALLOWED','Ese cobro no admite esta acción en su estado actual.'],
     ['PAYMENT_ACTION_INVALID','Acción de cobro inválida.'],
-    ['PAYMENT_STATUS_TRANSITION_INVALID','Transición de estado de cobro inválida.']
+    ['PAYMENT_STATUS_TRANSITION_INVALID','Transición de estado de cobro inválida.'],
+    ['PAYMENT_INVALID_INITIAL_STATUS','El cobro no puede registrarse con ese estado.'],
+    ['PAYMENT_STRUCTURE_LOCKED','El cobro ya no puede modificarse.'],
+    ['PERMISSION_REQUIRED','No tienes permiso para realizar esta acción.']
   ];
-  return messages.find(([key])=>raw.includes(key))?.[1]||raw;
+  const matched=messages.find(([key])=>raw.includes(key));
+  if(matched)return {code:matched[0],message:matched[1]};
+  if(/^(?:Falta la factura|Falta el cobro)$/.test(raw))return {code:'PAYMENT_INPUT_INVALID',message:raw};
+  return null;
 }
 
 export default async function handler(req,res){
@@ -42,5 +50,11 @@ export default async function handler(req,res){
       return ok(res,{payment});
     }
     return fail(res,400,'Acción de Cobros no válida');
-  }catch(error){const raw=String(error.message||'No se pudo procesar el cobro');console.error('[invoice-payments]',error);return fail(res,400,translatedError(raw));}
+  }catch(error){
+    const raw=String(error?.message||error||'');
+    console.error('[invoice-payments]',error);
+    const translated=translatedError(raw);
+    if(translated)return fail(res,400,translated.message,{code:translated.code});
+    return fail(res,500,'No se pudo procesar el cobro. Intenta nuevamente.',{code:'PAYMENT_UNEXPECTED_ERROR'});
+  }
 }
