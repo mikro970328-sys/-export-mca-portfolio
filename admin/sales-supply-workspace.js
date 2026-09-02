@@ -10,13 +10,24 @@
   const localDateTime=()=>{const now=new Date(),offset=now.getTimezoneOffset()*60000;return new Date(now.getTime()-offset).toISOString().slice(0,16);};
   const state={salesOrderId:null,data:null,busy:false};
   const nativeWorkspace=window.SalesWorkspace||null;
+  const publicErrorEndpoints=new Set(['/api/sales-supply','/api/direct-shipment-dispatch']);
 
   async function request(path,options={}){
     const response=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(token()?{Authorization:`Bearer ${token()}`}:{}) ,...(options.headers||{})}});
     const data=await response.json().catch(()=>({}));
     if(response.status===401){localStorage.removeItem('export_mca_token');location.href='/admin/';throw new Error('Sesión vencida');}
-    if(!response.ok)throw new Error(data.error||'No se pudo procesar la operación.');
+    if(!response.ok){const error=new Error(data.error||'No se pudo procesar la operación.');error.status=response.status;error.code=data.details?.code||data.code||data.reason_code||null;error.endpoint=String(path).split('?')[0];throw error;}
     return data;
+  }
+
+  function safeSupplyMessage(error,fallback='No se pudo completar la operación. Intenta nuevamente.'){
+    const message=String(error?.message||'').trim();
+    const status=Number(error?.status||0);
+    if(message==='Sesión vencida'||status===401)return 'Tu sesión terminó. Inicia sesión nuevamente para continuar.';
+    if(status===403)return 'No tienes permiso para completar esta acción.';
+    if(publicErrorEndpoints.has(error?.endpoint)&&[400,404,409,422].includes(status)&&message)return message;
+    console.error('SALES_SUPPLY_WORKSPACE_FAILED',{status:status||null,code:error?.code||null,endpoint:error?.endpoint||null,error});
+    return fallback;
   }
 
   function nav(){try{return window.parent!==window?window.parent.OperationalNavigation:null;}catch{return null;}}
@@ -32,7 +43,7 @@
     if(!byId('salesSupplyModal')){
       const modal=document.createElement('div');
       modal.id='salesSupplyModal';modal.className='modal hidden sales-supply-modal';
-      modal.innerHTML=`<div class="dialog"><div class="dialog-head"><div><h2 id="salesSupplyTitle">Abastecimiento</h2><div id="salesSupplySubtitle" class="muted"></div></div><button type="button" class="btn" data-supply-close="main">Cerrar</button></div><div id="salesSupplyBody" class="sales-supply-body"></div><div id="salesSupplyMsg" class="msg" style="margin:0 18px 14px"></div></div>`;
+      modal.innerHTML=`<div class="dialog"><div class="dialog-head"><div><h2 id="salesSupplyTitle">Abastecimiento</h2><div id="salesSupplySubtitle" class="muted"></div></div><button type="button" class="btn" data-supply-close="main">Cerrar</button></div><div id="salesSupplyBody" class="sales-supply-body"></div><div id="salesSupplyMsg" class="msg sales-supply-main-message"></div></div>`;
       document.body.appendChild(modal);
       modal.querySelector('[data-supply-close="main"]').onclick=()=>modal.classList.add('hidden');
       modal.addEventListener('click',event=>{if(event.target===modal)modal.classList.add('hidden');});
@@ -40,7 +51,7 @@
     if(!byId('salesSupplyFormModal')){
       const modal=document.createElement('div');
       modal.id='salesSupplyFormModal';modal.className='modal hidden sales-supply-modal';
-      modal.innerHTML=`<div class="dialog" style="width:min(680px,95vw)"><div class="dialog-head"><div><h2 id="salesSupplyFormTitle"></h2><div id="salesSupplyFormSubtitle" class="muted"></div></div><button type="button" class="btn" data-supply-form-close>Cerrar</button></div><div class="sales-supply-body"><div id="salesSupplyFormBody"></div><div class="sales-supply-form-actions"><button type="button" class="btn" data-supply-form-close>Cancelar</button><button type="button" id="salesSupplyFormSave" class="btn orange" data-supply-busy>Guardar</button></div><div id="salesSupplyFormMsg" class="msg"></div></div></div>`;
+      modal.innerHTML=`<div class="dialog sales-supply-form-dialog"><div class="dialog-head"><div><h2 id="salesSupplyFormTitle"></h2><div id="salesSupplyFormSubtitle" class="muted"></div></div><button type="button" class="btn" data-supply-form-close>Cerrar</button></div><div class="sales-supply-body"><div id="salesSupplyFormBody"></div><div class="sales-supply-form-actions"><button type="button" class="btn" data-supply-form-close>Cancelar</button><button type="button" id="salesSupplyFormSave" class="btn orange" data-supply-busy>Guardar</button></div><div id="salesSupplyFormMsg" class="msg"></div></div></div>`;
       document.body.appendChild(modal);
       modal.querySelectorAll('[data-supply-form-close]').forEach(button=>button.onclick=()=>modal.classList.add('hidden'));
       modal.addEventListener('click',event=>{if(event.target===modal)modal.classList.add('hidden');});
@@ -48,7 +59,7 @@
     if(!byId('salesSupplyDecisionModal')){
       const modal=document.createElement('div');
       modal.id='salesSupplyDecisionModal';modal.className='modal hidden sales-supply-modal';
-      modal.innerHTML=`<div class="dialog" style="width:min(520px,94vw)"><div class="dialog-head"><div><h2 id="salesSupplyDecisionTitle">Confirmar acción</h2></div><button type="button" class="btn" data-supply-decision-close>Cerrar</button></div><div class="sales-supply-body"><div id="salesSupplyDecisionCopy" class="sales-supply-confirm-copy"></div><div class="sales-supply-form-actions"><button type="button" class="btn" data-supply-decision-close>Cancelar</button><button type="button" id="salesSupplyDecisionAccept" class="btn orange" data-supply-busy>Continuar</button></div><div id="salesSupplyDecisionMsg" class="msg"></div></div></div>`;
+      modal.innerHTML=`<div class="dialog sales-supply-decision-dialog"><div class="dialog-head"><div><h2 id="salesSupplyDecisionTitle">Confirmar acción</h2></div><button type="button" class="btn" data-supply-decision-close>Cerrar</button></div><div class="sales-supply-body"><div id="salesSupplyDecisionCopy" class="sales-supply-confirm-copy"></div><div class="sales-supply-form-actions"><button type="button" class="btn" data-supply-decision-close>Cancelar</button><button type="button" id="salesSupplyDecisionAccept" class="btn orange" data-supply-busy>Continuar</button></div><div id="salesSupplyDecisionMsg" class="msg"></div></div></div>`;
       document.body.appendChild(modal);
       modal.querySelectorAll('[data-supply-decision-close]').forEach(button=>button.onclick=()=>modal.classList.add('hidden'));
       modal.addEventListener('click',event=>{if(event.target===modal)modal.classList.add('hidden');});
@@ -65,7 +76,7 @@
     byId('salesSupplyFormSave').onclick=async()=>{
       if(state.busy)return;setBusy(true);byId('salesSupplyFormMsg').textContent='';
       try{await onSave();byId('salesSupplyFormModal').classList.add('hidden');await refreshAll();}
-      catch(error){byId('salesSupplyFormMsg').textContent=error.message;}
+      catch(error){byId('salesSupplyFormMsg').textContent=safeSupplyMessage(error,'No se pudieron guardar los cambios. Intenta nuevamente.');}
       finally{setBusy(false);}
     };
     byId('salesSupplyFormModal').classList.remove('hidden');
@@ -81,7 +92,7 @@
     byId('salesSupplyDecisionAccept').onclick=async()=>{
       if(state.busy)return;setBusy(true);byId('salesSupplyDecisionMsg').textContent='';
       try{await onAccept();byId('salesSupplyDecisionModal').classList.add('hidden');await refreshAll();}
-      catch(error){byId('salesSupplyDecisionMsg').textContent=error.message;}
+      catch(error){byId('salesSupplyDecisionMsg').textContent=safeSupplyMessage(error,'No se pudo completar la acción. Intenta nuevamente.');}
       finally{setBusy(false);}
     };
     byId('salesSupplyDecisionModal').classList.remove('hidden');
@@ -107,7 +118,7 @@
     byId('salesSupplyBody').innerHTML='<div class="sales-ws-loading">Cargando abastecimiento…</div>';
     byId('salesSupplyMsg').textContent='';
     byId('salesSupplyModal').classList.remove('hidden');
-    try{await fetchSupply();render();}catch(error){byId('salesSupplyBody').innerHTML=`<div class="sales-ws-callout">${esc(error.message)}</div>`;}
+    try{await fetchSupply();render();}catch(error){byId('salesSupplyBody').innerHTML=`<div class="sales-ws-callout">${esc(safeSupplyMessage(error,'No se pudo cargar el abastecimiento. Intenta nuevamente.'))}</div>`;}
   }
 
   function render(){
@@ -127,7 +138,7 @@
 
   function renderPlan(item,plan){
     const allocations=plan.procurement_allocations||[],needsPurchase=plan.supply_method!=='inventory';
-    return `<div class="sales-supply-plan"><div class="sales-supply-plan-head"><div><span class="sales-supply-route ${methodClass(plan.supply_method)}">${esc(methodLabel(plan.supply_method))}</span><div class="sales-supply-detail">Plan: ${fmt(plan.planned_quantity)} ${esc(item.unit)}${Number(plan.planned_pallets||0)>0?` · ${fmt(plan.planned_pallets)} pallets`:''}${plan.warehouse_id?` · ${esc(warehouseName(plan.warehouse_id))}`:''}</div>${plan.notes?`<div class="sales-supply-detail">${esc(plan.notes)}</div>`:''}</div><div class="sales-supply-actions"><button type="button" class="btn" data-supply-action="edit-plan" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Editar</button><button type="button" class="btn" data-supply-action="delete-plan" data-plan-id="${esc(plan.id)}">Eliminar</button>${plan.supply_method==='inventory'?`<button type="button" class="btn orange" data-supply-action="prepare-load">Preparar Cargue</button>`:''}${needsPurchase?`<button type="button" class="btn orange" data-supply-action="link-purchase" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Vincular PO</button>`:''}</div></div>${needsPurchase?`<div style="margin-top:8px">${allocations.length?allocations.map(allocation=>renderProcurement(item,plan,allocation)).join(''):'<div class="sales-supply-empty">La ruta está planificada, pero todavía no tiene una línea de Purchase Order vinculada.</div>'}</div>`:''}</div>`;
+    return `<div class="sales-supply-plan"><div class="sales-supply-plan-head"><div><span class="sales-supply-route ${methodClass(plan.supply_method)}">${esc(methodLabel(plan.supply_method))}</span><div class="sales-supply-detail">Plan: ${fmt(plan.planned_quantity)} ${esc(item.unit)}${Number(plan.planned_pallets||0)>0?` · ${fmt(plan.planned_pallets)} pallets`:''}${plan.warehouse_id?` · ${esc(warehouseName(plan.warehouse_id))}`:''}</div>${plan.notes?`<div class="sales-supply-detail">${esc(plan.notes)}</div>`:''}</div><div class="sales-supply-actions"><button type="button" class="btn" data-supply-action="edit-plan" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Editar</button><button type="button" class="btn" data-supply-action="delete-plan" data-plan-id="${esc(plan.id)}">Eliminar</button>${plan.supply_method==='inventory'?`<button type="button" class="btn orange" data-supply-action="prepare-load">Preparar Cargue</button>`:''}${needsPurchase?`<button type="button" class="btn orange" data-supply-action="link-purchase" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Vincular PO</button>`:''}</div></div>${needsPurchase?`<div class="sales-supply-proc-list">${allocations.length?allocations.map(allocation=>renderProcurement(item,plan,allocation)).join(''):'<div class="sales-supply-empty">La ruta está planificada, pero todavía no tiene una línea de Purchase Order vinculada.</div>'}</div>`:''}</div>`;
   }
 
   function renderProcurement(item,plan,allocation){
@@ -164,7 +175,7 @@
       if(action==='open-tracking')return nav()?.openTracking?.({shipmentId:data.shipmentId});
       if(action==='dispatch-direct')return dispatchDirect(data.shipmentId);
       if(action==='unlink-direct')return unlinkDirect(data.directId);
-    }catch(error){showMessage(error.message,false);}
+    }catch(error){showMessage(safeSupplyMessage(error),false);}
   }
 
   function editPlan(itemId,plan){
@@ -172,7 +183,7 @@
     const isEdit=Boolean(plan),progress=item.supply_progress||{};
     const defaultQty=isEdit?plan.planned_quantity:progress.unplanned_quantity;
     const warehouseOptions=(state.data.warehouses||[]).map(row=>`<option value="${esc(row.id)}">${esc(row.code?row.code+' · ':'')}${esc(row.name)}</option>`).join('');
-    openForm({title:isEdit?'Editar ruta':'Agregar ruta',subtitle:productTitle(item),html:`<div class="sales-supply-form"><div><label>Ruta *</label><select id="supplyMethod"><option value="inventory">Stock existente</option><option value="purchase_warehouse">Compra para almacén</option><option value="purchase_direct">Direct Ship</option></select></div><div id="supplyWarehouseWrap"><label>Almacén *</label><select id="supplyWarehouse"><option value="">Seleccionar</option>${warehouseOptions}</select></div><div><label>Cantidad de venta *</label><input id="supplyPlannedQty" type="number" min="0" step="any" value="${esc(defaultQty??'')}"></div><div><label>Pallets</label><input id="supplyPlannedPallets" type="number" min="0" step="any" value="${esc(isEdit?plan.planned_pallets:'0')}"></div><div class="full"><label>Nota</label><textarea id="supplyPlanNotes">${esc(plan?.notes||'')}</textarea><div class="sales-supply-helper">Direct Ship no crea WR ni inventario. Stock y compra para almacén sí requieren un almacén real.</div></div></div>`,onOpen:()=>{byId('supplyMethod').value=plan?.supply_method||'inventory';byId('supplyWarehouse').value=plan?.warehouse_id||'';const toggle=()=>byId('supplyWarehouseWrap').style.display=byId('supplyMethod').value==='purchase_direct'?'none':'';byId('supplyMethod').onchange=toggle;toggle();},onSave:async()=>{const method=byId('supplyMethod').value,payload={action:isEdit?'update_plan':'create_plan',planned_quantity:byId('supplyPlannedQty').value,planned_pallets:byId('supplyPlannedPallets').value||0,notes:byId('supplyPlanNotes').value,supply_method:method,warehouse_id:method==='purchase_direct'?null:byId('supplyWarehouse').value};if(isEdit)payload.plan_id=plan.id;else payload.sales_order_item_id=item.id;await request('/api/sales-supply',{method:'POST',body:JSON.stringify(payload)});}});
+    openForm({title:isEdit?'Editar ruta':'Agregar ruta',subtitle:productTitle(item),html:`<div class="sales-supply-form"><div><label>Ruta *</label><select id="supplyMethod"><option value="inventory">Stock existente</option><option value="purchase_warehouse">Compra para almacén</option><option value="purchase_direct">Direct Ship</option></select></div><div id="supplyWarehouseWrap"><label>Almacén *</label><select id="supplyWarehouse"><option value="">Seleccionar</option>${warehouseOptions}</select></div><div><label>Cantidad de venta *</label><input id="supplyPlannedQty" type="number" min="0" step="any" value="${esc(defaultQty??'')}"></div><div><label>Pallets</label><input id="supplyPlannedPallets" type="number" min="0" step="any" value="${esc(isEdit?plan.planned_pallets:'0')}"></div><div class="full"><label>Nota</label><textarea id="supplyPlanNotes">${esc(plan?.notes||'')}</textarea><div class="sales-supply-helper">Direct Ship no crea WR ni inventario. Stock y compra para almacén sí requieren un almacén real.</div></div></div>`,onOpen:()=>{byId('supplyMethod').value=plan?.supply_method||'inventory';byId('supplyWarehouse').value=plan?.warehouse_id||'';const toggle=()=>byId('supplyWarehouseWrap').classList.toggle('sales-supply-field-hidden',byId('supplyMethod').value==='purchase_direct');byId('supplyMethod').onchange=toggle;toggle();},onSave:async()=>{const method=byId('supplyMethod').value,payload={action:isEdit?'update_plan':'create_plan',planned_quantity:byId('supplyPlannedQty').value,planned_pallets:byId('supplyPlannedPallets').value||0,notes:byId('supplyPlanNotes').value,supply_method:method,warehouse_id:method==='purchase_direct'?null:byId('supplyWarehouse').value};if(isEdit)payload.plan_id=plan.id;else payload.sales_order_item_id=item.id;await request('/api/sales-supply',{method:'POST',body:JSON.stringify(payload)});}});
   }
 
   function removePlan(planId){askAction({title:'Eliminar ruta',message:'Se eliminará esta ruta de abastecimiento. Si tiene una compra vinculada, primero debes desvincularla.',acceptLabel:'Eliminar',onAccept:()=>request('/api/sales-supply',{method:'POST',body:JSON.stringify({action:'delete_plan',plan_id:planId})})});}
@@ -217,7 +228,7 @@
 
   async function augmentNativeTab(tab){
     if(!state.salesOrderId)return;
-    try{await fetchSupply();}catch{return;}
+    try{await fetchSupply();}catch(error){safeSupplyMessage(error,'No se pudo actualizar Abastecimiento. Intenta nuevamente.');return;}
     const shipments=directShipments();if(!shipments.length)return;
     const content=byId('detailBody')?.querySelector('.sales-workspace-content');if(!content)return;
     content.querySelector('[data-direct-supply-augment]')?.remove();
@@ -245,7 +256,7 @@
   document.addEventListener('click',event=>{
     const track=event.target.closest('[data-supply-track]');if(track){nav()?.openTracking?.({shipmentId:track.dataset.supplyTrack});return;}
     if(event.target.closest('[data-supply-open-main]')){open(state.salesOrderId);return;}
-    const tab=event.target.closest('#detailBody [data-ws-tab]');if(tab&&['logistics','documents'].includes(tab.dataset.wsTab)){queueMicrotask(()=>augmentNativeTab(tab.dataset.wsTab));}
+    const tab=event.target.closest('#detailBody [data-ws-tab]');if(tab&&['logistics','documents'].includes(tab.dataset.wsTab)){queueMicrotask(()=>augmentNativeTab(tab.dataset.wsTab).catch(error=>{safeSupplyMessage(error,'No se pudo actualizar Abastecimiento. Intenta nuevamente.');}));}
   });
 
   updateHeaderButton();

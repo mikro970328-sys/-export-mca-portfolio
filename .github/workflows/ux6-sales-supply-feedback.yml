@@ -1,0 +1,50 @@
+name: UX6 Sales Supply Feedback
+
+on:
+  pull_request:
+    paths:
+      - 'admin/sales.html'
+      - 'admin/sales-supply-workspace.js'
+      - 'admin/sales-supply-workspace.css'
+      - 'api/sales-supply.js'
+      - 'api/direct-shipment-dispatch.js'
+      - 'scripts/check-sales-supply-workspace.mjs'
+      - 'scripts/check-ux6-sales-supply-feedback.mjs'
+      - '.github/workflows/ux6-sales-supply-feedback.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-sales-supply-feedback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate Sales supply feedback
+        run: |
+          node scripts/check-ux6-sales-supply-feedback.mjs
+          node scripts/check-sales-supply-workspace.mjs
+      - name: Preserve canonical Sales ownership
+        run: |
+          node scripts/check-ux5-sales-actions.mjs
+          node scripts/check-ux6-sales-explicit-owner.mjs
+          node scripts/check-ux6-sales-workspace-presentation.mjs
+          node scripts/check-ux6b-embedded-foundation.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/check-admin-shell-resilience.mjs
+      - name: Preserve access, integrations and Cuba documents
+        run: |
+          node scripts/audit-b9-api-boundaries.mjs
+          node scripts/check-b9-database-privileges.mjs
+          node scripts/check-b9-public-boundaries.mjs
+          node scripts/check-integrations.mjs
+          node scripts/check-cuba-documentation.mjs
+      - name: Validate JavaScript syntax and imports
+        run: |
+          node --check admin/sales-supply-workspace.js
+          node --check scripts/check-sales-supply-workspace.mjs
+          node --check scripts/check-ux6-sales-supply-feedback.mjs
+          node --input-type=module -e "await Promise.all([import('./api/sales-supply.js'),import('./api/direct-shipment-dispatch.js')]); console.log('Sales supply runtime imports OK')"
