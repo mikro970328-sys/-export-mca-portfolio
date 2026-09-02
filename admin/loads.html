@@ -4,10 +4,11 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cargues · Export MCA</title>
 <link rel="stylesheet" href="/admin/loads.css?v=20260902-ux6owner1">
+<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b2">
 </head>
-<body>
+<body class="erp-module-page erp-module-loads">
 <div class="wrap">
-  <div class="head"><div><h1>Cargues</h1><p>Reserva y salida de mercancía con trazabilidad exacta por Warehouse Receipt.</p></div><button class="btn primary" id="newLoad">＋ Nuevo cargue</button></div>
+  <div class="head module-hero"><div class="module-heading"><div class="module-kicker">Logística de salida</div><h1>Cargues</h1><p>Reserva y salida de mercancía con trazabilidad exacta por Warehouse Receipt.</p></div><button class="btn primary" id="newLoad">＋ Nuevo cargue</button></div>
   <div class="metrics" id="metrics"></div><div id="pageMsg" class="load-feedback" role="status" aria-live="polite"></div>
   <div class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar CG, contenedor o almacén"><select id="statusFilter" class="filter"><option value="">Todos los estados</option><option value="draft">Borrador</option><option value="reserved">Reservado</option><option value="loading">En carga</option><option value="loaded">Cargado</option><option value="dispatched">Despachado</option><option value="cancelled">Cancelado</option></select><button class="btn" id="refresh">↻ Actualizar</button></div><div class="table-wrap"><table><thead><tr><th>Cargue</th><th>Estado</th><th>Almacén</th><th>Contenedor</th><th>Programado</th><th>Actualizado</th></tr></thead><tbody id="loadRows"></tbody></table></div><div id="empty" class="empty hidden">No hay cargues para mostrar.</div></div>
 </div>
