@@ -38,6 +38,34 @@
     productsSection:'warehouse.read',
     workersSection:'administration.workers.read'
   };
+  const SAFE_ACCESS_ERRORS = new Set([
+    'La cuenta no está disponible',
+    'El nombre completo es obligatorio',
+    'Selecciona un rol de acceso',
+    'Administrador inválido',
+    'No hay cambios para guardar',
+    'El usuario debe tener entre 4 y 32 caracteres y solo usar letras, números, punto, guion o guion bajo',
+    'La contraseña debe tener al menos 10 caracteres',
+    'El rol seleccionado no está disponible',
+    'Ese nombre de usuario ya existe',
+    'Uno de los equipos seleccionados no está disponible',
+    'Debe existir al menos una cuenta maestra activa',
+    'Solo el administrador maestro puede modificar otra cuenta maestra',
+    'No puedes desactivar tu propia cuenta',
+    'El nombre del rol es obligatorio',
+    'Rol inválido',
+    'Ya existe un rol con ese nombre',
+    'Uno de los permisos seleccionados no es válido',
+    'Nombre de rol inválido',
+    'El rol de sistema no admite ese cambio',
+    'El nombre del equipo es obligatorio',
+    'Equipo inválido',
+    'Ya existe un equipo con ese nombre',
+    'El equipo está inactivo',
+    'Nombre de equipo inválido',
+    'Uno de los usuarios seleccionados no está disponible',
+    'No tienes permiso para realizar esta acción'
+  ]);
 
   async function request(path, options = {}) {
     if (typeof window.api === 'function') return window.api(path, options);
@@ -50,8 +78,22 @@
       }
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || data.details || 'No se pudo completar la operación');
+    if (!response.ok) {
+      const error = new Error(data.error || 'No se pudo completar la operación');
+      error.code = data.details?.code || data.code || data.reason_code || null;
+      error.status = response.status;
+      throw error;
+    }
     return data;
+  }
+
+  function safeAccessMessage(error, fallback = 'No se pudo completar la operación. Intenta nuevamente.', context = 'operation') {
+    const message = String(error?.message || '').trim();
+    if (error?.status === 401) return 'Tu sesión terminó. Inicia sesión nuevamente para continuar.';
+    if (SAFE_ACCESS_ERRORS.has(message)) return message;
+    if (error?.status === 403) return 'No tienes permiso para completar esta acción.';
+    console.error('ACCESS_CONTROL_UI_FAILED', { context, status:error?.status || null, code:error?.code || null, error });
+    return fallback;
   }
 
   function can(permission) {
@@ -172,6 +214,7 @@
         <div class="access-dialog">
           <div class="access-dialog-head"><h3 id="accessModalTitle"></h3><button type="button" class="access-secondary" data-access-close>Cerrar</button></div>
           <div id="accessModalBody" class="access-dialog-body"></div>
+          <div id="accessModalMessage" class="access-message access-modal-message" aria-live="polite"></div>
           <div id="accessModalFoot" class="access-dialog-foot"></div>
         </div>
       </div>`;
@@ -198,11 +241,19 @@
     if (byId('accessModalFoot')) byId('accessModalFoot').innerHTML = '';
   }
 
+  function setModalMessage(message = '') {
+    const node = byId('accessModalMessage');
+    if (!node) return;
+    node.textContent = message;
+    node.className = `access-message access-modal-message ${message ? 'bad' : ''}`;
+  }
+
   function openModal(title, bodyHtml, actions = []) {
     const modal = byId('accessModal');
     if (!modal) return;
     byId('accessModalTitle').textContent = title;
     byId('accessModalBody').innerHTML = bodyHtml;
+    setModalMessage('');
     const foot = byId('accessModalFoot');
     foot.innerHTML = '';
     for (const action of actions) {
@@ -210,7 +261,19 @@
       button.type = 'button';
       button.textContent = action.label;
       button.className = action.className || 'access-primary';
-      button.addEventListener('click', action.onClick);
+      button.addEventListener('click', async event => {
+        if (button.dataset.accessBusy === '1') return;
+        button.dataset.accessBusy = '1';
+        button.disabled = true;
+        try { await action.onClick(event); }
+        catch(error) { setModalMessage(safeAccessMessage(error, 'No se pudo completar la acción. Intenta nuevamente.', 'modal_action')); }
+        finally {
+          if (button.isConnected) {
+            button.disabled = false;
+            delete button.dataset.accessBusy;
+          }
+        }
+      });
       foot.appendChild(button);
     }
     modal.classList.remove('hidden');
@@ -219,7 +282,7 @@
   function confirmAction(title, message, onConfirm, danger = false) {
     openModal(title, `<p>${esc(message)}</p>`, [
       { label:'Cancelar', className:'access-secondary', onClick:closeModal },
-      { label:'Confirmar', className:danger?'access-danger':'access-primary', onClick:async()=>{ try { await onConfirm(); closeModal(); } catch(error) { setMessage(error.message,false); } } }
+      { label:'Confirmar', className:danger?'access-danger':'access-primary', onClick:async()=>{ await onConfirm(); closeModal(); } }
     ]);
   }
 
@@ -264,7 +327,7 @@
       setMessage('Usuario creado correctamente.',true);
       await loadUsers();
       renderUsersPane();
-    } catch(error) { setMessage(error.message,false); }
+    } catch(error) { setMessage(safeAccessMessage(error, 'No se pudo crear el usuario. Revisa los datos e intenta nuevamente.', 'create_user'),false); }
   }
 
   function openUserEditor(id) {
@@ -308,7 +371,7 @@
     try {
       await request('/api/access-control?resource=roles',{method:'POST',body:JSON.stringify({name:data.get('name'),description:data.get('description'),permission_keys:selectedValues(form,'permission_keys')})});
       form.reset(); setMessage('Rol creado correctamente.',true); await loadRoles(); renderRolesPane();
-    } catch(error) { setMessage(error.message,false); }
+    } catch(error) { setMessage(safeAccessMessage(error, 'No se pudo crear el rol. Revisa los datos e intenta nuevamente.', 'create_role'),false); }
   }
 
   function openRoleEditor(id) {
@@ -330,7 +393,7 @@
     byId('accessCreateTeamForm')?.addEventListener('submit',createTeam);
   }
 
-  async function createTeam(event){event.preventDefault();const form=event.currentTarget,data=new FormData(form);try{await request('/api/access-control?resource=teams',{method:'POST',body:JSON.stringify({name:data.get('name'),description:data.get('description'),member_ids:selectedValues(form,'member_ids')})});form.reset();setMessage('Equipo creado correctamente.',true);await loadTeams();renderTeamsPane();}catch(error){setMessage(error.message,false);}}
+  async function createTeam(event){event.preventDefault();const form=event.currentTarget,data=new FormData(form);try{await request('/api/access-control?resource=teams',{method:'POST',body:JSON.stringify({name:data.get('name'),description:data.get('description'),member_ids:selectedValues(form,'member_ids')})});form.reset();setMessage('Equipo creado correctamente.',true);await loadTeams();renderTeamsPane();}catch(error){setMessage(safeAccessMessage(error,'No se pudo crear el equipo. Revisa los datos e intenta nuevamente.','create_team'),false);}}
 
   function openTeamEditor(id){const team=state.teams.find(row=>String(row.id)===String(id));if(!team)return;openModal('Editar equipo',`<form id="accessEditTeamForm" class="access-form"><div><label>Nombre</label><input name="name" value="${esc(team.name)}" required></div><div><label>Descripción</label><textarea name="description" rows="3">${esc(team.description||'')}</textarea></div><div><label>Miembros</label>${teamMemberChecks(team.member_ids||[])}</div></form>`,[{label:'Cancelar',className:'access-secondary',onClick:closeModal},{label:'Guardar cambios',onClick:async()=>{const form=byId('accessEditTeamForm'),data=new FormData(form);await request('/api/access-control?resource=teams',{method:'PATCH',body:JSON.stringify({id:team.id,name:data.get('name'),description:data.get('description'),member_ids:selectedValues(form,'member_ids')})});closeModal();setMessage('Equipo actualizado.',true);await loadTeams();renderTeamsPane();}}]);}
 
@@ -350,7 +413,7 @@
       if(tab==='users'){await loadUsers();renderUsersPane();}
       else if(tab==='roles'){await loadRoles();renderRolesPane();}
       else {await loadTeams();renderTeamsPane();}
-    }catch(error){byId('accessWorkspaceBody').innerHTML='<div class="access-empty">No se pudo cargar esta sección.</div>';setMessage(error.message,false);}
+    }catch(error){byId('accessWorkspaceBody').innerHTML='<div class="access-empty">No se pudo cargar esta sección.</div>';setMessage(safeAccessMessage(error,'No se pudo cargar esta sección. Intenta nuevamente.','load_tab'),false);}
   }
 
   async function handleWorkspaceClick(event){
