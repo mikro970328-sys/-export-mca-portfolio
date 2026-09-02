@@ -28,7 +28,16 @@ function translatedError(raw) {
     ['SUPPLIER_BILL_ACTION_INVALID','Acción de factura de proveedor inválida.'],
     ['SUPPLIER_BILL_ACTION_NOT_ALLOWED','La acción ya no está disponible para esta factura.']
   ];
-  return messages.find(([key]) => raw.includes(key))?.[1] || raw;
+  const translated = messages.find(([key]) => raw.includes(key))?.[1];
+  if (translated) return translated;
+  const safeInput = [
+    /^Selecciona una Purchase Order$/,
+    /^Agrega al menos una línea a la factura del proveedor$/,
+    /^Falta la línea \d+ de la Purchase Order$/,
+    /^Indica (una cantidad válida|un total facturado válido|costo unitario o total facturado) en la línea \d+$/,
+    /^Falta la factura (o la Purchase Order|del proveedor)$/
+  ];
+  return safeInput.some(pattern => pattern.test(raw)) ? raw : null;
 }
 
 function cleanLines(lines) {
@@ -160,8 +169,10 @@ export default async function handler(req, res) {
 
     return fail(res,400,'Acción de Cuentas por pagar no válida');
   } catch (error) {
-    const raw = String(error.message || 'No se pudo procesar Cuentas por pagar');
+    const raw = String(error?.message || '');
+    const translated = translatedError(raw);
+    if (translated) return fail(res,400,translated);
     console.error('[payables]',error);
-    return fail(res,400,translatedError(raw));
+    return fail(res,500,'No se pudo procesar Cuentas por pagar');
   }
 }

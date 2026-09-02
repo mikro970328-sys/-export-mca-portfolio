@@ -27,7 +27,18 @@ function translatedError(raw) {
     ['SUPPLIER_BILL_NOT_FOUND','Factura de proveedor no encontrada.'],
     ['SUPPLIER_BILL_NOT_POSTED','Solo se puede pagar una factura contabilizada.']
   ];
-  return messages.find(([key]) => raw.includes(key))?.[1] || raw;
+  const translated = messages.find(([key]) => raw.includes(key))?.[1];
+  if (translated) return translated;
+  const safeInput = [
+    /^Selecciona una (factura de proveedor|Purchase Order)$/,
+    /^El monto del pago debe ser mayor que cero$/,
+    /^Falta el pago de proveedor$/,
+    /^Indica el motivo del reverso$/,
+    /^La distribución del pago no es válida$/,
+    /^Falta la factura en la distribución \d+$/,
+    /^Indica un monto válido en la distribución \d+$/
+  ];
+  return safeInput.some(pattern => pattern.test(raw)) ? raw : null;
 }
 
 function cleanApplications(applications) {
@@ -161,8 +172,10 @@ export default async function handler(req, res) {
 
     return fail(res,400,'Acción de pago de proveedor no válida');
   } catch (error) {
-    const raw = String(error.message || 'No se pudo procesar el pago del proveedor');
+    const raw = String(error?.message || '');
+    const translated = translatedError(raw);
+    if (translated) return fail(res,400,translated);
     console.error('[supplier-payments]',error);
-    return fail(res,400,translatedError(raw));
+    return fail(res,500,'No se pudo procesar el pago del proveedor');
   }
 }

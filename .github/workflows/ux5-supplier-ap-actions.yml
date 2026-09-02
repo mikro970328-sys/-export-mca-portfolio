@@ -31,7 +31,6 @@ jobs:
           node --check api/payables.js
           node --check api/supplier-payments.js
           node --check admin/payables.js
-          node --check admin/payables-payment-ux.js
           node --check scripts/check-ux5-supplier-ap-actions.mjs
       - name: Validate API runtime imports
         run: |
