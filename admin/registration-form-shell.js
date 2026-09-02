@@ -4,44 +4,6 @@
 
   const byId = id => document.getElementById(id);
 
-  function installStyles() {
-    if (byId('registrationFormShellStyles')) return;
-    const style = document.createElement('style');
-    style.id = 'registrationFormShellStyles';
-    style.textContent = `
-      #registerContainerSection .registration-shell{display:grid;gap:18px}
-      #registerContainerSection .registration-intro{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;padding:16px 18px;border:1px solid #dce6f2;border-radius:14px;background:#f8fbff}
-      #registerContainerSection .registration-intro h3{margin:0 0 5px;color:var(--navy);font-size:16px}
-      #registerContainerSection .registration-intro p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
-      #registerContainerSection .registration-required{white-space:nowrap;padding:7px 10px;border-radius:999px;background:#fff3e8;color:#9b4a00;font-size:11px;font-weight:800}
-      #registerContainerSection .registration-block{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:#fff}
-      #registerContainerSection .registration-block-head{display:flex;align-items:center;gap:11px;margin-bottom:12px}
-      #registerContainerSection .registration-step{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#edf3ff;color:var(--navy);font-size:12px;font-weight:900;flex:none}
-      #registerContainerSection .registration-block h3{margin:0;color:var(--navy);font-size:15px}
-      #registerContainerSection .registration-block p{margin:3px 0 0;color:var(--muted);font-size:11px}
-      #registerContainerSection .registration-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 18px}
-      #registerContainerSection .registration-field-full{grid-column:1/-1}
-      #registerContainerSection .registration-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:2px}
-      #registerContainerSection .registration-readiness{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
-      #registerContainerSection .registration-readiness-dot{width:9px;height:9px;border-radius:50%;background:#b8c2cf}
-      #registerContainerSection .registration-readiness.ready{color:var(--ok);font-weight:700}
-      #registerContainerSection .registration-readiness.ready .registration-readiness-dot{background:var(--ok)}
-      #registerContainerSection .registration-container-help{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4}
-      #registerContainerSection .registration-container-help.valid{color:var(--ok);font-weight:700}
-      #registerContainerSection .registration-container-help.invalid{color:var(--bad);font-weight:700}
-      #registerContainerSection #saveShipment{min-width:180px;padding:12px 18px}
-      @media(max-width:760px){
-        #registerContainerSection .registration-intro{display:grid}
-        #registerContainerSection .registration-required{justify-self:start}
-        #registerContainerSection .registration-fields{grid-template-columns:1fr}
-        #registerContainerSection .registration-field-full{grid-column:auto}
-        #registerContainerSection .registration-actions{display:grid;grid-template-columns:1fr}
-        #registerContainerSection #saveShipment{width:100%}
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
   function fieldWrapper(id) {
     return byId(id)?.closest('div') || null;
   }
@@ -84,18 +46,17 @@
 
   function mount() {
     const section = byId('registerContainerSection');
-    const card = section?.querySelector(':scope > .card');
+    const card = section?.querySelector('.registration-card');
     const originalGrid = card?.querySelector(':scope > .grid');
     const save = byId('saveShipment');
     const message = byId('shipmentMsg');
     if (!section || !card || !originalGrid || !save || !message) return;
     if (card.dataset.registrationShell === 'guided-v1') return;
 
-    installStyles();
     card.dataset.registrationShell = 'guided-v1';
 
     const title = card.querySelector(':scope > h2');
-    if (title) title.textContent = 'Registrar contenedor';
+    if (title) title.textContent = 'Datos del contenedor';
 
     const shell = document.createElement('div');
     shell.className = 'registration-shell';

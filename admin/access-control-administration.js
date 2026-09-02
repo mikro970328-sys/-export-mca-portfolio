@@ -160,10 +160,10 @@
     if (can('administration.roles.manage')) tabs.push(['roles','Roles y permisos']);
     if (can('administration.teams.manage')) tabs.push(['teams','Equipos']);
     return `
-      <div class="access-shell">
-        <div class="access-header">
-          <div><h2>Usuarios y acceso</h2><p>Administra quién entra al ERP, qué puede hacer y a qué equipos pertenece. Los permisos se aplican también en el backend.</p></div>
-        </div>
+      <div class="access-shell native-workspace-shell">
+        <header class="access-header native-workspace-hero">
+          <div class="native-workspace-heading"><span class="native-workspace-kicker">Gobierno y seguridad</span><h2>Usuarios y acceso</h2><p>Administra quién entra al ERP, qué puede hacer y a qué equipos pertenece. Los permisos se aplican también en el backend.</p></div>
+        </header>
         <div class="access-tabs">${tabs.map(([key,label],index)=>`<button type="button" class="access-tab ${index===0?'active':''}" data-access-tab="${key}">${esc(label)}</button>`).join('')}</div>
         <div id="accessWorkspaceMessage" class="access-message" aria-live="polite"></div>
         <div id="accessWorkspaceBody"></div>

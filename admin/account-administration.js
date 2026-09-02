@@ -74,9 +74,13 @@
     section.className = 'app-section hidden';
     section.dataset.accountOwner = 'account-administration.js';
     section.innerHTML = `
-      <div class="account-layout">
+      <div class="native-workspace-shell account-workspace">
+        <header class="native-workspace-hero">
+          <div class="native-workspace-heading"><span class="native-workspace-kicker">Perfil y seguridad</span><h2>Mi cuenta</h2><p>Consulta tu acceso efectivo, actualiza tu contraseña y protege las sesiones autorizadas.</p></div>
+        </header>
+        <div class="account-layout">
         <section class="card account-card">
-          <h2>Mi cuenta</h2>
+          <h2>Perfil de acceso</h2>
           <div class="account-intro">Información de la cuenta con la que has iniciado sesión en Export MCA.</div>
           <div id="accountProfile" class="account-profile"><div class="muted">Cargando cuenta...</div></div>
         </section>
@@ -105,6 +109,7 @@
           </form>
           <div id="accountSessionStatus" class="account-security-status" aria-live="polite"></div>
         </section>
+        </div>
       </div>`;
 
     const adminsSection = byId('adminsSection');

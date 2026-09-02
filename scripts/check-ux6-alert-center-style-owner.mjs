@@ -25,7 +25,7 @@ requireText(css,'@media(max-width:520px)','responsive móvil compacto');
 requireText(css,':focus-visible','estado de foco accesible');
 
 const styleLoad="loadStylesheet('/admin/operational-alert-center.css?v=20260901-ux6style1', 'data-operational-alert-center-style')";
-const scriptLoad="loadScript('/admin/operational-alert-center.js?v=20260901-ux6style1', 'data-operational-alert-center')";
+const scriptLoad="loadScript('/admin/operational-alert-center.js?v=20260902-ux6b1', 'data-operational-alert-center')";
 requireText(erp,styleLoad,'carga del stylesheet dedicado');
 requireText(erp,scriptLoad,'carga del owner JavaScript');
 const styleIndex=erp.indexOf(styleLoad);
