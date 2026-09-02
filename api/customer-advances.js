@@ -7,10 +7,10 @@ const uuid=(value,label='ID')=>{const id=text(value,80);if(!UUID_RE.test(id))thr
 const amount=value=>{const n=Number(value);if(!Number.isFinite(n)||n<=0)throw new Error('AMOUNT_INVALID');return n;};
 const rpcRow=value=>Array.isArray(value)?value[0]||null:value||null;
 
-function friendly(error){
+function translatedError(error){
   const raw=String(error?.message||error||'');
   const map=[
-    ['SALES_ORDER_ID_INVALID','Venta inválida.'],['CUSTOMER_ADVANCE_ID_INVALID','Anticipo inválido.'],['INVOICE_ID_INVALID','Factura inválida.'],['APPLICATION_ID_INVALID','Aplicación inválida.'],['REFUND_ID_INVALID','Reembolso inválido.'],['AMOUNT_INVALID','El monto debe ser mayor que cero.'],
+    ['JSON_INVALID','La solicitud no tiene un formato válido.'],['SALES_ORDER_ID_INVALID','Venta inválida.'],['CUSTOMER_ADVANCE_ID_INVALID','Anticipo inválido.'],['INVOICE_ID_INVALID','Factura inválida.'],['APPLICATION_ID_INVALID','Aplicación inválida.'],['REFUND_ID_INVALID','Reembolso inválido.'],['AMOUNT_INVALID','El monto debe ser mayor que cero.'],
     ['CUSTOMER_ADVANCE_SO_NOT_FOUND','Venta no encontrada.'],['CUSTOMER_ADVANCE_SO_NOT_CONFIRMED','La venta debe estar confirmada antes de registrar un anticipo.'],['CUSTOMER_ADVANCE_NOT_FOUND','Anticipo no encontrado.'],['CUSTOMER_ADVANCE_NOT_POSTED','El anticipo ya no está activo.'],
     ['CUSTOMER_ADVANCE_NO_AVAILABLE_BALANCE','El anticipo no tiene saldo disponible.'],['CUSTOMER_ADVANCE_NO_APPLICABLE_INVOICE','No hay una factura emitida con saldo pendiente compatible con este anticipo.'],['CUSTOMER_ADVANCE_STATUS_FINAL','El anticipo ya no admite esta acción.'],
     ['CUSTOMER_ADVANCE_APPLICATION_CONTEXT_MISMATCH','El anticipo y la factura deben pertenecer a la misma venta, cliente y moneda.'],['CUSTOMER_ADVANCE_INVOICE_NOT_ISSUED','La factura debe estar emitida antes de aplicar el anticipo.'],['CUSTOMER_ADVANCE_APPLICATION_EXCEEDS_AVAILABLE','El monto supera el saldo disponible del anticipo.'],['CUSTOMER_ADVANCE_APPLICATION_EXCEEDS_INVOICE','El monto supera el saldo pendiente de la factura.'],
@@ -19,7 +19,8 @@ function friendly(error){
     ['CUSTOMER_ADVANCE_REVERSAL_REASON_REQUIRED','Indica el motivo del reverso.'],['CUSTOMER_ADVANCE_APPLICATION_REVERSAL_REASON_REQUIRED','Indica el motivo del reverso.'],['CUSTOMER_ADVANCE_REFUND_REVERSAL_REASON_REQUIRED','Indica el motivo del reverso.'],
     ['PERMISSION_REQUIRED','No tienes permiso para realizar esta acción.']
   ];
-  return map.find(([key])=>raw.includes(key))?.[1]||'No se pudo actualizar los anticipos de la venta.';
+  const matched=map.find(([key])=>raw.includes(key));
+  return matched?{code:matched[0],message:matched[1]}:null;
 }
 
 async function loadSalesOrderFinance(admin,salesOrderId){
@@ -111,5 +112,10 @@ export default async function handler(req,res){
       return ok(res,{refund:row,finance:advance?.sales_order_id?await loadSalesOrderFinance(admin,advance.sales_order_id):null});
     }
     return fail(res,400,'Acción de anticipo no válida.');
-  }catch(error){console.error('[customer-advances]',error);return fail(res,400,friendly(error));}
+  }catch(error){
+    console.error('[customer-advances]',error);
+    const translated=translatedError(error);
+    if(translated)return fail(res,400,translated.message,{code:translated.code});
+    return fail(res,500,'No se pudieron procesar los anticipos. Intenta nuevamente.',{code:'CUSTOMER_ADVANCE_UNEXPECTED_ERROR'});
+  }
 }
