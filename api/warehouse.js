@@ -26,7 +26,32 @@ function translatedError(raw) {
     ['WR_ACTION_INVALID','Acción de recepción inválida.'],
     ['WR_ACTION_NOT_ALLOWED','La acción ya no está disponible para esta recepción.']
   ];
-  return messages.find(([key]) => raw.includes(key))?.[1] || raw;
+  const translated = messages.find(([key]) => raw.includes(key))?.[1];
+  if (translated) return translated;
+  const safe = new Set([
+    'Código, nombre y país son obligatorios',
+    'El nombre del producto es obligatorio',
+    'La unidad base debe ser texto, por ejemplo: paneles, cajas o unidades',
+    'Unidades por pallet inválidas',
+    'Peso unitario inválido',
+    'Selecciona el almacén que recibe la mercancía',
+    'Agrega al menos una línea de mercancía',
+    'El proveedor seleccionado no existe',
+    'El proveedor seleccionado está inactivo',
+    'Selecciona al menos un producto',
+    'Falta el identificador'
+  ]);
+  if (safe.has(raw)) return raw;
+  const patterns = [
+    /^Selecciona el producto de la línea \d+$/,
+    /^El producto de la línea \d+ no existe$/,
+    /^Pallets de la línea \d+ inválido$/,
+    /^Unidades por pallet inválidas en la línea \d+$/,
+    /^Cantidad de la línea \d+ inválido$/,
+    /^Forma de recepción inválida en línea \d+$/,
+    /^(?:Peso neto|Peso bruto|Costo) inválido en línea \d+$/
+  ];
+  return patterns.some(pattern => pattern.test(raw)) ? raw : null;
 }
 
 async function audit(admin, action, entityType, entityId, details = {}) {
@@ -252,6 +277,8 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('WAREHOUSE_API_ERROR', error);
     const raw = String(error.message || 'No se pudo procesar la operación de almacén');
-    return fail(res, 400, translatedError(raw));
+    const translated = translatedError(raw);
+    if (translated) return fail(res, 400, translated);
+    return fail(res, 500, 'No se pudo procesar la operación de almacén');
   }
 }
