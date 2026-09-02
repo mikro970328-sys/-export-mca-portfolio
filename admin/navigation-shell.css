@@ -94,7 +94,7 @@
 }
 
 .sidebar-user-name{font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sidebar-user-role{margin-top:3px}
+.sidebar-user-role{margin-top:3px;color:#c7d4e8}
 .sidebar-foot-action{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:9px!important}
 
 @media(min-width:901px){

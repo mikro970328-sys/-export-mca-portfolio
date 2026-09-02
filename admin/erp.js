@@ -145,7 +145,7 @@
     console.error('[platform theme]', error);
     return false;
   });
-  const navigationStylesPromise = loadStylesheet('/admin/navigation-shell.css?v=20260830-ux1', 'data-navigation-shell-style');
+  const navigationStylesPromise = loadStylesheet('/admin/navigation-shell.css?v=20260902-ux6a1', 'data-navigation-shell-style');
   const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260830-p3', 'data-access-control-style');
   const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260817-e1', 'data-ui-icon-system');
 
@@ -226,7 +226,7 @@
 
     bootPromise = (async () => {
       await accessStylesPromise;
-      await loadScript('/admin/access-control-administration.js?v=20260830-p3', 'data-access-control-administration');
+      await loadScript('/admin/access-control-administration.js?v=20260902-ux6a1', 'data-access-control-administration');
       if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
       await window.ExportMcaAccessControl.initialize();
       window.ExportMcaAccessControl?.applyNavigation?.();

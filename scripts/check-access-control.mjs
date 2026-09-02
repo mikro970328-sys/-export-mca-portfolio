@@ -71,7 +71,6 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
     "administration.roles.manage",
     "administration.teams.manage",
     "SECTION_PERMISSIONS",
-    "installPermissionAwareLoadAll",
     "window.ExportMcaAccessControl"
   ]) {
     if (!accessUi.includes(required)) failures.push(`admin/access-control-administration.js: falta ${required}`);
@@ -79,7 +78,7 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
 
   for (const required of [
     '/admin/access-control.css?v=20260830-p3',
-    '/admin/access-control-administration.js?v=20260830-p3',
+    '/admin/access-control-administration.js?v=20260902-ux6a1',
     'window.ExportMcaAccessControl.initialize()',
     "accessCan('clients.read')",
     "accessCan('logistics.read')",
@@ -110,6 +109,9 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
   const coreSource = coreStart >= 0 && dashboardStart > coreStart ? dataLoader.slice(coreStart,dashboardStart) : '';
   if (!coreSource) failures.push('admin/admin-data-loader.js: no se pudo aislar loadCore');
   if (coreSource.includes('/api/dashboard')) failures.push('admin/admin-data-loader.js: loadCore no puede depender de /api/dashboard');
+  if (/window\.loadAll\s*=|permissionAwareLoadAll|installPermissionAwareLoadAll/.test(accessUi)) {
+    failures.push('admin/access-control-administration.js: no puede reemplazar el owner dedicado de carga de datos');
+  }
 
   if (!accountUi.includes("account?.access_role?.name || 'Usuario'")) {
     failures.push('admin/account-administration.js: Mi cuenta no muestra el rol configurable efectivo');

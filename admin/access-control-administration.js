@@ -154,35 +154,6 @@
     window.showSection = id => original(sectionAllowed(id) ? id : firstAllowedSection());
   }
 
-  function installPermissionAwareLoadAll() {
-    if (window.__permissionAwareLoadAllInstalled) return;
-    window.__permissionAwareLoadAllInstalled = true;
-
-    window.loadAll = async function permissionAwareLoadAll() {
-      const clientsRequest = can('clients.read') ? request('/api/clients') : Promise.resolve({ clients:[] });
-      const shipmentsRequest = can('logistics.read') ? request('/api/shipments') : Promise.resolve({ shipments:[] });
-      const dashboardRequest = can('dashboard.read') ? request('/api/dashboard') : Promise.resolve(null);
-      const adminsRequest = can('administration.users.manage') ? request('/api/admins') : Promise.resolve(null);
-      const [clientsResult, shipmentsResult, dashboardResult, adminsResult] = await Promise.all([clientsRequest, shipmentsRequest, dashboardRequest, adminsRequest]);
-
-      const nextClients = clientsResult?.clients || [];
-      const nextShipments = shipmentsResult?.shipments || [];
-      const nextAdmins = adminsResult?.admins || [];
-      try { clients = nextClients; shipments = nextShipments; admins = nextAdmins; } catch {}
-      window.clients = nextClients;
-      window.shipments = nextShipments;
-      window.admins = nextAdmins;
-
-      if (dashboardResult && typeof window.renderStats === 'function') window.renderStats(dashboardResult);
-      if (can('clients.read') && typeof window.renderClients === 'function') window.renderClients();
-      if (can('clients.read') && typeof window.fillClientSelects === 'function') window.fillClientSelects();
-      if (adminsResult) state.usersData = adminsResult;
-
-      window.dispatchEvent(new CustomEvent('export-mca:data-loaded',{ detail:{ clients:nextClients, shipments:nextShipments } }));
-      return { clients:nextClients, shipments:nextShipments, dashboard:dashboardResult, admins:nextAdmins };
-    };
-  }
-
   function workspaceMarkup() {
     const tabs = [];
     if (can('administration.users.manage')) tabs.push(['users','Usuarios']);
@@ -407,7 +378,6 @@
 
   async function initialize() {
     await refreshAccount();
-    installPermissionAwareLoadAll();
     wrapSectionGuard();
     prepareWorkspace();
     applyNavigation();
