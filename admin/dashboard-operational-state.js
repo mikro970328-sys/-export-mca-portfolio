@@ -21,6 +21,27 @@
     return Number.isNaN(date.getTime())?'—':date.toLocaleString('es-US',{dateStyle:'medium',timeStyle:'short'});
   };
 
+  function operatorName() {
+    try {
+      const user=JSON.parse(localStorage.getItem('export_mca_user')||'null');
+      const label=String(user?.full_name||user?.username||'equipo').trim();
+      return label.split(/\s+/)[0]||'equipo';
+    } catch { return 'equipo'; }
+  }
+
+  function dashboardIcon(target) {
+    const icons={clients:'clients',containers:'container',tasks:'files',alerts:'bell'};
+    const name=icons[target]||'operations';
+    return window.ExportMcaIcons?.svg?.(name,'executive-op-icon-svg')||'<span aria-hidden="true">•</span>';
+  }
+
+  function dashboardIntro(data) {
+    return `<header class="executive-intro">
+      <div><span class="executive-kicker">Resumen del negocio</span><h1>Buenos días, ${esc(operatorName())}</h1><p>Revisa el estado de la operación y atiende primero lo que necesita una decisión.</p></div>
+      <div class="executive-live"><span aria-hidden="true"></span><div><b>Datos actualizados</b><small>${esc(dateLabel(data.generated_at))}</small></div></div>
+    </header>`;
+  }
+
   function currentPeriodLabel(executive={}) {
     const period=executive.period||{};
     if(period.start_date && period.end_date)return `${period.start_date} → ${period.end_date}`;
@@ -38,7 +59,7 @@
     const selected=state.filters;
     const capabilities=options.capabilities||{};
     return `<section class="executive-filter-card">
-      <div class="executive-filter-head"><div><h2>Dashboard ejecutivo</h2><p>Actividad por período. Las cuentas por cobrar y por pagar se muestran con su saldo actual.</p></div><div class="executive-filter-actions"><button type="button" class="alt" id="dashboardResetFilters">Limpiar</button><button type="button" id="dashboardApplyFilters">Aplicar filtros</button></div></div>
+      <div class="executive-filter-head"><div><span class="executive-section-kicker">Vista personalizada</span><h2>Filtros del panel</h2><p>Consulta actividad por período sin mezclar monedas ni alterar los saldos actuales.</p></div><div class="executive-filter-actions"><button type="button" class="alt" id="dashboardResetFilters">Limpiar</button><button type="button" class="orange" id="dashboardApplyFilters">Aplicar filtros</button></div></div>
       <div class="executive-filters">
         <label>Desde<input id="dashboardStartDate" type="date" value="${esc(selected.start_date)}"></label>
         <label>Hasta<input id="dashboardEndDate" type="date" value="${esc(selected.end_date)}"></label>
@@ -106,7 +127,7 @@
     ];
     if(task)cards.push(['Tareas abiertas',task.open,'tasks',`${integer(task.blocked)} bloqueadas · ${integer(task.overdue)} vencidas`]);
     if(alerts)cards.push(['Alertas activas',alerts.active,'alerts',`${integer(alerts.critical)} críticas`]);
-    return `<section class="executive-section"><div class="executive-section-head"><div><h3>Operación actual</h3><p>Conteos derivados del estado actual del ERP.</p></div></div><div class="executive-ops-grid">${cards.map(([label,value,target,detail])=>`<button type="button" class="executive-op-card" data-dashboard-open="${target}"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(detail)}</small></button>`).join('')}</div></section>`;
+    return `<section class="executive-section executive-operation"><div class="executive-section-head"><div><span class="executive-section-kicker">Ahora mismo</span><h3>Operación actual</h3><p>Indicadores clave del estado vigente del ERP.</p></div></div><div class="executive-ops-grid">${cards.map(([label,value,target,detail])=>`<button type="button" class="executive-op-card" data-dashboard-open="${target}"><span class="executive-op-head"><span class="executive-op-icon">${dashboardIcon(target)}</span><span>${esc(label)}</span></span><strong>${esc(value)}</strong><small>${esc(detail)}</small></button>`).join('')}</div></section>`;
   }
 
   function exceptionsPanel(data) {
@@ -126,12 +147,12 @@
     if(task){ rows.push(['Tareas bloqueadas',task.blocked,'tasks'],['Tareas vencidas',task.overdue,'tasks'],['Tareas con flujo incompatible',task.routing,'tasks']); }
     if(alerts)rows.push(['Alertas críticas',alerts.critical,'alerts']);
     const active=rows.filter(row=>Number(row[1]||0)>0);
-    return `<section class="executive-section"><div class="executive-section-head"><div><h3>Excepciones que requieren atención</h3><p>Solo desviaciones; el trabajo normal permanece en Tareas.</p></div></div>${active.length?`<div class="executive-exception-list">${active.map(([label,value,target])=>`<button type="button" data-dashboard-open="${target}"><span>${esc(label)}</span><strong>${integer(value)}</strong></button>`).join('')}</div>`:'<div class="executive-empty">No hay excepciones activas en los indicadores disponibles.</div>'}</section>`;
+    return `<section class="executive-section executive-attention"><div class="executive-section-head"><div><span class="executive-section-kicker">Prioridad</span><h3>Requiere atención</h3><p>Desviaciones que necesitan revisión.</p></div></div>${active.length?`<div class="executive-exception-list">${active.map(([label,value,target])=>`<button type="button" data-dashboard-open="${target}"><span class="executive-exception-label"><i aria-hidden="true"></i>${esc(label)}</span><strong>${integer(value)}</strong></button>`).join('')}</div>`:'<div class="executive-empty executive-empty-success">Todo está al día. No hay excepciones activas.</div>'}</section>`;
   }
 
   function activityPanel(data) {
     const rows=data.recent_activity||[];
-    return `<section class="executive-section"><div class="executive-section-head"><div><h3>Actividad logística reciente</h3><p>Últimos movimientos de contenedores registrados.</p></div><button type="button" class="alt" data-dashboard-open="containers">Ver tracking</button></div>${rows.length?`<div class="executive-activity-list">${rows.map(row=>`<button type="button" class="executive-activity-row" data-dashboard-shipment="${esc(row.id)}"><div><strong>${esc(row.container_number||'Sin número')}</strong><span>${esc(row.client_name||'Sin cliente')}</span></div><div><span>${esc(row.operational_status||'Registrado')}</span><small>${esc(dateLabel(row.updated_at))}</small></div></button>`).join('')}</div>`:'<div class="executive-empty">No hay actividad logística reciente.</div>'}</section>`;
+    return `<section class="executive-section executive-activity"><div class="executive-section-head"><div><span class="executive-section-kicker">Movimientos</span><h3>Actividad reciente</h3><p>Últimos cambios en la operación logística.</p></div><button type="button" class="alt" data-dashboard-open="containers">Ver tracking</button></div>${rows.length?`<div class="executive-activity-list">${rows.map(row=>`<button type="button" class="executive-activity-row" data-dashboard-shipment="${esc(row.id)}"><span class="executive-activity-icon">${dashboardIcon('containers')}</span><div><strong>${esc(row.container_number||'Sin número')}</strong><span>${esc(row.client_name||'Sin cliente')}</span></div><div><span class="executive-activity-status">${esc(row.operational_status||'Registrado')}</span><small>${esc(dateLabel(row.updated_at))}</small></div></button>`).join('')}</div>`:'<div class="executive-empty">No hay actividad logística reciente.</div>'}</section>`;
   }
 
   function renderDashboard(data) {
@@ -149,7 +170,7 @@
       supplier_id:period.supplier_id||'',
       product_id:period.product_id||''
     };
-    section.innerHTML=`<div class="executive-dashboard">${filterBar(data)}${financeByCurrency(data)}${operationalSummary(data)}${exceptionsPanel(data)}${activityPanel(data)}<div class="executive-generated">Actualizado ${esc(dateLabel(data.generated_at))} · Datos financieros consolidados por la plataforma.</div></div>`;
+    section.innerHTML=`<div class="executive-dashboard">${dashboardIntro(data)}${operationalSummary(data)}<div class="executive-priority-grid">${exceptionsPanel(data)}${activityPanel(data)}</div>${filterBar(data)}${financeByCurrency(data)}<div class="executive-generated">Actualizado ${esc(dateLabel(data.generated_at))} · Datos financieros consolidados por la plataforma.</div></div>`;
     restoreSelect('dashboardClient',state.filters.client_id);
     restoreSelect('dashboardSupplier',state.filters.supplier_id);
     restoreSelect('dashboardProduct',state.filters.product_id);
@@ -172,13 +193,13 @@
   function renderLoading() {
     const section=$('dashboardSection');
     if(!section || state.data)return;
-    section.innerHTML='<section class="executive-section"><div class="executive-section-head"><div><h3>Cargando dashboard</h3><p>La plataforma ya está disponible. Estamos actualizando los indicadores ejecutivos.</p></div></div><div class="executive-empty">Cargando indicadores…</div></section>';
+    section.innerHTML='<section class="executive-section executive-state"><div class="executive-state-mark" aria-hidden="true"></div><div><h3>Cargando dashboard</h3><p>La plataforma ya está disponible. Estamos actualizando los indicadores ejecutivos.</p></div></section>';
   }
 
   function renderError() {
     const section=$('dashboardSection');
     if(!section)return;
-    section.innerHTML='<section class="executive-section"><div class="executive-section-head"><div><h3>Dashboard temporalmente no disponible</h3><p>No pudimos actualizar los indicadores en este momento.</p></div><button type="button" class="alt" id="dashboardRetry">Reintentar</button></div><div class="executive-empty">El resto del ERP sigue disponible desde el menú.</div></section>';
+    section.innerHTML='<section class="executive-section executive-state executive-state-error"><div><h3>Dashboard temporalmente no disponible</h3><p>No pudimos actualizar los indicadores en este momento. El resto del ERP sigue disponible desde el menú.</p></div><button type="button" class="alt" id="dashboardRetry">Reintentar</button></section>';
     $('dashboardRetry')?.addEventListener('click',()=>reloadDashboard(state.filters));
   }
 

@@ -35,7 +35,8 @@ const account = read('admin/account-administration.js');
 
 const runtimeRef = '/admin/admin-shell-runtime.js?v=20260902-ux6a1';
 requireText(index, runtimeRef, 'runtime versionado del shell');
-requireText(erp, "/admin/navigation-shell.css?v=20260902-ux6a1", 'CSS versionado del shell');
+requireText(index, "/admin/navigation-shell.css?v=20260902-ux6b1", 'CSS versionado del shell');
+requireText(index, "/admin/platform-theme.css?v=20260902-ux6b1", 'sistema visual versionado');
 requireText(erp, "/admin/access-control-administration.js?v=20260902-ux6a1", 'owner versionado de Usuarios y acceso');
 requireText(index, '<section id="adminsSection" class="app-section hidden" aria-live="polite"></section>', 'placeholder vacío para el owner de Usuarios y acceso');
 const runtimeIndex = index.indexOf(runtimeRef);
