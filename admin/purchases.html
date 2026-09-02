@@ -4,22 +4,109 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Compras · Export MCA</title>
-<link rel="stylesheet" href="/admin/purchases.css?v=20260901-ux6owner1">
+<link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+<link rel="stylesheet" href="/admin/purchases.css?v=20260902-ux7purchases1">
 </head>
-<body class="erp-module-page erp-module-purchases">
-<main class="wrap">
-  <div class="head module-hero"><div class="module-heading"><div class="module-kicker">Abastecimiento</div><h1>Compras</h1><div class="muted">Purchase Orders y recepción física vinculada a WR.</div></div><button id="newOrder" class="btn orange">+ Nueva PO</button></div>
-  <div id="metrics" class="metrics"></div>
-  <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar PO, proveedor, referencia o producto"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="closed">Cerradas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="orderList" class="orders"></div></section>
+<body class="erp-module-page erp-module-purchases" data-owner="purchases.js">
+<main class="wrap purchases-shell">
+  <header class="head module-hero purchases-page-head" aria-labelledby="purchasesPageTitle">
+    <div class="module-heading purchases-page-heading">
+      <div class="module-kicker purchases-page-kicker">Abastecimiento · Control de mercancía</div>
+      <h1 id="purchasesPageTitle">Compras</h1>
+      <p>Organiza órdenes a proveedores, recepción física y avance de cada mercancía desde una sola vista operativa.</p>
+    </div>
+    <div class="module-actions">
+      <button id="newOrder" class="btn orange purchases-primary-action" type="button">Nueva compra</button>
+    </div>
+  </header>
+
+  <section id="metrics" class="metrics purchases-metrics" aria-label="Resumen de compras"></section>
+
+  <section class="panel purchases-list-panel" aria-labelledby="purchasesListTitle">
+    <div class="purchases-list-heading">
+      <div>
+        <span class="purchases-eyebrow">Órdenes a proveedores</span>
+        <h2 id="purchasesListTitle">Compras registradas</h2>
+        <p>Consulta el estado comercial, la recepción en almacén y el valor estimado de cada orden.</p>
+      </div>
+    </div>
+    <div class="toolbar purchases-list-toolbar">
+      <label class="purchases-search-field" for="search">
+        <span class="purchases-visually-hidden">Buscar compras</span>
+        <input id="search" class="search" type="search" autocomplete="off" placeholder="Buscar PO, proveedor, referencia o producto">
+      </label>
+      <div class="tabs purchases-view-tabs" role="group" aria-label="Filtrar compras">
+        <button class="btn active" type="button" data-view="open" aria-pressed="true">Abiertas</button>
+        <button class="btn" type="button" data-view="draft" aria-pressed="false">Borradores</button>
+        <button class="btn" type="button" data-view="closed" aria-pressed="false">Cerradas</button>
+        <button class="btn" type="button" data-view="all" aria-pressed="false">Todas</button>
+      </div>
+      <button id="refresh" class="btn purchases-refresh" type="button" aria-label="Actualizar compras" title="Actualizar compras"><span aria-hidden="true">↻</span></button>
+    </div>
+    <div id="orderList" class="orders has-explicit-count purchases-order-list" aria-live="polite"></div>
+  </section>
 </main>
-<div id="orderModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="orderTitle">Nueva Purchase Order</h2><div class="muted">La PO registra lo comprado; el inventario solo nace cuando se registra un WR.</div></div><button class="btn" data-close="order">✕</button></div><div class="grid3"><div><label>Proveedor *</label><select id="oSupplier"></select></div><div><label>Almacén esperado</label><select id="oWarehouse"></select></div><div><label>Moneda *</label><input id="oCurrency" value="USD" maxlength="3"></div></div><div class="grid3"><div><label>Fecha de orden</label><input id="oDate" type="date"></div><div><label>Llegada estimada</label><input id="oExpected" type="datetime-local"></div><div><label>Referencia proveedor</label><input id="oReference"></div></div><label>Notas</label><textarea id="oNotes"></textarea><div class="toolbar" style="padding:12px 0 0;border:0"><div><b>Mercancía ordenada</b><div class="muted">Selecciona un producto del catálogo maestro o créalo desde la misma línea. Crear la ficha no crea inventario.</div></div><button id="addOrderLine" class="btn">+ Línea</button></div><div id="orderLines"></div><div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="order">Cancelar</button><button id="saveOrder" class="btn orange">Guardar PO</button></div><div id="orderMsg" class="msg"></div></div></div>
-<div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions" style="justify-content:flex-end;margin-top:14px"></div><div id="detailMsg" class="msg"></div></div></div>
-<div id="receiveModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="receiveTitle">Recibir PO</h2><div class="muted">Esta acción crea un WR real y actualiza el progreso físico de la PO.</div></div><button class="btn" data-close="receive">✕</button></div><div class="grid3"><div><label>Almacén receptor *</label><select id="rWarehouse"></select></div><div><label>Fecha y hora</label><input id="rReceivedAt" type="datetime-local"></div><div><label>Referencia / BOL terrestre</label><input id="rReference"></div></div><div class="grid"><div><label>Camión</label><input id="rTruck"></div><div><label>Chofer</label><input id="rDriver"></div></div><label>Notas</label><textarea id="rNotes"></textarea><div id="receiveLines"></div><div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" data-close="receive">Cancelar</button><button id="saveReceipt" class="btn orange">Registrar WR</button></div><div id="receiveMsg" class="msg"></div></div></div>
-<div id="purchaseDecisionModal" class="modal hidden purchase-decision-modal" aria-hidden="true"><div class="dialog purchase-decision-dialog" role="dialog" aria-modal="true" aria-labelledby="purchaseDecisionTitle"><h2 id="purchaseDecisionTitle">Confirmar acción</h2><p id="purchaseDecisionCopy" class="purchase-decision-copy"></p><div class="actions purchase-decision-actions"><button id="purchaseDecisionCancel" class="btn" type="button">Volver</button><button id="purchaseDecisionAccept" class="btn primary" type="button">Continuar</button></div><div id="purchaseDecisionMsg" class="msg" aria-live="polite"></div></div></div>
-<div id="quickProductModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2>Nuevo producto</h2><div class="muted">Crea la ficha maestra y selecciónala en esta PO. No genera existencias ni movimientos de inventario.</div></div><button class="btn" type="button" data-close-quick-product>✕</button></div><div class="grid3"><div><label>SKU</label><input id="qpSku" placeholder="SOY-35LB"></div><div><label>Nombre *</label><input id="qpName" placeholder="Aceite de soya 35 lb"></div><div><label>Marca</label><input id="qpBrand"></div></div><div class="grid3"><div><label>Categoría</label><input id="qpCategory" placeholder="Aceites comestibles"></div><div><label>Unidad base *</label><input id="qpUnit" value="unidades" placeholder="unidades, cajas, paneles..."></div><div><label>Presentación / empaque</label><input id="qpFormat" placeholder="JIB 35 lb / 17.25 L"></div></div><div class="grid3"><div><label>Unidades por pallet</label><input id="qpUnitsPallet" type="number" min="0" step="0.001"></div><div><label>País de origen</label><input id="qpOrigin"></div><div><label>HS Code</label><input id="qpHs"></div></div><div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn" type="button" data-close-quick-product>Cancelar</button><button id="saveQuickProduct" class="btn orange" type="button">Crear y seleccionar</button></div><div id="quickProductMsg" class="msg"></div></div></div>
-<script src="/admin/purchases.js?v=20260901-ux6owner1"></script>
-<script src="/admin/purchases-master-refresh.js?v=20260901-ux6owner1"></script>
-<script src="/admin/purchases-product-catalog.js?v=20260901-ux6owner1"></script>
+
+<div id="orderModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="orderTitle">
+  <div class="dialog purchase-order-dialog">
+    <div class="dialog-head">
+      <div><span class="purchases-dialog-kicker">Plan de abastecimiento</span><h2 id="orderTitle">Nueva Purchase Order</h2><div class="muted">La orden registra lo comprado; el inventario solo nace cuando se registra una recepción WR.</div></div>
+      <button class="btn purchases-close-button" type="button" data-close="order" aria-label="Cerrar formulario de compra">✕</button>
+    </div>
+    <div class="grid3"><div><label>Proveedor *</label><select id="oSupplier"></select></div><div><label>Almacén esperado</label><select id="oWarehouse"></select></div><div><label>Moneda *</label><input id="oCurrency" value="USD" maxlength="3"></div></div>
+    <div class="grid3"><div><label>Fecha de orden</label><input id="oDate" type="date"></div><div><label>Llegada estimada</label><input id="oExpected" type="datetime-local"></div><div><label>Referencia proveedor</label><input id="oReference"></div></div>
+    <label>Notas</label><textarea id="oNotes"></textarea>
+    <div class="toolbar purchase-form-section-head"><div><b>Mercancía ordenada</b><div class="muted">Selecciona un producto del catálogo maestro o créalo desde la misma línea. Crear la ficha no genera inventario.</div></div><button id="addOrderLine" class="btn" type="button">+ Línea</button></div>
+    <div id="orderLines" class="purchase-order-lines"></div>
+    <div class="actions purchase-modal-actions"><button class="btn" type="button" data-close="order">Cancelar</button><button id="saveOrder" class="btn orange" type="button">Guardar PO</button></div>
+    <div id="orderMsg" class="msg" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<div id="detailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+  <div class="dialog purchase-detail-dialog">
+    <div class="dialog-head"><div><span class="purchases-dialog-kicker">Trazabilidad de compra</span><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn purchases-close-button" type="button" data-close="detail" aria-label="Cerrar detalle de compra">✕</button></div>
+    <div id="detailBody"></div>
+    <div id="detailActions" class="actions purchase-modal-actions"></div>
+    <div id="detailMsg" class="msg" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<div id="receiveModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="receiveTitle">
+  <div class="dialog purchase-receive-dialog">
+    <div class="dialog-head"><div><span class="purchases-dialog-kicker">Entrada física al almacén</span><h2 id="receiveTitle">Recibir PO</h2><div class="muted">Esta acción crea un WR real y actualiza el progreso físico de la orden.</div></div><button class="btn purchases-close-button" type="button" data-close="receive" aria-label="Cerrar recepción">✕</button></div>
+    <div class="grid3"><div><label>Almacén receptor *</label><select id="rWarehouse"></select></div><div><label>Fecha y hora</label><input id="rReceivedAt" type="datetime-local"></div><div><label>Referencia / BOL terrestre</label><input id="rReference"></div></div>
+    <div class="grid"><div><label>Camión</label><input id="rTruck"></div><div><label>Chofer</label><input id="rDriver"></div></div>
+    <label>Notas</label><textarea id="rNotes"></textarea>
+    <div id="receiveLines" class="purchase-receive-lines"></div>
+    <div class="actions purchase-modal-actions"><button class="btn" type="button" data-close="receive">Cancelar</button><button id="saveReceipt" class="btn orange" type="button">Registrar WR</button></div>
+    <div id="receiveMsg" class="msg" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<div id="purchaseDecisionModal" class="modal hidden purchase-decision-modal" role="dialog" aria-modal="true" aria-labelledby="purchaseDecisionTitle" aria-describedby="purchaseDecisionCopy" aria-hidden="true">
+  <div class="dialog purchase-decision-dialog">
+    <span class="purchases-dialog-kicker">Confirmación operativa</span>
+    <h2 id="purchaseDecisionTitle">Confirmar acción</h2>
+    <p id="purchaseDecisionCopy" class="purchase-decision-copy"></p>
+    <div class="actions purchase-decision-actions"><button id="purchaseDecisionCancel" class="btn" type="button">Volver</button><button id="purchaseDecisionAccept" class="btn primary" type="button">Continuar</button></div>
+    <div id="purchaseDecisionMsg" class="msg" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<div id="quickProductModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="quickProductTitle">
+  <div class="dialog purchase-product-dialog">
+    <div class="dialog-head"><div><span class="purchases-dialog-kicker">Catálogo maestro</span><h2 id="quickProductTitle">Nuevo producto</h2><div class="muted">Crea la ficha y selecciónala en esta orden. No genera existencias ni movimientos de inventario.</div></div><button class="btn purchases-close-button" type="button" data-close-quick-product aria-label="Cerrar nuevo producto">✕</button></div>
+    <div class="grid3"><div><label>SKU</label><input id="qpSku" placeholder="SOY-35LB"></div><div><label>Nombre *</label><input id="qpName" placeholder="Aceite de soya 35 lb"></div><div><label>Marca</label><input id="qpBrand"></div></div>
+    <div class="grid3"><div><label>Categoría</label><input id="qpCategory" placeholder="Aceites comestibles"></div><div><label>Unidad base *</label><input id="qpUnit" value="unidades" placeholder="unidades, cajas, paneles..."></div><div><label>Presentación / empaque</label><input id="qpFormat" placeholder="JIB 35 lb / 17.25 L"></div></div>
+    <div class="grid3"><div><label>Unidades por pallet</label><input id="qpUnitsPallet" type="number" min="0" step="0.001"></div><div><label>País de origen</label><input id="qpOrigin"></div><div><label>HS Code</label><input id="qpHs"></div></div>
+    <div class="actions purchase-modal-actions"><button class="btn" type="button" data-close-quick-product>Cancelar</button><button id="saveQuickProduct" class="btn orange" type="button">Crear y seleccionar</button></div>
+    <div id="quickProductMsg" class="msg" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
+<script src="/admin/purchases.js?v=20260902-ux7purchases1"></script>
+<script src="/admin/embedded-auto-refresh.js?v=20260902-ux7purchases1"></script>
 </body>
 </html>

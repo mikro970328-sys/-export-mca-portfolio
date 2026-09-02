@@ -99,13 +99,14 @@ for(const text of [
   'aria-modal="true"',
   'id="costDecisionCancel"',
   'id="costDecisionAccept"',
-  '/admin/costs.css?v=20260901-ux6owner1',
+  '/admin/costs.css?v=20260902-ux6owner2',
   '/admin/costs.js?v=20260901-ux6owner1',
   '/admin/profitability.css?v=20260901-ux6owner1',
   '/admin/profitability.js?v=20260901-ux6owner1'
 ]) requireText(html,text,`HTML ${text}`);
 
 for(const text of ['.cost-decision-modal','.cost-decision-dialog','.cost-decision-actions','.page-msg',':focus-visible','@media(max-width:700px)']) requireText(css,text,`CSS ${text}`);
+forbid(css,/@import|purchases\.css/i,'Costos conserva dependencia visual de Compras');
 requireText(profitabilityCss,'.profit-sub-spaced','CSS de Rentabilidad sin inline style');
 
 for(const text of [
