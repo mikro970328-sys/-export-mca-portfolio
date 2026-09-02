@@ -1,0 +1,48 @@
+name: UX6 Loads Presentation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/loads.css'
+      - 'admin/loads.html'
+      - 'admin/loads.js'
+      - 'api/loads.js'
+      - 'scripts/check-ux5-load-actions.mjs'
+      - 'scripts/check-ux6-loads-presentation.mjs'
+      - '.github/workflows/ux6-loads-presentation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-loads-presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate Loads UX-6 owner
+        run: node scripts/check-ux6-loads-presentation.mjs
+      - name: Validate canonical Load actions
+        run: node scripts/check-ux5-load-actions.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check api/loads.js
+          node --check admin/loads.js
+          node --check scripts/check-ux5-load-actions.mjs
+          node --check scripts/check-ux6-loads-presentation.mjs
+      - name: Validate API runtime imports
+        run: node --input-type=module -e "await Promise.all([import('./api/_load-actions.js'),import('./api/loads.js')]); console.log('Loads API runtime imports OK')"
+      - name: Validate frontend ownership
+        run: node scripts/check-frontend-ownership.mjs
+      - name: Validate admin shell
+        run: node scripts/check-admin-shell-resilience.mjs
+      - name: Audit API boundaries
+        run: node scripts/audit-b9-api-boundaries.mjs
+      - name: Validate database privileges
+        run: node scripts/check-b9-database-privileges.mjs
+      - name: Validate public boundary
+        run: node scripts/check-b9-public-boundaries.mjs
+      - name: Validate integrations
+        run: node scripts/check-integrations.mjs
