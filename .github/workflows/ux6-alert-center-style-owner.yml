@@ -6,6 +6,7 @@ on:
       - 'admin/operational-alert-center.js'
       - 'admin/operational-alert-center.css'
       - 'admin/erp.js'
+      - 'admin/index.html'
       - 'scripts/check-ux6-alert-center-style-owner.mjs'
       - '.github/workflows/ux6-alert-center-style-owner.yml'
   workflow_dispatch:
