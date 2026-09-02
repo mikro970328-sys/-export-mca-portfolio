@@ -62,9 +62,6 @@
     catch (error) { console.error('[admin data loader] render clients',error); }
     try { if (accessCan('administration.users.manage') && typeof window.renderAdmins === 'function') window.renderAdmins(); }
     catch (error) { console.error('[admin data loader] render admins',error); }
-    try { if (accessCan('clients.read') && typeof window.fillClientSelects === 'function') window.fillClientSelects(); }
-    catch (error) { console.error('[admin data loader] fill client selects',error); }
-
     const errors = results.filter(result => !result.ok).map(result => ({ key:result.key, message:String(result.error?.message || 'No disponible') }));
     window.dispatchEvent(new CustomEvent('export-mca:data-loaded', {
       detail: { clients:window.clients || [], shipments:window.shipments || [], shipment_write_access:window.shipmentWriteAccess === true, errors }

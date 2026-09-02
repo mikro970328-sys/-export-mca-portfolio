@@ -17,6 +17,7 @@ const files = {
   shipmentReadinessMigration: 'supabase/migrations/20260830031800_ux2d_container_customs_document_readiness.sql',
   loader: 'admin/erp.js',
   index: 'admin/index.html',
+  shellRuntime: 'admin/admin-shell-runtime.js',
   alerts: 'admin/operational-alert-center.js'
 };
 
@@ -60,6 +61,7 @@ for (const file of [
   files.shipmentDocumentReadiness,
   files.shipmentDocuments,
   files.loader,
+  files.shellRuntime,
   files.alerts
 ]) {
   if (!fs.existsSync(file)) continue;
@@ -85,6 +87,7 @@ const shipmentDocuments = read(files.shipmentDocuments);
 const shipmentReadinessMigration = read(files.shipmentReadinessMigration);
 const loader = read(files.loader);
 const index = read(files.index);
+const shellRuntime = read(files.shellRuntime);
 const alerts = read(files.alerts);
 
 for (const fragment of [
@@ -282,6 +285,34 @@ for (const forbidden of [
   'function closeMobileMenu()'
 ]) {
   if (index.includes(forbidden)) errors.push(`index.html todavía posee comportamiento del shell: ${forbidden}`);
+}
+
+if (!index.includes('/admin/admin-shell-runtime.js?v=20260902-ux6a1')) {
+  errors.push('index.html no carga el runtime estructural versionado antes del ERP.');
+}
+if (index.indexOf('/admin/admin-shell-runtime.js?v=20260902-ux6a1') > index.indexOf('/admin/erp.js')) {
+  errors.push('index.html debe cargar admin-shell-runtime.js antes de erp.js.');
+}
+for (const fragment of [
+  "owner:'admin-shell-runtime.js'",
+  'async function api(path, options = {})',
+  'function showSection(id)',
+  'function openModal(title, html)',
+  'function closeModal()',
+  'function logoutNow()'
+]) {
+  if (!shellRuntime.includes(fragment)) errors.push(`Falta responsabilidad base del runtime del shell: ${fragment}`);
+}
+for (const forbidden of [
+  'function loadAll(',
+  'function renderStats(',
+  'function renderAdmins(',
+  '/api/clients',
+  '/api/shipments',
+  '/api/dashboard',
+  '/api/admins'
+]) {
+  if (shellRuntime.includes(forbidden)) errors.push(`admin-shell-runtime.js invade un owner de negocio: ${forbidden}`);
 }
 
 if (alerts.includes('nav.innerHTML')) {

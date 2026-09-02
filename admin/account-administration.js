@@ -156,8 +156,6 @@
     };
   }
 
-  function cleanSidebarFooter() { byId('changeOwnPassword')?.remove(); }
-
   function roleLabel(account) {
     if (account?.role === 'master_admin') return 'Administrador maestro';
     return account?.access_role?.name || 'Usuario';
@@ -298,7 +296,6 @@
     ensureAccountSection();
     ensureAdministrationNavigation();
     syncAccessUiState();
-    cleanSidebarFooter();
     bindAccountForms();
 
     window.addEventListener('export-mca:section-changed', event => {

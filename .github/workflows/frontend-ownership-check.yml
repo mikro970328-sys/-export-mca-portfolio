@@ -19,6 +19,7 @@ on:
       - 'admin/section-state.js'
       - 'admin/erp.js'
       - 'admin/index.html'
+      - 'admin/admin-shell-runtime.js'
       - 'admin/operational-alert-center.js'
       - 'admin/alert-phase2-stability.js'
       - 'admin/notification-inbox.js'

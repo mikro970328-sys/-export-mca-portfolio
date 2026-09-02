@@ -5,6 +5,8 @@ on:
     paths:
       - 'admin/account-administration.js'
       - 'admin/account-administration.css'
+      - 'admin/index.html'
+      - 'admin/admin-shell-runtime.js'
       - 'admin/erp.js'
       - 'scripts/check-ux6-account-presentation.mjs'
       - '.github/workflows/ux6-account-presentation.yml'
@@ -23,6 +25,7 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check admin/account-administration.js
+          node --check admin/admin-shell-runtime.js
           node --check admin/erp.js
           node --check scripts/check-ux6-account-presentation.mjs
       - name: Preserve access-control boundary
