@@ -1,4 +1,4 @@
-name: UX6B Visual Foundation
+name: UX7 Shell Visual Owner
 
 on:
   pull_request:
@@ -10,6 +10,7 @@ on:
       - 'admin/erp.js'
       - 'admin/platform-theme.css'
       - 'admin/navigation-shell.css'
+      - 'admin/navigation-shell.js'
       - 'admin/dashboard-executive.css'
       - 'admin/dashboard-operational-state.js'
       - 'scripts/check-ux6b-visual-foundation.mjs'
@@ -28,7 +29,7 @@ jobs:
           node-version: '24'
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Validate UX-6B visual foundation
+      - name: Validate the UX-7 shell visual owner
         run: node scripts/check-ux6b-visual-foundation.mjs
       - name: Preserve shell and dashboard owners
         run: |
@@ -45,6 +46,7 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check admin/erp.js
+          node --check admin/navigation-shell.js
           node --check admin/dashboard-operational-state.js
           node --check sw.js
           node --check scripts/check-ux6b-visual-foundation.mjs

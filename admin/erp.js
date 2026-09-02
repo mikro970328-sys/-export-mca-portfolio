@@ -233,7 +233,7 @@
       authenticatedShellReady = true;
 
       if (accessCan('dashboard.read')) {
-        await loadStylesheet('/admin/dashboard-executive.css?v=20260902-ux6b1', 'data-dashboard-executive-style');
+        await loadStylesheet('/admin/dashboard-executive.css?v=20260902-ux7shell1', 'data-dashboard-executive-style');
         await loadScript('/admin/dashboard-operational-state.js?v=20260902-ux6b1', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
@@ -249,7 +249,7 @@
       await iconSystemPromise;
       await loadStylesheet('/admin/account-administration.css?v=20260901-ux6style1', 'data-account-administration-style');
       await loadScript('/admin/account-administration.js?v=20260902-ux6b1', 'data-account-administration');
-      await loadScript('/admin/navigation-shell.js?v=20260830-p3', 'data-navigation-shell');
+      await loadScript('/admin/navigation-shell.js?v=20260902-ux7shell1', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {
         await loadStylesheet('/admin/tasks-workspace.css?v=20260902-ux6tasks1', 'data-tasks-workspace-style');

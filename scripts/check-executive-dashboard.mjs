@@ -60,7 +60,7 @@ assert(ui.includes('renderLoading()'), 'P11: dashboard debe tener estado loading
 assert(ui.includes('renderError()'), 'P11: dashboard debe tener error recuperable explícito');
 assert(ui.includes('dashboardRetry'), 'P11: dashboard debe ofrecer reintento sin bloquear el ERP');
 assert(css.includes('.executive-finance-grid'), 'P11: stylesheet del dashboard incompleto');
-assert(erp.includes("loadStylesheet('/admin/dashboard-executive.css?v=20260902-ux6b1'"), 'P11: bootstrap no carga stylesheet dashboard');
+assert(erp.includes("loadStylesheet('/admin/dashboard-executive.css?v=20260902-ux7shell1'"), 'P11: bootstrap no carga stylesheet dashboard');
 assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260902-ux6b1'"), 'P11: bootstrap no carga owner P11');
 assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260830-hotfix2'"), 'P11: bootstrap no carga owner de datos resiliente');
 assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');

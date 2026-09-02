@@ -113,7 +113,7 @@
         const section = document.createElement('section');
         section.id = config.id;
         section.className = 'app-section hidden';
-        section.innerHTML = `<iframe src="${config.src}" title="${config.label}" style="width:100%;height:calc(100vh - 120px);min-height:760px;border:0;border-radius:14px;background:#f4f7fb"></iframe>`;
+        section.innerHTML = `<iframe class="embedded-workspace-frame" src="${config.src}" title="${config.label}"></iframe>`;
         main.appendChild(section);
       }
     }
