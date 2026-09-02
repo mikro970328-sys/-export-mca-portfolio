@@ -203,8 +203,8 @@
       if (accessCan('notifications.manage')) {
         alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260830-p9', 'data-alert-phase2-stability'));
       }
-      const inboxChain = loadStylesheet('/admin/notification-inbox.css?v=20260830-p10', 'data-notification-inbox-style')
-        .then(() => loadScript('/admin/notification-inbox.js?v=20260830-hotfix1', 'data-notification-inbox'));
+      const inboxChain = loadStylesheet('/admin/notification-inbox.css?v=20260902-ux6inbox1', 'data-notification-inbox-style')
+        .then(() => loadScript('/admin/notification-inbox.js?v=20260902-ux6inbox1', 'data-notification-inbox'));
       tasks.push(Promise.all([alertChain,inboxChain]));
     }
 
