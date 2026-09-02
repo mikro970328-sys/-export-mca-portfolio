@@ -51,6 +51,10 @@ if(requiredFiles.every(file=>fs.existsSync(path.join(root,file)))){
   for(const forbidden of ['openExpediente','Tracking / Expediente','Expediente ·']){
     if(bridge.includes(forbidden))failures.push(`operational-context-bridge.js: referencia activa prohibida ${forbidden}`);
   }
+  if(/function initLoads\s*\(/.test(bridge))failures.push('operational-context-bridge.js: conserva un segundo owner de Cargues');
+  if(bridge.includes('/admin/loads.html'))failures.push('operational-context-bridge.js: todavía se activa dentro de Cargues');
+  if(!nav.includes("callEmbedded('loadsSection','LoadsModule.openLoad'"))failures.push('operational-navigation.js: Cargues no delega al owner canónico LoadsModule');
+  if(/CONTEXT_SECTIONS[^;]*loadsSection/.test(nav))failures.push('operational-navigation.js: Cargues sigue incluido en el bridge compartido');
 
   for(const required of ['Abrir trabajo','OperationalNavigation','openWork','stopImmediatePropagation','tasksModalActions']){
     if(!taskNav.includes(required))failures.push(`tasks-navigation.js: falta ${required}`);

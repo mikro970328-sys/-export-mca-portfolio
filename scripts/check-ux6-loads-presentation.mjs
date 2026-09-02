@@ -12,8 +12,8 @@ const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.
 const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
 for(const text of [
-  '/admin/loads.css?v=20260902-ux6owner1',
-  '/admin/loads.js?v=20260902-ux6owner1',
+  '/admin/loads.css?v=20260902-ux7loads1',
+  '/admin/loads.js?v=20260902-ux7loads1',
   'id="pageMsg"',
   'role="status"',
   'aria-live="polite"',
@@ -32,12 +32,13 @@ for(const text of [
   '.load-feedback.bad',
   '.load-action-feedback.bad',
   ':focus-visible',
-  '@media(max-width:700px)'
+  '@media(max-width:840px)',
+  '@media(max-width:620px)'
 ])requireText(css,text,`CSS ${text}`);
 
 for(const text of [
   'SAFE_LOAD_ERROR_PATTERNS',
-  "function safeLoadMessage(error,fallback='No se pudo completar la operación. Intenta nuevamente.')",
+  "function safeLoadMessage(error,fallback='No se pudo completar la operación. Intenta nuevamente.',context='operation')",
   'function reportLoadError(context,error,fallback)',
   'function setFeedback(id,message=',
   "console.error('LOADS_UI_FAILED'",
@@ -45,18 +46,18 @@ for(const text of [
   "reportLoadError('save_plan',error)",
   "reportLoadError('create_container',error)",
   "reportLoadError('assign_container',error)",
-  "showPageError('bootstrap',error)",
+  '.catch(showLoadFailure)',
   "const statusLabel=value=>labels[value]||'Estado no disponible'",
-  "can(l,'reserve')",
-  "can(l,'release')",
-  "can(l,'start_loading')",
-  "can(l,'mark_loaded')",
-  "can(l,'dispatch')",
-  "can(l,'edit')",
-  "can(l,'cancel')",
-  "can(l,'assign_container')",
-  "can(l,'unassign_container')",
-  "can(l,'view_tracking')"
+  "can(load,'reserve')",
+  "can(load,'release')",
+  "can(load,'start_loading')",
+  "can(load,'mark_loaded')",
+  "can(load,'dispatch')",
+  "can(load,'edit')",
+  "can(load,'cancel')",
+  "can(load,'assign_container')",
+  "can(load,'unassign_container')",
+  "can(load,'view_tracking')"
 ])requireText(ui,text,`owner de Cargues ${text}`);
 forbid(ui,/\b(?:prompt|alert|confirm)\s*\(/,'Cargues no puede usar diálogos nativos');
 forbid(ui,/(?:textContent|innerHTML)\s*=\s*(?:esc\s*\(\s*)?(?:error|e)(?:\?\.)?\.message/,'Cargues no puede mostrar error.message crudo');
@@ -82,9 +83,9 @@ forbid(api,/return fail\(res,400,translatedError\(raw\)\)/,'Loads API no puede c
 for(const text of [
   'DB canonical owner',
   'Loads UI',
-  'src="/admin/loads.js?v=20260902-ux6owner1"',
-  "can(l,'dispatch')",
-  "can(l,'view_tracking')"
+  'src="/admin/loads.js?v=20260902-ux7loads1"',
+  "can(load,'dispatch')",
+  "can(load,'view_tracking')"
 ])requireText(canonicalGate,text,`gate UX-5 preservado ${text}`);
 
 for(const text of [

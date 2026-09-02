@@ -1,20 +1,165 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cargues · Export MCA</title>
-<link rel="stylesheet" href="/admin/loads.css?v=20260902-ux6owner1">
-<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cargues · Export MCA</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <link rel="stylesheet" href="/admin/loads.css?v=20260902-ux7loads1">
 </head>
-<body class="erp-module-page erp-module-loads">
-<div class="wrap">
-  <div class="head module-hero"><div class="module-heading"><div class="module-kicker">Logística de salida</div><h1>Cargues</h1><p>Reserva y salida de mercancía con trazabilidad exacta por Warehouse Receipt.</p></div><button class="btn primary" id="newLoad">＋ Nuevo cargue</button></div>
-  <div class="metrics" id="metrics"></div><div id="pageMsg" class="load-feedback" role="status" aria-live="polite"></div>
-  <div class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar CG, contenedor o almacén"><select id="statusFilter" class="filter"><option value="">Todos los estados</option><option value="draft">Borrador</option><option value="reserved">Reservado</option><option value="loading">En carga</option><option value="loaded">Cargado</option><option value="dispatched">Despachado</option><option value="cancelled">Cancelado</option></select><button class="btn" id="refresh">↻ Actualizar</button></div><div class="table-wrap"><table><thead><tr><th>Cargue</th><th>Estado</th><th>Almacén</th><th>Contenedor</th><th>Programado</th><th>Actualizado</th></tr></thead><tbody id="loadRows"></tbody></table></div><div id="empty" class="empty hidden">No hay cargues para mostrar.</div></div>
-</div>
-<div class="modal hidden" id="drawerModal"><div class="drawer"><div class="drawer-head"><div><h2 id="drawerTitle">Cargue</h2><div class="muted" id="drawerSub"></div></div><button class="btn" data-close>✕</button></div><div class="drawer-body" id="drawerBody"></div></div></div>
-<div class="modal hidden" id="planModal"><div class="drawer"><div class="drawer-head"><div><h2 id="planTitle">Nuevo cargue</h2><div class="muted">Selecciona cantidades de uno o varios WR.</div></div><button class="btn" data-close>✕</button></div><div class="drawer-body"><div class="form-grid"><div><label>Almacén</label><select id="planWarehouse"></select></div><div><label>Programado</label><input id="planScheduled" type="datetime-local"></div></div><div class="load-form-notes"><span class="label">Notas</span><textarea id="planNotes" class="full" rows="2" placeholder="Opcional"></textarea></div><div id="sourceGroups"></div><div class="actions load-form-actions"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="savePlan">Guardar cargue</button></div><div id="planMsg" class="load-feedback" role="status" aria-live="polite"></div></div></div></div>
-<div class="modal hidden" id="containerModal"><div class="drawer"><div class="drawer-head"><div><h2>Asignar contenedor</h2><div class="muted" id="containerLoadLabel"></div></div><button class="btn" data-close>✕</button></div><div class="drawer-body"><div class="section"><div class="section-title">Crear contenedor</div><div class="section-body"><div class="form-grid"><div><label>Número o referencia</label><input id="containerNumber" placeholder="ABCD1234567"></div><div><label>Naviera</label><input id="containerCarrier"></div><div><label>Booking</label><input id="containerBooking"></div><div><label>B/L</label><input id="containerBol"></div><div><label>Cliente</label><select id="containerClient"></select></div><div><label>Importadora</label><select id="containerImporter"></select></div></div><div class="actions load-section-actions"><button class="btn primary" id="createContainer">Crear y vincular</button></div></div></div><div class="section"><div class="section-title">O usar contenedor existente</div><div class="section-body"><select id="existingContainer" class="full"></select><div class="actions load-section-actions"><button class="btn" id="assignExisting">Vincular seleccionado</button></div></div></div><div id="containerMsg" class="load-feedback" role="status" aria-live="polite"></div></div></div></div>
-<div class="modal hidden decision-modal" id="decisionModal"><div class="decision-card" role="dialog" aria-modal="true" aria-labelledby="decisionTitle" aria-describedby="decisionText"><h2 id="decisionTitle">Confirmar acción</h2><p id="decisionText"></p><div class="decision-actions"><button class="btn" id="decisionReject">Volver</button><button class="btn danger" id="decisionAccept">Confirmar</button></div></div></div>
-<script type="module" src="/admin/loads.js?v=20260902-ux6owner1"></script>
-</body></html>
+<body class="erp-module-page erp-module-loads" data-owner="loads.js">
+  <main class="wrap loads-shell">
+    <header class="module-hero loads-page-head" aria-labelledby="loadsPageTitle">
+      <div class="module-heading loads-page-heading">
+        <div class="module-kicker loads-page-kicker">Operaciones · Logística de salida</div>
+        <h1 id="loadsPageTitle">Cargues</h1>
+        <p>Planifica la mercancía desde sus WR, controla la reserva física y acompaña cada salida hasta su contenedor.</p>
+      </div>
+      <div class="loads-hero-actions">
+        <div class="loads-hero-state" aria-label="Estado del módulo">
+          <span class="loads-hero-state-dot" aria-hidden="true"></span>
+          <div><strong id="loadModuleMode">Control operativo</strong><span id="loadLastUpdated">Consultando cargues…</span></div>
+        </div>
+        <button class="primary loads-primary-action" id="newLoad" type="button">Nuevo cargue</button>
+      </div>
+    </header>
+
+    <div id="pageMsg" class="load-feedback" role="status" aria-live="polite"></div>
+
+    <section id="metrics" class="metrics loads-metrics" aria-label="Resumen de cargues" aria-live="polite">
+      <article class="metric"><span>Total</span><b>—</b><small>Operaciones registradas</small></article>
+      <article class="metric"><span>Borrador</span><b>—</b><small>Planes en preparación</small></article>
+      <article class="metric"><span>Reservados</span><b>—</b><small>Inventario comprometido</small></article>
+      <article class="metric"><span>En carga</span><b>—</b><small>Preparación física</small></article>
+      <article class="metric"><span>Cargados</span><b>—</b><small>Listos para salida</small></article>
+      <article class="metric"><span>Despachados</span><b>—</b><small>Salida confirmada</small></article>
+    </section>
+
+    <section class="panel loads-filter-panel" aria-labelledby="loadsFiltersTitle">
+      <header class="loads-panel-head compact">
+        <div>
+          <span class="loads-eyebrow">Consulta</span>
+          <h2 id="loadsFiltersTitle">Buscar y filtrar</h2>
+        </div>
+        <div class="loads-filter-actions">
+          <button class="alt" id="clearFilters" type="button">Limpiar filtros</button>
+          <button class="alt" id="refresh" type="button">Actualizar</button>
+        </div>
+      </header>
+      <div class="loads-filter-grid">
+        <label class="loads-field" for="search">
+          <span>Buscar</span>
+          <input id="search" type="search" autocomplete="off" placeholder="Cargue, contenedor o almacén">
+        </label>
+        <label class="loads-field" for="statusFilter">
+          <span>Estado</span>
+          <select id="statusFilter">
+            <option value="">Todos los estados</option>
+            <option value="draft">Borrador</option>
+            <option value="reserved">Reservado</option>
+            <option value="loading">En carga</option>
+            <option value="loaded">Cargado</option>
+            <option value="dispatched">Despachado</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section class="panel loads-list-panel" aria-labelledby="loadsListTitle">
+      <header class="loads-panel-head">
+        <div>
+          <span class="loads-eyebrow">Flujo de salida</span>
+          <h2 id="loadsListTitle">Operaciones de cargue</h2>
+          <p id="loadListContext">Abre un cargue para revisar mercancía, WR, acciones habilitadas y contenedor.</p>
+        </div>
+        <span id="loadCount" class="loads-result-count">Consultando…</span>
+      </header>
+      <div class="loads-table-wrap loads-desktop-list">
+        <table>
+          <thead><tr><th>Cargue</th><th>Estado</th><th>Almacén</th><th>Contenedor</th><th>Programado</th><th>Actualizado</th><th><span class="sr-only">Abrir</span></th></tr></thead>
+          <tbody id="loadRows"></tbody>
+        </table>
+      </div>
+      <div id="loadCards" class="loads-mobile-list" aria-live="polite"></div>
+      <div id="empty" class="loads-empty hidden" role="status" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <div class="modal loads-drawer-modal hidden" id="drawerModal" aria-hidden="true">
+    <section class="drawer loads-drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+      <header class="drawer-head loads-drawer-head">
+        <div><span class="loads-dialog-kicker">Detalle operativo</span><h2 id="drawerTitle">Cargue</h2><div class="muted" id="drawerSub"></div></div>
+        <button class="alt icon-btn" type="button" data-close aria-label="Cerrar detalle">✕</button>
+      </header>
+      <div class="drawer-body" id="drawerBody"></div>
+    </section>
+  </div>
+
+  <div class="modal loads-drawer-modal hidden" id="planModal" aria-hidden="true">
+    <section class="drawer loads-drawer" role="dialog" aria-modal="true" aria-labelledby="planTitle">
+      <header class="drawer-head loads-drawer-head">
+        <div><span class="loads-dialog-kicker">Planificación física</span><h2 id="planTitle">Nuevo cargue</h2><div class="muted">Selecciona cantidades de uno o varios WR del mismo almacén.</div></div>
+        <button class="alt icon-btn" type="button" data-close aria-label="Cerrar planificación">✕</button>
+      </header>
+      <div class="drawer-body">
+        <section class="loads-form-section">
+          <div class="form-grid loads-form-grid">
+            <label class="loads-field" for="planWarehouse"><span>Almacén</span><select id="planWarehouse"></select></label>
+            <label class="loads-field" for="planScheduled"><span>Programado</span><input id="planScheduled" type="datetime-local"></label>
+          </div>
+          <label class="loads-field load-form-notes" for="planNotes"><span>Notas</span><textarea id="planNotes" rows="3" placeholder="Información operativa opcional"></textarea></label>
+        </section>
+        <section class="loads-source-section" aria-labelledby="loadsSourceTitle">
+          <header class="loads-inline-head"><div><span class="loads-eyebrow">Origen físico</span><h3 id="loadsSourceTitle">Mercancía disponible por WR</h3></div></header>
+          <div id="sourceGroups"></div>
+        </section>
+        <div class="actions load-form-actions"><button class="alt" type="button" data-close>Cancelar</button><button class="primary" id="savePlan" type="button">Guardar cargue</button></div>
+        <div id="planMsg" class="load-feedback" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal loads-drawer-modal hidden" id="containerModal" aria-hidden="true">
+    <section class="drawer loads-drawer" role="dialog" aria-modal="true" aria-labelledby="containerTitle">
+      <header class="drawer-head loads-drawer-head">
+        <div><span class="loads-dialog-kicker">Continuidad logística</span><h2 id="containerTitle">Asignar contenedor</h2><div class="muted" id="containerLoadLabel"></div></div>
+        <button class="alt icon-btn" type="button" data-close aria-label="Cerrar asignación">✕</button>
+      </header>
+      <div class="drawer-body">
+        <section class="loads-form-section">
+          <header class="loads-inline-head"><div><span class="loads-eyebrow">Nueva operación</span><h3>Crear contenedor</h3><p>Registra la referencia y los datos disponibles; Tracking continuará el flujo.</p></div></header>
+          <div class="form-grid loads-form-grid">
+            <label class="loads-field" for="containerNumber"><span>Número o referencia</span><input id="containerNumber" placeholder="ABCD1234567"></label>
+            <label class="loads-field" for="containerCarrier"><span>Naviera</span><input id="containerCarrier"></label>
+            <label class="loads-field" for="containerBooking"><span>Booking</span><input id="containerBooking"></label>
+            <label class="loads-field" for="containerBol"><span>B/L</span><input id="containerBol"></label>
+            <label class="loads-field" for="containerClient"><span>Cliente</span><select id="containerClient"></select></label>
+            <label class="loads-field" for="containerImporter"><span>Importadora</span><select id="containerImporter"></select></label>
+          </div>
+          <div class="actions load-section-actions"><button class="primary" id="createContainer" type="button">Crear y vincular</button></div>
+        </section>
+        <section class="loads-form-section loads-existing-container">
+          <header class="loads-inline-head"><div><span class="loads-eyebrow">Operación existente</span><h3>Vincular contenedor</h3><p>Usa un contenedor activo que todavía sea elegible para este cargue.</p></div></header>
+          <label class="loads-field" for="existingContainer"><span>Contenedor disponible</span><select id="existingContainer"></select></label>
+          <div class="actions load-section-actions"><button class="alt" id="assignExisting" type="button">Vincular seleccionado</button></div>
+        </section>
+        <div id="containerMsg" class="load-feedback" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal decision-modal hidden" id="decisionModal" aria-hidden="true">
+    <section class="decision-card" role="alertdialog" aria-modal="true" aria-labelledby="decisionTitle" aria-describedby="decisionText">
+      <span class="loads-dialog-kicker">Confirmación operativa</span>
+      <h2 id="decisionTitle">Confirmar acción</h2>
+      <p id="decisionText"></p>
+      <div class="decision-actions"><button class="alt" id="decisionReject" type="button">Volver</button><button class="danger" id="decisionAccept" type="button">Confirmar</button></div>
+    </section>
+  </div>
+
+  <script src="/admin/loads.js?v=20260902-ux7loads1" defer></script>
+  <script src="/admin/embedded-auto-refresh.js?v=20260902-ux7loads1" defer></script>
+</body>
+</html>

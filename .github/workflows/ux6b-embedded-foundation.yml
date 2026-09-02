@@ -13,6 +13,8 @@ on:
       - 'admin/operational-navigation.js'
       - 'admin/operational-context-bridge.js'
       - 'admin/loads.html'
+      - 'admin/loads.css'
+      - 'admin/loads.js'
       - 'admin/publications.html'
       - 'admin/publications.css'
       - 'admin/publications.js'
@@ -22,6 +24,7 @@ on:
       - 'scripts/check-ux6b-embedded-foundation.mjs'
       - 'scripts/check-ux7-publications-visual-owner.mjs'
       - 'scripts/check-ux7-inventory-visual-owner.mjs'
+      - 'scripts/check-ux7-loads-visual-owner.mjs'
       - 'scripts/check-contextual-sync.mjs'
       - '.github/workflows/ux6b-embedded-foundation.yml'
   workflow_dispatch:
@@ -41,6 +44,7 @@ jobs:
           node scripts/check-ux6b-embedded-foundation.mjs
           node scripts/check-ux7-publications-visual-owner.mjs
           node scripts/check-ux7-inventory-visual-owner.mjs
+          node scripts/check-ux7-loads-visual-owner.mjs
       - name: Preserve operational owners
         run: |
           node scripts/check-ux6-sales-explicit-owner.mjs
@@ -64,6 +68,8 @@ jobs:
           node --check scripts/check-ux6b-embedded-foundation.mjs
           node --check scripts/check-ux7-publications-visual-owner.mjs
           node --check scripts/check-ux7-inventory-visual-owner.mjs
+          node --check scripts/check-ux7-loads-visual-owner.mjs
+          node --check admin/loads.js
           node --check admin/inventory.js
           node --check admin/operational-navigation.js
           node --check admin/operational-context-bridge.js

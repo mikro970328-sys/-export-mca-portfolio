@@ -60,7 +60,7 @@ forbidText(api,'expediente_documents','Loads API');
 
 requireText(ui,'const capability=(load,key)','Loads UI');
 requireText(ui,'const can=(load,key)','Loads UI');
-for(const token of ["can(l,'reserve')","can(l,'release')","can(l,'start_loading')","can(l,'mark_loaded')","can(l,'dispatch')","can(l,'edit')","can(l,'cancel')","can(l,'assign_container')","can(l,'unassign_container')","can(l,'view_tracking')","$('newLoad').hidden=state.write_access!==true"]){requireText(ui,token,'Loads UI');}
+for(const token of ["can(load,'reserve')","can(load,'release')","can(load,'start_loading')","can(load,'mark_loaded')","can(load,'dispatch')","can(load,'edit')","can(load,'cancel')","can(load,'assign_container')","can(load,'unassign_container')","can(load,'view_tracking')","$('newLoad').hidden=state.write_access!==true"]){requireText(ui,token,'Loads UI');}
 forbidText(ui,"if(l.status==='draft')",'Loads UI');
 forbidText(ui,"if(l.status==='reserved')",'Loads UI');
 forbidText(ui,"if(l.status==='loading')",'Loads UI');
@@ -70,7 +70,7 @@ forbidText(ui,'expediente','Loads UI');
 if(/\b(?:prompt|alert|confirm)\s*\(/.test(ui))errors.push('Loads UI: no debe usar diálogos nativos en el flujo modernizado');
 requireText(html,'id="decisionModal"','Loads decision UI');
 requireText(html,'id="decisionAccept"','Loads decision UI');
-requireText(html,'src="/admin/loads.js?v=20260902-ux6owner1"','Loads external UI owner');
+requireText(html,'src="/admin/loads.js?v=20260902-ux7loads1"','Loads external UI owner');
 forbidText(html,'openExpediente','Loads HTML');
 
 for(const token of [
