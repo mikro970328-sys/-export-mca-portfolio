@@ -1,0 +1,313 @@
+.native-workspace-shell{
+  display:grid;
+  gap:18px;
+  width:100%;
+  max-width:var(--content-max,1480px);
+  margin:0 auto;
+}
+
+.native-workspace-shell .native-workspace-hero{
+  position:relative;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:24px;
+  overflow:hidden;
+  margin:0;
+  padding:24px 26px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-lg,16px);
+  background:var(--surface,#fff);
+  background-image:none;
+  color:var(--text);
+  box-shadow:var(--shadow-xs,0 1px 2px rgba(16,35,63,.04));
+}
+
+.native-workspace-shell .native-workspace-hero::before{
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:4px;
+  background:var(--orange);
+}
+
+.native-workspace-shell .native-workspace-hero::after{content:none}
+
+.native-workspace-heading{
+  position:relative;
+  z-index:1;
+  min-width:0;
+  max-width:880px;
+}
+
+.native-workspace-kicker{
+  display:block;
+  margin:0 0 4px;
+  color:var(--orange-strong);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.native-workspace-shell .native-workspace-hero h1,
+.native-workspace-shell .native-workspace-hero h2{
+  margin:0;
+  color:var(--navy-strong);
+  font-size:clamp(26px,3vw,34px);
+  font-weight:780;
+  letter-spacing:-.035em;
+  line-height:1.12;
+}
+
+.native-workspace-shell .native-workspace-hero p{
+  max-width:820px;
+  margin:7px 0 0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.55;
+}
+
+.native-workspace-actions{
+  position:relative;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:9px;
+  flex-wrap:wrap;
+}
+
+.native-workspace-summary{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(116px,1fr));
+  gap:10px;
+  min-width:260px;
+}
+
+.native-workspace-shell .native-workspace-summary-card{
+  padding:13px 15px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-md,12px);
+  background:var(--surface-soft,#f8fafc);
+  backdrop-filter:none;
+}
+
+.native-workspace-shell .native-workspace-summary-card strong{
+  display:block;
+  color:var(--navy-strong);
+  font-size:24px;
+  line-height:1;
+}
+
+.native-workspace-shell .native-workspace-summary-card span{
+  display:block;
+  margin-top:7px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:700;
+}
+
+.native-workspace-grid{
+  display:grid;
+  grid-template-columns:minmax(300px,.72fr) minmax(0,1.28fr);
+  gap:18px;
+  align-items:start;
+}
+
+.native-workspace-shell .native-workspace-panel,
+.native-workspace-shell .access-panel,
+.native-workspace-shell .account-card,
+.native-workspace-shell .tasks-summary,
+.native-workspace-shell .tasks-toolbar,
+.native-workspace-shell .tasks-table-wrap{
+  border-color:var(--line);
+  border-radius:var(--radius-lg,16px);
+  background:var(--surface,#fff);
+  box-shadow:var(--shadow-xs,0 1px 2px rgba(16,35,63,.04));
+}
+
+.native-workspace-shell .native-workspace-panel{margin:0}
+
+.native-workspace-shell .native-workspace-panel > .toolbar h2,
+.native-workspace-shell .native-workspace-panel > .toolbar h3{margin:0}
+
+.native-workspace-panel-head{
+  margin-bottom:18px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--line);
+}
+
+.native-workspace-panel-head h2,
+.native-workspace-panel-head h3{margin:0}
+
+.native-workspace-panel-head p{
+  margin:5px 0 0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+}
+
+.native-workspace-form-actions{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:18px;
+}
+
+.native-workspace-field-help{
+  margin-top:5px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.45;
+}
+
+.native-workspace-tabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+
+.native-workspace-shell .access-header,
+.native-workspace-shell .tasks-head{align-items:flex-end}
+
+.native-workspace-shell .access-tabs{
+  gap:8px;
+  padding:0;
+  border:0;
+}
+
+.native-workspace-shell .access-tab,
+.native-workspace-shell .notification-view-tabs button{
+  min-height:38px;
+  border-radius:10px;
+}
+
+.native-workspace-shell .access-panel{padding:20px}
+
+.native-workspace-shell .account-layout{gap:18px}
+
+.native-workspace-shell .account-card{margin:0}
+
+.native-workspace-shell .tasks-summary{overflow:hidden}
+
+.native-workspace-shell .tasks-toolbar{padding:12px}
+
+.native-workspace-shell .tasks-table-wrap{overflow:auto}
+
+.native-workspace-shell .alert-summary-grid{margin:0}
+
+.native-workspace-shell .alert-summary,
+.native-workspace-shell .operational-alert-card{
+  border-radius:var(--radius-md,12px);
+  box-shadow:var(--shadow-xs,0 1px 2px rgba(16,35,63,.04));
+}
+
+.native-workspace-shell .alert-center-feedback{margin:8px 0 0}
+
+.native-workspace-shell .registration-card{margin:0}
+
+#registerContainerSection .registration-shell{display:grid;gap:18px}
+
+#registerContainerSection .registration-intro{
+  display:flex;
+  justify-content:space-between;
+  gap:18px;
+  align-items:flex-start;
+  padding:16px 18px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-md,12px);
+  background:var(--surface-soft,#f8fafc);
+}
+
+#registerContainerSection .registration-intro h3{margin:0 0 5px;color:var(--navy);font-size:16px}
+#registerContainerSection .registration-intro p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+
+#registerContainerSection .registration-required{
+  white-space:nowrap;
+  padding:7px 10px;
+  border-radius:999px;
+  background:var(--orange-soft,#fff1e8);
+  color:var(--orange-strong,#dc5f08);
+  font-size:11px;
+  font-weight:800;
+}
+
+#registerContainerSection .registration-block{
+  padding:16px 18px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-md,12px);
+  background:var(--surface,#fff);
+}
+
+#registerContainerSection .registration-block-head{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+
+#registerContainerSection .registration-step{
+  display:grid;
+  place-items:center;
+  flex:none;
+  width:30px;
+  height:30px;
+  border-radius:9px;
+  background:var(--orange-soft,#fff1e8);
+  color:var(--orange-strong,#dc5f08);
+  font-size:12px;
+  font-weight:900;
+}
+
+#registerContainerSection .registration-block h3{margin:0;color:var(--navy);font-size:15px}
+#registerContainerSection .registration-block p{margin:3px 0 0;color:var(--muted);font-size:11px}
+#registerContainerSection .registration-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 18px}
+#registerContainerSection .registration-field-full{grid-column:1/-1}
+#registerContainerSection .registration-actions{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:2px}
+#registerContainerSection .registration-readiness{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+#registerContainerSection .registration-readiness-dot{width:9px;height:9px;border-radius:50%;background:#b8c2cf}
+#registerContainerSection .registration-readiness.ready{color:var(--ok);font-weight:700}
+#registerContainerSection .registration-readiness.ready .registration-readiness-dot{background:var(--ok)}
+#registerContainerSection .registration-container-help{margin-top:5px;color:var(--muted);font-size:11px;line-height:1.4}
+#registerContainerSection .registration-container-help.valid{color:var(--ok);font-weight:700}
+#registerContainerSection .registration-container-help.invalid{color:var(--bad);font-weight:700}
+#registerContainerSection #saveShipment{min-width:180px;padding:12px 18px}
+
+@media(max-width:1050px){
+  .native-workspace-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:760px){
+  .native-workspace-shell{gap:14px}
+  .native-workspace-shell .native-workspace-hero{align-items:stretch;flex-direction:column;padding:21px 20px}
+  .native-workspace-actions{justify-content:flex-start}
+  .native-workspace-summary{min-width:0}
+  .native-workspace-shell .access-header,
+  .native-workspace-shell .tasks-head{align-items:stretch}
+  .native-workspace-form-actions{display:grid;grid-template-columns:1fr}
+  .native-workspace-form-actions button{width:100%}
+  #registerContainerSection .registration-intro{display:grid}
+  #registerContainerSection .registration-required{justify-self:start;white-space:normal}
+  #registerContainerSection .registration-fields{grid-template-columns:1fr}
+  #registerContainerSection .registration-field-full{grid-column:auto}
+  #registerContainerSection .registration-actions{display:grid;grid-template-columns:1fr}
+  #registerContainerSection #saveShipment{width:100%}
+}
+
+@media(max-width:520px){
+  .native-workspace-shell .native-workspace-hero{padding:19px 17px}
+  .native-workspace-shell .native-workspace-hero h1,
+  .native-workspace-shell .native-workspace-hero h2{font-size:24px}
+  .native-workspace-summary{grid-template-columns:1fr 1fr}
+  .native-workspace-shell .native-workspace-summary-card{padding:11px 12px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .native-workspace-shell *,
+  .native-workspace-shell *::before,
+  .native-workspace-shell *::after{
+    scroll-behavior:auto;
+    transition-duration:.01ms;
+    animation-duration:.01ms;
+    animation-iteration-count:1;
+  }
+}

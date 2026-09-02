@@ -1,0 +1,67 @@
+name: UX6B Native Workspace Foundation
+
+on:
+  pull_request:
+    paths:
+      - 'admin/native-workspace-foundation.css'
+      - 'admin/index.html'
+      - 'admin/erp.js'
+      - 'admin/clients-module.js'
+      - 'admin/registration-form-shell.js'
+      - 'admin/operational-alert-center.js'
+      - 'admin/access-control-administration.js'
+      - 'admin/account-administration.js'
+      - 'admin/tasks-workspace.js'
+      - 'scripts/check-ux6b-native-workspace-foundation.mjs'
+      - 'scripts/check-ux6-clients-owner.mjs'
+      - 'scripts/check-ux6-alert-center-style-owner.mjs'
+      - 'scripts/check-ux6-account-presentation.mjs'
+      - 'scripts/check-ux6-shell-ownership.mjs'
+      - 'scripts/check-access-control.mjs'
+      - 'scripts/check-task-engine.mjs'
+      - 'scripts/check-workflow-handoffs.mjs'
+      - '.github/workflows/ux6b-native-workspace-foundation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-native-workspace-foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate native visual coverage
+        run: node scripts/check-ux6b-native-workspace-foundation.mjs
+      - name: Preserve native owners
+        run: |
+          node scripts/check-ux6-clients-owner.mjs
+          node scripts/check-ux6-containers-presentation.mjs
+          node scripts/check-ux6-workers-presentation.mjs
+          node scripts/check-ux6-alert-center-style-owner.mjs
+          node scripts/check-ux6-alert-center-presentation.mjs
+          node scripts/check-ux6-account-presentation.mjs
+          node scripts/check-task-engine.mjs
+          node scripts/check-access-control.mjs
+          node scripts/check-ux6-shell-ownership.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/check-admin-shell-resilience.mjs
+      - name: Preserve business and security boundaries
+        run: |
+          node scripts/check-ux5-shipment-actions.mjs
+          node scripts/check-cuba-documentation.mjs
+          node scripts/check-integrations.mjs
+          node scripts/audit-b9-api-boundaries.mjs
+          node scripts/check-b9-public-boundaries.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/clients-module.js
+          node --check admin/registration-form-shell.js
+          node --check admin/operational-alert-center.js
+          node --check admin/access-control-administration.js
+          node --check admin/account-administration.js
+          node --check admin/tasks-workspace.js
+          node --check admin/erp.js
+          node --check scripts/check-ux6b-native-workspace-foundation.mjs

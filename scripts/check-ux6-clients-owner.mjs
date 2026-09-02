@@ -31,7 +31,7 @@ requireText(css,'@media(max-width:700px)','responsive móvil');
 requireText(css,':focus-visible','foco accesible');
 
 const styleLoad="loadStylesheet('/admin/clients-module.css?v=20260901-ux6owner1', 'data-clients-module-style')";
-const scriptLoad="loadScript('/admin/clients-module.js?v=20260901-ux6owner1', 'data-clients-module')";
+const scriptLoad="loadScript('/admin/clients-module.js?v=20260902-ux6b1', 'data-clients-module')";
 requireText(erp,styleLoad,'carga stylesheet de Clientes');
 requireText(erp,scriptLoad,'carga JavaScript de Clientes');
 const styleIndex=erp.indexOf(styleLoad),scriptIndex=erp.indexOf(scriptLoad);

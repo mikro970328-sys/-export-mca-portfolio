@@ -138,7 +138,9 @@
       resolve();
     };
     link.onerror = () => reject(new Error(`No se pudo cargar ${href}`));
-    document.head.appendChild(link);
+    const nativeFoundation = document.querySelector('link[data-native-workspace-foundation]');
+    if (nativeFoundation?.parentElement) nativeFoundation.parentElement.insertBefore(link, nativeFoundation);
+    else document.head.appendChild(link);
   });
 
   const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260830-p3', 'data-access-control-style');
@@ -183,7 +185,7 @@
     if (accessCan('clients.read')) {
       tasks.push(
         loadStylesheet('/admin/clients-module.css?v=20260901-ux6owner1', 'data-clients-module-style')
-          .then(() => loadScript('/admin/clients-module.js?v=20260901-ux6owner1', 'data-clients-module'))
+          .then(() => loadScript('/admin/clients-module.js?v=20260902-ux6b1', 'data-clients-module'))
       );
     }
     if (accessCan('administration.workers.read')) {
@@ -197,7 +199,7 @@
     }
     if (accessCan('notifications.read')) {
       let alertChain = loadStylesheet('/admin/operational-alert-center.css?v=20260901-ux6style1', 'data-operational-alert-center-style')
-        .then(() => loadScript('/admin/operational-alert-center.js?v=20260901-ux6style1', 'data-operational-alert-center'));
+        .then(() => loadScript('/admin/operational-alert-center.js?v=20260902-ux6b1', 'data-operational-alert-center'));
       if (accessCan('notifications.manage')) {
         alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260830-p9', 'data-alert-phase2-stability'));
       }
@@ -221,7 +223,7 @@
 
     bootPromise = (async () => {
       await accessStylesPromise;
-      await loadScript('/admin/access-control-administration.js?v=20260902-ux6a1', 'data-access-control-administration');
+      await loadScript('/admin/access-control-administration.js?v=20260902-ux6b1', 'data-access-control-administration');
       if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
       await window.ExportMcaAccessControl.initialize();
       window.ExportMcaAccessControl?.applyNavigation?.();
@@ -239,19 +241,19 @@
         await loadScript('/admin/containers-module.js?v=20260901-ux6owner1', 'data-containers-module');
       }
       if (accessCan('logistics.write')) {
-        await loadScript('/admin/registration-form-shell.js?v=20260817-uxc1', 'data-registration-form-shell');
+        await loadScript('/admin/registration-form-shell.js?v=20260902-ux6b1', 'data-registration-form-shell');
         await loadStylesheet('/admin/shipment-editor.css?v=20260901-ux6owner1', 'data-shipment-editor-style');
         await loadScript('/admin/shipment-editor.js?v=20260901-ux6owner1', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260817-uxc2', 'data-modal-dismissal');
       await iconSystemPromise;
       await loadStylesheet('/admin/account-administration.css?v=20260901-ux6style1', 'data-account-administration-style');
-      await loadScript('/admin/account-administration.js?v=20260901-ux6style1', 'data-account-administration');
+      await loadScript('/admin/account-administration.js?v=20260902-ux6b1', 'data-account-administration');
       await loadScript('/admin/navigation-shell.js?v=20260830-p3', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {
         await loadStylesheet('/admin/tasks-workspace.css?v=20260830-p4', 'data-tasks-workspace-style');
-        await loadScript('/admin/tasks-workspace.js?v=20260830-p4', 'data-tasks-workspace');
+        await loadScript('/admin/tasks-workspace.js?v=20260902-ux6b1', 'data-tasks-workspace');
         await loadScript('/admin/tasks-navigation.js?v=20260830-p4', 'data-tasks-navigation');
         if (accessCan('tasks.manage')) {
           await loadStylesheet('/admin/workflow-route-settings.css?v=20260830-p5', 'data-workflow-route-settings-style');
