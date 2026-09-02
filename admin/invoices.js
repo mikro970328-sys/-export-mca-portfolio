@@ -11,6 +11,18 @@
   const can=(entity,key)=>capability(entity,key).allowed===true;
   const paymentCapability=(payment,key)=>payment?.capabilities?.actions?.[key]||{allowed:false,reason:'CAPABILITY_UNAVAILABLE'};
   const canPayment=(payment,key)=>paymentCapability(payment,key).allowed===true;
+  const PAYMENT_STATUS_LABELS=Object.freeze({posted:'Registrado',reversed:'Revertido'});
+  const SAFE_INVOICE_ERROR_PATTERNS=[
+    /^(?:No tienes|Esta factura|Factura|La factura|El monto|El cobro|Ese cobro|La cantidad|La operación|La Sales Order|Sales Order|La solicitud|Una línea|Uno de los productos|Solo se|Selecciona|Indica|Agrega|Falta|Revierte|Vincula|Transición|Acción de|Sesión vencida)/i,
+    /^No se pudo procesar (?:Facturación|el cobro)(?:\. Intenta nuevamente\.)?$/i
+  ];
+
+  function safeInvoiceMessage(error,fallback='No se pudo completar la operación. Intenta nuevamente.'){
+    const value=String(error?.message||'').trim();
+    return value&&SAFE_INVOICE_ERROR_PATTERNS.some(pattern=>pattern.test(value))?value:fallback;
+  }
+  function reportInvoiceError(context,error,fallback){console.error('INVOICES_UI_FAILED',{context,error});return safeInvoiceMessage(error,fallback);}
+  const paymentStatusLabel=value=>PAYMENT_STATUS_LABELS[value]||'Estado no disponible';
 
   async function request(url='/api/invoices',options={}){
     const response=await fetch(url,{...options,headers:{'Content-Type':'application/json',...(token()?{Authorization:`Bearer ${token()}`} : {}),...(options.headers||{})}});
@@ -48,7 +60,7 @@
 
   function renderList(){
     const rows=filteredInvoices();
-    if(!rows.length){$('invoiceList').innerHTML='<div class="empty">No hay facturas para esta vista.</div><div class="small" style="text-align:right;margin-top:10px">0 facturas</div>';return;}
+    if(!rows.length){$('invoiceList').innerHTML='<div class="empty">No hay facturas para esta vista.</div><div class="small invoice-count is-empty">0 facturas</div>';return;}
     $('invoiceList').innerHTML=rows.map(invoice=>{
       const f=invoice.financial||{},actions=[`<button class="btn" data-detail="${esc(invoice.id)}">Ver</button>`];
       if(can(invoice,'record_payment'))actions.push(`<button class="btn orange" data-payment="${esc(invoice.id)}">Cobrar</button>`);
@@ -56,7 +68,7 @@
       if(can(invoice,'issue'))actions.push(`<button class="btn primary" data-issue="${esc(invoice.id)}">Emitir</button>`);
       if(can(invoice,'void'))actions.push(`<button class="btn danger" data-void="${esc(invoice.id)}">Anular</button>`);
       return `<div class="row"><div><div class="po">${esc(invoice.invoice_number)}</div><div class="small">${date(invoice.issue_date)}</div></div><div><b>${esc(clientName(invoice))}</b><div class="small">${esc(invoice.sales_order?.customer_reference||'')}</div></div><div><b>${esc(invoice.sales_order?.so_number||'—')}</b></div><div>${statusPill(invoice)}</div><div><b>${esc(money(f.total,invoice.currency))}</b></div><div><b>${esc(money(f.balance_due,invoice.currency))}</b><div class="small">Saldo</div></div><div class="actions">${actions.join('')}</div></div>`;
-    }).join('')+`<div class="small" style="text-align:right;margin-top:12px;font-weight:800">${rows.length} factura${rows.length===1?'':'s'}${rows.length!==state.invoices.length?` visibles · ${state.invoices.length} registradas`:''}</div>`;
+    }).join('')+`<div class="small invoice-count">${rows.length} factura${rows.length===1?'':'s'}${rows.length!==state.invoices.length?` visibles · ${state.invoices.length} registradas`:''}</div>`;
   }
   function render(){renderMetrics();renderList();}
   function setModal(id,open){$(id)?.classList.toggle('hidden',!open);}
@@ -97,11 +109,11 @@
     try{
       await request('/api/invoices',{method:'POST',body:JSON.stringify({action:state.editingId?'replace_plan':'create_plan',invoice_id:state.editingId,sales_order_id:salesOrderId,issue_date:$('iIssueDate').value||null,due_date:$('iDueDate').value||null,notes:$('iNotes').value||null,lines})});
       setModal('invoiceModal',false);await refresh();
-    }catch(error){message('invoiceMsg',error.message);}finally{$('saveInvoice').disabled=false;}
+    }catch(error){message('invoiceMsg',reportInvoiceError('save_invoice',error));}finally{$('saveInvoice').disabled=false;}
   }
 
   function paymentRows(invoice){
-    return (invoice.payments||[]).map(payment=>`<div class="detail-item"><div class="line-head"><div><b>${esc(date(payment.payment_date))} · ${esc(payment.method||'Cobro')}</b><div class="small">${esc(payment.reference_number||'Sin referencia')} · ${esc(payment.status)}</div></div><div class="actions"><b>${esc(money(payment.amount,payment.currency))}</b>${canPayment(payment,'reverse')?`<button class="btn danger" data-reverse-payment="${esc(payment.id)}" data-invoice-id="${esc(invoice.id)}">Revertir</button>`:''}</div></div></div>`).join('');
+    return (invoice.payments||[]).map(payment=>`<div class="detail-item"><div class="line-head"><div><b>${esc(date(payment.payment_date))} · ${esc(payment.method||'Cobro')}</b><div class="small">${esc(payment.reference_number||'Sin referencia')} · ${esc(paymentStatusLabel(payment.status))}</div></div><div class="actions"><b>${esc(money(payment.amount,payment.currency))}</b>${canPayment(payment,'reverse')?`<button class="btn danger" data-reverse-payment="${esc(payment.id)}" data-invoice-id="${esc(invoice.id)}">Revertir</button>`:''}</div></div></div>`).join('');
   }
   function openDetail(id){
     const invoice=state.invoices.find(row=>String(row.id)===String(id));if(!invoice)return;const f=invoice.financial||{};
@@ -128,7 +140,7 @@
     try{
       await request('/api/invoice-payments',{method:'POST',body:JSON.stringify({action:'register',invoice_id:invoice.id,amount,payment_date:$('pDate').value||null,method:$('pMethod').value||null,reference_number:$('pReference').value||null,notes:$('pNotes').value||null})});
       setModal('paymentModal',false);await refresh();openDetail(invoice.id);
-    }catch(error){message('paymentMsg',error.message);}finally{$('savePayment').disabled=false;}
+    }catch(error){message('paymentMsg',reportInvoiceError('save_payment',error));}finally{$('savePayment').disabled=false;}
   }
 
   function closeDecision(){state.decisionAction=null;setModal('decisionModal',false);message('decisionMsg','');$('decisionReason').value='';}
@@ -138,7 +150,7 @@
   async function acceptDecision(){
     if(typeof state.decisionAction!=='function')return;
     const button=$('decisionAccept');button.disabled=true;
-    try{await state.decisionAction($('decisionReason').value.trim());closeDecision();}catch(error){message('decisionMsg',error.message);}finally{button.disabled=false;}
+    try{await state.decisionAction($('decisionReason').value.trim());closeDecision();}catch(error){message('decisionMsg',reportInvoiceError('decision',error));}finally{button.disabled=false;}
   }
   function transition(id,action){
     const invoice=state.invoices.find(row=>row.id===id);if(!invoice||!can(invoice,action))return;
@@ -164,12 +176,12 @@
   });
 
   $('newInvoice').onclick=openCreate;
-  $('refresh').onclick=()=>refresh().catch(error=>{$('invoiceList').innerHTML=`<div class="empty">${esc(error.message)}</div>`;});
+  $('refresh').onclick=()=>refresh().catch(error=>{$('invoiceList').innerHTML=`<div class="empty">${esc(reportInvoiceError('refresh',error,'No se pudieron cargar las facturas. Intenta nuevamente.'))}</div>`;});
   $('search').oninput=event=>{state.search=event.target.value||'';renderList();};
   $('iSalesOrder').onchange=()=>renderInvoiceLines(state.editingId?state.invoices.find(row=>row.id===state.editingId):null);
   $('saveInvoice').onclick=saveInvoice;
   $('savePayment').onclick=savePayment;
   $('decisionAccept').onclick=acceptDecision;
   ['invoiceModal','detailModal','paymentModal','decisionModal'].forEach(id=>$(id)?.addEventListener('click',event=>{if(event.target===$(id)){if(id==='decisionModal')closeDecision();else setModal(id,false);}}));
-  refresh().catch(error=>{$('invoiceList').innerHTML=`<div class="empty">${esc(error.message)}</div>`;});
+  refresh().catch(error=>{$('invoiceList').innerHTML=`<div class="empty">${esc(reportInvoiceError('bootstrap',error,'No se pudieron cargar las facturas. Intenta nuevamente.'))}</div>`;});
 })();
