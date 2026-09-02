@@ -100,7 +100,10 @@ function translatedError(raw) {
     ['SO_ACTION_INVALID','Acción de Sales Order inválida.'],
     ['PERMISSION_REQUIRED','No tienes permiso para ejecutar esta acción.']
   ];
-  return translations.find(([key]) => raw.includes(key))?.[1] || raw;
+  const translated = translations.find(([key]) => raw.includes(key))?.[1] || null;
+  if (translated) return translated;
+  if (/^(?:Agrega al menos una línea|Selecciona el producto de la línea \d+|Falta la Sales Order)$/.test(raw)) return raw;
+  return null;
 }
 
 export default async function handler(req, res) {
@@ -169,8 +172,10 @@ export default async function handler(req, res) {
 
     return fail(res,400,'Acción de Ventas no válida');
   } catch (error) {
-    const raw = String(error.message || 'No se pudo procesar Ventas');
+    const raw = String(error?.message || '');
+    const translated = translatedError(raw);
+    if (translated) return fail(res,400,translated);
     console.error('[sales]',error);
-    return fail(res,400,translatedError(raw));
+    return fail(res,500,'No se pudo procesar Ventas');
   }
 }
