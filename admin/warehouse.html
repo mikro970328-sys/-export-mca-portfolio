@@ -3,25 +3,136 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Almacén | Export MCA</title>
-<link rel="stylesheet" href="/admin/warehouse.css?v=20260902-ux6owner1">
+<title>Almacén · Export MCA</title>
+<link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+<link rel="stylesheet" href="/admin/warehouse.css?v=20260902-ux7warehouse1">
 </head>
-<body class="erp-module-page erp-module-warehouse">
-<main class="wrap">
-<section class="card module-hero"><div class="toolbar"><div class="module-heading"><div class="module-kicker">Operación física</div><h1>Almacén</h1><div class="muted"><span class="warehouse-copy-standalone">Recepciones físicas, productos y ubicaciones.</span><span class="warehouse-copy-embedded">Recepciones físicas y ubicaciones de almacén.</span></div></div><div class="tabs"><button class="tab active" data-tab="receipts">Recepciones WR</button><button class="tab" data-tab="warehouses">Almacenes</button><button class="tab" data-tab="products">Productos</button></div></div></section>
-<div id="stats" class="stats"></div>
-<section id="receiptsPane"><section class="card"><div class="toolbar"><div><h2 class="warehouse-heading-reset">Recepciones</h2><div class="muted">Cada llegada física recibe un WR consecutivo automático.</div></div><button id="newReceipt" class="orange">Nueva recepción</button></div><div class="receipt-filter"><button class="active" data-receipt-view="active">Activas</button><button data-receipt-view="cancelled">Anuladas</button></div><input id="receiptSearch" class="search warehouse-search" placeholder="Buscar WR, almacén, proveedor, producto, lote o camión"><div id="receiptList"></div></section></section>
-<section id="warehousesPane" class="hidden"><div class="grid"><section class="card"><h2>Nuevo almacén</h2><label>Código *</label><input id="whCode" placeholder="MIA-01, CUBA-01..."><label>Nombre *</label><input id="whName" placeholder="Almacén Miami"><div class="grid"><div><label>País *</label><input id="whCountry" placeholder="Estados Unidos"></div><div><label>Ciudad</label><input id="whCity"></div></div><label>Dirección</label><input id="whAddress"><label>Notas</label><textarea id="whNotes"></textarea><button id="saveWarehouse" class="orange">Guardar almacén</button><div id="whMsg" class="msg"></div></section><section class="card"><h2>Almacenes registrados</h2><div id="warehouseList"></div></section></div></section>
-<section id="productsPane" class="hidden"><div class="grid"><section class="card"><h2>Nuevo producto</h2><div class="muted">Catálogo maestro. Estos datos se reutilizan automáticamente en cada WR.</div><div class="grid"><div><label>SKU</label><input id="pSku" placeholder="BOV-620-BF"></div><div><label>Nombre *</label><input id="pName" placeholder="Panel solar 620W"></div></div><div class="grid"><div><label>Marca</label><input id="pBrand"></div><div><label>Categoría</label><input id="pCategory" placeholder="Paneles solares"></div></div><div class="grid"><div><label>Unidad base</label><input id="pUnit" placeholder="paneles, cajas, unidades..."></div><div><label>Presentación / empaque</label><input id="pFormat" placeholder="Caja 35 lb, saco 50 lb, IBC 275 gal..."></div></div><div class="grid"><div><label>Unidades por pallet (opcional)</label><input id="pUnitsPallet" type="number" min="0" step="0.001"></div><div><label>Peso por unidad (kg)</label><input id="pWeight" type="number" min="0" step="0.001"></div></div><div class="grid"><div><label>País de origen</label><input id="pOrigin"></div><div><label>HS Code</label><input id="pHs"></div></div><label>Descripción</label><textarea id="pDescription"></textarea><label>Notas internas</label><textarea id="pNotes"></textarea><button id="saveProduct" class="orange">Guardar producto</button><div id="pMsg" class="msg"></div></section><section class="card"><h2>Productos registrados</h2><input id="productSearch" placeholder="Buscar SKU, nombre, marca o categoría"><div id="productList"></div></section></div></section>
+<body class="erp-module-page erp-module-warehouse" data-owner="warehouse.js">
+<main class="wrap warehouse-shell">
+  <header class="module-hero warehouse-page-head" aria-labelledby="warehousePageTitle">
+    <div class="module-heading warehouse-page-heading">
+      <div class="module-kicker warehouse-page-kicker">Operación física · Recepción de mercancía</div>
+      <h1 id="warehousePageTitle">Almacén</h1>
+      <p><span class="warehouse-copy-standalone">Controla recepciones físicas, ubicaciones y el catálogo utilizado por la operación.</span><span class="warehouse-copy-embedded">Registra cada entrada física y consulta la mercancía recibida por almacén.</span></p>
+    </div>
+    <div class="module-actions">
+      <button id="newReceipt" class="orange warehouse-primary-action" type="button">Nueva recepción</button>
+    </div>
+  </header>
+
+  <div id="warehouseReadOnlyNote" class="warehouse-read-only-note hidden" role="status">
+    Puedes consultar recepciones y almacenes. Para registrar o modificar información necesitas permiso de operación de almacén.
+  </div>
+
+  <section id="stats" class="stats warehouse-metrics" aria-label="Resumen de almacén" aria-live="polite"></section>
+
+  <nav class="warehouse-view-switcher" aria-label="Áreas de almacén">
+    <div class="tabs warehouse-tabs" role="tablist" aria-label="Vista de almacén">
+      <button id="receiptsTab" class="tab active" type="button" role="tab" data-tab="receipts" aria-controls="receiptsPane" aria-selected="true">Recepciones WR</button>
+      <button id="warehousesTab" class="tab" type="button" role="tab" data-tab="warehouses" aria-controls="warehousesPane" aria-selected="false">Almacenes</button>
+      <button id="productsTab" class="tab" type="button" role="tab" data-tab="products" aria-controls="productsPane" aria-selected="false">Productos</button>
+    </div>
+  </nav>
+
+  <section id="receiptsPane" class="warehouse-pane" role="tabpanel" aria-labelledby="receiptsTab">
+    <section class="panel warehouse-list-panel" aria-labelledby="receiptsTitle">
+      <header class="warehouse-panel-head">
+        <div>
+          <span class="warehouse-eyebrow">Entradas físicas</span>
+          <h2 id="receiptsTitle">Recepciones registradas</h2>
+          <p>Cada llegada recibe un WR consecutivo y conserva su mercancía, proveedor y referencia operativa.</p>
+        </div>
+      </header>
+      <div class="warehouse-list-toolbar">
+        <div class="receipt-filter" role="group" aria-label="Filtrar recepciones">
+          <button class="active" type="button" data-receipt-view="active" aria-pressed="true">Activas</button>
+          <button type="button" data-receipt-view="cancelled" aria-pressed="false">Anuladas</button>
+        </div>
+        <label class="warehouse-search-field" for="receiptSearch">
+          <span class="warehouse-visually-hidden">Buscar recepciones</span>
+          <input id="receiptSearch" class="search warehouse-search" type="search" autocomplete="off" placeholder="Buscar WR, almacén, proveedor, producto, lote o camión">
+        </label>
+      </div>
+      <div id="receiptList" class="warehouse-receipt-list" aria-live="polite"></div>
+    </section>
+  </section>
+
+  <section id="warehousesPane" class="warehouse-pane hidden" role="tabpanel" aria-labelledby="warehousesTab">
+    <div class="warehouse-admin-grid">
+      <section class="panel warehouse-form-panel" aria-labelledby="newWarehouseTitle">
+        <header class="warehouse-panel-head compact">
+          <div><span class="warehouse-eyebrow">Nueva ubicación</span><h2 id="newWarehouseTitle">Registrar almacén</h2><p>Crea una ubicación para recibir y controlar mercancía física.</p></div>
+        </header>
+        <div class="warehouse-form-body">
+          <div class="grid"><div><label for="whCode">Código *</label><input id="whCode" placeholder="MIA-01, CUBA-01..."></div><div><label for="whName">Nombre *</label><input id="whName" placeholder="Almacén Miami"></div></div>
+          <div class="grid"><div><label for="whCountry">País *</label><input id="whCountry" placeholder="Estados Unidos"></div><div><label for="whCity">Ciudad</label><input id="whCity"></div></div>
+          <label for="whAddress">Dirección</label><input id="whAddress">
+          <label for="whNotes">Notas</label><textarea id="whNotes"></textarea>
+          <div class="actions warehouse-form-actions"><button id="saveWarehouse" class="orange" type="button">Guardar almacén</button></div>
+          <div id="whMsg" class="msg" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+      <section class="panel warehouse-directory-panel" aria-labelledby="warehouseDirectoryTitle">
+        <header class="warehouse-panel-head compact"><div><span class="warehouse-eyebrow">Directorio operativo</span><h2 id="warehouseDirectoryTitle">Almacenes registrados</h2><p>Consulta ubicaciones activas e inactivas.</p></div></header>
+        <div id="warehouseList" class="warehouse-directory" aria-live="polite"></div>
+      </section>
+    </div>
+  </section>
+
+  <section id="productsPane" class="warehouse-pane hidden" role="tabpanel" aria-labelledby="productsTab">
+    <div class="warehouse-admin-grid">
+      <section class="panel warehouse-form-panel" aria-labelledby="newProductTitle">
+        <header class="warehouse-panel-head compact"><div><span class="warehouse-eyebrow">Catálogo maestro</span><h2 id="newProductTitle">Registrar producto</h2><p>Estos datos se reutilizan automáticamente en cada WR.</p></div></header>
+        <div class="warehouse-form-body">
+          <div class="grid"><div><label for="pSku">SKU</label><input id="pSku" placeholder="BOV-620-BF"></div><div><label for="pName">Nombre *</label><input id="pName" placeholder="Panel solar 620W"></div></div>
+          <div class="grid"><div><label for="pBrand">Marca</label><input id="pBrand"></div><div><label for="pCategory">Categoría</label><input id="pCategory" placeholder="Paneles solares"></div></div>
+          <div class="grid"><div><label for="pUnit">Unidad base</label><input id="pUnit" placeholder="paneles, cajas, unidades..."></div><div><label for="pFormat">Presentación / empaque</label><input id="pFormat" placeholder="Caja 35 lb, saco 50 lb, IBC 275 gal..."></div></div>
+          <div class="grid"><div><label for="pUnitsPallet">Unidades por pallet</label><input id="pUnitsPallet" type="number" min="0" step="0.001"></div><div><label for="pWeight">Peso por unidad (kg)</label><input id="pWeight" type="number" min="0" step="0.001"></div></div>
+          <div class="grid"><div><label for="pOrigin">País de origen</label><input id="pOrigin"></div><div><label for="pHs">HS Code</label><input id="pHs"></div></div>
+          <label for="pDescription">Descripción</label><textarea id="pDescription"></textarea>
+          <label for="pNotes">Notas internas</label><textarea id="pNotes"></textarea>
+          <div class="actions warehouse-form-actions"><button id="saveProduct" class="orange" type="button">Guardar producto</button></div>
+          <div id="pMsg" class="msg" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+      <section class="panel warehouse-directory-panel" aria-labelledby="productDirectoryTitle">
+        <header class="warehouse-panel-head compact"><div><span class="warehouse-eyebrow">Productos disponibles</span><h2 id="productDirectoryTitle">Catálogo registrado</h2><p>Busca por SKU, nombre, marca o categoría.</p></div></header>
+        <div class="warehouse-directory-toolbar"><label class="warehouse-search-field" for="productSearch"><span class="warehouse-visually-hidden">Buscar productos</span><input id="productSearch" type="search" autocomplete="off" placeholder="Buscar productos"></label></div>
+        <div id="productList" class="warehouse-directory" aria-live="polite"></div>
+      </section>
+    </div>
+  </section>
 </main>
 
-<div id="receiptModal" class="modal hidden"><div class="modalbox"><div class="toolbar"><div><h2 class="warehouse-heading-reset">Nueva recepción</h2><div class="muted">El número WR se asigna automáticamente.</div></div><button id="closeReceipt" class="alt icon-btn" aria-label="Cerrar">×</button></div><div class="grid"><div><label>Almacén receptor *</label><select id="rWarehouse"></select></div><div><label>Fecha y hora de recepción</label><input id="rReceivedAt" type="datetime-local"></div></div><div class="grid"><div><label>Proveedor</label><select id="rSupplier"><option value="">Sin proveedor / recepción directa</option></select></div><div><label>Referencia proveedor / PO</label><input id="rReference"></div></div><div class="grid"><div><label>Camión / referencia</label><input id="rTruck" placeholder="Truck #, BOL terrestre..."></div><div><label>Chofer</label><input id="rDriver"></div></div><label>Notas generales</label><textarea id="rNotes"></textarea><div class="toolbar warehouse-section-gap"><div><b>Mercancía recibida</b><div class="muted"><span class="warehouse-copy-standalone">Selecciona un producto existente o créalo aquí sin salir del WR.</span><span class="warehouse-copy-embedded">Selecciona un producto existente del catálogo maestro. Los productos se administran en Administración → Productos.</span></div></div><button id="addLine" class="alt">+ Línea</button></div><div id="receiptLines"></div><div class="actions warehouse-section-gap"><button id="saveReceipt" class="orange">Guardar WR</button></div><div id="rMsg" class="msg"></div></div></div>
+<div id="receiptModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle" aria-hidden="true">
+  <div class="modalbox warehouse-receipt-dialog">
+    <div class="dialog-head"><div><span class="warehouse-dialog-kicker">Entrada física</span><h2 id="receiptModalTitle" class="warehouse-heading-reset">Nueva recepción</h2><p class="muted">El número WR se asigna automáticamente al guardar.</p></div><button id="closeReceipt" class="alt icon-btn" type="button" aria-label="Cerrar recepción">✕</button></div>
+    <div class="warehouse-dialog-section"><div class="grid"><div><label for="rWarehouse">Almacén receptor *</label><select id="rWarehouse"></select></div><div><label for="rReceivedAt">Fecha y hora de recepción</label><input id="rReceivedAt" type="datetime-local"></div></div>
+    <div class="grid"><div><label for="rSupplier">Proveedor</label><select id="rSupplier"><option value="">Sin proveedor / recepción directa</option></select></div><div><label for="rReference">Referencia proveedor / PO</label><input id="rReference"></div></div>
+    <div class="grid"><div><label for="rTruck">Camión / referencia</label><input id="rTruck" placeholder="Truck #, BOL terrestre..."></div><div><label for="rDriver">Chofer</label><input id="rDriver"></div></div>
+    <label for="rNotes">Notas generales</label><textarea id="rNotes"></textarea></div>
+    <div class="warehouse-dialog-section warehouse-lines-section"><div class="toolbar"><div><span class="warehouse-dialog-kicker">Mercancía recibida</span><b>Detalle del WR</b><p class="muted"><span class="warehouse-copy-standalone">Selecciona un producto existente o créalo aquí sin salir del WR.</span><span class="warehouse-copy-embedded">Selecciona un producto del catálogo maestro. Los productos se administran en Administración → Productos.</span></p></div><button id="addLine" class="alt" type="button">+ Línea</button></div><div id="receiptLines" class="warehouse-lines"></div></div>
+    <div class="actions warehouse-modal-actions"><button id="cancelReceiptForm" class="alt" type="button">Cancelar</button><button id="saveReceipt" class="orange" type="button">Guardar WR</button></div>
+    <div id="rMsg" class="msg" role="status" aria-live="polite"></div>
+  </div>
+</div>
 
-<div id="detailModal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="detailTitle" class="warehouse-heading-reset"></h2><button id="closeDetail" class="alt icon-btn" aria-label="Cerrar">×</button></div><div id="detailBody"></div></div></div>
+<div id="detailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailTitle" aria-hidden="true">
+  <div class="modalbox warehouse-detail-dialog"><div class="dialog-head"><div><span class="warehouse-dialog-kicker">Trazabilidad de recepción</span><h2 id="detailTitle" class="warehouse-heading-reset"></h2></div><button id="closeDetail" class="alt icon-btn" type="button" aria-label="Cerrar detalle">✕</button></div><div id="detailBody" class="warehouse-detail-body"></div></div>
+</div>
 
-<div id="quickProductModal" class="modal hidden"><div class="modalbox compact"><div class="toolbar"><div><h2 class="warehouse-heading-reset">Nuevo producto</h2><div class="muted">Datos básicos para reutilizar este producto en futuros WR.</div></div><button id="closeQuickProduct" class="alt icon-btn" aria-label="Cerrar">×</button></div><div class="grid"><div><label>Nombre *</label><input id="qpName" placeholder="Panel solar 620W"></div><div><label>SKU</label><input id="qpSku" placeholder="BOV-620-BF"></div></div><div class="grid"><div><label>Unidad base *</label><input id="qpUnit" list="unitSuggestions" placeholder="paneles, cajas, unidades..."><datalist id="unitSuggestions"><option value="unidades"><option value="paneles"><option value="cajas"><option value="sacos"><option value="piezas"><option value="galones"><option value="litros"></datalist></div><div><label>Marca</label><input id="qpBrand"></div></div><div class="grid"><div><label>Unidades por pallet (opcional)</label><input id="qpUnitsPallet" type="number" min="0" step="0.001"></div><div><label>Presentación / empaque</label><input id="qpFormat" placeholder="Caja 35 lb, saco 50 lb, IBC 275 gal..."></div></div><div class="actions warehouse-section-gap"><button id="saveQuickProduct" class="orange">Crear y seleccionar</button></div><div id="qpMsg" class="msg"></div></div></div>
+<div id="quickProductModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="quickProductTitle" aria-hidden="true">
+  <div class="modalbox compact warehouse-product-dialog"><div class="dialog-head"><div><span class="warehouse-dialog-kicker">Catálogo maestro</span><h2 id="quickProductTitle" class="warehouse-heading-reset">Nuevo producto</h2><p class="muted">Crea los datos básicos y selecciona el producto en esta recepción.</p></div><button id="closeQuickProduct" class="alt icon-btn" type="button" aria-label="Cerrar nuevo producto">✕</button></div>
+    <div class="warehouse-dialog-section"><div class="grid"><div><label for="qpName">Nombre *</label><input id="qpName" placeholder="Panel solar 620W"></div><div><label for="qpSku">SKU</label><input id="qpSku" placeholder="BOV-620-BF"></div></div>
+    <div class="grid"><div><label for="qpUnit">Unidad base *</label><input id="qpUnit" list="unitSuggestions" placeholder="paneles, cajas, unidades..."><datalist id="unitSuggestions"><option value="unidades"><option value="paneles"><option value="cajas"><option value="sacos"><option value="piezas"><option value="galones"><option value="litros"></datalist></div><div><label for="qpBrand">Marca</label><input id="qpBrand"></div></div>
+    <div class="grid"><div><label for="qpUnitsPallet">Unidades por pallet</label><input id="qpUnitsPallet" type="number" min="0" step="0.001"></div><div><label for="qpFormat">Presentación / empaque</label><input id="qpFormat" placeholder="Caja 35 lb, saco 50 lb, IBC 275 gal..."></div></div></div>
+    <div class="actions warehouse-modal-actions"><button id="cancelQuickProduct" class="alt" type="button">Cancelar</button><button id="saveQuickProduct" class="orange" type="button">Crear y seleccionar</button></div>
+    <div id="qpMsg" class="msg" role="status" aria-live="polite"></div>
+  </div>
+</div>
 
-<script src="/admin/warehouse.js?v=20260902-ux6owner1"></script>
+<script src="/admin/warehouse.js?v=20260902-ux7warehouse1" defer></script>
+<script src="/admin/embedded-auto-refresh.js?v=20260902-ux7warehouse1" defer></script>
 </body>
 </html>

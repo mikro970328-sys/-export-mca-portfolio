@@ -1,113 +1,865 @@
-:root{--navy:#06204a;--orange:#f58220;--bg:#f4f7fb;--line:#dfe5ee;--text:#152238;--muted:#667085;--ok:#117a37;--bad:#b42318;--soft:#f8fafc}
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
-.wrap{width:min(1240px,calc(100% - 24px));margin:16px auto}
-.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
-.toolbar,.actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.actions{justify-content:flex-start}
-.tabs,.receipt-filter{display:flex;gap:8px;flex-wrap:wrap}
-button,.tab{border:0;border-radius:8px;padding:8px 11px;font-size:12px;font-weight:800;cursor:pointer;background:var(--navy);color:#fff;line-height:1.2}
-button:disabled{opacity:.48;cursor:not-allowed}
-.tab{background:#fff;color:var(--navy);border:1px solid var(--line)}
-.tab.active{background:var(--navy);color:#fff}
-.receipt-filter{margin-top:12px}
-.receipt-filter button{background:#fff;color:var(--navy);border:1px solid var(--line);padding:7px 10px}
-.receipt-filter button.active{background:var(--navy);color:#fff}
-.orange{background:var(--orange)}
-.alt{background:#fff;color:var(--navy);border:1px solid #bcc8d8}
-.danger{background:#fff;color:var(--bad);border:1px solid #efb0aa}
-.icon-btn{width:34px;height:34px;padding:0;display:inline-grid;place-items:center;border-radius:9px;font-size:20px}
-.hidden{display:none!important}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-label{display:block;font-size:12px;font-weight:800;margin:9px 0 5px}
-input,select,textarea{width:100%;padding:9px 10px;border:1px solid #cfd7e3;border-radius:8px;font:inherit;font-size:14px}
-textarea{min-height:72px}
-.muted{font-size:12px;color:var(--muted)}
-.msg{margin-top:10px;font-size:13px}
-.ok{color:var(--ok)}
-.bad{color:var(--bad)}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0 18px}
-.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}
-.stat b{font-size:24px;color:var(--navy);display:block;margin-top:4px}
-.stat span{font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{text-align:left;padding:9px 7px;border-bottom:1px solid var(--line);font-size:12px;vertical-align:top}
-th{font-size:10px;color:var(--muted);text-transform:uppercase}
-.pill{display:inline-block;border-radius:999px;padding:5px 8px;background:#edf3ff;color:var(--navy);font-size:10px}
-.pill.off{background:#f2f2f2;color:#777}
-.pill.cancel{background:#fff0ef;color:var(--bad)}
-.line{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;background:#fafcff}
-.line-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.search{max-width:420px}
-.empty{padding:24px;text-align:center;color:var(--muted)}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:18px;z-index:20}
-.modalbox{background:#fff;width:min(900px,100%);max-height:88vh;overflow:auto;border-radius:14px;padding:18px}
-.modalbox.compact{width:min(620px,100%)}
-.detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0 16px}
-.detail-field{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:10px}
-.detail-field b{display:block;font-size:10px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.receipt-item{border:1px solid var(--line);border-radius:11px;padding:12px;margin-top:9px}
-.receipt-item-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-.receipt-item-title{font-weight:900;color:var(--navy)}
-.receipt-item-meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px}
-.receipt-item-meta span{background:var(--soft);border-radius:7px;padding:6px 8px}
-.entry-mode{display:flex;gap:6px}
-.entry-mode button{background:#fff;color:var(--navy);border:1px solid var(--line);font-size:11px;padding:7px 10px}
-.entry-mode button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
-.calculated{background:#eef4fb!important;color:var(--navy);font-weight:800}
-.product-picker{display:flex;gap:7px;align-items:flex-end}
-.product-picker select{flex:1}
-.product-picker button{white-space:nowrap}
-.product-summary{margin-top:6px;padding:7px 9px;border-radius:8px;background:#eef4fb;color:var(--navy);font-size:11px}
-.desktop-table{display:block}
-.mobile-receipts{display:none}
-.receipt-card{border:1px solid var(--line);border-radius:12px;padding:13px;margin-top:10px;background:#fff}
-.receipt-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.receipt-card h3{margin:0;color:var(--navy);font-size:16px}
-.receipt-card-meta{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.45}
-.receipt-card-items{margin-top:9px;padding-top:9px;border-top:1px solid var(--line);font-size:12px}
-.receipt-card-actions{display:flex;gap:7px;margin-top:10px}
-@media(max-width:820px){
-  .grid,.grid3,.stats,.detail-grid{grid-template-columns:1fr 1fr}
+.erp-module-page.erp-module-warehouse {
+  --warehouse-hero:#0b1d36;
+  --warehouse-action:#c4510b;
+  --warehouse-action-hover:#a63f06;
+  --warehouse-line:#dce4ee;
+  --warehouse-blue:#2f6ca3;
 }
 
-@media(max-width:560px){
-  .wrap{width:calc(100% - 12px);margin:8px auto}
-  .card{padding:13px;border-radius:12px}
-  .grid,.grid3,.stats,.detail-grid{grid-template-columns:1fr}
-  .stats{grid-template-columns:1fr 1fr}
-  .toolbar{align-items:flex-start}
-  .tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}
-  .tab{padding:8px 5px;font-size:10px}
-  .modal{padding:8px;align-items:flex-start}
-  .modalbox{margin-top:8px;padding:14px;border-radius:13px;max-height:calc(100vh - 16px)}
-  .modalbox h2{font-size:20px}
-  .desktop-table{display:none}
-  .mobile-receipts{display:block}
-  .line{padding:10px}
-  .line-head b{font-size:13px}
-  .receipt-item-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .detail-field{padding:9px}
-  .actions button,.receipt-card-actions button{padding:7px 9px;font-size:11px}
-  .search{max-width:none}
-  .product-picker{align-items:stretch}
-  .product-picker button{padding:7px 8px;font-size:10px}
-  h1{font-size:24px}
-  h2{font-size:18px}
+.erp-module-warehouse [hidden],
+.erp-module-warehouse .hidden {
+  display:none;
 }
 
-.warehouse-heading-reset{margin:0}
-.warehouse-search{margin-top:12px}
-.warehouse-section-gap,.warehouse-receipt-items{margin-top:14px}
-.warehouse-decision-message{margin-top:6px}
-.warehouse-decision-label{margin-top:16px}
-.warehouse-notice{position:fixed;right:18px;bottom:18px;z-index:80;max-width:420px;background:#06204a;color:#fff;padding:12px 14px;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.22);font-size:13px;font-weight:700}
-.warehouse-load-error{max-width:680px;margin-top:48px}
-.warehouse-copy-embedded{display:none}
-body.warehouse-embedded .warehouse-copy-standalone{display:none}
-body.warehouse-embedded .warehouse-copy-embedded{display:inline}
-body.warehouse-embedded .tab[data-tab="products"],
+.erp-module-warehouse .warehouse-shell {
+  padding-bottom:32px;
+}
+
+.erp-module-warehouse .warehouse-page-head {
+  isolation:isolate;
+  align-items:center;
+  min-height:190px;
+  border:0;
+  padding:30px 32px;
+  background:var(--warehouse-hero);
+  box-shadow:0 20px 48px rgba(9,24,46,.18);
+}
+
+.erp-module-warehouse .warehouse-page-head::before {
+  width:5px;
+  background:var(--orange);
+}
+
+.erp-module-warehouse .warehouse-page-head::after {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  right:-72px;
+  bottom:-118px;
+  width:300px;
+  height:300px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:50%;
+}
+
+.erp-module-warehouse .warehouse-page-heading {
+  max-width:760px;
+}
+
+.erp-module-warehouse .warehouse-page-kicker {
+  color:#ffb27d;
+}
+
+.erp-module-warehouse .warehouse-page-head h1 {
+  color:#fff;
+  font-size:clamp(30px,4vw,42px);
+}
+
+.erp-module-warehouse .warehouse-page-head p {
+  max-width:700px;
+  color:#cbd7e6;
+  font-size:14px;
+}
+
+.erp-module-page.erp-module-warehouse .warehouse-primary-action {
+  min-height:44px;
+  border-color:var(--warehouse-action);
+  padding-inline:20px;
+  background:var(--warehouse-action);
+  box-shadow:0 12px 26px rgba(0,0,0,.2);
+}
+
+.erp-module-page.erp-module-warehouse .warehouse-primary-action:not(:disabled):hover {
+  border-color:var(--warehouse-action-hover);
+  background:var(--warehouse-action-hover);
+  color:#fff;
+}
+
+.warehouse-copy-embedded {
+  display:none;
+}
+
+body.warehouse-embedded .warehouse-copy-standalone {
+  display:none;
+}
+
+body.warehouse-embedded .warehouse-copy-embedded {
+  display:inline;
+}
+
+body.warehouse-embedded #productsTab,
 body.warehouse-embedded #productsPane,
 body.warehouse-embedded #quickProductModal,
-body.warehouse-embedded .product-picker button{display:none!important}
+body.warehouse-embedded .product-picker [data-new-product] {
+  display:none;
+}
+
+.warehouse-read-only-note {
+  margin:0 0 16px;
+  border:1px solid #c8d9ee;
+  border-radius:var(--radius-md);
+  padding:12px 15px;
+  background:var(--info-soft);
+  color:#234f7c;
+  font-size:12px;
+  font-weight:650;
+}
+
+.erp-module-warehouse .warehouse-metrics {
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:16px;
+}
+
+.erp-module-warehouse .warehouse-metrics .stat {
+  position:relative;
+  min-height:96px;
+  overflow:hidden;
+  padding:17px 18px 15px 21px;
+}
+
+.erp-module-warehouse .warehouse-metrics .stat::before {
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:4px;
+  background:#aebbd0;
+}
+
+.erp-module-warehouse .warehouse-metrics .warehouse-metric-locations::before {
+  background:var(--info);
+}
+
+.erp-module-warehouse .warehouse-metrics .warehouse-metric-products::before {
+  background:#7b61a8;
+}
+
+.erp-module-warehouse .warehouse-metrics .warehouse-metric-receipts::before {
+  background:var(--ok);
+}
+
+.erp-module-warehouse .warehouse-metrics .warehouse-metric-pallets::before {
+  background:var(--orange);
+}
+
+.erp-module-warehouse .warehouse-metrics .stat b {
+  margin-top:8px;
+  font-size:26px;
+}
+
+.warehouse-view-switcher {
+  display:flex;
+  justify-content:flex-start;
+  margin:0 0 14px;
+}
+
+.erp-module-warehouse .warehouse-tabs {
+  padding:5px;
+  box-shadow:var(--shadow-xs);
+}
+
+.erp-module-warehouse .warehouse-tabs .tab {
+  min-height:38px;
+  padding-inline:15px;
+  font-size:12px;
+}
+
+.erp-module-warehouse .warehouse-tabs .tab.active {
+  border-color:var(--navy);
+  background:var(--navy);
+  color:#fff;
+}
+
+.warehouse-pane {
+  min-width:0;
+}
+
+.erp-module-warehouse .warehouse-list-panel,
+.erp-module-warehouse .warehouse-form-panel,
+.erp-module-warehouse .warehouse-directory-panel {
+  overflow:hidden;
+  border-radius:var(--radius-lg);
+  box-shadow:0 12px 32px rgba(16,35,63,.07);
+}
+
+.warehouse-panel-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  border-bottom:1px solid var(--line);
+  padding:20px 22px 18px;
+  background:var(--surface);
+}
+
+.warehouse-panel-head.compact {
+  padding:18px 20px 16px;
+}
+
+.warehouse-panel-head h2 {
+  margin:3px 0 0;
+  color:var(--navy-strong);
+  font-size:20px;
+  letter-spacing:-.025em;
+}
+
+.warehouse-panel-head p {
+  margin:5px 0 0;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.warehouse-eyebrow,
+.warehouse-dialog-kicker {
+  display:block;
+  color:#b54708;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.warehouse-list-toolbar {
+  display:grid;
+  grid-template-columns:auto minmax(260px,1fr);
+  gap:14px;
+  align-items:center;
+  padding:14px 16px;
+  background:var(--surface-soft);
+}
+
+.warehouse-search-field {
+  min-width:0;
+  margin:0;
+}
+
+.warehouse-search-field .search,
+.warehouse-search-field input {
+  max-width:none;
+  margin:0;
+  background:#fff;
+}
+
+.warehouse-visually-hidden {
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  clip-path:inset(50%);
+  white-space:nowrap;
+}
+
+.erp-module-warehouse .receipt-filter {
+  align-self:center;
+}
+
+.erp-module-warehouse .receipt-filter button.active {
+  border-color:var(--navy);
+  background:var(--navy);
+  color:#fff;
+}
+
+.warehouse-receipt-list,
+.warehouse-directory {
+  min-width:0;
+  background:#f8fafc;
+}
+
+.warehouse-list-summary {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  border-bottom:1px solid var(--line);
+  padding:10px 16px;
+  background:#fff;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.warehouse-list-count {
+  color:var(--navy);
+  font-weight:800;
+}
+
+.warehouse-table-wrap {
+  overflow:auto;
+}
+
+.erp-module-warehouse table {
+  min-width:760px;
+}
+
+.erp-module-warehouse td:first-child b {
+  color:var(--navy-strong);
+  font-weight:800;
+}
+
+.warehouse-cell-secondary {
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.warehouse-row-actions,
+.receipt-card-actions {
+  display:flex;
+  gap:7px;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+}
+
+.warehouse-row-actions button,
+.receipt-card-actions button {
+  min-height:34px;
+  padding:7px 10px;
+  font-size:11px;
+}
+
+.warehouse-empty {
+  padding:52px 22px;
+  text-align:center;
+}
+
+.warehouse-empty strong {
+  display:block;
+  color:var(--navy);
+  font-size:15px;
+}
+
+.warehouse-empty span {
+  display:block;
+  max-width:480px;
+  margin:5px auto 0;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.warehouse-admin-grid {
+  display:grid;
+  grid-template-columns:minmax(330px,.82fr) minmax(0,1.18fr);
+  gap:16px;
+  align-items:start;
+}
+
+.warehouse-form-body {
+  padding:18px 20px 20px;
+}
+
+.warehouse-form-actions {
+  margin-top:18px;
+}
+
+.warehouse-directory-toolbar {
+  border-bottom:1px solid var(--line);
+  padding:14px 16px;
+  background:var(--surface-soft);
+}
+
+.warehouse-directory > .warehouse-table-wrap {
+  background:#fff;
+}
+
+.desktop-table {
+  display:block;
+}
+
+.mobile-receipts {
+  display:none;
+}
+
+.receipt-card {
+  border:1px solid var(--warehouse-line);
+  border-radius:var(--radius-md);
+  padding:15px;
+  background:#fff;
+  box-shadow:var(--shadow-xs);
+}
+
+.receipt-card-top {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+}
+
+.receipt-card h3 {
+  margin:0;
+  color:var(--navy-strong);
+  font-size:16px;
+}
+
+.receipt-card-meta {
+  margin-top:5px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+}
+
+.receipt-card-items {
+  margin-top:11px;
+  border-top:1px solid var(--line);
+  padding-top:11px;
+  font-size:12px;
+}
+
+.receipt-card-item + .receipt-card-item {
+  margin-top:9px;
+}
+
+.receipt-card-actions {
+  margin-top:12px;
+  justify-content:flex-start;
+}
+
+.erp-module-warehouse .modal {
+  z-index:90;
+  padding:22px;
+  background:rgba(7,18,34,.62);
+  backdrop-filter:blur(3px);
+}
+
+.erp-module-warehouse .modalbox {
+  width:min(980px,100%);
+  max-height:min(90vh,900px);
+  overflow:auto;
+  border:1px solid rgba(255,255,255,.55);
+  border-radius:20px;
+  padding:0;
+  background:#fff;
+  box-shadow:0 26px 80px rgba(6,18,35,.28);
+}
+
+.erp-module-warehouse .modalbox.compact {
+  width:min(680px,100%);
+}
+
+.erp-module-warehouse .warehouse-receipt-dialog {
+  width:min(980px,100%);
+}
+
+.erp-module-warehouse .dialog-head {
+  position:sticky;
+  z-index:2;
+  top:0;
+  border-bottom:1px solid var(--line);
+  padding:19px 22px 17px;
+  background:rgba(255,255,255,.97);
+}
+
+.erp-module-warehouse .dialog-head h2 {
+  margin-top:3px;
+  color:var(--navy-strong);
+  font-size:22px;
+}
+
+.erp-module-warehouse .dialog-head p {
+  margin:5px 0 0;
+}
+
+.warehouse-dialog-section {
+  padding:18px 22px 4px;
+}
+
+.warehouse-lines-section {
+  margin-top:10px;
+  border-top:1px solid var(--line);
+  padding-top:18px;
+  background:var(--surface-soft);
+}
+
+.warehouse-lines-section .toolbar {
+  align-items:flex-end;
+}
+
+.warehouse-lines-section .toolbar p {
+  margin:4px 0 0;
+}
+
+.warehouse-lines {
+  padding-bottom:14px;
+}
+
+.warehouse-modal-actions {
+  justify-content:flex-end;
+  border-top:1px solid var(--line);
+  margin-top:16px;
+  padding:16px 22px;
+  background:#fff;
+}
+
+.warehouse-modal-actions + .msg {
+  margin:0;
+  padding:0 22px 18px;
+}
+
+.erp-module-warehouse .line {
+  border:1px solid var(--warehouse-line);
+  border-radius:var(--radius-md);
+  margin-top:12px;
+  padding:15px;
+  background:#fff;
+  box-shadow:var(--shadow-xs);
+}
+
+.erp-module-warehouse .line-head {
+  margin-bottom:4px;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--line);
+}
+
+.erp-module-warehouse .line-head b {
+  color:var(--navy);
+  font-size:13px;
+}
+
+.entry-mode {
+  display:flex;
+  gap:5px;
+  width:max-content;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:4px;
+  background:var(--surface-muted);
+}
+
+.entry-mode button {
+  min-height:34px;
+  border-color:transparent;
+  padding:7px 11px;
+  background:transparent;
+  color:var(--muted-strong);
+  box-shadow:none;
+  font-size:11px;
+}
+
+.entry-mode button.active {
+  border-color:var(--line);
+  background:#fff;
+  color:var(--navy);
+  box-shadow:var(--shadow-xs);
+}
+
+.calculated {
+  background:var(--info-soft);
+  color:var(--navy);
+  font-weight:750;
+}
+
+.product-picker {
+  display:flex;
+  gap:8px;
+  align-items:flex-end;
+}
+
+.product-picker select {
+  flex:1;
+}
+
+.product-picker button {
+  flex:none;
+  white-space:nowrap;
+}
+
+.product-summary {
+  margin-top:7px;
+  border-radius:8px;
+  padding:8px 10px;
+  background:var(--info-soft);
+  color:#294f78;
+  font-size:11px;
+}
+
+.warehouse-detail-body {
+  padding:20px 22px 24px;
+}
+
+.detail-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin:0 0 16px;
+}
+
+.detail-field {
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:12px;
+  background:var(--surface-soft);
+}
+
+.detail-field b {
+  display:block;
+  margin-bottom:5px;
+  color:var(--muted);
+  font-size:10px;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+
+.warehouse-receipt-items {
+  margin-top:18px;
+}
+
+.warehouse-receipt-items > b {
+  display:block;
+  margin-bottom:9px;
+  color:var(--navy);
+  font-size:13px;
+}
+
+.receipt-item {
+  border:1px solid var(--line);
+  border-radius:var(--radius-md);
+  padding:13px;
+  background:#fff;
+}
+
+.receipt-item + .receipt-item {
+  margin-top:9px;
+}
+
+.receipt-item-head {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.receipt-item-title {
+  color:var(--navy);
+  font-weight:800;
+}
+
+.receipt-item-meta {
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin-top:9px;
+  font-size:11px;
+}
+
+.receipt-item-meta span {
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:6px 8px;
+  background:var(--surface-soft);
+}
+
+.warehouse-heading-reset {
+  margin:0;
+}
+
+.warehouse-search {
+  margin:0;
+}
+
+.warehouse-section-gap {
+  margin-top:14px;
+}
+
+.warehouse-decision-message {
+  margin-top:6px;
+}
+
+.warehouse-decision-label {
+  margin:16px 22px 6px;
+}
+
+#warehouseDecisionInput {
+  width:calc(100% - 44px);
+  margin:0 22px;
+}
+
+#warehouseDecision .warehouse-modal-actions,
+#warehouseDecision .warehouse-section-gap {
+  justify-content:flex-end;
+  border-top:1px solid var(--line);
+  margin-top:18px;
+  padding:16px 22px;
+}
+
+.warehouse-notice {
+  position:fixed;
+  right:20px;
+  bottom:20px;
+  z-index:120;
+  max-width:430px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:12px;
+  padding:13px 15px;
+  background:var(--warehouse-hero);
+  color:#fff;
+  box-shadow:0 18px 46px rgba(6,18,35,.25);
+  font-size:13px;
+  font-weight:700;
+}
+
+.warehouse-load-error {
+  max-width:680px;
+  margin-top:48px;
+}
+
+.warehouse-load-error .panel {
+  padding:24px;
+}
+
+.warehouse-load-error h1 {
+  margin:0;
+  color:var(--navy);
+}
+
+@media(max-width:1100px) {
+  .warehouse-admin-grid {
+    grid-template-columns:1fr;
+  }
+
+  .erp-module-warehouse .warehouse-metrics {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:820px) {
+  .erp-module-warehouse .warehouse-page-head {
+    align-items:flex-start;
+    min-height:0;
+    padding:25px 24px;
+  }
+
+  .warehouse-list-toolbar {
+    grid-template-columns:1fr;
+  }
+
+  .warehouse-list-toolbar .receipt-filter {
+    width:max-content;
+  }
+
+  .detail-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:650px) {
+  .erp-module-warehouse .warehouse-page-head {
+    display:block;
+  }
+
+  .erp-module-warehouse .warehouse-page-head .module-actions {
+    justify-content:flex-start;
+    margin-top:18px;
+  }
+
+  .erp-module-warehouse .warehouse-primary-action {
+    width:100%;
+  }
+
+  .warehouse-view-switcher,
+  .warehouse-tabs {
+    width:100%;
+  }
+
+  .erp-module-warehouse .warehouse-tabs {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+
+  .erp-module-warehouse .warehouse-tabs .tab {
+    min-width:0;
+    padding-inline:7px;
+  }
+
+  .desktop-table {
+    display:none;
+  }
+
+  .mobile-receipts {
+    display:grid;
+    gap:10px;
+    padding:12px;
+  }
+
+  .warehouse-list-summary {
+    padding-inline:12px;
+  }
+
+  .detail-grid,
+  .erp-module-warehouse .grid,
+  .erp-module-warehouse .grid3 {
+    grid-template-columns:1fr;
+  }
+
+  .erp-module-warehouse .modal {
+    align-items:flex-start;
+    padding:10px;
+  }
+
+  .erp-module-warehouse .modalbox {
+    max-height:calc(100vh - 20px);
+    border-radius:16px;
+  }
+
+  .erp-module-warehouse .dialog-head,
+  .warehouse-dialog-section,
+  .warehouse-detail-body {
+    padding-inline:16px;
+  }
+
+  .warehouse-modal-actions {
+    padding:14px 16px;
+  }
+}
+
+@media(max-width:430px) {
+  .erp-module-warehouse .warehouse-metrics {
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+
+  .erp-module-warehouse .warehouse-metrics .stat {
+    min-height:82px;
+    padding:14px 13px 12px 17px;
+  }
+
+  .erp-module-warehouse .warehouse-metrics .stat b {
+    font-size:22px;
+  }
+
+  .warehouse-panel-head {
+    padding:17px 16px 15px;
+  }
+
+  .warehouse-list-toolbar {
+    padding:12px;
+  }
+
+  .erp-module-warehouse .receipt-filter {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    width:100%;
+  }
+
+  .product-picker {
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .entry-mode {
+    width:100%;
+  }
+
+  .entry-mode button {
+    flex:1;
+  }
+
+  .receipt-item-head {
+    display:block;
+  }
+
+  .receipt-item-head > b {
+    display:block;
+    margin-top:8px;
+  }
+}
