@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate Costs UX-6 owner
         run: node scripts/check-ux6-costs-presentation.mjs
       - name: Validate JavaScript syntax
