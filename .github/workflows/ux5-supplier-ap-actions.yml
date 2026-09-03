@@ -7,7 +7,6 @@ on:
       - 'api/payables.js'
       - 'api/supplier-payments.js'
       - 'admin/payables.js'
-      - 'admin/payables-payment-ux.js'
       - 'supabase/migrations/20260901001500_ux5_supplier_ap_action_capabilities.sql'
       - 'supabase/migrations/20260901002000_ux5_supplier_ap_view_privilege_hardening.sql'
       - 'supabase/tests/ux5_supplier_ap_actions.sql'

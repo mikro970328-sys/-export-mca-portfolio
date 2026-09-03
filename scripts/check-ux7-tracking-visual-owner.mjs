@@ -135,7 +135,7 @@ for(const text of [
   "loadStylesheet('/admin/shipment-editor.css?v=20260903-ux7tracking2', 'data-shipment-editor-style')",
   "loadScript('/admin/shipment-editor.js?v=20260903-ux7tracking2', 'data-shipment-editor')"
 ])requireText(loader,text,`asset canónico ${text}`);
-requireText(html,'/admin/erp.js?v=20260903-ux7tracking2','revisión de caché del ERP');
+requireText(html,'/admin/erp.js?v=20260903-ux7payables1','revisión de caché del ERP');
 
 for(const text of [
   'class="shipment-editor" data-owner="shipment-editor.js"',

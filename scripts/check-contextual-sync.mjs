@@ -9,7 +9,8 @@ const requiredFiles=[
   'admin/operational-context-bridge.js',
   'admin/tasks-navigation.js',
   'api/operational-links.js',
-  'admin/invoices.js'
+  'admin/invoices.js',
+  'admin/payables.js'
 ];
 for(const file of requiredFiles)if(!fs.existsSync(path.join(root,file)))failures.push(`${file}: falta archivo P6`);
 
@@ -19,6 +20,7 @@ if(requiredFiles.every(file=>fs.existsSync(path.join(root,file)))){
   const taskNav=read(requiredFiles[2]);
   const api=read(requiredFiles[3]);
   const invoiceOwner=read(requiredFiles[4]);
+  const payablesOwner=read(requiredFiles[5]);
 
   for(const required of [
     'const WORKFLOW_ACCESS=',
@@ -44,7 +46,6 @@ if(requiredFiles.every(file=>fs.existsSync(path.join(root,file)))){
   for(const required of [
     'openOperationalPurchaseReceipt',
     'openOperationalSalesSupply',
-    'openOperationalSupplierBill',
     'direct_shipments',
     'Contenedores / Tracking'
   ]) if(!bridge.includes(required))failures.push(`operational-context-bridge.js: falta ${required}`);
@@ -72,6 +73,16 @@ if(requiredFiles.every(file=>fs.existsSync(path.join(root,file)))){
     'window.openOperationalInvoiceCollection = openCollection;',
     'window.openOperationalInvoiceForSalesOrder = openForSalesOrder;'
   ]) if(!invoiceOwner.includes(required))failures.push(`admin/invoices.js: falta navegación canónica ${required}`);
+  if(/function initPayables\s*\(/.test(bridge))failures.push('operational-context-bridge.js: conserva un segundo owner de Cuentas por pagar');
+  if(bridge.includes('/admin/payables.html'))failures.push('operational-context-bridge.js: todavía se activa dentro de Cuentas por pagar');
+  if(/CONTEXT_SECTIONS[^;]*payablesSection/.test(nav))failures.push('operational-navigation.js: Cuentas por pagar sigue incluida en el bridge compartido');
+  if(!nav.includes("callEmbedded('payablesSection','PayablesModule.openBill'"))failures.push('operational-navigation.js: Cuentas por pagar no delega al owner canónico PayablesModule');
+  for(const required of [
+    'window.PayablesModule = Object.freeze({',
+    "owner: 'payables.js'",
+    'openBill,',
+    'openPayment'
+  ]) if(!payablesOwner.includes(required))failures.push(`admin/payables.js: falta navegación canónica ${required}`);
 
   for(const required of ['Abrir trabajo','OperationalNavigation','openWork','stopImmediatePropagation','tasksModalActions']){
     if(!taskNav.includes(required))failures.push(`tasks-navigation.js: falta ${required}`);

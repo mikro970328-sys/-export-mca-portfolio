@@ -21,7 +21,7 @@ if(!failures.length){
   const ux5=read('scripts/check-ux5-supplier-ap-actions.mjs');
   const workflow=read('.github/workflows/ux6-payables-presentation.yml');
 
-  requireText(html,'/admin/payables.css?v=20260902-ux6owner2','Payables HTML owner CSS');
+  requireText(html,'/admin/payables.css?v=20260903-ux7payables1','Payables HTML owner CSS');
   requireText(html,'id="newAdvancePayment"','Payables HTML anticipo explícito');
   requireText(html,'id="pOpenBalanceHint"','Payables HTML ayuda de saldo');
   requireText(html,'role="status"','Payables HTML feedback accesible');
@@ -29,21 +29,21 @@ if(!failures.length){
   forbid(html,/payables-payment-ux\.js/,'Payables HTML carga el decorador retirado');
 
   for(const token of [
-    "actionAllowed(bill,'pay')",
-    "actionAllowed(bill,'edit')",
-    "actionAllowed(bill,'post')",
-    "actionAllowed(bill,'void')",
-    "actionAllowed(payment,'allocate')",
-    "actionAllowed(payment,'reverse')",
-    "state.paymentMode==='direct'",
-    "state.paymentMode==='advance'",
-    "body.action='pay_bill'",
+    "actionAllowed(bill, 'pay')",
+    "actionAllowed(bill, 'edit')",
+    "actionAllowed(bill, 'post')",
+    "actionAllowed(bill, 'void')",
+    "actionAllowed(payment, 'allocate')",
+    "actionAllowed(payment, 'reverse')",
+    "state.paymentMode === 'direct'",
+    "state.paymentMode === 'advance'",
+    "body.action = 'pay_bill'",
     'state.advancePurchaseOrders = Array.isArray(payments.advance_purchase_orders)',
     'safeApMessage',
-    'reportError',
-    'Sin facturas en esta vista',
-    'Sin pagos en esta vista',
-    'class="allocation-amount"'
+    'reportApError',
+    'Aún no hay facturas de proveedor',
+    'Aún no hay pagos de proveedor',
+    'class=\"allocation-amount\"'
   ])requireText(ui,token,'Payables consolidated owner');
   forbid(ui,/\b(?:prompt|alert|confirm)\s*\(/,'Payables owner usa diálogos nativos');
   forbid(ui,/\bMutationObserver\b/,'Payables owner usa MutationObserver compensatorio');
@@ -63,7 +63,7 @@ if(!failures.length){
     forbid(source,/messages\.find\([^\n]+\)\?\.\[1\]\s*\|\|\s*raw/,`${label} devuelve error técnico crudo`);
   }
 
-  for(const token of ['.ap-head','.ap-toolbar','.ap-payment-hint','.allocation-amount','.erp-module-payables .orders > .row','.erp-module-payables .summary','@media(max-width:680px)'])requireText(css,token,'Payables CSS dedicado');
+  for(const token of ['.payables-page-head','.payables-list-toolbar','.payables-payment-hint','.allocation-amount','.payable-row','.payable-detail-summary','@media(max-width:760px)'])requireText(css,token,'Payables CSS dedicado');
   forbid(css,/@import|purchases\.css/i,'Payables conserva dependencia visual de Compras');
   requireText(ux5,"if(fs.existsSync('admin/payables-payment-ux.js'))",'Gate UX5 reconoce owner consolidado');
   requireText(workflow,'npm install --ignore-scripts --no-audit --no-fund','Workflow instala dependencias');

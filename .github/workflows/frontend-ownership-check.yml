@@ -65,6 +65,11 @@ on:
       - 'supabase/migrations/20260830174500_p5_workflow_dependency_integrity.sql'
       - 'admin/operational-navigation.js'
       - 'admin/operational-context-bridge.js'
+      - 'admin/ap-traceability.js'
+      - 'admin/ap-context-bridge.js'
+      - 'admin/payables.html'
+      - 'admin/payables.css'
+      - 'admin/payables.js'
       - 'api/operational-links.js'
       - 'api/shipment-documents.js'
       - 'api/shipment-document-readiness.js'
@@ -94,6 +99,7 @@ on:
       - 'vercel.json'
       - 'scripts/check-frontend-ownership.mjs'
       - 'scripts/check-ux7-tracking-visual-owner.mjs'
+      - 'scripts/check-ux7-payables-visual-owner.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
       - 'scripts/check-sales-customer-finance.mjs'
@@ -122,6 +128,8 @@ jobs:
         run: node scripts/check-frontend-ownership.mjs
       - name: Validate UX-7 Tracking visual owner
         run: node scripts/check-ux7-tracking-visual-owner.mjs
+      - name: Validate UX-7 Payables visual owner
+        run: node scripts/check-ux7-payables-visual-owner.mjs
       - name: Validate UX-E5 shipment importer independence
         run: node scripts/check-shipment-importer-independence.mjs
       - name: Validate P1 sales supply workspace
@@ -171,6 +179,9 @@ jobs:
         run: |
           node --check admin/operational-navigation.js
           node --check admin/operational-context-bridge.js
+          node --check admin/ap-traceability.js
+          node --check admin/ap-context-bridge.js
+          node --check admin/payables.js
           node --check admin/tasks-navigation.js
           node --check api/operational-links.js
       - name: Validate P7 Cuba documentation
