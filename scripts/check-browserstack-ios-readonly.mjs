@@ -16,11 +16,15 @@ const requiredTestContracts = [
   "const CERT_SCOPE = process.env.ERP_CERT_SCOPE || 'all'",
   'if (RUN_CORE)',
   'if (RUN_COSTS)',
-  'async function openProfitabilityAndRead(frameElement)',
-  'await new Promise(resolve => win.setTimeout(resolve, 250))',
-  'const deadline = Date.now() + 35_000',
-  'undefined, { timeout: 45_000 }',
-  'const profitabilityState = await openProfitabilityAndRead(frameElement)',
+  "const PROFITABILITY_STATUS_ATTRIBUTE = 'data-profitability-probe-status'",
+  "const PROFITABILITY_STATE_ATTRIBUTE = 'data-profitability-probe-state'",
+  'async function installProfitabilityProbe(frameElement)',
+  'new win.MutationObserver',
+  "frame.setAttribute('data-profitability-probe-status', status)",
+  "frame.setAttribute('data-profitability-probe-state', JSON.stringify(state))",
+  'const profitabilityProbe = await installProfitabilityProbe(frameElement)',
+  'toHaveAttribute(PROFITABILITY_STATUS_ATTRIBUTE, /^(?:ready|error|timeout)$/',
+  "JSON.parse(profitabilityRawState || '{}')",
   'profitabilityState.timedOut',
   'JSON.stringify(profitabilityState)',
   'diagnostics.blockedWrites.push(signature)',
@@ -61,6 +65,7 @@ const forbiddenInteractionPatterns = [
   /\.toHaveClass\(/,
   /\.toHaveValue\(/,
   /\.frameLocator\(/,
+  /frameElement\.evaluate\(async/,
   /waitForEmbeddedState\(page,\s*frameElement,\s*['"]Profitability view/
 ];
 
