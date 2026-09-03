@@ -38,6 +38,10 @@ on:
       - 'admin/suppliers.css'
       - 'admin/suppliers.js'
       - 'api/suppliers.js'
+      - 'admin/products.html'
+      - 'admin/products.css'
+      - 'admin/products.js'
+      - 'api/products.js'
       - '.github/workflows/browserstack-ios-certification.yml'
   pull_request:
     paths:
@@ -74,6 +78,10 @@ on:
       - 'admin/suppliers.css'
       - 'admin/suppliers.js'
       - 'api/suppliers.js'
+      - 'admin/products.html'
+      - 'admin/products.css'
+      - 'admin/products.js'
+      - 'api/products.js'
       - '.github/workflows/browserstack-ios-certification.yml'
   workflow_dispatch:
     inputs:

@@ -15,6 +15,14 @@ async function listProducts() {
   return await supabase('products', { query:'?select=id,sku,name,description,category,brand,hs_code,country_of_origin,unit,unit_weight_kg,unit_volume_m3,currency,active,created_at,updated_at,package_format,default_units_per_pallet,notes&order=active.desc,name.asc' }) || [];
 }
 
+async function loadProductWriteAccess(admin) {
+  if (admin?.role === 'master_admin') return true;
+  const rows = await supabase('admin_effective_permissions', {
+    query:`?select=permission_key&admin_user_id=eq.${encodeURIComponent(admin?.admin_id || '')}&permission_key=eq.procurement.write&limit=1`
+  });
+  return Boolean(rows?.length);
+}
+
 async function assertUniqueSku(sku, excludeId = null) {
   if (!sku) return;
   const rows = await supabase('products', { query:'?select=id,sku' }) || [];
@@ -54,7 +62,10 @@ export default async function handler(req, res) {
   if (!admin) return;
 
   try {
-    if (req.method === 'GET') return ok(res, { products:await listProducts() });
+    if (req.method === 'GET') {
+      const [products, writeAccess] = await Promise.all([listProducts(), loadProductWriteAccess(admin)]);
+      return ok(res, { products, write_access:writeAccess });
+    }
 
     if (req.method === 'POST') {
       const body = await readJson(req);

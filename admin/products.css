@@ -1,0 +1,984 @@
+.erp-module-page.erp-module-products {
+  --products-hero:#0b1d36;
+  --products-action:#c4510b;
+  --products-action-hover:#a63f06;
+  --products-blue:#2563a8;
+  --products-teal:#167b76;
+  --products-slate:#62748a;
+  --products-violet:#7657a6;
+  overflow-x:hidden;
+}
+
+.erp-module-products [hidden],
+.erp-module-products .hidden {
+  display:none;
+}
+
+.erp-module-products.products-modal-open {
+  overflow:hidden;
+}
+
+.erp-module-products .products-shell {
+  width:min(var(--module-max),calc(100% - 48px));
+  max-width:var(--module-max);
+  min-width:0;
+  margin:24px auto 44px;
+  padding-bottom:30px;
+}
+
+.erp-module-products .products-page-head {
+  isolation:isolate;
+  min-width:0;
+  min-height:194px;
+  align-items:center;
+  border:0;
+  padding:30px 32px;
+  background:var(--products-hero);
+  box-shadow:0 20px 48px rgba(9,24,46,.18);
+}
+
+.erp-module-products .products-page-head::before {
+  width:5px;
+  background:var(--orange);
+}
+
+.erp-module-products .products-page-head::after {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  right:-70px;
+  bottom:-136px;
+  width:326px;
+  height:326px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:50%;
+}
+
+.erp-module-products .products-page-heading {
+  max-width:780px;
+}
+
+.erp-module-products .products-page-kicker {
+  color:#ffb27d;
+}
+
+.erp-module-products .products-page-head h1 {
+  color:#fff;
+  font-size:clamp(30px,4vw,42px);
+}
+
+.erp-module-products .products-page-head p {
+  max-width:730px;
+  color:#cbd7e6;
+  font-size:14px;
+}
+
+.erp-module-products .products-hero-actions {
+  display:flex;
+  width:min(304px,100%);
+  min-width:278px;
+  flex-direction:column;
+  gap:10px;
+}
+
+.erp-module-products .products-hero-state {
+  display:flex;
+  min-height:58px;
+  align-items:center;
+  gap:11px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:13px;
+  padding:11px 14px;
+  background:rgba(255,255,255,.08);
+  color:#fff;
+}
+
+.erp-module-products .products-hero-state > div {
+  display:grid;
+  min-width:0;
+}
+
+.erp-module-products .products-hero-state strong {
+  font-size:12px;
+}
+
+.erp-module-products .products-hero-state span:not(.products-live-dot) {
+  overflow:hidden;
+  margin-top:2px;
+  color:#cbd7e6;
+  font-size:10px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.erp-module-products .products-live-dot {
+  width:9px;
+  height:9px;
+  flex:0 0 9px;
+  border:2px solid rgba(255,255,255,.45);
+  border-radius:50%;
+  background:#39c37a;
+  box-shadow:0 0 0 5px rgba(57,195,122,.13);
+}
+
+.erp-module-products .products-action-row {
+  display:grid;
+  grid-template-columns:1fr 1.2fr;
+  gap:8px;
+}
+
+.erp-module-page.erp-module-products .products-action-row .btn {
+  min-width:0;
+  border-color:rgba(255,255,255,.24);
+  background:rgba(255,255,255,.1);
+  color:#fff;
+  box-shadow:none;
+}
+
+.erp-module-page.erp-module-products .products-action-row .products-create {
+  border-color:var(--products-action);
+  background:var(--products-action);
+  box-shadow:0 12px 26px rgba(0,0,0,.2);
+}
+
+.erp-module-page.erp-module-products .products-action-row .btn:not(:disabled):hover {
+  border-color:rgba(255,255,255,.42);
+  background:rgba(255,255,255,.16);
+  color:#fff;
+}
+
+.erp-module-page.erp-module-products .products-action-row .products-create:not(:disabled):hover {
+  border-color:var(--products-action-hover);
+  background:var(--products-action-hover);
+}
+
+.erp-module-products .products-feedback,
+.erp-module-products .products-boundary-note,
+.erp-module-products .products-readonly {
+  margin:0 0 14px;
+  border:1px solid #cfe0f5;
+  border-radius:12px;
+  padding:11px 14px;
+  background:var(--info-soft);
+  color:#31516f;
+  font-size:12px;
+  font-weight:650;
+}
+
+.erp-module-products .products-feedback {
+  display:none;
+}
+
+.erp-module-products .products-feedback:not(:empty) {
+  display:block;
+}
+
+.erp-module-products .products-feedback.good {
+  border-color:#bde5cf;
+  background:var(--ok-soft);
+  color:var(--ok);
+}
+
+.erp-module-products .products-feedback.bad {
+  border-color:#efc0bc;
+  background:var(--bad-soft);
+  color:var(--bad);
+}
+
+.erp-module-products .products-boundary-note,
+.erp-module-products .products-readonly {
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.erp-module-products .products-boundary-note {
+  border-color:#f0d5aa;
+  background:var(--warn-soft);
+  color:#775018;
+}
+
+.erp-module-products .products-boundary-note > div {
+  display:grid;
+  gap:2px;
+}
+
+.erp-module-products .products-boundary-note strong {
+  color:#65410f;
+}
+
+.erp-module-products .products-boundary-note span:last-child {
+  font-size:11px;
+  font-weight:550;
+}
+
+.erp-module-products .products-readonly[hidden] {
+  display:none;
+}
+
+.erp-module-products .products-boundary-mark,
+.erp-module-products .products-readonly-mark {
+  display:grid;
+  width:25px;
+  height:25px;
+  flex:0 0 25px;
+  place-items:center;
+  border-radius:50%;
+  background:#f9e4c3;
+  color:#80510e;
+  font-weight:850;
+}
+
+.erp-module-products .products-readonly-mark {
+  background:#dcecff;
+  color:#174f89;
+}
+
+.erp-module-products .products-metrics {
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:18px;
+}
+
+.erp-module-products .products-metrics .metric {
+  position:relative;
+  min-height:108px;
+  overflow:hidden;
+  padding:17px 18px 15px 21px;
+}
+
+.erp-module-products .products-metrics .metric::before {
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:4px;
+  background:var(--products-blue);
+}
+
+.erp-module-products .products-metrics .product-metric-active::before {
+  background:var(--products-teal);
+}
+
+.erp-module-products .products-metrics .product-metric-inactive::before {
+  background:var(--products-slate);
+}
+
+.erp-module-products .products-metrics .product-metric-sku::before {
+  background:var(--orange);
+}
+
+.erp-module-products .products-metrics .product-metric-pallet::before {
+  background:var(--products-violet);
+}
+
+.erp-module-products .products-metrics .metric b {
+  margin-top:8px;
+  font-size:clamp(22px,2.3vw,28px);
+  line-height:1.15;
+}
+
+.erp-module-products .products-metrics .metric small {
+  display:block;
+  margin-top:4px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.4;
+}
+
+.erp-module-products .products-catalog-panel {
+  min-width:0;
+  margin-bottom:18px;
+  overflow:hidden;
+  box-shadow:0 12px 32px rgba(16,35,63,.07);
+}
+
+.erp-module-products .products-panel-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  border-bottom:1px solid var(--line);
+  padding:20px 22px 18px;
+  background:var(--surface);
+}
+
+.erp-module-products .products-panel-head > div {
+  min-width:0;
+}
+
+.erp-module-products .products-panel-head h2,
+.erp-module-products .product-dialog-head h2,
+.erp-module-products .product-decision-dialog h2 {
+  margin:3px 0 0;
+  color:var(--navy-strong);
+  font-size:20px;
+  letter-spacing:-.025em;
+}
+
+.erp-module-products .products-panel-head p,
+.erp-module-products .product-dialog-head p {
+  max-width:700px;
+  margin:5px 0 0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.5;
+}
+
+.erp-module-products .products-eyebrow {
+  display:block;
+  color:#b54708;
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.erp-module-products .products-result-count {
+  display:inline-flex;
+  min-height:29px;
+  flex:0 0 auto;
+  align-items:center;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:5px 10px;
+  background:var(--surface-soft);
+  color:var(--muted-strong);
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.erp-module-products .products-toolbar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  border-bottom:1px solid var(--line);
+  padding:14px 18px;
+  background:var(--surface-soft);
+}
+
+.erp-module-products .products-search {
+  min-width:0;
+  flex:1 1 440px;
+  margin:0;
+}
+
+.erp-module-products .products-search input {
+  width:100%;
+  min-height:42px;
+  margin:0;
+  border-radius:11px;
+  background:#fff;
+}
+
+.erp-module-products .products-tabs {
+  display:flex;
+  flex:0 0 auto;
+  gap:6px;
+}
+
+.erp-module-products .products-tabs .btn {
+  min-height:38px;
+  border-radius:999px;
+  padding-inline:14px;
+}
+
+.erp-module-products .products-tabs .btn.active {
+  border-color:var(--navy);
+  background:var(--navy);
+  color:#fff;
+}
+
+.erp-module-products .product-list {
+  min-height:320px;
+  padding:8px 18px 18px;
+  background:#fff;
+}
+
+.erp-module-products .product-card {
+  display:grid;
+  grid-template-columns:minmax(230px,1.3fr) minmax(155px,.85fr) minmax(145px,.75fr) minmax(150px,.8fr) auto;
+  gap:16px;
+  align-items:center;
+  border-bottom:1px solid #edf0f4;
+  padding:15px 4px;
+}
+
+.erp-module-products .product-card:last-child {
+  border-bottom:0;
+}
+
+.erp-module-products .product-card:hover {
+  background:#fbfcfe;
+}
+
+.erp-module-products .product-identity,
+.erp-module-products .product-card-section,
+.erp-module-products .product-card-control {
+  min-width:0;
+}
+
+.erp-module-products .product-identity {
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+
+.erp-module-products .product-avatar {
+  display:grid;
+  width:40px;
+  height:40px;
+  flex:0 0 40px;
+  place-items:center;
+  border:1px solid #d6e2f1;
+  border-radius:12px;
+  background:#edf5ff;
+  color:#174f89;
+  font-size:12px;
+  font-weight:850;
+  text-transform:uppercase;
+}
+
+.erp-module-products .product-name,
+.erp-module-products .product-card-section strong {
+  display:block;
+  overflow:hidden;
+  color:var(--navy);
+  font-size:12px;
+  font-weight:800;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.erp-module-products .product-sku {
+  display:block;
+  overflow:hidden;
+  margin-bottom:2px;
+  color:#b54708;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.06em;
+  text-overflow:ellipsis;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+
+.erp-module-products .product-card-label {
+  display:block;
+  margin-bottom:3px;
+  color:#8994a5;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.erp-module-products .product-meta {
+  display:block;
+  overflow:hidden;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.4;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.erp-module-products .product-status {
+  display:inline-flex;
+  align-items:center;
+  border:1px solid #bde5cf;
+  border-radius:999px;
+  padding:4px 8px;
+  background:var(--ok-soft);
+  color:var(--ok);
+  font-size:10px;
+  font-weight:850;
+}
+
+.erp-module-products .product-status.inactive {
+  border-color:#d9dfe7;
+  background:#f1f3f6;
+  color:#667085;
+}
+
+.erp-module-products .product-card-actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:7px;
+  margin-top:7px;
+}
+
+.erp-module-products .product-card-actions .btn {
+  min-height:36px;
+  padding:7px 10px;
+}
+
+.erp-module-products .product-card-actions .danger {
+  border-color:#efc0bc;
+  color:var(--bad);
+}
+
+.erp-module-products .products-loading,
+.erp-module-products .products-empty {
+  display:grid;
+  min-height:295px;
+  place-items:center;
+  align-content:center;
+  gap:10px;
+  padding:38px 20px;
+  color:var(--muted);
+  text-align:center;
+}
+
+.erp-module-products .products-empty strong {
+  color:var(--navy);
+  font-size:15px;
+}
+
+.erp-module-products .products-empty span {
+  max-width:470px;
+  font-size:12px;
+  line-height:1.55;
+}
+
+.erp-module-products .products-empty .btn {
+  margin-top:4px;
+}
+
+.erp-module-products .products-spinner {
+  width:24px;
+  height:24px;
+  border:3px solid #d9e1ec;
+  border-top-color:var(--orange);
+  border-radius:50%;
+  animation:products-spin .7s linear infinite;
+}
+
+@keyframes products-spin {
+  to { transform:rotate(360deg); }
+}
+
+.erp-module-products .products-visually-hidden {
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  clip-path:inset(50%);
+  white-space:nowrap;
+}
+
+.erp-module-products .product-modal {
+  position:fixed;
+  z-index:50;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:auto;
+  padding:18px;
+  background:rgba(5,16,31,.62);
+}
+
+.erp-module-products .product-dialog {
+  width:min(820px,100%);
+  max-height:min(92vh,900px);
+  overflow:auto;
+  border:1px solid rgba(255,255,255,.46);
+  border-radius:18px;
+  padding:22px;
+  background:#fff;
+  box-shadow:0 28px 80px rgba(5,16,31,.28);
+}
+
+.erp-module-products .product-detail-dialog {
+  width:min(760px,100%);
+}
+
+.erp-module-products .product-dialog-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  border-bottom:1px solid var(--line);
+  padding-bottom:16px;
+}
+
+.erp-module-products .product-close {
+  flex:0 0 auto;
+}
+
+.erp-module-products .product-form-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  padding-top:18px;
+}
+
+.erp-module-products .product-form-grid label {
+  min-width:0;
+  margin:0;
+}
+
+.erp-module-products .product-form-grid label > span {
+  display:block;
+  margin-bottom:6px;
+  color:#475467;
+  font-size:10px;
+  font-style:normal;
+  font-weight:850;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+
+.erp-module-products .product-form-grid em {
+  color:var(--bad);
+  font-style:normal;
+}
+
+.erp-module-products .product-form-grid input,
+.erp-module-products .product-form-grid textarea {
+  width:100%;
+  min-height:44px;
+  margin:0;
+  border-radius:10px;
+  background:#fbfcfe;
+}
+
+.erp-module-products .product-form-grid textarea {
+  min-height:92px;
+  resize:vertical;
+}
+
+.erp-module-products .product-field-wide {
+  grid-column:1/-1;
+}
+
+.erp-module-products .products-form-message {
+  display:none;
+  margin-top:14px;
+  border:1px solid #efc0bc;
+  border-radius:10px;
+  padding:10px 12px;
+  background:var(--bad-soft);
+  color:var(--bad);
+  font-size:12px;
+  font-weight:700;
+}
+
+.erp-module-products .products-form-message:not(:empty) {
+  display:block;
+}
+
+.erp-module-products .products-form-message.good {
+  border-color:#bde5cf;
+  background:var(--ok-soft);
+  color:var(--ok);
+}
+
+.erp-module-products .product-dialog-actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:18px;
+}
+
+.erp-module-products .product-detail-body {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  padding:18px 0 2px;
+}
+
+.erp-module-products .product-detail-field {
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px 13px;
+  background:var(--surface-soft);
+}
+
+.erp-module-products .product-detail-field.wide {
+  grid-column:1/-1;
+}
+
+.erp-module-products .product-detail-field b {
+  display:block;
+  margin-bottom:4px;
+  color:#68758a;
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.erp-module-products .product-detail-field span {
+  display:block;
+  overflow-wrap:anywhere;
+  color:var(--navy);
+  font-size:12px;
+  line-height:1.5;
+  white-space:pre-wrap;
+}
+
+.erp-module-products .product-decision-dialog {
+  width:min(440px,100%);
+  overflow:visible;
+  text-align:center;
+}
+
+.erp-module-products .product-decision-mark {
+  display:grid;
+  width:46px;
+  height:46px;
+  margin:0 auto 12px;
+  place-items:center;
+  border-radius:50%;
+  background:var(--warn-soft);
+  color:var(--warn);
+  font-size:20px;
+  font-weight:900;
+}
+
+.erp-module-products .product-decision-dialog p {
+  margin:9px 0 0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.6;
+}
+
+.erp-module-products .product-decision-dialog .product-dialog-actions {
+  justify-content:center;
+}
+
+@media(max-width:1180px) {
+  .erp-module-products .products-metrics {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+
+  .erp-module-products .product-card {
+    grid-template-columns:minmax(220px,1.2fr) minmax(170px,.8fr) auto;
+  }
+
+  .erp-module-products .product-card-origin {
+    grid-column:1;
+  }
+
+  .erp-module-products .product-card-handling {
+    grid-column:2;
+  }
+
+  .erp-module-products .product-card-control {
+    grid-column:3;
+    grid-row:1/3;
+  }
+}
+
+@media(max-width:900px) {
+  .erp-module-products .products-page-head {
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .erp-module-products .products-hero-actions {
+    width:100%;
+    min-width:0;
+  }
+
+  .erp-module-products .products-metrics {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .erp-module-products .products-metrics .metric:last-child {
+    grid-column:1/-1;
+  }
+}
+
+@media(max-width:720px) {
+  .erp-module-products .products-shell {
+    width:min(100% - 20px,var(--module-max));
+    margin:10px auto 28px;
+  }
+
+  .erp-module-products .products-page-head {
+    min-height:0;
+    margin-bottom:12px;
+    border-radius:14px;
+    padding:22px 20px;
+  }
+
+  .erp-module-products .products-page-head::after {
+    right:-150px;
+    bottom:-184px;
+  }
+
+  .erp-module-products .products-page-head h1 {
+    font-size:30px;
+  }
+
+  .erp-module-products .products-page-head p {
+    font-size:13px;
+  }
+
+  .erp-module-products .products-metrics {
+    gap:8px;
+    margin-bottom:12px;
+  }
+
+  .erp-module-products .products-metrics .metric {
+    min-height:96px;
+    padding:14px 13px 12px 17px;
+  }
+
+  .erp-module-products .products-panel-head {
+    align-items:flex-start;
+    gap:10px;
+    padding:17px 15px 14px;
+  }
+
+  .erp-module-products .products-panel-head h2 {
+    font-size:18px;
+  }
+
+  .erp-module-products .products-toolbar {
+    align-items:stretch;
+    flex-direction:column;
+    padding:12px;
+  }
+
+  .erp-module-products .products-search {
+    flex-basis:auto;
+  }
+
+  .erp-module-products .products-tabs {
+    width:100%;
+  }
+
+  .erp-module-products .products-tabs .btn {
+    flex:1;
+  }
+
+  .erp-module-products .product-list {
+    padding:8px 12px 14px;
+  }
+
+  .erp-module-products .product-card {
+    grid-template-columns:1fr;
+    gap:12px;
+    margin:8px 0;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+    box-shadow:var(--shadow-xs);
+  }
+
+  .erp-module-products .product-card-origin,
+  .erp-module-products .product-card-handling,
+  .erp-module-products .product-card-control {
+    grid-column:auto;
+    grid-row:auto;
+  }
+
+  .erp-module-products .product-card-actions {
+    justify-content:stretch;
+  }
+
+  .erp-module-products .product-card-actions .btn {
+    flex:1;
+  }
+
+  .erp-module-products .product-modal {
+    align-items:flex-end;
+    padding:0;
+  }
+
+  .erp-module-products .product-dialog {
+    width:100%;
+    max-height:94vh;
+    border-radius:18px 18px 0 0;
+    padding:19px 16px calc(18px + env(safe-area-inset-bottom));
+  }
+
+  .erp-module-products .product-decision {
+    align-items:center;
+    padding:14px;
+  }
+
+  .erp-module-products .product-decision-dialog {
+    border-radius:18px;
+  }
+}
+
+@media(max-width:560px) {
+  .erp-module-products .products-action-row,
+  .erp-module-products .product-form-grid,
+  .erp-module-products .product-detail-body {
+    grid-template-columns:1fr;
+  }
+
+  .erp-module-products .product-field-wide,
+  .erp-module-products .product-detail-field.wide {
+    grid-column:auto;
+  }
+
+  .erp-module-products .products-panel-head {
+    flex-direction:column;
+  }
+
+  .erp-module-products .products-result-count {
+    align-self:flex-start;
+  }
+
+  .erp-module-products .product-dialog-head {
+    gap:10px;
+  }
+}
+
+@media(max-width:390px) {
+  .erp-module-products .products-shell {
+    width:min(100% - 14px,var(--module-max));
+  }
+
+  .erp-module-products .products-page-head {
+    padding:20px 16px;
+  }
+
+  .erp-module-products .products-metrics {
+    grid-template-columns:1fr;
+  }
+
+  .erp-module-products .products-metrics .metric:last-child {
+    grid-column:auto;
+  }
+
+  .erp-module-products .products-tabs {
+    overflow-x:auto;
+  }
+
+  .erp-module-products .products-tabs .btn {
+    min-width:96px;
+    flex:0 0 auto;
+  }
+
+  .erp-module-products .product-card-actions {
+    flex-direction:column;
+  }
+
+  .erp-module-products .product-dialog-actions {
+    display:grid;
+    grid-template-columns:1fr;
+  }
+}
+
+@media(prefers-reduced-motion:reduce) {
+  .erp-module-products .products-spinner {
+    animation-duration:1.8s;
+  }
+
+  .erp-module-products button,
+  .erp-module-products input,
+  .erp-module-products textarea {
+    transition:none;
+  }
+}
