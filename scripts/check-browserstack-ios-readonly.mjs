@@ -19,7 +19,8 @@ const requiredTestContracts = [
   'COSTS_INITIAL_LOAD_FAILED',
   'scrollWidth !== geometry.clientWidth',
   "getAttribute('class')",
-  'inputValue()'
+  'inputValue()',
+  'frame.contentDocument'
 ];
 
 const forbiddenInteractionPatterns = [
@@ -29,7 +30,8 @@ const forbiddenInteractionPatterns = [
   /data-container-action=["'](?:edit|assign_client|manual_update|release|deliver|reactivate|delete)/,
   /request\.(?:post|put|patch|delete)\(/i,
   /\.toHaveClass\(/,
-  /\.toHaveValue\(/
+  /\.toHaveValue\(/,
+  /\.frameLocator\(/
 ];
 
 const missing = requiredTestContracts.filter(contract => !testSource.includes(contract));

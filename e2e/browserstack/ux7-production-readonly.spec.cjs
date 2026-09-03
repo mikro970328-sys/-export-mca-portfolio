@@ -121,6 +121,22 @@ async function assertOneVisibleSection(page, expectedSection) {
   return ownerState;
 }
 
+async function waitForEmbeddedState(page, frameElement, label, reader, ready) {
+  const deadline = Date.now() + 30_000;
+  let state = null;
+  let lastError = '';
+  while (Date.now() < deadline) {
+    try {
+      state = await frameElement.evaluate(reader);
+      if (ready(state)) return state;
+    } catch (error) {
+      lastError = sanitizeLog(error?.message || error);
+    }
+    await page.waitForTimeout(500);
+  }
+  throw new Error(`${label} did not reach a readable ready state${lastError ? `: ${lastError}` : ''}`);
+}
+
 async function openSection(page, sectionId) {
   const sectionButton = page.locator(`[data-section="${sectionId}"]`).first();
   const section = page.locator(`#${sectionId}`);
@@ -335,31 +351,44 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       await openSection(page, 'publicationsSection');
       const frameElement = page.locator('#publicationsSection iframe');
       await expect(frameElement).toBeVisible();
-      const publications = page.frameLocator('#publicationsSection iframe');
-      await expect(publications.locator('#publicationsTitle')).toHaveText('Publicaciones');
-      await expect(publications.locator('#totalMetric')).not.toHaveText('—');
-      if (await publications.locator('#loginPage').count()) throw new Error('Duplicate login found inside Publications');
+      const publicationsState = await waitForEmbeddedState(page, frameElement, 'Publications iframe', frame => {
+        const doc = frame.contentDocument;
+        const html = doc?.documentElement;
+        const metric = doc?.getElementById('totalMetric')?.textContent?.trim() || '';
+        return {
+          title: doc?.getElementById('publicationsTitle')?.textContent?.trim() || '',
+          metricReady: Boolean(metric && metric !== '—'),
+          duplicateLogin: Boolean(doc?.getElementById('loginPage')),
+          clientWidth: html?.clientWidth || 0,
+          scrollWidth: html?.scrollWidth || 0,
+          messageError: doc?.getElementById('pageMessage')?.classList.contains('is-error') === true
+        };
+      }, state => state?.duplicateLogin || (state?.title === 'Publicaciones' && state.metricReady));
+      if (publicationsState.duplicateLogin) throw new Error('Duplicate login found inside Publications');
       const owner = await assertOneVisibleSection(page, 'publicationsSection');
       if (owner.visibleFrames !== 1) throw new Error('Publications has more than one visible embedded page');
       const outerGeometry = await assertNoDocumentOverflow(page, 'Publicaciones outer shell');
-      const innerGeometry = await publications.locator('html').evaluate(() => ({
-        clientWidth: document.documentElement.clientWidth,
-        scrollWidth: document.documentElement.scrollWidth
-      }));
+      const innerGeometry = { clientWidth: publicationsState.clientWidth, scrollWidth: publicationsState.scrollWidth };
       if (innerGeometry.scrollWidth !== innerGeometry.clientWidth) throw new Error('Publications iframe has horizontal document overflow');
-      const publicationMessageClasses = ((await publications.locator('#pageMessage').getAttribute('class')) || '').split(/\s+/);
-      expect(publicationMessageClasses).not.toContain('is-error');
+      if (publicationsState.messageError) throw new Error('Publications displayed an error state');
       await attachPrivateScreenshot(page, testInfo, 'publications-iphone-safari');
       checkpoint('publications', { outerGeometry, innerGeometry, visibleFrames: owner.visibleFrames, duplicateLogin: false });
     });
 
     await test.step('Costs loads without COSTS_INITIAL_LOAD_FAILED', async () => {
       await openSection(page, 'costsSection');
-      const costs = page.frameLocator('#costsSection iframe');
-      await expect(costs.getByRole('heading', { name: 'Costos operativos' })).toBeVisible();
-      await expect(costs.locator('#metrics > *')).toHaveCount(5);
-      await expect(costs.locator('#content')).not.toContainText('No se pudo cargar Costos');
-      await expect(costs.locator('#pageMsg')).toHaveText('');
+      const frameElement = page.locator('#costsSection iframe');
+      await expect(frameElement).toBeVisible();
+      const costsState = await waitForEmbeddedState(page, frameElement, 'Costs iframe', frame => {
+        const doc = frame.contentDocument;
+        return {
+          heading: [...(doc?.querySelectorAll('h1') || [])].some(node => node.textContent?.trim() === 'Costos operativos'),
+          metricCount: doc?.querySelectorAll('#metrics > *').length || 0,
+          contentError: doc?.getElementById('content')?.textContent?.includes('No se pudo cargar Costos') === true,
+          pageMessage: doc?.getElementById('pageMsg')?.textContent?.trim() || ''
+        };
+      }, state => state?.heading && (state.metricCount === 5 || state.contentError || Boolean(state.pageMessage)));
+      if (costsState.contentError || costsState.pageMessage) throw new Error('Costs displayed an initial-load error state');
       const costsResponses = diagnostics.apiResponses.filter(item => item.path === '/api/costs');
       if (!costsResponses.some(item => item.status === 200)) throw new Error('Costs API did not return HTTP 200');
       await assertOneVisibleSection(page, 'costsSection');
