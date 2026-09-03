@@ -18,8 +18,11 @@ const requiredTestContracts = [
   'if (RUN_COSTS)',
   'async function openProfitabilityAndRead(frameElement)',
   'await new Promise(resolve => win.setTimeout(resolve, 250))',
+  'const deadline = Date.now() + 35_000',
+  'undefined, { timeout: 45_000 }',
   'const profitabilityState = await openProfitabilityAndRead(frameElement)',
   'profitabilityState.timedOut',
+  'JSON.stringify(profitabilityState)',
   'diagnostics.blockedWrites.push(signature)',
   "openSection(page, 'containersSection')",
   "openSection(page, 'registerContainerSection')",
@@ -76,10 +79,10 @@ const requiredWorkflowContracts = [
   'Wait for the matching production deployment',
   'github.rest.repos.listDeployments',
   'github.rest.repos.listDeploymentStatuses',
-  'Run core read-only certification on real iPhone Safari',
-  'Run Costs read-only certification in a fresh iPhone Safari session',
-  'npm run test:ios:core',
-  'npm run test:ios:costs'
+  'fail-fast: false',
+  'scope: [core, costs]',
+  'Run ${{ matrix.scope }} read-only certification on real iPhone Safari',
+  'npm run test:ios:${{ matrix.scope }}'
 ];
 const missingWorkflowContracts = requiredWorkflowContracts.filter(contract => !workflowSource.includes(contract));
 const requiredPackageContracts = [
