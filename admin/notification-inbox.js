@@ -3,7 +3,11 @@
   if (window.__notificationInboxInstalled) return;
   window.__notificationInboxInstalled = true;
 
-  const state = { items: [], counts: { total:0, unread:0, task:0, alert:0 }, preferences:null, view:'inbox', filter:'all', history:[], open:false, busy:false, message:'' };
+  const state = {
+    items: [], counts: { total:0, unread:0, task:0, alert:0 }, preferences:null,
+    view:'inbox', filter:'all', history:[], open:false, busy:false, message:'', focusItem:null,
+    push:{ loaded:false, config:{ready:false,public_key:null}, devices:[], permission:'unsupported', currentDeviceId:null, error:'' }
+  };
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const canManage = () => window.ExportMcaAccessControl?.can?.('notifications.manage') === true;
@@ -19,6 +23,10 @@
     NOTIFICATION_PHONE_REQUIRED:'Indica un número de WhatsApp para activar ese canal.',
     NOTIFICATION_EMAIL_INVALID:'El correo no es válido.',
     NOTIFICATION_EMAIL_REQUIRED:'Indica un correo para activar ese canal.',
+    PUSH_VAPID_NOT_CONFIGURED:'Web Push todavía no está configurado en el servidor.',
+    PUSH_ACTIVE_DEVICE_REQUIRED:'Activa al menos un dispositivo antes de habilitar Web Push.',
+    PUSH_SUBSCRIPTION_NOT_FOUND:'El dispositivo ya no está activo.',
+    PUSH_SUBSCRIPTION_EXPIRED:'La suscripción del navegador expiró. Actívala nuevamente.',
     NOTIFICATION_DESTINATION_UNAVAILABLE:'Esta notificación no tiene un destino operativo disponible.'
   });
   const safeInboxErrors = new Set([
@@ -30,6 +38,9 @@
     'Indica un número de WhatsApp para activar ese canal',
     'El correo no es válido',
     'Indica un correo para activar ese canal',
+    'Las notificaciones push todavía no están configuradas',
+    'Activa al menos un dispositivo antes de habilitar Web Push',
+    'El dispositivo ya no está activo',
     'Falta el identificador de la notificación',
     'Acción no válida',
     'Las alertas operativas no se reenvían por WhatsApp',
@@ -38,6 +49,30 @@
   ]);
   const dateLabel = value => { const d=new Date(value||0); return Number.isNaN(d.getTime())?'-':d.toLocaleString('es-US',{dateStyle:'medium',timeStyle:'short'}); };
   const apiCall = (path, options={}) => typeof window.api === 'function' ? window.api(path,options) : Promise.reject(new Error('API no disponible'));
+  const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const standaloneMode = () => window.matchMedia?.('(display-mode: standalone)')?.matches === true || navigator.standalone === true;
+  const isAppleMobile = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+
+  function urlBase64ToBytes(value) {
+    const padding='='.repeat((4-value.length%4)%4);
+    const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');
+    const raw=atob(base64);
+    return Uint8Array.from([...raw].map(character=>character.charCodeAt(0)));
+  }
+
+  function subscriptionApplicationKey(subscription) {
+    const buffer=subscription?.options?.applicationServerKey;
+    if(!buffer)return null;
+    let binary='';
+    new Uint8Array(buffer).forEach(byte=>{binary+=String.fromCharCode(byte);});
+    return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+
+  function deviceLabel() {
+    const platform=navigator.userAgentData?.platform||navigator.platform||'Dispositivo';
+    const browser=/Edg\//.test(navigator.userAgent)?'Edge':/CriOS|Chrome\//.test(navigator.userAgent)?'Chrome':/Firefox\//.test(navigator.userAgent)?'Firefox':/Safari\//.test(navigator.userAgent)?'Safari':'Navegador';
+    return `${platform} · ${browser}`.slice(0,80);
+  }
 
   function safeInboxMessage(error,fallback='No se pudo completar la operación. Intenta nuevamente.',context='operation') {
     const raw=String(error?.message||'').trim();
@@ -108,6 +143,9 @@
     const count=Number(state.counts?.unread||0);
     badge.textContent=count>99?'99+':String(count);
     badge.hidden=count===0;
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.ready.then(registration=>registration.active?.postMessage?.({type:'EXPORT_MCA_BADGE',count})).catch(()=>{});
+    }
   }
 
   function filteredItems() {
@@ -128,7 +166,7 @@
         ${item.message?`<div class="notification-item-message">${esc(item.message)}</div>`:''}
       </div>
       <div class="notification-item-actions">
-        ${(payload.task_id||item.entity_id)?`<button type="button" class="alt" data-notification-open="${esc(item.id)}">Abrir trabajo</button>`:''}
+        ${(payload.task_id||item.entity_id||item.action_key==='open_alerts')?`<button type="button" class="alt" data-notification-open="${esc(item.id)}">Abrir</button>`:''}
         <button type="button" class="alt" data-notification-action="${item.is_unread?'mark_read':'mark_unread'}" data-notification-id="${esc(item.id)}">${item.is_unread?'Marcar leída':'Marcar no leída'}</button>
         <button type="button" class="alt" data-notification-action="dismiss" data-notification-id="${esc(item.id)}">Ocultar</button>
       </div>
@@ -144,8 +182,26 @@
 
   function renderPreferences() {
     const p=state.preferences||{};
-    const check=(key,label,help)=>`<label class="notification-pref"><input type="checkbox" data-notification-pref="${key}" ${p[key]!==false?'checked':''}><span><b>${label}</b><small>${help}</small></span></label>`;
-    return `<div class="notification-preferences-grid">${check('in_app_enabled','Inbox dentro del ERP','Control maestro de notificaciones internas.')}${check('task_assignments_enabled','Asignaciones de tareas','Avisar cuando una tarea quede asignada a ti o a un equipo elegible.')}${check('operational_alerts_enabled','Alertas operativas','Recibir excepciones P9 que correspondan a tu trabajo.')}${check('escalations_enabled','Escalaciones','Recibir escalaciones cuando tengas responsabilidad de supervisión.')}</div><div class="notification-external-note">WhatsApp usa la integración Twilio existente, pero la entrega interna P10 no se activa hasta tener una plantilla específica aprobada. Email no se habilita sin definir primero un proveedor.</div><div class="notification-actions notification-preferences-actions"><button id="saveNotificationPreferences" type="button">Guardar preferencias</button></div>`;
+    const activeDevices=state.push.devices.filter(device=>device.status==='active'&&device.session_valid===true);
+    const check=(key,label,help,{disabled=false}={})=>`<label class="notification-pref ${disabled?'is-disabled':''}"><input type="checkbox" data-notification-pref="${key}" ${p[key]!==false?'checked':''} ${disabled?'disabled':''}><span><b>${label}</b><small>${help}</small></span></label>`;
+    return `<div class="notification-preferences-grid">${check('in_app_enabled','Inbox dentro del ERP','Control maestro de notificaciones internas.')}${check('task_assignments_enabled','Asignaciones y vencimientos','Avisar por asignación, proximidad del vencimiento y excepciones relacionadas.')}${check('operational_alerts_enabled','Alertas operativas','Recibir excepciones P9 que correspondan a tu trabajo.')}${check('escalations_enabled','Escalaciones','Recibir escalaciones cuando tengas responsabilidad de supervisión.')}${check('tracking_updates_enabled','Cambios de tracking','Avisar cuando cambie el hito operativo de un contenedor.')}${check('document_updates_enabled','Documentos disponibles','Avisar cuando haya un documento nuevo autorizado.')}${check('integration_failures_enabled','Fallos de integraciones','Avisar a responsables cuando una entrega o webhook requiera revisión.')}${check('push_enabled','Entrega Web Push',activeDevices.length?'Enviar estas categorías a los dispositivos activos.':'Primero activa este dispositivo.',{disabled:activeDevices.length===0})}</div>${renderPushDevices()}<div class="notification-external-note">El aviso de pantalla bloqueada nunca incluye clientes, contenedores, documentos ni errores técnicos. El detalle se resuelve dentro del ERP después de autenticarte.</div><div class="notification-actions notification-preferences-actions"><button id="saveNotificationPreferences" type="button">Guardar preferencias</button></div>`;
+  }
+
+  function pushAvailability() {
+    if(!pushSupported())return{tone:'bad',text:'Este navegador no admite Web Push.'};
+    if(isAppleMobile()&&!standaloneMode())return{tone:'warn',text:'En iPhone o iPad, añade el ERP a la pantalla de inicio y ábrelo desde su icono.'};
+    if(!state.push.config.ready)return{tone:'warn',text:'El servidor todavía no tiene configuradas las claves Web Push.'};
+    if(state.push.permission==='denied')return{tone:'bad',text:'Las notificaciones están bloqueadas en los ajustes del navegador.'};
+    if(state.push.permission==='granted')return{tone:'ok',text:'El navegador tiene permiso para mostrar avisos.'};
+    return{tone:'neutral',text:'La activación requiere una pulsación explícita y permiso del navegador.'};
+  }
+
+  function renderPushDevices() {
+    const availability=pushAvailability();
+    const currentId=state.push.currentDeviceId;
+    const devices=state.push.devices;
+    const canActivate=pushSupported()&&state.push.config.ready&&state.push.permission!=='denied'&&(!isAppleMobile()||standaloneMode());
+    return `<section class="push-device-card" aria-labelledby="pushDeviceTitle"><div class="push-device-head"><div><h3 id="pushDeviceTitle">Dispositivos Web Push</h3><p class="push-availability ${availability.tone}">${esc(availability.text)}</p></div><button id="enablePushDevice" type="button" ${canActivate?'':'disabled'}>${currentId?'Reactivar este dispositivo':'Activar notificaciones'}</button></div><div class="push-device-list">${devices.length?devices.map(device=>`<article class="push-device ${device.status==='active'&&device.session_valid?'is-active':''}"><div><b>${esc(device.device_label)}</b>${String(device.id)===String(currentId)?'<span class="notification-chip active">Este dispositivo</span>':''}<small>${device.status==='active'&&device.session_valid?'Activo':device.status==='expired'?'Expirado':'Desactivado'} · Última actividad ${esc(dateLabel(device.last_seen_at))}</small></div>${device.status==='active'&&device.session_valid?`<button type="button" class="alt" data-push-deactivate="${esc(device.id)}">Desactivar</button>`:''}</article>`).join(''):'<div class="notification-empty">No hay dispositivos registrados.</div>'}</div></section>`;
   }
 
   function renderHistory() {
@@ -165,7 +221,99 @@
     target.querySelectorAll('[data-notification-action]').forEach(button=>button.onclick=()=>actItem(button.dataset.notificationId,button.dataset.notificationAction));
     target.querySelectorAll('[data-notification-open]').forEach(button=>button.onclick=()=>openWork(button.dataset.notificationOpen));
     target.querySelectorAll('[data-notification-retry]').forEach(button=>button.onclick=()=>retryHistory(button.dataset.notificationRetry));
+    target.querySelectorAll('[data-push-deactivate]').forEach(button=>button.onclick=()=>deactivatePushDevice(button.dataset.pushDeactivate));
+    if($('enablePushDevice'))$('enablePushDevice').onclick=enablePushDevice;
     if($('saveNotificationPreferences'))$('saveNotificationPreferences').onclick=savePreferences;
+  }
+
+  async function serviceWorkerRegistration() {
+    if(!pushSupported())return null;
+    return navigator.serviceWorker.ready;
+  }
+
+  async function loadPushState() {
+    state.push.permission=pushSupported()?Notification.permission:'unsupported';
+    try {
+      const result=await apiCall('/api/push-subscriptions');
+      state.push.config=result.config||{ready:false,public_key:null};
+      state.push.devices=Array.isArray(result.devices)?result.devices:[];
+      state.push.currentDeviceId=localStorage.getItem('export_mca_push_subscription_id')||null;
+      if(state.push.currentDeviceId&&!state.push.devices.some(device=>String(device.id)===String(state.push.currentDeviceId)&&device.status==='active'&&device.session_valid===true)){
+        localStorage.removeItem('export_mca_push_subscription_id');
+        state.push.currentDeviceId=null;
+      }
+      state.push.error='';
+    } catch(error) {
+      state.push.error=safeInboxMessage(error,'No se pudieron consultar los dispositivos Web Push.','load_push_state');
+    } finally {
+      state.push.loaded=true;
+    }
+  }
+
+  async function enablePushDevice() {
+    if(!pushSupported())return setMessage('Este navegador no admite Web Push.',true);
+    if(isAppleMobile()&&!standaloneMode())return setMessage('Añade el ERP a la pantalla de inicio y ábrelo desde su icono para activar notificaciones.',true);
+    if(!state.push.config.ready||!state.push.config.public_key)return setMessage('Web Push todavía no está configurado en el servidor.',true);
+    let newlyCreated=null;
+    let registered=false;
+    try {
+      const permission=await Notification.requestPermission();
+      state.push.permission=permission;
+      if(permission!=='granted'){
+        setMessage(permission==='denied'?'Las notificaciones quedaron bloqueadas en el navegador.':'No se concedió permiso para notificaciones.',true);
+        return render();
+      }
+      const registration=await serviceWorkerRegistration();
+      let subscription=await registration.pushManager.getSubscription();
+      if(subscription&&subscriptionApplicationKey(subscription)!==state.push.config.public_key){
+        try{await apiCall('/api/push-subscriptions',{method:'DELETE',body:JSON.stringify({endpoint:subscription.endpoint,reason:'key_rotated'})});}catch(error){if(Number(error?.status)!==404)throw error;}
+        await subscription.unsubscribe();
+        subscription=null;
+      }
+      if(!subscription){
+        subscription=await registration.pushManager.subscribe({
+          userVisibleOnly:true,
+          applicationServerKey:urlBase64ToBytes(state.push.config.public_key)
+        });
+        newlyCreated=subscription;
+      }
+      const result=await apiCall('/api/push-subscriptions',{
+        method:'POST',
+        body:JSON.stringify({subscription:subscription.toJSON(),device_label:deviceLabel()})
+      });
+      registered=true;
+      const id=result.subscription?.subscription_id;
+      if(id)localStorage.setItem('export_mca_push_subscription_id',id);
+      state.preferences={...(state.preferences||{}),push_enabled:true};
+      await loadPushState();
+      setMessage('Notificaciones activadas en este dispositivo.');
+      render();
+    } catch(error) {
+      if(newlyCreated&&!registered){try{await newlyCreated.unsubscribe();}catch{}}
+      setMessage(safeInboxMessage(error,'No se pudo activar este dispositivo. Intenta nuevamente.','enable_push'),true);
+      await loadPushState();
+      render();
+    }
+  }
+
+  async function deactivatePushDevice(id) {
+    try {
+      const current=String(id)===String(localStorage.getItem('export_mca_push_subscription_id')||'');
+      const result=await apiCall('/api/push-subscriptions',{method:'PATCH',body:JSON.stringify({id})});
+      state.push.devices=result.devices||state.push.devices;
+      if(current){
+        const registration=await serviceWorkerRegistration();
+        await (await registration?.pushManager?.getSubscription?.())?.unsubscribe?.();
+        localStorage.removeItem('export_mca_push_subscription_id');
+        state.push.currentDeviceId=null;
+      }
+      if(!state.push.devices.some(device=>device.status==='active'&&device.session_valid===true))state.preferences={...(state.preferences||{}),push_enabled:false};
+      setMessage('Dispositivo desactivado.');
+      render();
+    } catch(error) {
+      setMessage(safeInboxMessage(error,'No se pudo desactivar el dispositivo.','deactivate_push'),true);
+      render();
+    }
   }
 
   async function loadHistory() {
@@ -173,11 +321,12 @@
     catch(error){ setMessage(safeInboxMessage(error,'No se pudo cargar el historial. Intenta nuevamente.','load_history'),true); }
   }
 
-  async function refresh({history=false}={}) {
+  async function refresh({history=false,focusId=null}={}) {
     if(state.busy)return; state.busy=true;
     try {
-      const result=await apiCall('/api/notification-inbox');
-      state.items=result.items||[]; state.counts=result.counts||state.counts; state.preferences=result.preferences||state.preferences; setMessage(''); renderBadge();
+      const query=focusId?`?notification_id=${encodeURIComponent(focusId)}`:'';
+      const [result]=await Promise.all([apiCall(`/api/notification-inbox${query}`),loadPushState()]);
+      state.items=result.items||[]; state.counts=result.counts||state.counts; state.preferences=result.preferences||state.preferences; state.focusItem=result.focus_item||null; setMessage(''); renderBadge();
       if(history)await loadHistory();
       if(state.open)render();
     } catch(error) { setMessage(safeInboxMessage(error,'No se pudieron cargar las notificaciones. Intenta nuevamente.','refresh'),true); if(state.open)render(); }
@@ -208,11 +357,13 @@
   }
 
   async function openWork(id) {
-    const item=state.items.find(row=>String(row.id)===String(id)); if(!item)return;
+    const item=state.items.find(row=>String(row.id)===String(id))||(String(state.focusItem?.id)===String(id)?state.focusItem:null); if(!item)return;
     try {
       if(item.is_unread)await apiCall('/api/notification-inbox',{method:'PATCH',body:JSON.stringify({id:item.id,action:'mark_read'})});
+      if(item.action_key==='open_inbox'){await refresh();return;}
       closePanel();
       const payload=item.action_payload||{};
+      if(item.action_key==='open_alerts'){if(typeof window.showSection==='function')window.showSection('notificationsSection');window.loadOperationalAlertCenter?.();return;}
       if(payload.task_id && window.TasksWorkspace?.open){ if(typeof window.showSection==='function')window.showSection('tasksSection'); await window.TasksWorkspace.open(payload.task_id); return; }
       if(item.entity_type==='operational_task' && item.entity_id && window.TasksWorkspace?.open){ if(typeof window.showSection==='function')window.showSection('tasksSection'); await window.TasksWorkspace.open(item.entity_id); return; }
       if(item.entity_type && item.entity_id && window.OperationalNavigation?.openEntity){ const opened=await window.OperationalNavigation.openEntity({type:item.entity_type,id:item.entity_id}); if(opened!==false)return; }
@@ -231,15 +382,67 @@
   async function openPanel() { ensureShell(); state.open=true; $('notificationInboxOverlay').hidden=false; document.body.classList.add('notification-inbox-open'); render(); await refresh(); }
   function closePanel() { state.open=false; $('notificationInboxOverlay').hidden=true; document.body.classList.remove('notification-inbox-open'); }
 
+  function deepLinkId() {
+    const value=new URL(location.href).searchParams.get('notification')||'';
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)?value:null;
+  }
+
+  function clearDeepLink() {
+    const url=new URL(location.href);
+    url.searchParams.delete('notification');
+    history.replaceState(history.state,'',`${url.pathname}${url.search}${url.hash}`);
+  }
+
+  async function openDeepLink(id) {
+    ensureShell();
+    state.open=true;
+    $('notificationInboxOverlay').hidden=false;
+    document.body.classList.add('notification-inbox-open');
+    render();
+    if(!state.focusItem){setMessage('La notificación no está disponible para esta cuenta.',true);render();clearDeepLink();return;}
+    clearDeepLink();
+    await openWork(id);
+  }
+
+  async function deactivatePushForLogout() {
+    try {
+      if(!pushSupported())return;
+      const registration=await serviceWorkerRegistration();
+      const subscription=await registration?.pushManager?.getSubscription?.();
+      if(subscription){
+        try{await apiCall('/api/push-subscriptions',{method:'DELETE',body:JSON.stringify({endpoint:subscription.endpoint})});}catch(error){if(Number(error?.status)!==401&&Number(error?.status)!==404)throw error;}
+        await subscription.unsubscribe();
+      }
+      registration?.active?.postMessage?.({type:'EXPORT_MCA_BADGE_CLEAR'});
+    } finally {
+      localStorage.removeItem('export_mca_push_subscription_id');
+    }
+  }
+
+  async function deactivatePushForInvalidSession() {
+    try {
+      if(!pushSupported())return;
+      const registration=await serviceWorkerRegistration();
+      await (await registration?.pushManager?.getSubscription?.())?.unsubscribe?.();
+      registration?.active?.postMessage?.({type:'EXPORT_MCA_BADGE_CLEAR'});
+    } finally {
+      localStorage.removeItem('export_mca_push_subscription_id');
+    }
+  }
+
   function install() {
     removeLegacyAlertBell();
     ensureShell();
-    refresh().catch(()=>{});
+    const linked=deepLinkId();
+    refresh({focusId:linked}).then(()=>{if(linked)openDeepLink(linked);}).catch(()=>{});
     window.addEventListener('export-mca:data-loaded',()=>refresh().catch(()=>{}));
     window.addEventListener('export-mca:modules-ready',()=>{removeLegacyAlertBell();ensureShell();});
     window.addEventListener('focus',()=>refresh().catch(()=>{}));
     window.addEventListener('keydown',event=>{if(event.key==='Escape'&&state.open)closePanel();});
-    window.NotificationInbox=Object.freeze({open:openPanel,refresh,close:closePanel,getState:()=>({...state}),owner:'notification-inbox.js'});
+    window.NotificationInbox=Object.freeze({
+      open:openPanel,refresh,close:closePanel,deactivatePushForLogout,deactivatePushForInvalidSession,
+      getState:()=>({...state}),owner:'notification-inbox.js'
+    });
     return true;
   }
 

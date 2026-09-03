@@ -201,10 +201,12 @@
       let alertChain = loadStylesheet('/admin/operational-alert-center.css?v=20260903-ux7alerts1', 'data-operational-alert-center-style')
         .then(() => loadScript('/admin/operational-alert-center.js?v=20260903-ux7alerts1', 'data-operational-alert-center'));
       if (accessCan('notifications.manage')) {
-        alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260830-p9', 'data-alert-phase2-stability'));
+        alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260903-b10push1', 'data-alert-phase2-stability'));
       }
-      const inboxChain = loadStylesheet('/admin/notification-inbox.css?v=20260903-ux7icons2', 'data-notification-inbox-style')
-        .then(() => loadScript('/admin/notification-inbox.js?v=20260903-ux7icons2', 'data-notification-inbox'));
+      const inboxChain = Promise.all([
+        loadStylesheet('/admin/notification-inbox.css?v=20260903-ux7icons2', 'data-notification-inbox-style'),
+        loadStylesheet('/admin/push-notifications.css?v=20260903-b10push1', 'data-push-notifications-style')
+      ]).then(() => loadScript('/admin/notification-inbox.js?v=20260903-b10push1', 'data-notification-inbox'));
       tasks.push(Promise.all([alertChain,inboxChain]));
     }
 

@@ -7,6 +7,7 @@ const migration = read('supabase/migrations/20260830215500_p10_user_notification
 const integrity = read('supabase/migrations/20260830220500_p10_notification_source_version_integrity.sql');
 const inboxApi = read('api/notification-inbox.js');
 const reconcileApi = read('api/notification-reconcile.js');
+const reconcileOwner = read('api/_notification-reconcile.js');
 const inboxUi = read('admin/notification-inbox.js');
 const erp = read('admin/erp.js');
 const vercel = read('vercel.json');
@@ -39,11 +40,12 @@ for (const fn of ['notification_user_eligible','notification_task_recipients','r
 assert(!migration.match(/grant\s+.*\s+to\s+(public|anon|authenticated)/i), 'P10: no se permiten grants a PUBLIC/anon/authenticated');
 
 assert(inboxApi.includes("authorizeAdmin(req,res,'notifications.read')"), 'P10: inbox API debe revalidar notifications.read');
-assert(inboxApi.includes("rpc('reconcile_user_notifications'"), 'P10: inbox debe usar reconciliador canónico DB');
+assert(inboxApi.includes('reconcileAllNotifications'), 'P10: inbox debe usar reconciliador canónico DB');
+assert(reconcileOwner.includes("call('reconcile_user_notifications'"), 'P10: owner de reconciliación debe preservar el RPC P10');
 assert(inboxApi.includes("rpc('act_on_notification_inbox'"), 'P10: lectura personal debe mutarse por RPC');
 assert(reconcileApi.includes("authorizeAdmin(req,res,'notifications.manage')"), 'P10: reconciliación manual requiere notifications.manage');
 assert(reconcileApi.includes('CRON_SECRET'), 'P10: reconciliación cron debe autenticar CRON_SECRET');
-assert(reconcileApi.includes("rpc/reconcile_user_notifications"), 'P10: API reconcile debe delegar al owner DB');
+assert(reconcileApi.includes('reconcileAllNotifications'), 'P10: API reconcile debe delegar al owner DB');
 
 assert(!inboxUi.includes('setInterval('), 'P10: el inbox no puede crear otro scheduler periódico del navegador');
 assert(!inboxUi.includes('MutationObserver'), 'P10: el inbox no puede usar MutationObserver');
@@ -57,6 +59,6 @@ const notificationsBlock = erp.slice(erp.indexOf("if (accessCan('notifications.r
 assert(notificationsBlock.includes('notification-inbox.js'), 'P10: bootstrap autorizado no carga el inbox');
 assert(notificationsBlock.includes('notification-inbox.css'), 'P10: bootstrap autorizado no carga estilos P10');
 assert(!erp.includes("accessCan('notifications.manage') && loadScript('/admin/notification-inbox"), 'P10: inbox read no debe exigir manage');
-assert(vercel.includes('"path": "/api/notification-reconcile"'), 'P10: falta cron backend de reconciliación');
+assert(vercel.includes('"path": "/api/push-dispatch"'), 'P10: falta cron backend que incluye reconciliación');
 
 console.log('P10 user notifications architecture: OK');

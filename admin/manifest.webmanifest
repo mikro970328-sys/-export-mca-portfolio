@@ -2,6 +2,7 @@
   "name": "Export MCA ERP",
   "short_name": "MCA ERP",
   "description": "Sistema administrativo y logístico de Export MCA LLC",
+  "id": "/admin/",
   "start_url": "/admin/pwa.html",
   "scope": "/admin/",
   "display": "standalone",
@@ -10,9 +11,15 @@
   "theme_color": "#09182e",
   "icons": [
     {
-      "src": "/logo.png",
-      "sizes": "any",
-      "type": "image/png",
+      "src": "/admin/app-icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/admin/app-icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ]

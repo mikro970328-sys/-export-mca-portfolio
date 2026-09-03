@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 192 192" role="img" aria-label="MCA ERP">
+  <rect width="192" height="192" rx="36" fill="#06204a"/>
+  <rect x="10" y="10" width="172" height="172" rx="30" fill="none" stroke="#f58220" stroke-width="6"/>
+  <text x="96" y="107" text-anchor="middle" font-family="Arial, sans-serif" font-size="52" font-weight="800" fill="#ffffff">MCA</text>
+  <text x="96" y="144" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="2" fill="#f58220">ERP</text>
+</svg>
