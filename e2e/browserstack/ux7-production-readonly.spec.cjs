@@ -141,6 +141,38 @@ async function waitForEmbeddedState(page, frameElement, label, reader, ready) {
   throw new Error(`${label} did not reach a readable ready state${lastError ? `: ${lastError}` : ''}`);
 }
 
+async function openProfitabilityAndRead(frameElement) {
+  return frameElement.evaluate(async frame => {
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument;
+    if (!win || !doc) return { opened: false, ready: false, error: false, timedOut: true };
+
+    const opened = win.CostsModule?.openProfitability('sales_orders') === true;
+    const read = () => {
+      const html = doc.documentElement;
+      const content = doc.getElementById('content');
+      return {
+        opened,
+        ready: Boolean(content?.querySelector('.profit-shell')),
+        metricCount: content?.querySelectorAll('.profit-metric').length || 0,
+        selectedView: doc.querySelector('[data-view="profitability"]')?.getAttribute('aria-pressed') || '',
+        clientWidth: html?.clientWidth || 0,
+        scrollWidth: html?.scrollWidth || 0,
+        error: content?.textContent?.includes('No se pudo cargar la rentabilidad') === true,
+        timedOut: false
+      };
+    };
+
+    const deadline = Date.now() + 15_000;
+    let state = read();
+    while (!state.ready && !state.error && Date.now() < deadline) {
+      await new Promise(resolve => win.setTimeout(resolve, 250));
+      state = read();
+    }
+    return { ...state, timedOut: !state.ready && !state.error };
+  });
+}
+
 async function openSection(page, sectionId) {
   const sectionButton = page.locator(`[data-section="${sectionId}"]`).first();
   const section = page.locator(`#${sectionId}`);
@@ -651,21 +683,8 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
       if (ownerState.visibleFrames !== 1) throw new Error('Costs has more than one visible embedded page');
       const geometry = await assertNoDocumentOverflow(page, 'Costos outer shell');
 
-      await frameElement.evaluate(frame => frame.contentWindow?.CostsModule?.openProfitability('sales_orders'));
-      const profitabilityState = await waitForEmbeddedState(page, frameElement, 'Profitability view', frame => {
-        const doc = frame.contentDocument;
-        const html = doc?.documentElement;
-        const content = doc?.getElementById('content');
-        return {
-          ready: Boolean(content?.querySelector('.profit-shell')),
-          metricCount: content?.querySelectorAll('.profit-metric').length || 0,
-          selectedView: doc?.querySelector('[data-view="profitability"]')?.getAttribute('aria-pressed') || '',
-          clientWidth: html?.clientWidth || 0,
-          scrollWidth: html?.scrollWidth || 0,
-          error: content?.textContent?.includes('No se pudo cargar la rentabilidad') === true
-        };
-      }, state => state?.ready || state?.error);
-      if (profitabilityState.error || !profitabilityState.ready || profitabilityState.metricCount !== 4 || profitabilityState.selectedView !== 'true') {
+      const profitabilityState = await openProfitabilityAndRead(frameElement);
+      if (!profitabilityState.opened || profitabilityState.timedOut || profitabilityState.error || !profitabilityState.ready || profitabilityState.metricCount !== 4 || profitabilityState.selectedView !== 'true') {
         throw new Error('Costs profitability read-model did not render through the canonical owner');
       }
       if (profitabilityState.scrollWidth !== profitabilityState.clientWidth) throw new Error('Profitability view has horizontal document overflow');
