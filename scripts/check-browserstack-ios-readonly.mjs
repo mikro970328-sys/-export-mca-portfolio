@@ -16,6 +16,10 @@ const requiredTestContracts = [
   "const CERT_SCOPE = process.env.ERP_CERT_SCOPE || 'all'",
   'if (RUN_CORE)',
   'if (RUN_COSTS)',
+  'async function openProfitabilityAndRead(frameElement)',
+  'await new Promise(resolve => win.setTimeout(resolve, 250))',
+  'const profitabilityState = await openProfitabilityAndRead(frameElement)',
+  'profitabilityState.timedOut',
   'diagnostics.blockedWrites.push(signature)',
   "openSection(page, 'containersSection')",
   "openSection(page, 'registerContainerSection')",
@@ -53,7 +57,8 @@ const forbiddenInteractionPatterns = [
   /request\.(?:post|put|patch|delete)\(/i,
   /\.toHaveClass\(/,
   /\.toHaveValue\(/,
-  /\.frameLocator\(/
+  /\.frameLocator\(/,
+  /waitForEmbeddedState\(page,\s*frameElement,\s*['"]Profitability view/
 ];
 
 const missing = requiredTestContracts.filter(contract => !testSource.includes(contract));
