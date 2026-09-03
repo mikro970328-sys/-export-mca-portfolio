@@ -42,6 +42,7 @@ const requiredTestContracts = [
   "openSection(page, 'suppliersSection')",
   "openSection(page, 'productsSection')",
   "openSection(page, 'adminsSection')",
+  "openSection(page, 'accountSection')",
   "openSection(page, 'reportsSection')",
   "openSection(page, 'costsSection')",
   "detailAction = actualActions.includes('info')",
@@ -68,6 +69,10 @@ const requiredTestContracts = [
   'access-control-iphone-safari',
   "accessState.owner !== 'access-control-administration.js'",
   'accessState.metricCount !== 4',
+  'My account has one visual owner and a responsive security workspace',
+  'account-security-iphone-safari',
+  "accountState.owner !== 'account-administration.js'",
+  'accountState.metricCount !== 4',
   'Reports has one visual owner and a contained result region',
   'reports-iphone-safari',
   "reportsState.owner !== 'reports.js'",
@@ -79,6 +84,7 @@ const requiredTestContracts = [
   'SUPPLIERS_[A-Z_]+_FAILED',
   'PRODUCTS_[A-Z_]+_FAILED',
   'ACCESS_CONTROL_UI_FAILED',
+  'ACCOUNT_UI_FAILED',
   'REPORTS_UI_FAILED'
 ];
 

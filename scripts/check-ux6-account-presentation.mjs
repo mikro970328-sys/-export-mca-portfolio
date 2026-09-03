@@ -17,11 +17,11 @@ requireText(js,'safeAccountMessage(error, fallback)','normalizador de errores de
 for(const marker of ['ACCOUNT_LOAD_FAILED','ACCOUNT_PASSWORD_UPDATE_FAILED','ACCOUNT_SESSION_REVOCATION_FAILED','ACCOUNT_SECTION_REFRESH_FAILED']) requireText(js,marker,`diagnóstico ${marker}`);
 
 for(const selector of ['.account-layout','.account-security-form','.account-security-status','.account-session-grid','.account-role-pill']) requireText(css,selector,`selector CSS ${selector}`);
-requireText(css,'@media(max-width:760px)','responsive móvil');
+requireText(css,'@media(max-width:720px)','responsive móvil');
 requireText(css,':focus-visible','foco accesible');
 
-const styleLoad="loadStylesheet('/admin/account-administration.css?v=20260901-ux6style1', 'data-account-administration-style')";
-const scriptLoad="loadScript('/admin/account-administration.js?v=20260903-ux7icons2', 'data-account-administration')";
+const styleLoad="loadStylesheet('/admin/account-administration.css?v=20260903-ux7account1', 'data-account-administration-style')";
+const scriptLoad="loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration')";
 requireText(erp,styleLoad,'carga stylesheet de cuenta');
 requireText(erp,scriptLoad,'carga JavaScript de cuenta');
 const styleIndex=erp.indexOf(styleLoad),scriptIndex=erp.indexOf(scriptLoad);
