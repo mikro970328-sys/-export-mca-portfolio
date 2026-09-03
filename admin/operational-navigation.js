@@ -3,7 +3,7 @@
   window.__operationalNavigationInstalled=true;
 
   const normalize=value=>String(value||'').trim().toUpperCase();
-  const CONTEXT_SECTIONS=['suppliersSection','purchasesSection','salesSection','warehouseSection','invoicesSection','payablesSection'];
+  const CONTEXT_SECTIONS=['suppliersSection','purchasesSection','salesSection','warehouseSection','payablesSection'];
   const BRIDGE_SRC='/admin/operational-context-bridge.js?v=20260830-p6';
   const ENTITY_ACCESS=Object.freeze({
     client:{label:'Clientes',permissions:['clients.read']},
@@ -145,8 +145,8 @@
   function openPurchaseReceipt(purchaseOrderId,options={}){if(!purchaseOrderId)return false;if(options.history!==false)writeContext('po_receive',purchaseOrderId,options);window.NavigationShell?.openPurchases?.();installBridge('purchasesSection').then(()=>callEmbedded('purchasesSection','openOperationalPurchaseReceipt',[purchaseOrderId]));return true;}
   function openSales({salesOrderId=null}={},options={}){if(!salesOrderId)return false;if(options.history!==false)writeContext('so',salesOrderId,options);window.NavigationShell?.openSales?.();installBridge('salesSection').then(ready=>{if(ready&&callEmbedded('salesSection','openOperationalSale',[salesOrderId]))return;callEmbedded('salesSection','openDetail',[salesOrderId]);}).catch(()=>callEmbedded('salesSection','openDetail',[salesOrderId]));return true;}
   function openSalesSupply(salesOrderId,options={}){if(!salesOrderId)return false;if(options.history!==false)writeContext('so_supply',salesOrderId,options);window.NavigationShell?.openSales?.();installBridge('salesSection').then(()=>callEmbedded('salesSection','openOperationalSalesSupply',[salesOrderId]));return true;}
-  function openInvoice(invoiceId,options={}){if(!invoiceId)return false;if(options.history!==false)writeContext('invoice',invoiceId,options);window.NavigationShell?.openInvoices?.();installBridge('invoicesSection').then(()=>callEmbedded('invoicesSection','openOperationalInvoice',[invoiceId]));return true;}
-  function openInvoiceCollection(invoiceId,options={}){if(!invoiceId)return false;if(options.history!==false)writeContext('invoice_collect',invoiceId,options);window.NavigationShell?.openInvoices?.();installBridge('invoicesSection').then(()=>callEmbedded('invoicesSection','openOperationalInvoiceCollection',[invoiceId]));return true;}
+  function openInvoice(invoiceId,options={}){if(!invoiceId)return false;if(options.history!==false)writeContext('invoice',invoiceId,options);window.NavigationShell?.openInvoices?.();return callEmbedded('invoicesSection','InvoicesModule.openInvoice',[invoiceId]);}
+  function openInvoiceCollection(invoiceId,options={}){if(!invoiceId)return false;if(options.history!==false)writeContext('invoice_collect',invoiceId,options);window.NavigationShell?.openInvoices?.();return callEmbedded('invoicesSection','InvoicesModule.openCollection',[invoiceId]);}
   async function openInvoiceForSalesOrder(salesOrderId,options={}){
     if(!salesOrderId)return false;
     const related=await invoicesForSalesOrder(salesOrderId);
@@ -154,7 +154,7 @@
     if(draft?.invoice_id)return openInvoice(draft.invoice_id,options);
     if(options.history!==false)writeContext('so_invoice',salesOrderId,options);
     window.NavigationShell?.openInvoices?.();
-    installBridge('invoicesSection').then(()=>callEmbedded('invoicesSection','openOperationalInvoiceForSalesOrder',[salesOrderId]));
+    callEmbedded('invoicesSection','InvoicesModule.openForSalesOrder',[salesOrderId]);
     return true;
   }
   function openSupplierBill(billId,options={}){if(!billId)return false;if(options.history!==false)writeContext('supplier_bill',billId,options);window.NavigationShell?.openPayables?.();installBridge('payablesSection').then(()=>callEmbedded('payablesSection','openOperationalSupplierBill',[billId]));return true;}

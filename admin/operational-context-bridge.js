@@ -260,26 +260,6 @@
     observeChanges(document.getElementById('receiptList'), () => nav.invalidateLinks?.());
   }
 
-  function initInvoices() {
-    window.openOperationalInvoiceCollection = invoiceId => {
-      if (typeof window.openOperationalInvoice !== 'function') return false;
-      window.openOperationalInvoice(invoiceId);
-      requestAnimationFrame(() => document.querySelector('#detailActions [data-payment]')?.click());
-      return true;
-    };
-    window.openOperationalInvoiceForSalesOrder = salesOrderId => {
-      const create = document.getElementById('newInvoice');
-      if (!create) return false;
-      create.click();
-      const select = document.getElementById('iSalesOrder');
-      if (!select) return false;
-      select.value = String(salesOrderId);
-      if (select.value !== String(salesOrderId)) return false;
-      select.dispatchEvent(new Event('change',{bubbles:true}));
-      return true;
-    };
-  }
-
   function initPayables() {
     window.openOperationalSupplierBill = billId => {
       if (!window.PayablesModule?.openBill) return false;
@@ -294,7 +274,6 @@
   else if (path.endsWith('/admin/purchases.html')) { moduleName='purchases';initPurchases(); }
   else if (path.endsWith('/admin/sales.html')) { moduleName='sales';initSales(); }
   else if (path.endsWith('/admin/warehouse.html')) { moduleName='warehouse';initWarehouse(); }
-  else if (path.endsWith('/admin/invoices.html')) { moduleName='invoices';initInvoices(); }
   else if (path.endsWith('/admin/payables.html')) { moduleName='payables';initPayables(); }
 
   window.OperationalContextBridge = Object.freeze({ ready:true,module:moduleName,owner:'operational-context-bridge.js' });
