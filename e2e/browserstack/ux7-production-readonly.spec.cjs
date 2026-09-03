@@ -321,7 +321,8 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       await openSection(page, 'registerContainerSection');
       await expect(page.locator('#registerContainerTitle')).toHaveText('Registrar contenedor');
       await expect(page.locator('#shipmentRegistrationForm')).toBeVisible();
-      await expect(page.locator('#shipmentContainer')).toHaveValue('');
+      const containerValue = await page.locator('#shipmentContainer').inputValue();
+      expect(containerValue).toBe('');
       await expect(page.locator('#saveShipment')).toBeVisible();
       await assertOneVisibleSection(page, 'registerContainerSection');
       const geometry = await assertNoDocumentOverflow(page, 'Registrar contenedor');

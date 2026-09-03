@@ -18,7 +18,8 @@ const requiredTestContracts = [
   'submitted: false',
   'COSTS_INITIAL_LOAD_FAILED',
   'scrollWidth !== geometry.clientWidth',
-  "getAttribute('class')"
+  "getAttribute('class')",
+  'inputValue()'
 ];
 
 const forbiddenInteractionPatterns = [
@@ -27,7 +28,8 @@ const forbiddenInteractionPatterns = [
   /locator\(['"]#newCharge['"]\)\.click\(/,
   /data-container-action=["'](?:edit|assign_client|manual_update|release|deliver|reactivate|delete)/,
   /request\.(?:post|put|patch|delete)\(/i,
-  /\.toHaveClass\(/
+  /\.toHaveClass\(/,
+  /\.toHaveValue\(/
 ];
 
 const missing = requiredTestContracts.filter(contract => !testSource.includes(contract));
