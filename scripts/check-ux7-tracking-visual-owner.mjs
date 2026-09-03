@@ -76,6 +76,7 @@ for(const selector of [
   '.tracking-card',
   '.tracking-registration-layout',
   '.registration-guide',
+  'grid-template-columns:minmax(0,1fr)',
   '.container-actions-popover',
   '.tracking-dialog-root',
   '.tracking-history',

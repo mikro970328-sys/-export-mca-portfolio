@@ -29,6 +29,7 @@
 .tracking-workspace,
 .tracking-register-workspace{
   display:grid;
+  grid-template-columns:minmax(0,1fr);
   gap:20px;
   width:min(1540px,100%);
   margin:0 auto;
