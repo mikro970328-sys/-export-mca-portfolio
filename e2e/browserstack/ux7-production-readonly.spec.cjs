@@ -10,7 +10,7 @@ const RUN_CORE = CERT_SCOPE !== 'costs';
 const RUN_COSTS = CERT_SCOPE !== 'core';
 const PROFITABILITY_STATUS_ATTRIBUTE = 'data-profitability-probe-status';
 const PROFITABILITY_STATE_ATTRIBUTE = 'data-profitability-probe-state';
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -728,6 +728,79 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         formInspected: formInspection.available,
         apiStatus: 200,
         submitted: false
+      });
+    });
+
+    if (RUN_CORE) await test.step('Reports has one visual owner and a contained result region', async () => {
+      await openSection(page, 'reportsSection');
+      const frameElement = page.locator('#reportsSection iframe');
+      await expect(frameElement).toBeVisible();
+      const reportsState = await waitForEmbeddedState(page, frameElement, 'Reports iframe', frame => {
+        const doc = frame.contentDocument;
+        const html = doc?.documentElement;
+        const fits = node => {
+          if (!node || !html) return false;
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.left >= -1 && rect.right <= html.clientWidth + 1;
+        };
+        const metrics = [...(doc?.querySelectorAll('.reports-metrics .metric') || [])];
+        const visibleFilters = [...(doc?.querySelectorAll('.reports-filter-grid label') || [])].filter(node => getComputedStyle(node).display !== 'none');
+        const tableRegion = doc?.querySelector('.reports-table-wrap');
+        const result = doc?.getElementById('reportResultCount')?.textContent?.trim() || '';
+        const ready = Boolean(doc?.querySelector('#reportTable .report-table, #reportTable .reports-empty'));
+        return {
+          heading: doc?.getElementById('reportsPageTitle')?.textContent?.trim() || '',
+          resultReady: Boolean(result && !result.includes('Consultando') && ready),
+          duplicateLogin: Boolean(doc?.getElementById('loginPage')),
+          owner: doc?.body?.dataset?.owner || '',
+          clientWidth: html?.clientWidth || 0,
+          scrollWidth: html?.scrollWidth || 0,
+          heroFits: fits(doc?.querySelector('.reports-page-head')),
+          statusFits: fits(doc?.querySelector('.reports-hero-state')),
+          metricsFit: metrics.length === 5 && metrics.every(fits),
+          metricCount: metrics.length,
+          controlsFit: fits(doc?.querySelector('.reports-control-panel')),
+          tablePanelFits: fits(doc?.querySelector('.reports-table-panel')),
+          filtersFit: visibleFilters.length > 0 && visibleFilters.every(fits),
+          datasetCount: doc?.querySelectorAll('#datasetTabs [data-dataset]').length || 0,
+          selectedTabs: doc?.querySelectorAll('#datasetTabs [aria-selected="true"]').length || 0,
+          tableClientWidth: tableRegion?.clientWidth || 0,
+          tableScrollWidth: tableRegion?.scrollWidth || 0,
+          tableOverflowX: tableRegion ? getComputedStyle(tableRegion).overflowX : '',
+          moduleMethods: ['refresh', 'open'].every(name => typeof frame.contentWindow?.ExecutiveReports?.[name] === 'function'),
+          lastUpdated: doc?.getElementById('reportLastUpdated')?.textContent?.trim() || ''
+        };
+      }, state => state?.duplicateLogin || (state?.heading === 'Reportes' && state.resultReady));
+
+      if (reportsState.duplicateLogin) throw new Error('Duplicate login found inside Reports');
+      if (reportsState.owner !== 'reports.js' || !reportsState.moduleMethods) throw new Error('Reports does not expose its canonical visual owner');
+      if (reportsState.scrollWidth !== reportsState.clientWidth) throw new Error('Reports iframe has horizontal document overflow');
+      if (!reportsState.heroFits || !reportsState.statusFits || !reportsState.metricsFit || !reportsState.controlsFit || !reportsState.tablePanelFits || !reportsState.filtersFit) {
+        throw new Error('Reports responsive regions do not fit the iPhone viewport');
+      }
+      if (reportsState.metricCount !== 5) throw new Error(`Reports metric count ${reportsState.metricCount} != 5`);
+      if (reportsState.datasetCount !== 6 || reportsState.selectedTabs !== 1) throw new Error('Reports dataset selector is incomplete or has more than one active tab');
+      if (reportsState.tableScrollWidth > reportsState.tableClientWidth && !['auto', 'scroll'].includes(reportsState.tableOverflowX)) {
+        throw new Error('Reports internal table overflow is not contained');
+      }
+      if (!reportsState.lastUpdated || reportsState.lastUpdated.includes('Preparando')) throw new Error('Reports did not expose a completed refresh state');
+
+      const ownerState = await assertOneVisibleSection(page, 'reportsSection');
+      if (ownerState.visibleFrames !== 1) throw new Error('Reports has more than one visible embedded page');
+      const outerGeometry = await assertNoDocumentOverflow(page, 'Reportes outer shell');
+      await attachPrivateScreenshot(page, testInfo, 'reports-iphone-safari');
+
+      const reportResponses = diagnostics.apiResponses.filter(item => item.path === '/api/reports');
+      if (!reportResponses.some(item => item.status === 200)) throw new Error('Reports API did not return HTTP 200');
+      checkpoint('reports-readonly', {
+        outerGeometry,
+        innerGeometry:{ clientWidth:reportsState.clientWidth, scrollWidth:reportsState.scrollWidth },
+        metrics:reportsState.metricCount,
+        datasets:reportsState.datasetCount,
+        visibleFrames:ownerState.visibleFrames,
+        apiStatus:200,
+        submitted:false
       });
     });
 

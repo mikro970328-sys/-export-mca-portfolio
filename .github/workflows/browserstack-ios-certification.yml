@@ -30,6 +30,10 @@ on:
       - 'admin/costs.js'
       - 'api/costs.js'
       - 'api/profitability.js'
+      - 'admin/reports.html'
+      - 'admin/reports.css'
+      - 'admin/reports.js'
+      - 'api/reports.js'
       - '.github/workflows/browserstack-ios-certification.yml'
   pull_request:
     paths:
@@ -58,6 +62,10 @@ on:
       - 'admin/costs.js'
       - 'api/costs.js'
       - 'api/profitability.js'
+      - 'admin/reports.html'
+      - 'admin/reports.css'
+      - 'admin/reports.js'
+      - 'api/reports.js'
       - '.github/workflows/browserstack-ios-certification.yml'
   workflow_dispatch:
     inputs:
