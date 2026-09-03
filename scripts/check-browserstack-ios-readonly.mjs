@@ -39,6 +39,7 @@ const requiredTestContracts = [
   'legacyGlyphs: false',
   "openSection(page, 'invoicesSection')",
   "openSection(page, 'payablesSection')",
+  "openSection(page, 'reportsSection')",
   "openSection(page, 'costsSection')",
   "detailAction = actualActions.includes('info')",
   'submitted: false',
@@ -52,9 +53,15 @@ const requiredTestContracts = [
   'inputValue()',
   'frame.contentDocument',
   'invoices-form-iphone-safari',
+  'Reports has one visual owner and a contained result region',
+  'reports-iphone-safari',
+  "reportsState.owner !== 'reports.js'",
+  'reportsState.metricCount !== 5',
+  'reportsState.datasetCount !== 6',
   'owner: doc?.body?.dataset?.owner',
   'INVOICES_UI_FAILED',
-  'PAYABLES_UI_FAILED'
+  'PAYABLES_UI_FAILED',
+  'REPORTS_UI_FAILED'
 ];
 
 const forbiddenInteractionPatterns = [

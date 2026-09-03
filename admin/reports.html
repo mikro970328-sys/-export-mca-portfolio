@@ -1,49 +1,89 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Reportes · Export MCA</title>
-<link rel="stylesheet" href="/admin/reports.css?v=20260830-p12">
-<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reportes · Export MCA</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <link rel="stylesheet" href="/admin/reports.css?v=20260903-ux7reports1">
 </head>
-<body class="erp-module-page erp-module-reports">
-<main class="reports-wrap">
-  <header class="reports-head module-hero">
-    <div class="module-heading">
-      <div class="module-kicker">Análisis ejecutivo</div>
-      <h1>Reportes</h1>
-      <p>Ventas, compras, inventario y finanzas en una vista ejecutiva. Monedas separadas, sin conversiones automáticas.</p>
-    </div>
-    <div class="reports-actions module-actions">
-      <button id="refreshReport" type="button" class="btn secondary">↻ Actualizar</button>
-      <button id="exportReport" type="button" class="btn primary">Exportar CSV</button>
-    </div>
-  </header>
+<body class="erp-module-page erp-module-reports" data-owner="reports.js">
+  <main class="reports-wrap reports-shell">
+    <header class="module-hero reports-page-head" aria-labelledby="reportsPageTitle">
+      <div class="module-heading reports-page-heading">
+        <div class="module-kicker reports-page-kicker">Finanzas · Lectura ejecutiva</div>
+        <h1 id="reportsPageTitle">Reportes</h1>
+        <p>Analiza ventas, compras, facturación, pagos e inventario desde las fuentes oficiales del ERP, con monedas separadas y sin conversiones automáticas.</p>
+      </div>
+      <div class="reports-hero-actions">
+        <div class="reports-hero-state" aria-label="Estado del módulo">
+          <span class="reports-live-dot" aria-hidden="true"></span>
+          <div><strong>Datos ejecutivos</strong><span id="reportLastUpdated">Preparando reportes…</span></div>
+        </div>
+        <div class="reports-action-row">
+          <button id="refreshReport" type="button" class="btn reports-refresh">Actualizar</button>
+          <button id="exportReport" type="button" class="btn orange reports-export">Exportar CSV</button>
+        </div>
+      </div>
+    </header>
 
-  <section class="report-card">
-    <div id="datasetTabs" class="dataset-tabs" aria-label="Tipos de reporte"></div>
-    <div class="report-filters">
-      <label data-filter-dimension="period">Desde<input id="startDate" type="date"></label>
-      <label data-filter-dimension="period">Hasta<input id="endDate" type="date"></label>
-      <label data-filter-dimension="currency">Moneda<select id="currency"><option value="">Todas, separadas</option></select></label>
-      <label data-filter-dimension="client">Cliente<select id="clientId"><option value="">Todos</option></select></label>
-      <label data-filter-dimension="supplier">Proveedor<select id="supplierId"><option value="">Todos</option></select></label>
-      <label data-filter-dimension="product">Producto<select id="productId"><option value="">Todos</option></select></label>
-      <label>Límite<select id="rowLimit"><option value="250">250</option><option value="1000" selected>1,000</option><option value="5000">5,000</option></select></label>
-    </div>
-    <div class="filter-actions">
-      <button id="clearFilters" type="button" class="btn secondary">Limpiar filtros</button>
-      <button id="applyFilters" type="button" class="btn primary">Aplicar filtros</button>
-    </div>
-    <div id="reportMeta" class="report-meta"></div>
-  </section>
+    <div id="reportMessage" class="reports-feedback" role="status" aria-live="polite"></div>
 
-  <section class="report-card report-table-card">
-    <div id="reportMessage" class="report-message"></div>
-    <div id="reportTable" class="report-table-wrap"><div class="empty">Cargando reporte…</div></div>
-  </section>
-</main>
-<script src="/admin/reports.js?v=20260830-p12"></script>
+    <section id="reportsMetrics" class="metrics reports-metrics" aria-label="Resumen del reporte" aria-live="polite">
+      <article class="metric report-metric-dataset"><span>Reporte activo</span><b id="reportDatasetMetric">Ventas</b><small>Vista seleccionada</small></article>
+      <article class="metric report-metric-rows"><span>Resultados</span><b id="reportRowsMetric">—</b><small>Filas disponibles</small></article>
+      <article class="metric report-metric-basis"><span>Base</span><b id="reportBasisMetric">Período</b><small>Origen temporal</small></article>
+      <article class="metric report-metric-currency"><span>Monedas</span><b id="reportCurrencyMetric">Separadas</b><small>Sin conversión FX</small></article>
+      <article class="metric report-metric-filters"><span>Filtros activos</span><b id="reportFiltersMetric">0</b><small>Aplicados a la consulta</small></article>
+    </section>
+
+    <section class="panel reports-control-panel" aria-labelledby="reportFiltersTitle">
+      <header class="reports-panel-head">
+        <div>
+          <span class="reports-eyebrow">Análisis disponible</span>
+          <h2 id="reportFiltersTitle">Selecciona la información</h2>
+          <p>Cambia de reporte y limita la consulta únicamente con los filtros que aplican a esa vista.</p>
+        </div>
+        <span id="reportScope" class="reports-scope">Actividad del período</span>
+      </header>
+
+      <div id="datasetTabs" class="dataset-tabs reports-dataset-tabs" role="tablist" aria-label="Tipos de reporte"></div>
+
+      <div class="report-filters reports-filter-grid">
+        <label data-filter-dimension="period" for="startDate"><span>Desde</span><input id="startDate" type="date"></label>
+        <label data-filter-dimension="period" for="endDate"><span>Hasta</span><input id="endDate" type="date"></label>
+        <label data-filter-dimension="currency" for="currency"><span>Moneda</span><select id="currency"><option value="">Todas, separadas</option></select></label>
+        <label data-filter-dimension="client" for="clientId"><span>Cliente</span><select id="clientId"><option value="">Todos</option></select></label>
+        <label data-filter-dimension="supplier" for="supplierId"><span>Proveedor</span><select id="supplierId"><option value="">Todos</option></select></label>
+        <label data-filter-dimension="product" for="productId"><span>Producto</span><select id="productId"><option value="">Todos</option></select></label>
+        <label for="rowLimit"><span>Máximo de filas</span><select id="rowLimit"><option value="250">250</option><option value="1000" selected>1,000</option><option value="5000">5,000</option></select></label>
+      </div>
+
+      <div class="reports-filter-footer">
+        <div id="reportMeta" class="report-meta" aria-live="polite"></div>
+        <div class="filter-actions reports-filter-actions">
+          <button id="clearFilters" type="button" class="btn reports-clear">Limpiar filtros</button>
+          <button id="applyFilters" type="button" class="btn primary">Aplicar filtros</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel reports-table-panel" aria-labelledby="reportDataTitle">
+      <header class="reports-panel-head reports-table-panel-head">
+        <div>
+          <span class="reports-eyebrow">Resultado canónico</span>
+          <h2 id="reportDataTitle">Ventas</h2>
+          <p id="reportDataDescription">Ventas y rentabilidad reconocida por orden, cliente y moneda.</p>
+        </div>
+        <span id="reportResultCount" class="reports-result-count">Consultando…</span>
+      </header>
+      <div id="reportTable" class="report-table-wrap reports-table-wrap" aria-live="polite">
+        <div class="reports-loading" role="status"><span class="reports-spinner" aria-hidden="true"></span>Consultando reporte…</div>
+      </div>
+    </section>
+  </main>
+  <script src="/admin/reports.js?v=20260903-ux7reports1" defer></script>
+  <script src="/admin/embedded-auto-refresh.js?v=20260903-ux7reports1" defer></script>
 </body>
 </html>

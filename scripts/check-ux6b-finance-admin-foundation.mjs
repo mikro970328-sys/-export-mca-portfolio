@@ -51,8 +51,9 @@ for(const [module,file] of Object.entries(modules)){
 
 const reports=read(modules.reports);
 for(const text of [
-  'class="reports-head module-hero"',
-  'class="reports-actions module-actions"',
+  'class="module-hero reports-page-head"',
+  'class="reports-hero-actions"',
+  'id="reportsMetrics" class="metrics reports-metrics"',
   'id="datasetTabs"',
   'id="reportTable"'
 ])requireText(reports,text,`Reportes ${text}`);

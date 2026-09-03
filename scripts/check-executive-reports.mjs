@@ -41,7 +41,7 @@ for(const forbidden of ["supabase('payments'","supabase('invoices'","supabase('s
 for(const fragment of ['Reportes','Exportar CSV','data-filter-dimension="period"','data-filter-dimension="currency"','data-filter-dimension="client"','data-filter-dimension="supplier"','data-filter-dimension="product"']){
   if(!html.includes(fragment))errors.push(`UI P12 incompleta: ${fragment}`);
 }
-for(const fragment of ['/api/reports','Authorization:`Bearer ${token()}`','response.blob()','URL.createObjectURL','FX: no se aplica','snapshot actual','window.ExecutiveReports=Object.freeze']){
+for(const fragment of ['/api/reports','Authorization:`Bearer ${token()}`','response.blob()','URL.createObjectURL','FX: no se aplica','snapshot actual','window.ExecutiveReports = Object.freeze']){
   if(!ui.includes(fragment))errors.push(`Comportamiento P12 incompleto: ${fragment}`);
 }
 for(const forbidden of ['window.open(export','executive_dashboard_rollup','gross_margin -','cash_collected -','contribution_margin /','Expediente','newOperationsSection']){
