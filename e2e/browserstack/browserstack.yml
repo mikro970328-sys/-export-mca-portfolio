@@ -1,0 +1,28 @@
+# BrowserStack reads the real values from BROWSERSTACK_USERNAME and
+# BROWSERSTACK_ACCESS_KEY. Never replace these placeholders in git.
+userName: YOUR_USERNAME
+accessKey: YOUR_ACCESS_KEY
+
+projectName: Export MCA ERP
+buildName: UX-7 iOS production certification
+buildIdentifier: '#${BUILD_NUMBER}'
+
+platforms:
+  - browserName: safari
+    osVersion: '18'
+    deviceName: iPhone 16 Pro
+
+parallelsPerPlatform: 1
+browserStackLocal: false
+framework: playwright
+
+# Match Export MCA's operating timezone and a normal iPhone orientation.
+timezone: New_York
+deviceOrientation: portrait
+
+# BrowserStack retains the private session video and network diagnostics.
+# Playwright console-log capability is not supported on real iOS devices,
+# so the test also listens for page console and page-error events directly.
+debug: true
+networkLogs: true
+testObservability: true

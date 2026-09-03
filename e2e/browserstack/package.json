@@ -1,0 +1,13 @@
+{
+  "name": "export-mca-browserstack-certification",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:ios": "npx browserstack-node-sdk playwright test --config=playwright.config.cjs",
+    "test:list": "playwright test --config=playwright.config.cjs --list"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "browserstack-node-sdk": "1.68.0"
+  }
+}
