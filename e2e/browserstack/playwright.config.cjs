@@ -3,7 +3,10 @@ const { defineConfig } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.cjs',
-  timeout: 5 * 60 * 1000,
+  // The read-only production journey intentionally covers every certified UX-7
+  // workspace on one real iPhone session. BrowserStack device startup and
+  // screenshots can legitimately push that journey beyond five minutes.
+  timeout: 12 * 60 * 1000,
   expect: { timeout: 30 * 1000 },
   fullyParallel: false,
   workers: 1,
