@@ -10,7 +10,7 @@ const RUN_CORE = CERT_SCOPE !== 'costs';
 const RUN_COSTS = CERT_SCOPE !== 'core';
 const PROFITABILITY_STATUS_ATTRIBUTE = 'data-profitability-probe-status';
 const PROFITABILITY_STATE_ATTRIBUTE = 'data-profitability-probe-state';
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|ACCESS_CONTROL_UI_FAILED|ACCOUNT_UI_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|ACCESS_CONTROL_UI_FAILED|ACCOUNT_UI_FAILED|OPERATIONAL_ALERT_CENTER_UI_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -992,6 +992,75 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         geometry,
         metrics:accountState.metricCount,
         passwordChecks:accountState.passwordChecklistCount,
+        apiStatus:200,
+        submitted:false
+      });
+    });
+
+    if (RUN_CORE) await test.step('Alert Center has one visual owner and responsive exception cards', async () => {
+      await openSection(page, 'notificationsSection');
+      const section = page.locator('#notificationsSection');
+      await expect(section.locator('#alertCenterLastUpdated')).not.toContainText('Preparando', { timeout:30_000 });
+      await expect(section.locator('#alertCenterResults .operational-alert-card, #alertCenterResults .alert-center-empty').first()).toBeVisible();
+
+      const alertState = await section.evaluate(node => {
+        const visible = element => {
+          if (!element) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        };
+        const fits = element => {
+          if (!visible(element)) return false;
+          const rect = element.getBoundingClientRect();
+          return rect.left >= -1 && rect.right <= window.innerWidth + 1;
+        };
+        const metrics = [...node.querySelectorAll('.alert-summary')];
+        const records = [...node.querySelectorAll('#alertCenterResults .operational-alert-card, #alertCenterResults .alert-center-empty')];
+        const dialog = document.querySelector('.alert-action-overlay');
+        return {
+          owner:node.dataset.alertOwner || '',
+          apiOwner:window.OperationalAlertCenter?.owner || '',
+          metricCount:metrics.length,
+          metricsReady:metrics.length === 4 && metrics.every(metric => !metric.querySelector('strong')?.textContent?.includes('—')),
+          metricsFit:metrics.length === 4 && metrics.every(fits),
+          heroFits:fits(node.querySelector('.alert-center-hero')),
+          commandFits:fits(node.querySelector('.alert-center-command')),
+          panelFits:fits(node.querySelector('.alert-center-panel')),
+          recordsFit:records.length > 0 && records.every(fits),
+          selectedViews:node.querySelectorAll('.notification-view-tabs [aria-selected="true"]').length,
+          searchType:node.querySelector('#alertCenterSearch')?.getAttribute('type') || '',
+          result:node.querySelector('#alertCenterResultCount')?.textContent?.trim() || '',
+          lastUpdated:node.querySelector('#alertCenterLastUpdated')?.textContent?.trim() || '',
+          dialogVisible:visible(dialog),
+          methodsReady:['visibleAlerts','visibleMessages','summaryMetrics','render'].every(name => typeof window.OperationalAlertCenter?.[name] === 'function')
+        };
+      });
+
+      if (alertState.owner !== 'operational-alert-center.js' || alertState.apiOwner !== 'operational-alert-center.js' || !alertState.methodsReady) {
+        throw new Error('Alert Center does not expose its canonical visual owner');
+      }
+      if (!alertState.heroFits || !alertState.metricsFit || !alertState.commandFits || !alertState.panelFits || !alertState.recordsFit) {
+        throw new Error('Alert Center responsive regions do not fit the iPhone viewport');
+      }
+      if (alertState.metricCount !== 4 || !alertState.metricsReady || alertState.selectedViews !== 1) {
+        throw new Error('Alert Center summary or view state is incomplete');
+      }
+      if (alertState.searchType !== 'search' || !alertState.result || !alertState.lastUpdated || alertState.dialogVisible) {
+        throw new Error('Alert Center is not in its safe initial state');
+      }
+
+      const ownerState = await assertOneVisibleSection(page, 'notificationsSection');
+      if (ownerState.visibleFrames !== 0) throw new Error('Alert Center unexpectedly mounts an embedded page');
+      const geometry = await assertNoDocumentOverflow(page, 'Centro de alertas');
+      await attachPrivateScreenshot(page, testInfo, 'alert-center-iphone-safari');
+
+      const alertResponses = diagnostics.apiResponses.filter(item => item.path === '/api/history');
+      if (!alertResponses.some(item => item.status === 200)) throw new Error('Alert Center API did not return HTTP 200');
+      checkpoint('alert-center-readonly', {
+        geometry,
+        metrics:alertState.metricCount,
+        selectedViews:alertState.selectedViews,
         apiStatus:200,
         submitted:false
       });
