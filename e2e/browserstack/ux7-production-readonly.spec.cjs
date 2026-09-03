@@ -4,7 +4,7 @@ const BASE_URL = process.env.ERP_BASE_URL || 'https://admin.exportmca.com';
 const ERP_ORIGIN = new URL(BASE_URL).origin;
 const REQUIRED_SECRETS = ['ERP_E2E_USERNAME', 'ERP_E2E_PASSWORD'];
 const ALLOWED_API_WRITES = new Set(['POST /api/login']);
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -599,26 +599,88 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       });
     });
 
-    await test.step('Costs loads without COSTS_INITIAL_LOAD_FAILED', async () => {
+    await test.step('Costs has one owner, contained regions and canonical profitability', async () => {
       await openSection(page, 'costsSection');
       const frameElement = page.locator('#costsSection iframe');
       await expect(frameElement).toBeVisible();
       const costsState = await waitForEmbeddedState(page, frameElement, 'Costs iframe', frame => {
         const doc = frame.contentDocument;
+        const html = doc?.documentElement;
+        const fits = node => {
+          if (!node || !html) return false;
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.left >= -1 && rect.right <= html.clientWidth + 1;
+        };
+        const metrics = [...(doc?.querySelectorAll('.costs-metrics .metric') || [])];
+        const table = doc?.querySelector('.costs-table-wrap');
+        const result = doc?.getElementById('costsResultCount')?.textContent?.trim() || '';
         return {
-          heading: [...(doc?.querySelectorAll('h1') || [])].some(node => node.textContent?.trim() === 'Costos operativos'),
-          metricCount: doc?.querySelectorAll('#metrics > *').length || 0,
+          heading: doc?.getElementById('costsPageTitle')?.textContent?.trim() || '',
+          resultReady: Boolean(result && !result.includes('Consultando')),
+          duplicateLogin: Boolean(doc?.getElementById('loginPage')),
+          owner: doc?.body?.dataset?.owner || '',
+          clientWidth: html?.clientWidth || 0,
+          scrollWidth: html?.scrollWidth || 0,
+          heroFits: fits(doc?.querySelector('.costs-page-head')),
+          statusFits: fits(doc?.querySelector('.costs-hero-state')),
+          metricsFit: metrics.length === 5 && metrics.every(fits),
+          metricCount: metrics.length,
+          panelFits: fits(doc?.querySelector('.costs-list-panel')),
+          tableClientWidth: table?.clientWidth || 0,
+          tableScrollWidth: table?.scrollWidth || 0,
+          tableOverflowX: table ? getComputedStyle(table).overflowX : '',
+          moduleMethods: ['openCost', 'openProfitability', 'refresh'].every(name => typeof frame.contentWindow?.CostsModule?.[name] === 'function'),
           contentError: doc?.getElementById('content')?.textContent?.includes('No se pudo cargar Costos') === true,
           pageMessage: doc?.getElementById('pageMsg')?.textContent?.trim() || ''
         };
-      }, state => state?.heading && (state.metricCount === 5 || state.contentError || Boolean(state.pageMessage)));
+      }, state => state?.duplicateLogin || (state?.heading === 'Costos y rentabilidad' && state.resultReady));
+      if (costsState.duplicateLogin) throw new Error('Duplicate login found inside Costs');
+      if (costsState.owner !== 'costs.js' || !costsState.moduleMethods) throw new Error('Costs does not expose its canonical visual owner');
       if (costsState.contentError || costsState.pageMessage) throw new Error('Costs displayed an initial-load error state');
-      const costsResponses = diagnostics.apiResponses.filter(item => item.path === '/api/costs');
-      if (!costsResponses.some(item => item.status === 200)) throw new Error('Costs API did not return HTTP 200');
-      await assertOneVisibleSection(page, 'costsSection');
+      if (costsState.scrollWidth !== costsState.clientWidth) throw new Error('Costs iframe has horizontal document overflow');
+      if (!costsState.heroFits || !costsState.statusFits || !costsState.metricsFit || !costsState.panelFits) throw new Error('Costs responsive regions do not fit the iPhone viewport');
+      if (costsState.metricCount !== 5) throw new Error(`Costs metric count ${costsState.metricCount} != 5`);
+      if (costsState.tableScrollWidth > costsState.tableClientWidth && !['auto', 'scroll'].includes(costsState.tableOverflowX)) throw new Error('Costs internal table overflow is not contained');
+
+      const ownerState = await assertOneVisibleSection(page, 'costsSection');
+      if (ownerState.visibleFrames !== 1) throw new Error('Costs has more than one visible embedded page');
       const geometry = await assertNoDocumentOverflow(page, 'Costos outer shell');
+
+      await frameElement.evaluate(frame => frame.contentWindow?.CostsModule?.openProfitability('sales_orders'));
+      const profitabilityState = await waitForEmbeddedState(page, frameElement, 'Profitability view', frame => {
+        const doc = frame.contentDocument;
+        const html = doc?.documentElement;
+        const content = doc?.getElementById('content');
+        return {
+          ready: Boolean(content?.querySelector('.profit-shell')),
+          metricCount: content?.querySelectorAll('.profit-metric').length || 0,
+          selectedView: doc?.querySelector('[data-view="profitability"]')?.getAttribute('aria-pressed') || '',
+          clientWidth: html?.clientWidth || 0,
+          scrollWidth: html?.scrollWidth || 0,
+          error: content?.textContent?.includes('No se pudo cargar la rentabilidad') === true
+        };
+      }, state => state?.ready || state?.error);
+      if (profitabilityState.error || !profitabilityState.ready || profitabilityState.metricCount !== 4 || profitabilityState.selectedView !== 'true') {
+        throw new Error('Costs profitability read-model did not render through the canonical owner');
+      }
+      if (profitabilityState.scrollWidth !== profitabilityState.clientWidth) throw new Error('Profitability view has horizontal document overflow');
+
+      const costsResponses = diagnostics.apiResponses.filter(item => item.path === '/api/costs');
+      const profitabilityResponses = diagnostics.apiResponses.filter(item => item.path === '/api/profitability');
+      if (!costsResponses.some(item => item.status === 200)) throw new Error('Costs API did not return HTTP 200');
+      if (!profitabilityResponses.some(item => item.status === 200)) throw new Error('Profitability API did not return HTTP 200');
       await attachPrivateScreenshot(page, testInfo, 'costs-iphone-safari');
-      checkpoint('costs', { geometry, apiStatus: 200, markerAbsent: true });
+      checkpoint('costs', {
+        geometry,
+        innerGeometry: { clientWidth: costsState.clientWidth, scrollWidth: costsState.scrollWidth },
+        metrics: costsState.metricCount,
+        profitabilityMetrics: profitabilityState.metricCount,
+        visibleFrames: ownerState.visibleFrames,
+        costsApiStatus: 200,
+        profitabilityApiStatus: 200,
+        markerAbsent: true
+      });
     });
 
     await test.step('No operational write or real ERP error occurred', async () => {

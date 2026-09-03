@@ -1,105 +1,142 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Costos operativos · Export MCA</title>
-<link rel="stylesheet" href="/admin/costs.css?v=20260902-ux6owner2">
-<link rel="stylesheet" href="/admin/profitability.css?v=20260901-ux6owner1">
-<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Costos y rentabilidad · Export MCA</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <link rel="stylesheet" href="/admin/costs.css?v=20260903-ux7costs1">
 </head>
-<body class="erp-module-page erp-module-costs">
-<main class="wrap">
-  <div class="head module-hero">
-    <div class="module-heading">
-      <div class="module-kicker">Control financiero</div>
-      <h1>Costos operativos</h1>
-      <div class="muted">Cargos adicionales, costo reconocido de mercancía y rentabilidad, sin mezclar monedas ni hacer conversiones automáticas.</div>
-    </div>
-    <div class="actions module-actions"><button id="newCharge" class="btn orange hidden" type="button">+ Cargo de costo</button></div>
-  </div>
-  <div id="metrics" class="metrics"></div>
-  <section class="panel">
-    <div class="toolbar">
-      <input id="search" class="search" placeholder="Buscar CC, referencia, PO, WR, Cargue, contenedor, operación, SO o factura">
-      <div class="tabs">
-        <button class="btn active" data-view="charges">Cargos</button>
-        <button class="btn" data-view="landed">Costo recibido</button>
-        <button class="btn" data-view="cogs">Costo de Cargues</button>
-        <button id="profitabilityTab" class="btn" type="button">Rentabilidad</button>
+<body class="erp-module-page erp-module-costs" data-owner="costs.js">
+  <main class="wrap costs-shell">
+    <header class="module-hero costs-page-head" aria-labelledby="costsPageTitle">
+      <div class="module-heading costs-page-heading">
+        <div class="module-kicker costs-page-kicker">Finanzas · Costos y margen</div>
+        <h1 id="costsPageTitle">Costos y rentabilidad</h1>
+        <p>Consulta cargos, costo reconocido de mercancía y márgenes calculados por el ERP sin mezclar monedas ni alterar la autoridad física de Compras, Almacén o Cargues.</p>
       </div>
-      <button id="refresh" class="btn" type="button" aria-label="Actualizar Costos">↻</button>
-    </div>
-    <div id="pageMsg" class="msg page-msg" role="status" aria-live="polite"></div>
-    <div id="content"></div>
-    <div id="profitabilityContent" class="hidden"></div>
-  </section>
-</main>
+      <div class="costs-hero-actions">
+        <div class="costs-hero-state" aria-label="Estado del módulo">
+          <span class="costs-live-dot" aria-hidden="true"></span>
+          <div><strong>Modelo financiero</strong><span id="costsLastUpdated">Preparando costos…</span></div>
+        </div>
+        <button id="newCharge" class="btn orange" type="button" hidden>Nuevo cargo</button>
+      </div>
+    </header>
 
-<div id="chargeModal" class="modal hidden">
-  <div class="dialog">
-    <div class="dialog-head">
-      <div><h2 id="chargeTitle">Nuevo cargo de costo</h2><div class="muted">El cargo es independiente de la factura del proveedor y debe distribuirse al 100% antes de contabilizar.</div></div>
-      <button class="btn" data-close="charge" type="button" aria-label="Cerrar formulario">✕</button>
+    <div id="pageMsg" class="costs-feedback" role="status" aria-live="polite"></div>
+
+    <div id="costsReadOnlyNote" class="costs-readonly" role="note" hidden>
+      <span class="costs-readonly-icon" aria-hidden="true">i</span>
+      <span>Puedes consultar cargos, costos reconocidos, rentabilidad y trazabilidad. Registrar o modificar cargos requiere permiso de gestión financiera.</span>
     </div>
-    <div class="grid3">
-      <div><label>Categoría *</label><select id="cCategory"></select></div>
-      <div><label>Etapa *</label><select id="cStage"></select></div>
-      <div><label>Fecha incurrida</label><input id="cDate" type="date"></div>
+
+    <section id="metrics" class="metrics costs-metrics" aria-label="Resumen de Costos y rentabilidad" aria-live="polite">
+      <article class="metric cost-metric-active"><span>Cargos activos</span><b>—</b><small>Contabilizados y vigentes</small></article>
+      <article class="metric cost-metric-drafts"><span>Borradores</span><b>—</b><small>Pendientes de contabilizar</small></article>
+      <article class="metric cost-metric-pending"><span>Sin asignar</span><b>—</b><small>Requieren distribución</small></article>
+      <article class="metric cost-metric-receipts"><span>Recepciones</span><b>—</b><small>Con costo reconocido</small></article>
+      <article class="metric cost-metric-loads"><span>Cargues</span><b>—</b><small>Con costo de mercancía</small></article>
+    </section>
+
+    <section class="panel costs-list-panel" aria-labelledby="costsListTitle">
+      <header class="costs-panel-head">
+        <div>
+          <span class="costs-eyebrow">Lectura financiera canónica</span>
+          <h2 id="costsListTitle">Cargos y costos reconocidos</h2>
+          <p>Alterna entre cargos directos, costo recibido, costo de Cargues y rentabilidad sin prorrateos ni conversiones automáticas.</p>
+        </div>
+        <span id="costsResultCount" class="costs-result-count">Consultando…</span>
+      </header>
+
+      <div class="costs-list-toolbar">
+        <label class="costs-search-field" for="search">
+          <span class="costs-visually-hidden">Buscar en Costos y rentabilidad</span>
+          <span class="costs-search-icon" aria-hidden="true">⌕</span>
+          <input id="search" class="search" type="search" autocomplete="off" placeholder="Buscar cargo, PO, recepción, Cargue, contenedor, venta o factura">
+        </label>
+        <div class="tabs costs-view-tabs" role="group" aria-label="Elegir vista financiera">
+          <button class="btn active" type="button" data-view="charges" aria-pressed="true">Cargos</button>
+          <button class="btn" type="button" data-view="landed" aria-pressed="false">Costo recibido</button>
+          <button class="btn" type="button" data-view="cogs" aria-pressed="false">Costo de Cargues</button>
+          <button id="profitabilityTab" class="btn" type="button" data-view="profitability" aria-pressed="false">Rentabilidad</button>
+        </div>
+        <button id="clearCostFilters" class="btn costs-clear" type="button">Limpiar</button>
+        <button id="refresh" class="btn costs-refresh" type="button" aria-label="Actualizar Costos y rentabilidad" title="Actualizar Costos y rentabilidad"><span aria-hidden="true">↻</span></button>
+      </div>
+
+      <div id="content" class="costs-content" aria-live="polite">
+        <div class="costs-loading" role="status"><span class="costs-spinner" aria-hidden="true"></span>Consultando Costos y rentabilidad…</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="chargeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="chargeTitle" aria-hidden="true">
+    <div class="dialog cost-form-dialog">
+      <div class="dialog-head">
+        <div><span class="costs-dialog-kicker">Cargo operativo</span><h2 id="chargeTitle">Nuevo cargo</h2><div class="muted">El cargo es independiente de la factura del proveedor y debe distribuirse al 100% antes de contabilizar.</div></div>
+        <button class="btn costs-close-button" data-close="charge" type="button" aria-label="Cerrar formulario de cargo">✕</button>
+      </div>
+
+      <section class="cost-form-section" aria-labelledby="costGeneralTitle">
+        <div class="cost-form-section-head"><span class="cost-form-step">1</span><div><h3 id="costGeneralTitle">Información general</h3><p>Categoría, etapa, fecha, importe y referencia del cargo.</p></div></div>
+        <div class="grid3">
+          <div><label for="cCategory">Categoría *</label><select id="cCategory"></select></div>
+          <div><label for="cStage">Etapa *</label><select id="cStage"></select></div>
+          <div><label for="cDate">Fecha incurrida</label><input id="cDate" type="date"></div>
+        </div>
+        <div class="grid3">
+          <div><label for="cAmount">Monto *</label><input id="cAmount" type="number" min="0" step="0.01" inputmode="decimal"></div>
+          <div><label for="cCurrency">Moneda *</label><input id="cCurrency" maxlength="3" value="USD" autocomplete="off"></div>
+          <div><label for="cSupplier">Proveedor opcional</label><select id="cSupplier"></select></div>
+        </div>
+        <div class="grid">
+          <div><label for="cReference">Referencia externa</label><input id="cReference" maxlength="300" autocomplete="off"></div>
+          <div><label for="cNotes">Notas</label><input id="cNotes" maxlength="2000" autocomplete="off"></div>
+        </div>
+      </section>
+
+      <section class="cost-form-section" aria-labelledby="costAllocationTitle">
+        <div class="cost-form-section-head cost-allocation-head"><span class="cost-form-step">2</span><div><h3 id="costAllocationTitle">Distribución</h3><p>Cada línea apunta a una orden, recepción, Cargue, Contenedor u Operación. La base es informativa.</p></div><button id="addAllocation" class="btn" type="button">Agregar línea</button></div>
+        <div id="allocationEditor" class="allocation-editor"></div>
+      </section>
+
+      <div class="actions cost-modal-actions"><button class="btn" data-close="charge" type="button">Cancelar</button><button id="saveCharge" class="btn orange" type="button">Guardar cargo</button></div>
+      <div id="chargeMsg" class="msg cost-dialog-message" role="status" aria-live="polite"></div>
     </div>
-    <div class="grid3">
-      <div><label>Monto *</label><input id="cAmount" type="number" min="0" step="0.01"></div>
-      <div><label>Moneda *</label><input id="cCurrency" maxlength="3" value="USD"></div>
-      <div><label>Proveedor opcional</label><select id="cSupplier"></select></div>
-    </div>
-    <div class="grid">
-      <div><label>Referencia externa</label><input id="cReference" maxlength="300"></div>
-      <div><label>Notas</label><input id="cNotes" maxlength="2000"></div>
-    </div>
-    <div class="toolbar charge-allocation-toolbar">
-      <div><b>Distribución</b><div class="muted">Cada línea apunta a una orden de compra, recepción de almacén, Cargue, Contenedor u Operación. La base es informativa.</div></div>
-      <button id="addAllocation" class="btn" type="button">+ Distribución</button>
-    </div>
-    <div id="allocationEditor" class="allocation-editor"></div>
-    <div class="actions charge-form-actions">
-      <button class="btn" data-close="charge">Cancelar</button>
-      <button id="saveCharge" class="btn orange">Guardar cargo</button>
-    </div>
-    <div id="chargeMsg" class="msg" role="status" aria-live="polite"></div>
   </div>
-</div>
 
-<div id="detailModal" class="modal hidden">
-  <div class="dialog compact">
-    <div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail" type="button" aria-label="Cerrar detalle">✕</button></div>
-    <div id="detailBody"></div>
-    <div id="detailActions" class="actions detail-actions"></div>
-    <div id="detailMsg" class="msg" role="status" aria-live="polite"></div>
-  </div>
-</div>
-
-<div id="profitTraceModal" class="modal hidden">
-  <div class="dialog">
-    <div class="dialog-head">
-      <div><h2 id="profitTraceTitle">Trazabilidad de costo</h2><div id="profitTraceSubtitle" class="muted"></div></div>
-      <button id="closeProfitTrace" class="btn" type="button">✕</button>
-    </div>
-    <div id="profitTraceBody"></div>
-  </div>
-</div>
-
-<div id="costDecisionModal" class="modal cost-decision-modal hidden" role="dialog" aria-modal="true" aria-labelledby="costDecisionTitle" aria-describedby="costDecisionCopy">
-  <div class="dialog compact cost-decision-dialog">
-    <h2 id="costDecisionTitle">Confirmar acción</h2>
-    <p id="costDecisionCopy" class="cost-decision-copy"></p>
-    <div class="actions cost-decision-actions">
-      <button id="costDecisionCancel" class="btn" type="button">Volver</button>
-      <button id="costDecisionAccept" class="btn primary" type="button">Continuar</button>
+  <div id="detailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailTitle" aria-hidden="true">
+    <div class="dialog compact cost-detail-dialog">
+      <div class="dialog-head"><div><span class="costs-dialog-kicker">Detalle del cargo</span><h2 id="detailTitle">Cargo</h2><div id="detailSubtitle" class="muted"></div></div><button class="btn costs-close-button" data-close="detail" type="button" aria-label="Cerrar detalle">✕</button></div>
+      <div id="detailBody"></div>
+      <div id="detailActions" class="actions cost-modal-actions"></div>
+      <div id="detailMsg" class="msg cost-dialog-message" role="status" aria-live="polite"></div>
     </div>
   </div>
-</div>
 
-<script src="/admin/costs.js?v=20260901-ux6owner1"></script>
-<script src="/admin/profitability.js?v=20260901-ux6owner1"></script>
+  <div id="profitTraceModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="profitTraceTitle" aria-hidden="true">
+    <div class="dialog cost-trace-dialog">
+      <div class="dialog-head">
+        <div><span class="costs-dialog-kicker">Origen del margen</span><h2 id="profitTraceTitle">Trazabilidad de costo</h2><div id="profitTraceSubtitle" class="muted"></div></div>
+        <button class="btn costs-close-button" data-close="profitTrace" type="button" aria-label="Cerrar trazabilidad">✕</button>
+      </div>
+      <div id="profitTraceBody"></div>
+    </div>
+  </div>
+
+  <div id="costDecisionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="costDecisionTitle" aria-describedby="costDecisionCopy" aria-hidden="true">
+    <div class="dialog compact cost-decision-dialog">
+      <span class="costs-dialog-kicker">Confirmación financiera</span>
+      <h2 id="costDecisionTitle">Confirmar acción</h2>
+      <p id="costDecisionCopy" class="cost-decision-copy"></p>
+      <div class="actions cost-modal-actions cost-decision-actions"><button id="costDecisionCancel" class="btn" type="button">Volver</button><button id="costDecisionAccept" class="btn orange" type="button">Continuar</button></div>
+      <div id="costDecisionMsg" class="msg cost-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script src="/admin/costs.js?v=20260903-ux7costs1" defer></script>
+  <script src="/admin/embedded-auto-refresh.js?v=20260903-ux7costs1" defer></script>
 </body>
 </html>
