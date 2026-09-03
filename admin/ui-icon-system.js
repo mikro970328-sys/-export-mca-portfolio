@@ -12,7 +12,7 @@
     sales: '<path d="M4 19V5M4 19h16"/><path d="m7 15 4-4 3 3 6-7"/><path d="M16 7h4v4"/>',
     invoices: '<path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2Z"/><path d="M9 7h6M9 11h6M9 15h4"/>',
     publications: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9M13 13h4M13 17h4"/>',
-    operations: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 5V3h8v2M3 10h18M9 14h6"/>',
+    operations: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/><path d="M10 6.5h2a5.5 5.5 0 0 1 5.5 5.5v2M14 17.5h-2A5.5 5.5 0 0 1 6.5 12v-2"/><path d="m15 12 2.5 2.5L20 12M9 12 6.5 9.5 4 12"/>',
     purchases: '<circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 4h2l2.4 11.2A2 2 0 0 0 9.35 17H18a2 2 0 0 0 1.9-1.37L22 9H7"/>',
     warehouse: '<path d="m3 10 9-6 9 6v10H3V10Z"/><path d="M7 20v-7h10v7M7 16h10"/>',
     inventory: '<rect x="3" y="4" width="8" height="7" rx="1"/><rect x="13" y="4" width="8" height="7" rx="1"/><rect x="3" y="13" width="8" height="7" rx="1"/><rect x="13" y="13" width="8" height="7" rx="1"/>',
@@ -124,16 +124,20 @@
   }
 
   function hydrateBell(root = document) {
-    const button = root.id === 'operationalAlertBell'
-      ? root
-      : root.getElementById?.('operationalAlertBell') || document.getElementById('operationalAlertBell');
-    if (!button || hasIcon(button, 'bell')) return;
-    [...button.childNodes].forEach(node => {
-      if (node.nodeType === Node.TEXT_NODE) node.remove();
-      else if (node.nodeType === Node.ELEMENT_NODE && node.id !== 'operationalAlertBadge') node.remove();
+    const ids = ['operationalAlertBell', 'notificationInboxBell'];
+    const badges = new Set(['operationalAlertBadge', 'notificationInboxBadge']);
+    const buttons = ids
+      .map(id => root.id === id ? root : root.querySelector?.(`#${id}`) || document.getElementById(id))
+      .filter((button, index, values) => button && values.indexOf(button) === index);
+    buttons.forEach(button => {
+      if (hasIcon(button, 'bell')) return;
+      [...button.childNodes].forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) node.remove();
+        else if (node.nodeType === Node.ELEMENT_NODE && !badges.has(node.id)) node.remove();
+      });
+      button.insertAdjacentHTML('afterbegin', svg('bell'));
+      button.dataset.iconName = 'bell';
     });
-    button.insertAdjacentHTML('afterbegin', svg('bell'));
-    button.dataset.iconName = 'bell';
   }
 
   function hydrate(root = document) {

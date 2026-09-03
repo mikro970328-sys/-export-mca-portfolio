@@ -91,7 +91,7 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))){
     '/admin/workflow-route-settings.css?v=20260830-p5',
     '/admin/workflow-route-settings.js?v=20260830-p5'
   ]) if(!loader.includes(required))failures.push(`admin/erp.js: falta ${required}`);
-  const tasksIndex=loader.indexOf('/admin/tasks-workspace.js?v=20260903-ux7icons1');
+  const tasksIndex=loader.indexOf('/admin/tasks-workspace.js?v=20260903-ux7icons2');
   const routeIndex=loader.indexOf('/admin/workflow-route-settings.js?v=20260830-p5');
   if(tasksIndex<0||routeIndex<0||tasksIndex>routeIndex)failures.push('admin/erp.js: configuración de handoffs debe cargar después de Mis tareas');
 }

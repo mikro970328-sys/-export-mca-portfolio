@@ -59,7 +59,20 @@
   }
 
   function dashboardIcon(target) {
-    const icons={clients:'clients',containers:'container',tasks:'files',alerts:'bell'};
+    const icons={
+      clients:'clients',
+      products:'products',
+      suppliers:'suppliers',
+      containers:'container',
+      warehouse:'warehouse',
+      loads:'loads',
+      inventory:'inventory',
+      tasks:'tasks',
+      alerts:'bell',
+      invoices:'invoices',
+      payables:'payables',
+      costs:'costs'
+    };
     const name=icons[target]||'operations';
     return window.ExportMcaIcons?.svg?.(name,'executive-op-icon-svg')||'<span aria-hidden="true">•</span>';
   }

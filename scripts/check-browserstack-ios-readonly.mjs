@@ -34,6 +34,8 @@ const requiredTestContracts = [
   'Navigation uses one canonical SVG icon system',
   'navigation-icons-iphone-safari',
   "state.owner !== 'ui-icon-system.js'",
+  "page.locator('#notificationInboxBell')",
+  'state.dashboardDistinctIcons < 8',
   'legacyGlyphs: false',
   "openSection(page, 'invoicesSection')",
   "openSection(page, 'payablesSection')",

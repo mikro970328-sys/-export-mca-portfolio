@@ -10,6 +10,9 @@ const sources = Object.freeze({
   account: 'admin/account-administration.js',
   alerts: 'admin/operational-alert-center.js',
   alertCss: 'admin/operational-alert-center.css',
+  inbox: 'admin/notification-inbox.js',
+  inboxCss: 'admin/notification-inbox.css',
+  dashboard: 'admin/dashboard-operational-state.js',
   serviceWorker: 'sw.js',
   browserStackTest: 'e2e/browserstack/ux7-production-readonly.spec.cjs',
   browserStackWorkflow: '.github/workflows/browserstack-ios-certification.yml'
@@ -93,13 +96,15 @@ for (const [name, source] of [
   ['index.html', files.index],
   ['navigation-shell.js', files.navigation],
   ['tasks-workspace.js', files.tasks],
-  ['operational-alert-center.js', files.alerts]
+  ['operational-alert-center.js', files.alerts],
+  ['notification-inbox.js', files.inbox]
 ]) forbid(source, legacyGlyphs, `${name} conserva un glifo o emoji heredado en la navegación.`);
 
 forbid(files.index, /<svg\b/i, 'index.html no debe convertirse en un segundo owner de SVG.');
 forbid(files.navigation, /<svg\b|\bicon\s*:/i, 'navigation-shell.js debe pedir hidratación al owner, no definir iconos.');
 forbid(files.tasks, /function\s+taskIcon\b|<svg\b/i, 'Mis tareas conserva un SVG propio fuera del owner canónico.');
 forbid(files.alerts, /icon\.textContent|<svg\b/i, 'Centro de alertas conserva una mutación o SVG propio para el icono.');
+forbid(files.inbox, /<svg\b/i, 'Inbox conserva un SVG propio para la campana superior.');
 
 for (const fragment of [
   '<span class="nav-icon" aria-hidden="true"></span>',
@@ -110,32 +115,51 @@ requireText(files.tasks, 'window.ExportMcaIcons?.hydrate?.(button)', 'hidrataci�
 requireText(files.account, 'window.ExportMcaIcons?.hydrate?.(adminNav)', 'hidratación explícita de Mi cuenta y Usuarios y acceso');
 requireText(files.alerts, 'window.ExportMcaIcons?.hydrate?.(wrap)', 'hidratación explícita de la campana superior');
 requireText(files.alerts, 'window.ExportMcaIcons?.hydrate?.(nav)', 'hidratación explícita de Centro de alertas');
+requireText(files.inbox, 'window.ExportMcaIcons?.hydrate?.(button)', 'hidratación explícita de la campana del Inbox');
 
 for (const fragment of [
-  '/admin/navigation-shell.css?v=20260903-ux7icons1',
-  '/admin/erp.js?v=20260903-ux7icons1'
+  "products:'products'",
+  "suppliers:'suppliers'",
+  "warehouse:'warehouse'",
+  "loads:'loads'",
+  "inventory:'inventory'",
+  "tasks:'tasks'",
+  "invoices:'invoices'",
+  "payables:'payables'",
+  "costs:'costs'"
+]) requireText(files.dashboard, fragment, 'iconografía semántica del Dashboard');
+
+for (const fragment of [
+  '/admin/navigation-shell.css?v=20260903-ux7icons2',
+  '/admin/erp.js?v=20260903-ux7icons2'
 ]) requireText(files.index, fragment, 'revisión de caché del shell');
 
 for (const fragment of [
-  "loadScript('/admin/ui-icon-system.js?v=20260903-ux7icons1', 'data-ui-icon-system')",
-  "loadScript('/admin/navigation-shell.js?v=20260903-ux7icons1', 'data-navigation-shell')",
-  "loadScript('/admin/tasks-workspace.js?v=20260903-ux7icons1', 'data-tasks-workspace')",
-  "loadScript('/admin/account-administration.js?v=20260903-ux7icons1', 'data-account-administration')",
-  "loadStylesheet('/admin/operational-alert-center.css?v=20260903-ux7icons1', 'data-operational-alert-center-style')",
-  "loadScript('/admin/operational-alert-center.js?v=20260903-ux7icons1', 'data-operational-alert-center')"
+  "loadScript('/admin/ui-icon-system.js?v=20260903-ux7icons2', 'data-ui-icon-system')",
+  "loadScript('/admin/navigation-shell.js?v=20260903-ux7icons2', 'data-navigation-shell')",
+  "loadScript('/admin/tasks-workspace.js?v=20260903-ux7icons2', 'data-tasks-workspace')",
+  "loadScript('/admin/account-administration.js?v=20260903-ux7icons2', 'data-account-administration')",
+  "loadStylesheet('/admin/operational-alert-center.css?v=20260903-ux7icons2', 'data-operational-alert-center-style')",
+  "loadScript('/admin/operational-alert-center.js?v=20260903-ux7icons2', 'data-operational-alert-center')",
+  "loadStylesheet('/admin/notification-inbox.css?v=20260903-ux7icons2', 'data-notification-inbox-style')",
+  "loadScript('/admin/notification-inbox.js?v=20260903-ux7icons2', 'data-notification-inbox')",
+  "loadScript('/admin/dashboard-operational-state.js?v=20260903-ux7icons2', 'data-dashboard-operational-state')"
 ]) requireText(files.loader, fragment, 'carga versionada del sistema');
 
 const iconReady = files.loader.indexOf('await iconSystemPromise;');
 const shellReveal = files.loader.indexOf('revealAdminShell();');
 if (iconReady < 0 || shellReveal < 0 || iconReady > shellReveal) failures.push('El shell autenticado puede mostrarse antes de que sus iconos estén listos.');
 
-requireText(files.serviceWorker, "const CACHE='export-mca-shell-v3'", 'renovación del caché PWA');
+requireText(files.serviceWorker, "const CACHE='export-mca-shell-v4'", 'renovación del caché PWA');
 requireText(files.alertCss, '.alert-bell>.ui-icon-svg', 'geometría canónica de la campana superior');
+requireText(files.inboxCss, '.notification-inbox-bell>.ui-icon-svg', 'geometría canónica de la campana del Inbox');
 
 for (const fragment of [
   'Navigation uses one canonical SVG icon system',
   'navigation-icons-iphone-safari',
   "state.owner !== 'ui-icon-system.js'",
+  "page.locator('#notificationInboxBell')",
+  'state.dashboardDistinctIcons < 8',
   'legacyGlyphs: false',
   'state.scrollWidth !== state.clientWidth'
 ]) requireText(files.browserStackTest, fragment, 'certificación real iPhone/Safari');
@@ -150,6 +174,9 @@ for (const path of [
   'admin/account-administration.js',
   'admin/operational-alert-center.js',
   'admin/operational-alert-center.css',
+  'admin/notification-inbox.js',
+  'admin/notification-inbox.css',
+  'admin/dashboard-operational-state.js',
   'sw.js'
 ]) requireText(files.browserStackWorkflow, `- '${path}'`, `trigger BrowserStack para ${path}`);
 

@@ -312,6 +312,7 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
     });
 
     if (RUN_CORE) await test.step('Navigation uses one canonical SVG icon system', async () => {
+      await expect(page.locator('#notificationInboxBell')).toBeVisible();
       const mobileMenu = page.locator('#mobileMenuBtn');
       if (await mobileMenu.isVisible()) {
         const menuOpen = await page.locator('#sidebar').evaluate(element => element.classList.contains('mobile-open'));
@@ -351,21 +352,25 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
           return reasons.length ? [{ label, reasons }] : [];
         });
         const menuButtons = ['sidebarToggle', 'mobileMenuBtn'].map(id => document.getElementById(id)).filter(Boolean);
-        const bell = document.getElementById('operationalAlertBell');
+        const topBells = [...document.querySelectorAll('#operationalAlertBell,#notificationInboxBell')];
+        const dashboardIcons = [...document.querySelectorAll('.executive-op-icon > svg[data-ui-icon]')].map(icon => icon.dataset.uiIcon || '');
         return {
           owner: window.ExportMcaIcons?.owner || '',
           controls: controls.length,
           visibleControls: controls.filter(visible).length,
           failures,
           menuButtonsCanonical: menuButtons.every(button => button.querySelectorAll(':scope > svg[data-ui-icon="menu"]').length === 1),
-          bellCanonical: !bell || bell.querySelectorAll(':scope > svg[data-ui-icon="bell"]').length === 1,
+          topBellCount: topBells.length,
+          bellCanonical: topBells.length === 1 && topBells[0].querySelectorAll(':scope > svg[data-ui-icon="bell"]').length === 1,
+          dashboardIcons: dashboardIcons.length,
+          dashboardDistinctIcons: new Set(dashboardIcons).size,
           legacyGlyphs: /[⌂▣●＋◎▦✉♟◉↪▥◫◩▤▧▨▩◇⇄🔔]/u.test(document.querySelector('#sidebar')?.textContent || ''),
           clientWidth: document.documentElement.clientWidth,
           scrollWidth: document.documentElement.scrollWidth
         };
       });
 
-      if (state.owner !== 'ui-icon-system.js' || state.controls < 10 || state.visibleControls < 4 || state.failures.length || !state.menuButtonsCanonical || !state.bellCanonical || state.legacyGlyphs || state.scrollWidth !== state.clientWidth) {
+      if (state.owner !== 'ui-icon-system.js' || state.controls < 10 || state.visibleControls < 4 || state.failures.length || !state.menuButtonsCanonical || !state.bellCanonical || state.dashboardIcons < 8 || state.dashboardDistinctIcons < 8 || state.legacyGlyphs || state.scrollWidth !== state.clientWidth) {
         throw new Error(`Canonical navigation icon contract failed: ${sanitizeLog(JSON.stringify(state))}`);
       }
       await attachPrivateScreenshot(page, testInfo, 'navigation-icons-iphone-safari');
@@ -374,6 +379,8 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         owner: state.owner,
         controls: state.controls,
         visibleControls: state.visibleControls,
+        topBellCount: state.topBellCount,
+        dashboardDistinctIcons: state.dashboardDistinctIcons,
         legacyGlyphs: false,
         overflow: false
       });
