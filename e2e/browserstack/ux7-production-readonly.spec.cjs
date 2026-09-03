@@ -8,6 +8,8 @@ const CERT_SCOPE = process.env.ERP_CERT_SCOPE || 'all';
 if (!['all', 'core', 'costs'].includes(CERT_SCOPE)) throw new Error(`Invalid ERP_CERT_SCOPE: ${CERT_SCOPE}`);
 const RUN_CORE = CERT_SCOPE !== 'costs';
 const RUN_COSTS = CERT_SCOPE !== 'core';
+const PROFITABILITY_STATUS_ATTRIBUTE = 'data-profitability-probe-status';
+const PROFITABILITY_STATE_ATTRIBUTE = 'data-profitability-probe-state';
 const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
@@ -141,17 +143,18 @@ async function waitForEmbeddedState(page, frameElement, label, reader, ready) {
   throw new Error(`${label} did not reach a readable ready state${lastError ? `: ${lastError}` : ''}`);
 }
 
-async function openProfitabilityAndRead(frameElement) {
-  return frameElement.evaluate(async frame => {
+async function installProfitabilityProbe(frameElement) {
+  return frameElement.evaluate(frame => {
     const win = frame.contentWindow;
     const doc = frame.contentDocument;
-    if (!win || !doc) return { opened: false, ready: false, error: false, timedOut: true };
+    if (!win || !doc) return { installed: false, opened: false };
 
-    const opened = win.CostsModule?.openProfitability('sales_orders') === true;
-    const read = () => {
+    let opened = false;
+    let timeoutId = 0;
+    const updateProbe = timedOut => {
       const html = doc.documentElement;
       const content = doc.getElementById('content');
-      return {
+      const state = {
         opened,
         ready: Boolean(content?.querySelector('.profit-shell')),
         metricCount: content?.querySelectorAll('.profit-metric').length || 0,
@@ -159,18 +162,36 @@ async function openProfitabilityAndRead(frameElement) {
         clientWidth: html?.clientWidth || 0,
         scrollWidth: html?.scrollWidth || 0,
         error: content?.textContent?.includes('No se pudo cargar la rentabilidad') === true,
-        timedOut: false
+        timedOut: Boolean(timedOut)
       };
+      const status = state.ready ? 'ready' : state.error ? 'error' : state.timedOut ? 'timeout' : 'pending';
+      frame.setAttribute('data-profitability-probe-status', status);
+      frame.setAttribute('data-profitability-probe-state', JSON.stringify(state));
+      if (status !== 'pending' && timeoutId) win.clearTimeout(timeoutId);
+      return status;
     };
 
-    const deadline = Date.now() + 35_000;
-    let state = read();
-    while (!state.ready && !state.error && Date.now() < deadline) {
-      await new Promise(resolve => win.setTimeout(resolve, 250));
-      state = read();
+    frame.removeAttribute('data-profitability-probe-status');
+    frame.removeAttribute('data-profitability-probe-state');
+    const observer = new win.MutationObserver(() => {
+      if (updateProbe(false) !== 'pending') observer.disconnect();
+    });
+    observer.observe(doc.getElementById('content') || doc.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+    opened = win.CostsModule?.openProfitability('sales_orders') === true;
+    if (updateProbe(false) === 'pending') {
+      timeoutId = win.setTimeout(() => {
+        updateProbe(true);
+        observer.disconnect();
+      }, 35_000);
+    } else {
+      observer.disconnect();
     }
-    return { ...state, timedOut: !state.ready && !state.error };
-  }, undefined, { timeout: 45_000 });
+    return { installed: true, opened };
+  });
 }
 
 async function openSection(page, sectionId) {
@@ -683,7 +704,11 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
       if (ownerState.visibleFrames !== 1) throw new Error('Costs has more than one visible embedded page');
       const geometry = await assertNoDocumentOverflow(page, 'Costos outer shell');
 
-      const profitabilityState = await openProfitabilityAndRead(frameElement);
+      const profitabilityProbe = await installProfitabilityProbe(frameElement);
+      if (!profitabilityProbe.installed || !profitabilityProbe.opened) throw new Error('Costs profitability probe could not open the canonical view');
+      await expect(frameElement).toHaveAttribute(PROFITABILITY_STATUS_ATTRIBUTE, /^(?:ready|error|timeout)$/, { timeout: 45_000 });
+      const profitabilityRawState = await frameElement.getAttribute(PROFITABILITY_STATE_ATTRIBUTE);
+      const profitabilityState = JSON.parse(profitabilityRawState || '{}');
       if (!profitabilityState.opened || profitabilityState.timedOut || profitabilityState.error || !profitabilityState.ready || profitabilityState.metricCount !== 4 || profitabilityState.selectedView !== 'true') {
         throw new Error(`Costs profitability read-model did not render through the canonical owner: ${sanitizeLog(JSON.stringify(profitabilityState))}`);
       }
