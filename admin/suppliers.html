@@ -1,30 +1,131 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Proveedores · Export MCA</title>
-<style>
-:root{--navy:#06204a;--orange:#f58220;--bg:#f4f7fb;--line:#dfe5ee;--text:#152238;--muted:#667085;--ok:#117a37;--bad:#b42318;--shadow:0 8px 24px rgba(6,32,74,.06)}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}button,input,textarea{font:inherit}.wrap{padding:18px;max-width:1400px;margin:auto}.head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}.head h1{margin:0;color:var(--navy);font-size:22px}.head p{margin:5px 0 0;color:var(--muted);font-size:12px}.btn{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:8px;padding:8px 11px;font-weight:800;font-size:12px;cursor:pointer}.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}.btn.danger{color:var(--bad);border-color:#efc0bc}.metrics{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}.metric{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 10px;font-size:11px;color:var(--muted)}.metric b{font-size:15px;color:var(--navy)}.panel{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}.toolbar{display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--line);flex-wrap:wrap}.search{flex:1;min-width:220px;border:1px solid var(--line);border-radius:8px;padding:9px 10px}.tabs{display:flex;gap:6px}.tabs button.active{background:var(--navy);color:#fff}.supplier-list{padding:6px 12px 12px}.supplier-row{display:grid;grid-template-columns:minmax(190px,1.2fr) minmax(160px,1fr) minmax(130px,.8fr) auto;gap:12px;align-items:center;padding:11px 4px;border-bottom:1px solid #edf0f4}.supplier-row:last-child{border-bottom:0}.supplier-name{font-weight:900;color:var(--navy)}.supplier-meta{margin-top:3px;font-size:11px;color:var(--muted)}.pill{display:inline-flex;padding:4px 8px;border-radius:999px;background:#eaf6ee;color:var(--ok);font-size:10px;font-weight:900}.pill.off{background:#f1f2f4;color:#667085}.actions{display:flex;gap:7px;justify-content:flex-end}.empty{padding:36px;text-align:center;color:var(--muted)}.modal{position:fixed;inset:0;background:rgba(6,19,39,.48);display:flex;justify-content:center;align-items:center;padding:14px;z-index:30}.modal.hidden{display:none}.dialog{width:min(650px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:14px;padding:18px}.dialog-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.dialog h2{margin:0;color:var(--navy);font-size:18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}label{display:block;font-size:10px;text-transform:uppercase;color:var(--muted);font-weight:900;margin-bottom:5px}input,textarea{width:100%;border:1px solid #cfd7e3;border-radius:8px;padding:9px 10px}textarea{min-height:80px;resize:vertical}.full{grid-column:1/-1}.msg{font-size:12px;margin-top:9px;color:var(--bad)}@media(max-width:700px){.wrap{padding:12px}.supplier-row{grid-template-columns:1fr auto}.supplier-row>div:nth-child(2),.supplier-row>div:nth-child(3){grid-column:1}.actions{grid-column:2;grid-row:1/4;align-self:center;flex-direction:column}.grid{grid-template-columns:1fr}.full{grid-column:1}.head{align-items:center}}
-</style>
-<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Proveedores · Export MCA</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <link rel="stylesheet" href="/admin/suppliers.css?v=20260903-ux7suppliers1">
 </head>
-<body class="erp-module-page erp-module-suppliers">
-<main class="wrap">
-  <div class="head module-hero"><div class="module-heading"><div class="module-kicker">Abastecimiento</div><h1>Proveedores</h1><p>Maestro de proveedores para compras y recepciones WR.</p></div><button id="newSupplier" class="btn primary">+ Proveedor</button></div>
-  <div id="metrics" class="metrics"></div>
-  <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar nombre, razón social, país, teléfono o email"><div class="tabs"><button class="btn active" data-view="active">Activos</button><button class="btn" data-view="inactive">Inactivos</button><button class="btn" data-view="all">Todos</button></div><button id="refresh" class="btn">↻</button></div><div id="supplierList" class="supplier-list"></div></section>
-</main>
-<div id="supplierModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="modalTitle">Nuevo proveedor</h2><div class="supplier-meta">Los WR guardan un snapshot del nombre para conservar historial.</div></div><button class="btn" data-close>✕</button></div><div class="grid"><div><label>Nombre *</label><input id="sName"></div><div><label>Razón social</label><input id="sLegal"></div><div><label>País</label><input id="sCountry"></div><div><label>Tax ID / EIN</label><input id="sTax"></div><div><label>Email</label><input id="sEmail" type="email"></div><div><label>Teléfono</label><input id="sPhone"></div><div class="full"><label>Dirección</label><input id="sAddress"></div><div class="full"><label>Notas</label><textarea id="sNotes"></textarea></div></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="btn" data-close>Cancelar</button><button id="saveSupplier" class="btn primary">Guardar</button></div><div id="supplierMsg" class="msg"></div></div></div>
-<script>
-const token=localStorage.getItem('export_mca_token');if(!token)location.href='/admin/';const $=id=>document.getElementById(id);const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let suppliers=[],view='active',editing=null;
-async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',...(opt.headers||{})}});const d=await r.json().catch(()=>({}));if(r.status===401){localStorage.removeItem('export_mca_token');location.href='/admin/';throw new Error('Sesión vencida')}if(!r.ok)throw new Error(d.error||'Error');return d}
-function filtered(){const q=$('search').value.trim().toLowerCase();return suppliers.filter(s=>(view==='all'||(view==='active'?s.active!==false:s.active===false))&&(!q||[s.name,s.legal_name,s.country,s.phone,s.email,s.tax_id].some(x=>String(x||'').toLowerCase().includes(q))))}
-function render(){const active=suppliers.filter(s=>s.active!==false).length,inactive=suppliers.length-active;$('metrics').innerHTML=`<div class="metric"><b>${suppliers.length}</b><span>Total</span></div><div class="metric"><b>${active}</b><span>Activos</span></div><div class="metric"><b>${inactive}</b><span>Inactivos</span></div>`;const list=filtered();$('supplierList').innerHTML=list.length?list.map(s=>`<article class="supplier-row"><div><div class="supplier-name">${esc(s.name)}</div><div class="supplier-meta">${esc(s.legal_name||'Sin razón social')}</div></div><div><b>${esc(s.country||'—')}</b><div class="supplier-meta">${esc(s.tax_id||'Sin Tax ID')}</div></div><div><span class="pill ${s.active===false?'off':''}">${s.active===false?'Inactivo':'Activo'}</span><div class="supplier-meta">${esc(s.email||s.phone||'Sin contacto')}</div></div><div class="actions"><button class="btn" data-edit="${s.id}">Editar</button><button class="btn ${s.active===false?'':'danger'}" data-toggle="${s.id}" data-active="${s.active===false?'1':'0'}">${s.active===false?'Reactivar':'Desactivar'}</button></div></article>`).join(''):'<div class="empty">No hay proveedores en esta vista.</div>';document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openModal(suppliers.find(s=>String(s.id)===b.dataset.edit)));document.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>toggleSupplier(b.dataset.toggle,b.dataset.active==='1'))}
-async function load(){const d=await api('/api/suppliers');suppliers=d.suppliers||[];render()}
-function openModal(s=null){editing=s||null;$('modalTitle').textContent=s?'Editar proveedor':'Nuevo proveedor';$('sName').value=s?.name||'';$('sLegal').value=s?.legal_name||'';$('sCountry').value=s?.country||'';$('sTax').value=s?.tax_id||'';$('sEmail').value=s?.email||'';$('sPhone').value=s?.phone||'';$('sAddress').value=s?.address||'';$('sNotes').value=s?.notes||'';$('supplierMsg').textContent='';$('supplierModal').classList.remove('hidden');$('sName').focus()}
-function closeModal(){$('supplierModal').classList.add('hidden')}
-async function save(){const btn=$('saveSupplier');try{btn.disabled=true;$('supplierMsg').textContent='';const body={name:$('sName').value,legal_name:$('sLegal').value,country:$('sCountry').value,tax_id:$('sTax').value,email:$('sEmail').value,phone:$('sPhone').value,address:$('sAddress').value,notes:$('sNotes').value};if(editing){body.id=editing.id;body.action='update'}await api('/api/suppliers',{method:editing?'PATCH':'POST',body:JSON.stringify(body)});closeModal();await load()}catch(e){$('supplierMsg').textContent=e.message}finally{btn.disabled=false}}
-async function toggleSupplier(id,active){try{await api('/api/suppliers',{method:'PATCH',body:JSON.stringify({action:'set_active',id,active})});await load()}catch(e){alert(e.message)}}
-$('newSupplier').onclick=()=>openModal();$('saveSupplier').onclick=save;$('refresh').onclick=load;$('search').oninput=render;document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x===b));render()});document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal);$('supplierModal').onclick=e=>{if(e.target===$('supplierModal'))closeModal()};load().catch(e=>$('supplierList').innerHTML=`<div class="empty">${esc(e.message)}</div>`);
-</script>
-</body></html>
+<body class="erp-module-page erp-module-suppliers" data-owner="suppliers.js">
+  <main class="suppliers-wrap suppliers-shell">
+    <header class="module-hero suppliers-page-head" aria-labelledby="suppliersPageTitle">
+      <div class="module-heading suppliers-page-heading">
+        <div class="module-kicker suppliers-page-kicker">Administración · Abastecimiento</div>
+        <h1 id="suppliersPageTitle">Proveedores</h1>
+        <p>Administra el directorio que alimenta Compras, recepciones WR y Cuentas por pagar, conservando la trazabilidad histórica de cada operación.</p>
+      </div>
+      <div class="suppliers-hero-actions">
+        <div class="suppliers-hero-state" aria-label="Estado del módulo">
+          <span class="suppliers-live-dot" aria-hidden="true"></span>
+          <div><strong>Directorio operativo</strong><span id="suppliersLastUpdated">Preparando proveedores…</span></div>
+        </div>
+        <div class="suppliers-action-row">
+          <button id="refreshSuppliers" type="button" class="btn suppliers-refresh">Actualizar</button>
+          <button id="newSupplier" type="button" class="btn orange suppliers-create">Nuevo proveedor</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="supplierMessage" class="suppliers-feedback" role="status" aria-live="polite"></div>
+    <div id="suppliersReadOnlyNote" class="suppliers-readonly" hidden>
+      <span class="suppliers-readonly-mark" aria-hidden="true">i</span>
+      <span>Tu acceso permite consultar proveedores. Las altas y modificaciones requieren permiso de abastecimiento.</span>
+    </div>
+
+    <section id="suppliersMetrics" class="metrics suppliers-metrics" aria-label="Resumen de proveedores" aria-live="polite">
+      <article class="metric supplier-metric-total"><span>Total</span><b id="supplierTotalMetric">—</b><small>Proveedores registrados</small></article>
+      <article class="metric supplier-metric-active"><span>Activos</span><b id="supplierActiveMetric">—</b><small>Disponibles para operar</small></article>
+      <article class="metric supplier-metric-inactive"><span>Inactivos</span><b id="supplierInactiveMetric">—</b><small>Conservados en historial</small></article>
+      <article class="metric supplier-metric-contact"><span>Con contacto</span><b id="supplierContactMetric">—</b><small>Correo o teléfono disponible</small></article>
+    </section>
+
+    <section class="panel suppliers-directory-panel" aria-labelledby="supplierDirectoryTitle">
+      <header class="suppliers-panel-head">
+        <div>
+          <span class="suppliers-eyebrow">Directorio maestro</span>
+          <h2 id="supplierDirectoryTitle">Proveedores registrados</h2>
+          <p>Busca por identidad, país o contacto y consulta la ficha completa antes de realizar cambios.</p>
+        </div>
+        <span id="supplierResultCount" class="suppliers-result-count">Consultando…</span>
+      </header>
+
+      <div class="suppliers-toolbar">
+        <label class="suppliers-search" for="supplierSearch">
+          <span class="suppliers-visually-hidden">Buscar proveedores</span>
+          <input id="supplierSearch" type="search" autocomplete="off" placeholder="Buscar nombre, razón social, país, Tax ID o contacto">
+        </label>
+        <div class="suppliers-tabs" role="tablist" aria-label="Estado de proveedores">
+          <button type="button" role="tab" class="btn active" data-view="active" aria-selected="true" aria-controls="supplierList">Activos</button>
+          <button type="button" role="tab" class="btn" data-view="inactive" aria-selected="false" aria-controls="supplierList" tabindex="-1">Inactivos</button>
+          <button type="button" role="tab" class="btn" data-view="all" aria-selected="false" aria-controls="supplierList" tabindex="-1">Todos</button>
+        </div>
+      </div>
+
+      <div id="supplierList" class="supplier-list" aria-live="polite" aria-busy="true">
+        <div class="suppliers-loading" role="status"><span class="suppliers-spinner" aria-hidden="true"></span>Consultando proveedores…</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="supplierModal" class="modal supplier-modal hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="supplierModalTitle">
+    <div class="supplier-dialog">
+      <header class="supplier-dialog-head">
+        <div>
+          <span class="suppliers-eyebrow">Ficha maestra</span>
+          <h2 id="supplierModalTitle">Nuevo proveedor</h2>
+          <p>Los documentos operativos conservan su snapshot para proteger el historial.</p>
+        </div>
+        <button type="button" class="btn supplier-close" data-close="supplier">Cerrar</button>
+      </header>
+      <form id="supplierForm" novalidate>
+        <div class="supplier-form-grid">
+          <label for="supplierName"><span>Nombre <em aria-hidden="true">*</em></span><input id="supplierName" maxlength="200" required></label>
+          <label for="supplierLegalName"><span>Razón social</span><input id="supplierLegalName" maxlength="250"></label>
+          <label for="supplierCountry"><span>País</span><input id="supplierCountry" maxlength="120"></label>
+          <label for="supplierTaxId"><span>Tax ID / EIN</span><input id="supplierTaxId" maxlength="120"></label>
+          <label for="supplierEmail"><span>Correo</span><input id="supplierEmail" type="email" maxlength="250" autocomplete="email"></label>
+          <label for="supplierPhone"><span>Teléfono</span><input id="supplierPhone" maxlength="80" autocomplete="tel"></label>
+          <label class="supplier-field-wide" for="supplierAddress"><span>Dirección</span><input id="supplierAddress" maxlength="500" autocomplete="street-address"></label>
+          <label class="supplier-field-wide" for="supplierNotes"><span>Notas</span><textarea id="supplierNotes" maxlength="2000"></textarea></label>
+        </div>
+        <div id="supplierFormMessage" class="suppliers-form-message" role="status" aria-live="polite"></div>
+        <footer class="supplier-dialog-actions">
+          <button type="button" class="btn" data-close="supplier">Cancelar</button>
+          <button id="saveSupplier" type="submit" class="btn primary">Guardar proveedor</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <div id="supplierDetailModal" class="modal supplier-modal hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="supplierDetailTitle">
+    <div class="supplier-dialog supplier-detail-dialog">
+      <header class="supplier-dialog-head">
+        <div><span class="suppliers-eyebrow">Consulta de proveedor</span><h2 id="supplierDetailTitle">Detalle</h2></div>
+        <button type="button" class="btn supplier-close" data-close="detail">Cerrar</button>
+      </header>
+      <div id="supplierDetailBody" class="supplier-detail-body"></div>
+      <footer class="supplier-dialog-actions">
+        <button type="button" class="btn" data-close="detail">Volver</button>
+        <button id="editSupplierFromDetail" type="button" class="btn primary">Editar proveedor</button>
+      </footer>
+    </div>
+  </div>
+
+  <div id="supplierDecision" class="modal supplier-modal supplier-decision hidden" role="alertdialog" aria-modal="true" aria-hidden="true" aria-labelledby="supplierDecisionTitle" aria-describedby="supplierDecisionText">
+    <div class="supplier-dialog supplier-decision-dialog">
+      <span class="supplier-decision-mark" aria-hidden="true">!</span>
+      <h2 id="supplierDecisionTitle">Confirmar cambio</h2>
+      <p id="supplierDecisionText"></p>
+      <div class="supplier-dialog-actions">
+        <button id="supplierDecisionCancel" type="button" class="btn">Cancelar</button>
+        <button id="supplierDecisionConfirm" type="button" class="btn danger">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/admin/suppliers.js?v=20260903-ux7suppliers1" defer></script>
+  <script src="/admin/embedded-auto-refresh.js?v=20260903-ux7suppliers1" defer></script>
+</body>
+</html>
