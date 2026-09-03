@@ -54,7 +54,7 @@ forbid(css,/!important/i,'el diálogo compartido usa !important');
 forbid(css,/(?:linear|radial)-gradient/i,'el diálogo compartido reintroduce degradados');
 
 requireText(index,'/admin/native-workspace-foundation.css?v=20260902-ux6c1','revisión del CSS compartido');
-requireText(index,'/admin/erp.js?v=20260902-ux7tracking1','revisión del loader');
+requireText(index,'/admin/erp.js?v=20260903-ux7tracking2','revisión del loader');
 requireText(loader,"/admin/modal-dismissal.js?v=20260902-ux6c1",'revisión del owner de cierre');
 
 if(failures.length){

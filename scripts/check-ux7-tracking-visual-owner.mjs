@@ -130,12 +130,12 @@ forbid(loader,/registration-form-shell/i,'erp.js conserva el shell visual retira
 if(fs.existsSync('admin/registration-form-shell.js'))failures.push('registration-form-shell.js debe permanecer retirado');
 
 for(const text of [
-  "loadStylesheet('/admin/containers-module.css?v=20260902-ux7tracking1', 'data-containers-module-style')",
-  "loadScript('/admin/containers-module.js?v=20260902-ux7tracking1', 'data-containers-module')",
-  "loadStylesheet('/admin/shipment-editor.css?v=20260902-ux7tracking1', 'data-shipment-editor-style')",
-  "loadScript('/admin/shipment-editor.js?v=20260902-ux7tracking1', 'data-shipment-editor')"
+  "loadStylesheet('/admin/containers-module.css?v=20260903-ux7tracking2', 'data-containers-module-style')",
+  "loadScript('/admin/containers-module.js?v=20260903-ux7tracking2', 'data-containers-module')",
+  "loadStylesheet('/admin/shipment-editor.css?v=20260903-ux7tracking2', 'data-shipment-editor-style')",
+  "loadScript('/admin/shipment-editor.js?v=20260903-ux7tracking2', 'data-shipment-editor')"
 ])requireText(loader,text,`asset canónico ${text}`);
-requireText(html,'/admin/erp.js?v=20260902-ux7tracking1','revisión de caché del ERP');
+requireText(html,'/admin/erp.js?v=20260903-ux7tracking2','revisión de caché del ERP');
 
 for(const text of [
   'class="shipment-editor" data-owner="shipment-editor.js"',
