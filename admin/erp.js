@@ -144,7 +144,7 @@
   });
 
   const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260902-ux6access1', 'data-access-control-style');
-  const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260817-e1', 'data-ui-icon-system');
+  const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260903-ux7icons2', 'data-ui-icon-system');
 
   const accessCan = permission => window.ExportMcaAccessControl?.can?.(permission) !== false;
 
@@ -198,13 +198,13 @@
       tasks.push(loadScript('/admin/module-export-controls.js', 'data-module-export-controls'));
     }
     if (accessCan('notifications.read')) {
-      let alertChain = loadStylesheet('/admin/operational-alert-center.css?v=20260902-ux6alerts2', 'data-operational-alert-center-style')
-        .then(() => loadScript('/admin/operational-alert-center.js?v=20260902-ux6alerts2', 'data-operational-alert-center'));
+      let alertChain = loadStylesheet('/admin/operational-alert-center.css?v=20260903-ux7icons2', 'data-operational-alert-center-style')
+        .then(() => loadScript('/admin/operational-alert-center.js?v=20260903-ux7icons2', 'data-operational-alert-center'));
       if (accessCan('notifications.manage')) {
         alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260830-p9', 'data-alert-phase2-stability'));
       }
-      const inboxChain = loadStylesheet('/admin/notification-inbox.css?v=20260902-ux6inbox1', 'data-notification-inbox-style')
-        .then(() => loadScript('/admin/notification-inbox.js?v=20260902-ux6inbox1', 'data-notification-inbox'));
+      const inboxChain = loadStylesheet('/admin/notification-inbox.css?v=20260903-ux7icons2', 'data-notification-inbox-style')
+        .then(() => loadScript('/admin/notification-inbox.js?v=20260903-ux7icons2', 'data-notification-inbox'));
       tasks.push(Promise.all([alertChain,inboxChain]));
     }
 
@@ -226,6 +226,7 @@
       await loadScript('/admin/access-control-administration.js?v=20260902-ux6access1', 'data-access-control-administration');
       if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
       await window.ExportMcaAccessControl.initialize();
+      await iconSystemPromise;
       window.ExportMcaAccessControl?.applyNavigation?.();
 
       ensureVisibleSection();
@@ -234,7 +235,7 @@
 
       if (accessCan('dashboard.read')) {
         await loadStylesheet('/admin/dashboard-executive.css?v=20260902-ux7shell1', 'data-dashboard-executive-style');
-        await loadScript('/admin/dashboard-operational-state.js?v=20260902-greeting1', 'data-dashboard-operational-state');
+        await loadScript('/admin/dashboard-operational-state.js?v=20260903-ux7icons2', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
         await loadStylesheet('/admin/containers-module.css?v=20260903-ux7tracking2', 'data-containers-module-style');
@@ -245,14 +246,13 @@
         await loadScript('/admin/shipment-editor.js?v=20260903-ux7tracking2', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
-      await iconSystemPromise;
       await loadStylesheet('/admin/account-administration.css?v=20260901-ux6style1', 'data-account-administration-style');
-      await loadScript('/admin/account-administration.js?v=20260902-ux6b1', 'data-account-administration');
-      await loadScript('/admin/navigation-shell.js?v=20260902-ux7shell1', 'data-navigation-shell');
+      await loadScript('/admin/account-administration.js?v=20260903-ux7icons2', 'data-account-administration');
+      await loadScript('/admin/navigation-shell.js?v=20260903-ux7icons2', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {
         await loadStylesheet('/admin/tasks-workspace.css?v=20260902-ux6tasks1', 'data-tasks-workspace-style');
-        await loadScript('/admin/tasks-workspace.js?v=20260902-ux6tasks1', 'data-tasks-workspace');
+        await loadScript('/admin/tasks-workspace.js?v=20260903-ux7icons2', 'data-tasks-workspace');
         await loadScript('/admin/tasks-navigation.js?v=20260830-p4', 'data-tasks-navigation');
         if (accessCan('tasks.manage')) {
           await loadStylesheet('/admin/workflow-route-settings.css?v=20260830-p5', 'data-workflow-route-settings-style');

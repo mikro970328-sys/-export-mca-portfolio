@@ -131,15 +131,31 @@
   box-shadow:none;
 }
 
+.ui-icon-svg{
+  width:20px;
+  height:20px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+
 .nav-icon{
-  width:22px;
-  min-width:22px;
+  width:24px;
+  min-width:24px;
+  height:24px;
+  flex:0 0 24px;
   display:inline-grid;
   place-items:center;
   color:#93a6c0;
-  font-size:17px;
   line-height:1;
 }
+
+.nav-icon .ui-icon-svg{width:20px;height:20px}
+.nav-group-btn .nav-icon .ui-icon-svg{width:21px;height:21px}
 
 .nav-label{
   min-width:0;
@@ -149,11 +165,18 @@
 }
 
 .nav-chevron{
+  width:18px;
+  height:18px;
+  display:inline-grid;
+  place-items:center;
   margin-left:auto;
   color:#71849f;
-  font-size:13px;
   transition:transform .16s ease;
 }
+
+.nav-chevron .ui-icon-svg{width:15px;height:15px}
+.menu-btn>.ui-icon-svg{width:21px;height:21px;margin:auto}
+.alert-bell>.ui-icon-svg{width:20px;height:20px}
 
 .nav-group.open>.nav-group-btn .nav-chevron{transform:rotate(180deg)}
 .nav-group.has-active-section>.nav-group-btn{background:rgba(255,255,255,.045);color:#fff}
@@ -319,6 +342,7 @@
   body.sidebar-collapsed .platform-version{display:none}
 
   body.sidebar-collapsed .sidebar-nav .nav-icon{width:24px;min-width:24px}
+  body.sidebar-collapsed .sidebar-nav .nav-icon .ui-icon-svg{width:21px;height:21px}
   body.sidebar-collapsed .sidebar-foot{padding:10px}
   body.sidebar-collapsed .sidebar-foot-action{
     width:52px;

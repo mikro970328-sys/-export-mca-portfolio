@@ -246,7 +246,7 @@ for (const fragment of [
 ]) {
   if (!loader.includes(fragment)) errors.push(`El loader no carga el propietario requerido: ${fragment}`);
 }
-if (!index.includes('/admin/navigation-shell.css?v=20260902-ux7shell1')) {
+if (!index.includes('/admin/navigation-shell.css?v=20260903-ux7icons2')) {
   errors.push('index.html no carga el owner visual versionado de navegación desde head.');
 }
 if (loader.includes('/admin/expedientes-module.js')) errors.push('El loader todavía carga Expedientes, que UX-2D retiró del flujo operativo.');
@@ -318,7 +318,7 @@ for (const forbidden of [
 if (alerts.includes('nav.innerHTML')) {
   errors.push('Centro de alertas no puede reemplazar el DOM completo del botón de navegación.');
 }
-for (const fragment of ["nav.querySelector('.nav-icon')", "nav.querySelector('.nav-label')", 'shipment_customs_documents_missing']) {
+for (const fragment of ["window.ExportMcaIcons?.hydrate?.(nav)", "nav.querySelector('.nav-label')", 'shipment_customs_documents_missing']) {
   if (!alerts.includes(fragment)) errors.push(`Centro de alertas no preserva su propiedad visual/documental: ${fragment}`);
 }
 if (!/const\s+target\s*=\s*\$\(['\"]alerts['\"]\)/.test(alerts)) errors.push('Centro de alertas no preserva la superficie de alertas de Inicio.');

@@ -150,6 +150,8 @@
       if (label) label.textContent = 'Usuarios y acceso';
     }
 
+    window.ExportMcaIcons?.hydrate?.(adminNav);
+
     accountButton.onclick = event => {
       event.preventDefault();
       if (typeof window.showSection === 'function') window.showSection('accountSection');

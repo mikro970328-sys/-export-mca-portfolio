@@ -311,6 +311,81 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
       checkpoint('pwa-prerequisites', { ...pwa, registrationError: pwa.registrationError ? 'present' : '' });
     });
 
+    if (RUN_CORE) await test.step('Navigation uses one canonical SVG icon system', async () => {
+      await expect(page.locator('#notificationInboxBell')).toBeVisible();
+      const mobileMenu = page.locator('#mobileMenuBtn');
+      if (await mobileMenu.isVisible()) {
+        const menuOpen = await page.locator('#sidebar').evaluate(element => element.classList.contains('mobile-open'));
+        if (!menuOpen) await mobileMenu.click();
+        const sidebarClasses = (await page.locator('#sidebar').getAttribute('class')) || '';
+        if (!/(?:^|\s)mobile-open(?:\s|$)/.test(sidebarClasses)) throw new Error('Mobile navigation did not open');
+      }
+
+      for (const groupName of ['commercial', 'operations']) {
+        const groupButton = page.locator(`.nav-group[data-nav-group="${groupName}"]:not(.hidden) > .nav-group-btn`);
+        if (await groupButton.count() && await groupButton.getAttribute('aria-expanded') !== 'true') await groupButton.click();
+      }
+      await page.locator('.sidebar-nav').evaluate(element => { element.scrollTop = 0; });
+
+      const state = await page.evaluate(() => {
+        window.ExportMcaIcons?.hydrate?.(document);
+        const controls = [...document.querySelectorAll('#sidebar [data-nav-label]')];
+        const visible = element => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        };
+        const failures = controls.flatMap(control => {
+          const label = control.dataset.navLabel || 'sin-etiqueta';
+          const holder = control.querySelector('.nav-icon');
+          const icons = holder ? [...holder.querySelectorAll(':scope > svg[data-ui-icon]')] : [];
+          const text = holder ? [...holder.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent || '').join('').trim() : '';
+          const icon = icons[0];
+          const rect = icon?.getBoundingClientRect();
+          const reasons = [];
+          if (!holder) reasons.push('sin-contenedor');
+          if (holder?.dataset.iconMissing === 'true') reasons.push('sin-mapeo');
+          if (icons.length !== 1) reasons.push(`svg-${icons.length}`);
+          if (text) reasons.push('texto-heredado');
+          if (icon?.getAttribute('aria-hidden') !== 'true' || icon?.getAttribute('focusable') !== 'false') reasons.push('accesibilidad');
+          if (visible(control) && (!rect || rect.width < 19 || rect.width > 22 || rect.height < 19 || rect.height > 22 || rect.left < -1 || rect.right > document.documentElement.clientWidth + 1)) reasons.push('geometria');
+          return reasons.length ? [{ label, reasons }] : [];
+        });
+        const menuButtons = ['sidebarToggle', 'mobileMenuBtn'].map(id => document.getElementById(id)).filter(Boolean);
+        const topBells = [...document.querySelectorAll('#operationalAlertBell,#notificationInboxBell')];
+        const dashboardIcons = [...document.querySelectorAll('.executive-op-icon > svg[data-ui-icon]')].map(icon => icon.dataset.uiIcon || '');
+        return {
+          owner: window.ExportMcaIcons?.owner || '',
+          controls: controls.length,
+          visibleControls: controls.filter(visible).length,
+          failures,
+          menuButtonsCanonical: menuButtons.every(button => button.querySelectorAll(':scope > svg[data-ui-icon="menu"]').length === 1),
+          topBellCount: topBells.length,
+          bellCanonical: topBells.length === 1 && topBells[0].querySelectorAll(':scope > svg[data-ui-icon="bell"]').length === 1,
+          dashboardIcons: dashboardIcons.length,
+          dashboardDistinctIcons: new Set(dashboardIcons).size,
+          legacyGlyphs: /[⌂▣●＋◎▦✉♟◉↪▥◫◩▤▧▨▩◇⇄🔔]/u.test(document.querySelector('#sidebar')?.textContent || ''),
+          clientWidth: document.documentElement.clientWidth,
+          scrollWidth: document.documentElement.scrollWidth
+        };
+      });
+
+      if (state.owner !== 'ui-icon-system.js' || state.controls < 10 || state.visibleControls < 4 || state.failures.length || !state.menuButtonsCanonical || !state.bellCanonical || state.dashboardIcons < 8 || state.dashboardDistinctIcons < 8 || state.legacyGlyphs || state.scrollWidth !== state.clientWidth) {
+        throw new Error(`Canonical navigation icon contract failed: ${sanitizeLog(JSON.stringify(state))}`);
+      }
+      await attachPrivateScreenshot(page, testInfo, 'navigation-icons-iphone-safari');
+      await page.evaluate(() => window.NavigationShell?.closeMobile?.());
+      checkpoint('canonical-navigation-icons', {
+        owner: state.owner,
+        controls: state.controls,
+        visibleControls: state.visibleControls,
+        topBellCount: state.topBellCount,
+        dashboardDistinctIcons: state.dashboardDistinctIcons,
+        legacyGlyphs: false,
+        overflow: false
+      });
+    });
+
     if (RUN_CORE) await test.step('Tracking has no page overflow and uses one visual owner', async () => {
       await openSection(page, 'containersSection');
       await expect(page.locator('#trackingTitle')).toBeVisible();
