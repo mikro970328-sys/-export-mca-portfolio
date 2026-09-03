@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { classifyPushFailure, privacySafePushPayload, webPushConfig } from '../api/_web-push.js';
 
 const read = path => fs.readFileSync(path, 'utf8');
-const migration = read('supabase/migrations/20260903224012_b10_1_web_push_notifications.sql');
+const migration = read('supabase/migrations/20260903233021_b10_1_web_push_notifications.sql');
 const subscriptionsApi = read('api/push-subscriptions.js');
 const dispatchApi = read('api/push-dispatch.js');
 const inboxApi = read('api/notification-inbox.js');

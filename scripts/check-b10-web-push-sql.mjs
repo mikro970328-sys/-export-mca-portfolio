@@ -88,7 +88,7 @@ await db.exec(`
 `);
 
 const migration = fs.readFileSync(
-  new URL('../supabase/migrations/20260903224012_b10_1_web_push_notifications.sql', import.meta.url),
+  new URL('../supabase/migrations/20260903233021_b10_1_web_push_notifications.sql', import.meta.url),
   'utf8'
 );
 await db.exec(migration);

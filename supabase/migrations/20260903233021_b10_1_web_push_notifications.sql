@@ -1,4 +1,4 @@
--- B10.1 · Web Push PWA seguro por usuario, dispositivo y sesión.
+-- B10.1 · Web Push PWA seguro por usuario, dispositivo y sesión (versión aplicada).
 -- El inbox P10 conserva la identidad del evento. Esta capa solo administra opt-in,
 -- dispositivos y entrega sin copiar payloads sensibles a la cola ni a auditoría.
 
