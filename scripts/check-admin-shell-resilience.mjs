@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const read=file=>fs.readFileSync(file,'utf8');
 const failures=[];
@@ -6,6 +7,7 @@ const requireText=(src,text,label=text)=>{if(!src.includes(text))failures.push(`
 const forbid=(src,re,label)=>{if(re.test(src))failures.push(label);};
 
 const erp=read('admin/erp.js');
+const shellRuntime=read('admin/admin-shell-runtime.js');
 const loader=read('admin/admin-data-loader.js');
 const dashboard=read('admin/dashboard-operational-state.js');
 const inbox=read('admin/notification-inbox.js');
@@ -19,6 +21,7 @@ requireText(erp,'revealAdminShell();','revelado explícito del shell');
 requireText(erp,'ensureVisibleSection();','garantía de sección visible');
 requireText(erp,'window.ExportMcaAdminData.loadDashboard().catch','dashboard desacoplado del boot');
 forbid(erp,/await\s+window\.loadAll\s*\(/,'erp.js no debe volver a bloquear boot con loadAll legacy');
+requireText(shellRuntime,"?.dataset.navLabel",'título dinámico desde la navegación canónica');
 
 const revealIndex=erp.indexOf('revealAdminShell();');
 const dataLoaderIndex=erp.indexOf("loadScript('/admin/admin-data-loader.js?v=20260830-hotfix2'");
@@ -57,6 +60,63 @@ requireText(inbox,"button.id='notificationInboxBell'",'campana P10 única');
 forbid(inbox,/\bMutationObserver\b/,'hotfix no debe usar MutationObserver');
 for(const [name,src] of [['admin-data-loader.js',loader],['dashboard-operational-state.js',dashboard],['notification-inbox.js',inbox]]){
   forbid(src,/\b(?:alert|prompt|confirm)\s*\(/,`${name} no debe introducir diálogos nativos`);
+}
+
+function classList(initial = []) {
+  const values = new Set(initial);
+  return {
+    add: value => values.add(value),
+    remove: value => values.delete(value),
+    contains: value => values.has(value),
+    toggle(value, force) {
+      const enabled = force === undefined ? !values.has(value) : Boolean(force);
+      if (enabled) values.add(value);
+      else values.delete(value);
+      return enabled;
+    }
+  };
+}
+
+try {
+  const pageTitle = { textContent:'Inicio' };
+  const sections = [
+    { id:'dashboardSection', classList:classList() },
+    { id:'costsSection', classList:classList(['hidden']) }
+  ];
+  const buttons = [
+    { dataset:{ section:'dashboardSection', navLabel:'Inicio' }, classList:classList(['active']), addEventListener() {} },
+    { dataset:{ section:'costsSection', navLabel:'Costos y rentabilidad' }, classList:classList(), addEventListener() {} }
+  ];
+  const storage = new Map();
+  const shellWindow = { scrollTo() {} };
+  const context = {
+    console,
+    document:{
+      getElementById: id => id === 'pageTitle' ? pageTitle : null,
+      querySelectorAll: selector => selector === '.app-section' ? sections : selector === '[data-section]' ? buttons : []
+    },
+    fetch: async () => ({ ok:true, json:async () => ({}) }),
+    localStorage:{
+      getItem: key => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, String(value)),
+      removeItem: key => storage.delete(key)
+    },
+    location:{ reload() {} },
+    navigator:{},
+    window:shellWindow
+  };
+  vm.runInNewContext(shellRuntime, context, { filename:'admin/admin-shell-runtime.js' });
+  context.window.ExportMcaAdminShellRuntime.showSection('costsSection');
+  if (pageTitle.textContent !== 'Costos y rentabilidad') {
+    failures.push('restaurar una sección embebida debe conservar su título de navegación');
+  }
+  if (sections[1].classList.contains('hidden') || !sections[0].classList.contains('hidden')) {
+    failures.push('el fixture de restauración no mostró únicamente la sección embebida');
+  }
+  context.window.ExportMcaAdminShellRuntime.showSection('dashboardSection');
+  if (pageTitle.textContent !== 'Inicio') failures.push('los títulos nativos deben conservar su mapa canónico');
+} catch (error) {
+  failures.push(`no se pudo ejecutar el fixture de título restaurado: ${error.message}`);
 }
 
 if(failures.length){

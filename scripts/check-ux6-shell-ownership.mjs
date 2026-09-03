@@ -33,7 +33,7 @@ const loader = read('admin/admin-data-loader.js');
 const access = read('admin/access-control-administration.js');
 const account = read('admin/account-administration.js');
 
-const runtimeRef = '/admin/admin-shell-runtime.js?v=20260902-ux6a1';
+const runtimeRef = '/admin/admin-shell-runtime.js?v=20260903-ux7shelltitle1';
 requireText(index, runtimeRef, 'runtime versionado del shell');
 requireText(index, "/admin/navigation-shell.css?v=20260902-ux7shell1", 'CSS versionado del shell');
 requireText(index, "/admin/platform-theme.css?v=20260902-ux7shell1", 'sistema visual versionado');

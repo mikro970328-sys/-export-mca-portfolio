@@ -287,10 +287,10 @@ for (const forbidden of [
   if (index.includes(forbidden)) errors.push(`index.html todavía posee comportamiento del shell: ${forbidden}`);
 }
 
-if (!index.includes('/admin/admin-shell-runtime.js?v=20260902-ux6a1')) {
+if (!index.includes('/admin/admin-shell-runtime.js?v=20260903-ux7shelltitle1')) {
   errors.push('index.html no carga el runtime estructural versionado antes del ERP.');
 }
-if (index.indexOf('/admin/admin-shell-runtime.js?v=20260902-ux6a1') > index.indexOf('/admin/erp.js')) {
+if (index.indexOf('/admin/admin-shell-runtime.js?v=20260903-ux7shelltitle1') > index.indexOf('/admin/erp.js')) {
   errors.push('index.html debe cargar admin-shell-runtime.js antes de erp.js.');
 }
 for (const fragment of [

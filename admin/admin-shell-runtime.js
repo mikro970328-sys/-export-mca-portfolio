@@ -65,7 +65,9 @@ function showSection(id) {
     button.classList.toggle('active', button.dataset.section === id);
   });
   const pageTitle = $('pageTitle');
-  if (pageTitle) pageTitle.textContent = titles[id] || 'EXPORT MCA';
+  const navigationLabel = [...document.querySelectorAll('[data-section]')]
+    .find(button => button.dataset.section === id)?.dataset.navLabel;
+  if (pageTitle) pageTitle.textContent = titles[id] || navigationLabel || 'EXPORT MCA';
   if (id === 'notificationsSection' && typeof window.loadNotifications === 'function') {
     window.loadNotifications();
   }
