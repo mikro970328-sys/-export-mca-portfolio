@@ -2,15 +2,20 @@ import { readFile } from 'node:fs/promises';
 
 const testPath = new URL('../e2e/browserstack/ux7-production-readonly.spec.cjs', import.meta.url);
 const configPath = new URL('../e2e/browserstack/playwright.config.cjs', import.meta.url);
+const packagePath = new URL('../e2e/browserstack/package.json', import.meta.url);
 const workflowPath = new URL('../.github/workflows/browserstack-ios-certification.yml', import.meta.url);
-const [testSource, configSource, workflowSource] = await Promise.all([
+const [testSource, configSource, packageSource, workflowSource] = await Promise.all([
   readFile(testPath, 'utf8'),
   readFile(configPath, 'utf8'),
+  readFile(packagePath, 'utf8'),
   readFile(workflowPath, 'utf8')
 ]);
 
 const requiredTestContracts = [
   "const ALLOWED_API_WRITES = new Set(['POST /api/login'])",
+  "const CERT_SCOPE = process.env.ERP_CERT_SCOPE || 'all'",
+  'if (RUN_CORE)',
+  'if (RUN_COSTS)',
   'diagnostics.blockedWrites.push(signature)',
   "openSection(page, 'containersSection')",
   "openSection(page, 'registerContainerSection')",
@@ -65,17 +70,27 @@ const requiredWorkflowContracts = [
   "github.event_name == 'push'",
   'Wait for the matching production deployment',
   'github.rest.repos.listDeployments',
-  'github.rest.repos.listDeploymentStatuses'
+  'github.rest.repos.listDeploymentStatuses',
+  'Run core read-only certification on real iPhone Safari',
+  'Run Costs read-only certification in a fresh iPhone Safari session',
+  'npm run test:ios:core',
+  'npm run test:ios:costs'
 ];
 const missingWorkflowContracts = requiredWorkflowContracts.filter(contract => !workflowSource.includes(contract));
+const requiredPackageContracts = [
+  '"test:ios": "npm run test:ios:core && npm run test:ios:costs"',
+  '"test:ios:core": "ERP_CERT_SCOPE=core',
+  '"test:ios:costs": "ERP_CERT_SCOPE=costs'
+];
+const missingPackageContracts = requiredPackageContracts.filter(contract => !packageSource.includes(contract));
 const missingConfigContracts = [
   'timeout: 12 * 60 * 1000',
   'actionTimeout: 20 * 1000',
   'navigationTimeout: 45 * 1000'
 ].filter(contract => !configSource.includes(contract));
 
-if (missing.length || forbidden.length || missingSecrets.length || missingWorkflowContracts.length || missingConfigContracts.length) {
-  console.error(JSON.stringify({ missing, forbidden: forbidden.map(String), missingSecrets, missingWorkflowContracts, missingConfigContracts }, null, 2));
+if (missing.length || forbidden.length || missingSecrets.length || missingWorkflowContracts.length || missingPackageContracts.length || missingConfigContracts.length) {
+  console.error(JSON.stringify({ missing, forbidden: forbidden.map(String), missingSecrets, missingWorkflowContracts, missingPackageContracts, missingConfigContracts }, null, 2));
   process.exit(1);
 }
 
