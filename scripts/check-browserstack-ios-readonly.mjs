@@ -17,7 +17,8 @@ const requiredTestContracts = [
   "detailAction = actualActions.includes('info')",
   'submitted: false',
   'COSTS_INITIAL_LOAD_FAILED',
-  'scrollWidth !== geometry.clientWidth'
+  'scrollWidth !== geometry.clientWidth',
+  "getAttribute('class')"
 ];
 
 const forbiddenInteractionPatterns = [
@@ -25,7 +26,8 @@ const forbiddenInteractionPatterns = [
   /locator\(['"]#saveBtn['"]\)\.click\(/,
   /locator\(['"]#newCharge['"]\)\.click\(/,
   /data-container-action=["'](?:edit|assign_client|manual_update|release|deliver|reactivate|delete)/,
-  /request\.(?:post|put|patch|delete)\(/i
+  /request\.(?:post|put|patch|delete)\(/i,
+  /\.toHaveClass\(/
 ];
 
 const missing = requiredTestContracts.filter(contract => !testSource.includes(contract));

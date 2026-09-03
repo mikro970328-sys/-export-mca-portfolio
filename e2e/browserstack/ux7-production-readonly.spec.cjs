@@ -144,7 +144,8 @@ async function openSection(page, sectionId) {
   await expect(sectionButton, `Navigation control for ${sectionId}`).toBeVisible();
   await sectionButton.click();
   await expect(section, `${sectionId} should be visible`).toBeVisible();
-  await expect(page.locator('#mobileOverlay')).not.toHaveClass(/show/);
+  const overlayClasses = (await page.locator('#mobileOverlay').getAttribute('class')) || '';
+  expect(overlayClasses).not.toMatch(/(?:^|\s)show(?:\s|$)/);
   return section;
 }
 
@@ -311,7 +312,8 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       await expect(page.locator('#modalBody .tracking-dialog-root')).toBeVisible();
       await attachPrivateScreenshot(page, testInfo, 'tracking-detail-iphone-safari');
       await page.locator('#closeModal').click();
-      await expect(page.locator('#modal')).toHaveClass(/hidden/);
+      const modalClasses = ((await page.locator('#modal').getAttribute('class')) || '').split(/\s+/);
+      expect(modalClasses).toContain('hidden');
       checkpoint('tracking-actions-and-detail', { actions: actualActions, detailAction });
     });
 
@@ -344,7 +346,8 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
         scrollWidth: document.documentElement.scrollWidth
       }));
       if (innerGeometry.scrollWidth !== innerGeometry.clientWidth) throw new Error('Publications iframe has horizontal document overflow');
-      await expect(publications.locator('#pageMessage')).not.toHaveClass(/is-error/);
+      const publicationMessageClasses = ((await publications.locator('#pageMessage').getAttribute('class')) || '').split(/\s+/);
+      expect(publicationMessageClasses).not.toContain('is-error');
       await attachPrivateScreenshot(page, testInfo, 'publications-iphone-safari');
       checkpoint('publications', { outerGeometry, innerGeometry, visibleFrames: owner.visibleFrames, duplicateLogin: false });
     });
