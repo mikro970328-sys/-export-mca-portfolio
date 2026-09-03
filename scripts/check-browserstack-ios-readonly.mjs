@@ -39,6 +39,7 @@ const requiredTestContracts = [
   'legacyGlyphs: false',
   "openSection(page, 'invoicesSection')",
   "openSection(page, 'payablesSection')",
+  "openSection(page, 'suppliersSection')",
   "openSection(page, 'reportsSection')",
   "openSection(page, 'costsSection')",
   "detailAction = actualActions.includes('info')",
@@ -53,6 +54,10 @@ const requiredTestContracts = [
   'inputValue()',
   'frame.contentDocument',
   'invoices-form-iphone-safari',
+  'Suppliers has one visual owner and a responsive directory',
+  'suppliers-iphone-safari',
+  "suppliersState.owner !== 'suppliers.js'",
+  'suppliersState.metricCount !== 4',
   'Reports has one visual owner and a contained result region',
   'reports-iphone-safari',
   "reportsState.owner !== 'reports.js'",
@@ -61,6 +66,7 @@ const requiredTestContracts = [
   'owner: doc?.body?.dataset?.owner',
   'INVOICES_UI_FAILED',
   'PAYABLES_UI_FAILED',
+  'SUPPLIERS_[A-Z_]+_FAILED',
   'REPORTS_UI_FAILED'
 ];
 
@@ -71,6 +77,7 @@ const forbiddenInteractionPatterns = [
   /locator\(['"]#saveBill['"]\)\.click\(/,
   /getElementById\(['"]saveBill['"]\)\?*\.click\(/,
   /locator\(['"]#savePayment['"]\)\.click\(/,
+  /locator\(['"]#saveSupplier['"]\)\.click\(/,
   /locator\(['"]#saveBtn['"]\)\.click\(/,
   /locator\(['"]#newCharge['"]\)\.click\(/,
   /data-container-action=["'](?:edit|assign_client|manual_update|release|deliver|reactivate|delete)/,

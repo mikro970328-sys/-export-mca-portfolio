@@ -7,6 +7,14 @@ async function listSuppliers() {
   return await supabase('suppliers', { query:'?select=*&order=active.desc,name.asc' }) || [];
 }
 
+async function loadSupplierWriteAccess(admin) {
+  if (admin?.role === 'master_admin') return true;
+  const rows = await supabase('admin_effective_permissions', {
+    query:`?select=permission_key&admin_user_id=eq.${encodeURIComponent(admin?.admin_id || '')}&permission_key=eq.procurement.write&limit=1`
+  });
+  return Boolean(rows?.length);
+}
+
 async function assertUniqueName(name, excludeId = null) {
   const key = normalizedName(name);
   const suppliers = await supabase('suppliers', { query:'?select=id,name' }) || [];
@@ -34,7 +42,10 @@ export default async function handler(req, res) {
   if (!admin) return;
 
   try {
-    if (req.method === 'GET') return ok(res, { suppliers:await listSuppliers() });
+    if (req.method === 'GET') {
+      const [suppliers, writeAccess] = await Promise.all([listSuppliers(), loadSupplierWriteAccess(admin)]);
+      return ok(res, { suppliers, write_access:writeAccess });
+    }
 
     if (req.method === 'POST') {
       const body = await readJson(req);

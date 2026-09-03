@@ -1,0 +1,36 @@
+name: UX7 Suppliers Visual Owner
+
+on:
+  pull_request:
+    paths:
+      - 'admin/suppliers.html'
+      - 'admin/suppliers.css'
+      - 'admin/suppliers.js'
+      - 'api/suppliers.js'
+      - 'e2e/browserstack/ux7-production-readonly.spec.cjs'
+      - 'scripts/check-browserstack-ios-readonly.mjs'
+      - 'scripts/check-ux7-suppliers-visual-owner.mjs'
+      - '.github/workflows/browserstack-ios-certification.yml'
+      - '.github/workflows/ux7-suppliers-visual-owner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-suppliers-visual-owner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate Suppliers visual ownership and runtime fixture
+        run: node scripts/check-ux7-suppliers-visual-owner.mjs
+      - name: Validate adjacent read-only certification contract
+        run: node scripts/check-browserstack-ios-readonly.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/suppliers.js
+          node --check api/suppliers.js
+          node --check scripts/check-ux7-suppliers-visual-owner.mjs

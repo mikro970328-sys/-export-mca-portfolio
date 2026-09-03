@@ -10,7 +10,7 @@ const RUN_CORE = CERT_SCOPE !== 'costs';
 const RUN_COSTS = CERT_SCOPE !== 'core';
 const PROFITABILITY_STATUS_ATTRIBUTE = 'data-profitability-probe-status';
 const PROFITABILITY_STATE_ATTRIBUTE = 'data-profitability-probe-state';
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -728,6 +728,69 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         formInspected: formInspection.available,
         apiStatus: 200,
         submitted: false
+      });
+    });
+
+    if (RUN_CORE) await test.step('Suppliers has one visual owner and a responsive directory', async () => {
+      await openSection(page, 'suppliersSection');
+      const frameElement = page.locator('#suppliersSection iframe');
+      await expect(frameElement).toBeVisible();
+      const suppliersState = await waitForEmbeddedState(page, frameElement, 'Suppliers iframe', frame => {
+        const doc = frame.contentDocument;
+        const html = doc?.documentElement;
+        const fits = node => {
+          if (!node || !html) return false;
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.left >= -1 && rect.right <= html.clientWidth + 1;
+        };
+        const metrics = [...(doc?.querySelectorAll('.suppliers-metrics .metric') || [])];
+        const result = doc?.getElementById('supplierResultCount')?.textContent?.trim() || '';
+        const ready = Boolean(doc?.querySelector('#supplierList .supplier-card, #supplierList .suppliers-empty'));
+        return {
+          heading: doc?.getElementById('suppliersPageTitle')?.textContent?.trim() || '',
+          resultReady: Boolean(result && !result.includes('Consultando') && !result.includes('No disponible') && ready),
+          duplicateLogin: Boolean(doc?.getElementById('loginPage')),
+          owner: doc?.body?.dataset?.owner || '',
+          clientWidth: html?.clientWidth || 0,
+          scrollWidth: html?.scrollWidth || 0,
+          heroFits: fits(doc?.querySelector('.suppliers-page-head')),
+          statusFits: fits(doc?.querySelector('.suppliers-hero-state')),
+          metricsFit: metrics.length === 4 && metrics.every(fits),
+          metricCount: metrics.length,
+          directoryFits: fits(doc?.querySelector('.suppliers-directory-panel')),
+          selectedTabs: doc?.querySelectorAll('.suppliers-tabs [aria-selected="true"]').length || 0,
+          modalCount: doc?.querySelectorAll('.supplier-modal').length || 0,
+          visibleModals: [...(doc?.querySelectorAll('.supplier-modal') || [])].filter(node => getComputedStyle(node).display !== 'none').length,
+          moduleMethods: ['refresh', 'openSupplier', 'openDetails'].every(name => typeof frame.contentWindow?.SuppliersModule?.[name] === 'function'),
+          lastUpdated: doc?.getElementById('suppliersLastUpdated')?.textContent?.trim() || ''
+        };
+      }, state => state?.duplicateLogin || (state?.heading === 'Proveedores' && state.resultReady));
+
+      if (suppliersState.duplicateLogin) throw new Error('Duplicate login found inside Suppliers');
+      if (suppliersState.owner !== 'suppliers.js' || !suppliersState.moduleMethods) throw new Error('Suppliers does not expose its canonical visual owner');
+      if (suppliersState.scrollWidth !== suppliersState.clientWidth) throw new Error('Suppliers iframe has horizontal document overflow');
+      if (!suppliersState.heroFits || !suppliersState.statusFits || !suppliersState.metricsFit || !suppliersState.directoryFits) {
+        throw new Error('Suppliers responsive regions do not fit the iPhone viewport');
+      }
+      if (suppliersState.metricCount !== 4 || suppliersState.selectedTabs !== 1) throw new Error('Suppliers summary or status selector is incomplete');
+      if (suppliersState.modalCount !== 3 || suppliersState.visibleModals !== 0) throw new Error('Suppliers initial state exposes an unexpected dialog');
+      if (!suppliersState.lastUpdated || suppliersState.lastUpdated.includes('Preparando')) throw new Error('Suppliers did not expose a completed refresh state');
+
+      const ownerState = await assertOneVisibleSection(page, 'suppliersSection');
+      if (ownerState.visibleFrames !== 1) throw new Error('Suppliers has more than one visible embedded page');
+      const outerGeometry = await assertNoDocumentOverflow(page, 'Proveedores outer shell');
+      await attachPrivateScreenshot(page, testInfo, 'suppliers-iphone-safari');
+
+      const supplierResponses = diagnostics.apiResponses.filter(item => item.path === '/api/suppliers');
+      if (!supplierResponses.some(item => item.status === 200)) throw new Error('Suppliers API did not return HTTP 200');
+      checkpoint('suppliers-readonly', {
+        outerGeometry,
+        innerGeometry:{ clientWidth:suppliersState.clientWidth, scrollWidth:suppliersState.scrollWidth },
+        metrics:suppliersState.metricCount,
+        visibleFrames:ownerState.visibleFrames,
+        apiStatus:200,
+        submitted:false
       });
     });
 
