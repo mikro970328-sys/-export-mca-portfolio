@@ -10,7 +10,7 @@ const RUN_CORE = CERT_SCOPE !== 'costs';
 const RUN_COSTS = CERT_SCOPE !== 'core';
 const PROFITABILITY_STATUS_ATTRIBUTE = 'data-profitability-probe-status';
 const PROFITABILITY_STATE_ATTRIBUTE = 'data-profitability-probe-state';
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|ACCESS_CONTROL_UI_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|ACCESS_CONTROL_UI_FAILED|ACCOUNT_UI_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -923,6 +923,75 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         geometry,
         metrics:accessState.metricCount,
         areaTabs:accessState.areaTabs,
+        apiStatus:200,
+        submitted:false
+      });
+    });
+
+    if (RUN_CORE) await test.step('My account has one visual owner and a responsive security workspace', async () => {
+      await openSection(page, 'accountSection');
+      const section = page.locator('#accountSection');
+      await expect(section.locator('#accountLastUpdated')).not.toContainText('Preparando', { timeout:30_000 });
+      await expect(section.locator('.account-identity')).toBeVisible();
+
+      const accountState = await section.evaluate(node => {
+        const visible = element => {
+          if (!element) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        };
+        const fits = element => {
+          if (!visible(element)) return false;
+          const rect = element.getBoundingClientRect();
+          return rect.left >= -1 && rect.right <= window.innerWidth + 1;
+        };
+        const metrics = [...node.querySelectorAll('.account-summary-card')];
+        const panels = [...node.querySelectorAll('.account-panel')].filter(visible);
+        const passwordInputs = [...node.querySelectorAll('#accountPasswordForm input[type="password"]')];
+        const dialog = node.querySelector('#accountConfirmDialog');
+        const sessionPanel = node.querySelector('#accountSessionAdminCard');
+        return {
+          owner:node.dataset.accountOwner || '',
+          apiOwner:window.ExportMcaAccountAdministration?.owner || '',
+          metricCount:metrics.length,
+          metricsReady:metrics.length === 4 && metrics.every(metric => !metric.querySelector('strong')?.textContent?.includes('—')),
+          metricsFit:metrics.length === 4 && metrics.every(fits),
+          heroFits:fits(node.querySelector('.account-header')),
+          layoutFits:fits(node.querySelector('.account-layout')),
+          panelsFit:panels.length >= 2 && panels.every(fits),
+          identityFits:fits(node.querySelector('.account-identity')),
+          passwordInputCount:passwordInputs.length,
+          passwordChecklistCount:node.querySelectorAll('[data-account-check]').length,
+          sessionPanelFits:!visible(sessionPanel) || fits(sessionPanel),
+          dialogVisible:visible(dialog),
+          lastUpdated:node.querySelector('#accountLastUpdated')?.textContent?.trim() || '',
+          methodsReady:['accountSnapshot','passwordChecks','renderMetrics'].every(name => typeof window.ExportMcaAccountAdministration?.[name] === 'function')
+        };
+      });
+
+      if (accountState.owner !== 'account-administration.js' || accountState.apiOwner !== 'account-administration.js' || !accountState.methodsReady) {
+        throw new Error('My account does not expose its canonical visual owner');
+      }
+      if (!accountState.heroFits || !accountState.metricsFit || !accountState.layoutFits || !accountState.panelsFit || !accountState.identityFits || !accountState.sessionPanelFits) {
+        throw new Error('My account responsive regions do not fit the iPhone viewport');
+      }
+      if (accountState.metricCount !== 4 || !accountState.metricsReady || accountState.passwordInputCount !== 3 || accountState.passwordChecklistCount !== 3) {
+        throw new Error('My account summary or password guidance is incomplete');
+      }
+      if (!accountState.lastUpdated || accountState.dialogVisible) throw new Error('My account is not in its safe initial state');
+
+      const ownerState = await assertOneVisibleSection(page, 'accountSection');
+      if (ownerState.visibleFrames !== 0) throw new Error('My account unexpectedly mounts an embedded page');
+      const geometry = await assertNoDocumentOverflow(page, 'Mi cuenta');
+      await attachPrivateScreenshot(page, testInfo, 'account-security-iphone-safari');
+
+      const accountResponses = diagnostics.apiResponses.filter(item => item.path === '/api/account');
+      if (!accountResponses.some(item => item.status === 200)) throw new Error('My account API did not return HTTP 200');
+      checkpoint('account-security-readonly', {
+        geometry,
+        metrics:accountState.metricCount,
+        passwordChecks:accountState.passwordChecklistCount,
         apiStatus:200,
         submitted:false
       });

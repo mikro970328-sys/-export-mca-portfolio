@@ -58,9 +58,11 @@ export default async function handler(req, res) {
 
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
-    if (error.message === 'PASSWORD_TOO_SHORT') return fail(res, 400, 'La contraseña debe tener al menos 10 caracteres');
-    if (error.message.includes('PASSWORD_STATE_CHANGED')) return fail(res, 409, 'La contraseña cambió en otra sesión. Inicia sesión nuevamente.');
-    if (error.message.includes('ADMIN_USER_UNAVAILABLE')) return fail(res, 403, 'La cuenta no está disponible');
-    return fail(res, 500, 'No se pudo actualizar la cuenta', error.message);
+    const message = String(error?.message || '');
+    if (message === 'PASSWORD_TOO_SHORT') return fail(res, 400, 'La contraseña debe tener al menos 10 caracteres');
+    if (message.includes('PASSWORD_STATE_CHANGED')) return fail(res, 409, 'La contraseña cambió en otra sesión. Inicia sesión nuevamente.');
+    if (message.includes('ADMIN_USER_UNAVAILABLE')) return fail(res, 403, 'La cuenta no está disponible');
+    console.error('[api/account]', error);
+    return fail(res, 500, 'No se pudo actualizar la cuenta');
   }
 }

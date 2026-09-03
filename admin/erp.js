@@ -246,8 +246,8 @@
         await loadScript('/admin/shipment-editor.js?v=20260903-ux7tracking2', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
-      await loadStylesheet('/admin/account-administration.css?v=20260901-ux6style1', 'data-account-administration-style');
-      await loadScript('/admin/account-administration.js?v=20260903-ux7icons2', 'data-account-administration');
+      await loadStylesheet('/admin/account-administration.css?v=20260903-ux7account1', 'data-account-administration-style');
+      await loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration');
       await loadScript('/admin/navigation-shell.js?v=20260903-ux7icons2', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {
