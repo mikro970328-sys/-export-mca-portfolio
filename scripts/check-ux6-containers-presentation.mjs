@@ -35,12 +35,12 @@ for(const text of [
   '.container-customs-grid',
   '.container-overlay',
   '.manual-track-list',
-  '@media(max-width:760px)',
+  '@media(max-width:900px)',
   ':focus-visible'
 ]) requireText(css,text,`selector CSS ${text}`);
 
-const styleLoad="loadStylesheet('/admin/containers-module.css?v=20260901-ux6owner1', 'data-containers-module-style')";
-const scriptLoad="loadScript('/admin/containers-module.js?v=20260901-ux6owner1', 'data-containers-module')";
+const styleLoad="loadStylesheet('/admin/containers-module.css?v=20260903-ux7tracking2', 'data-containers-module-style')";
+const scriptLoad="loadScript('/admin/containers-module.js?v=20260903-ux7tracking2', 'data-containers-module')";
 requireText(erp,styleLoad,'carga stylesheet de Contenedores');
 requireText(erp,scriptLoad,'carga JavaScript de Contenedores');
 const styleIndex=erp.indexOf(styleLoad),scriptIndex=erp.indexOf(scriptLoad);
@@ -53,7 +53,8 @@ for(const contract of [
   "request('/api/shipment-document-readiness')",
   "request('/api/manual-tracking-event'",
   "owner:'containers-module.js'",
-  "trackingOwner:'erp'"
+  "trackingOwner:'containers-module.js'",
+  "registrationOwner:'containers-module.js'"
 ]) requireText(js,contract);
 
 if(failures.length){

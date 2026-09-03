@@ -85,7 +85,7 @@ async function bootstrap(admin) {
     supabase('purchase_orders', { query:'?select=id,po_number,status,currency,supplier_id&order=created_at.desc&limit=2000' }),
     supabase('warehouse_receipts', { query:'?select=id,receipt_number,status,supplier_id,warehouse_id,received_at&order=created_at.desc&limit=2000' }),
     supabase('loads', { query:'?select=id,load_number,status,shipment_id,warehouse_id&order=created_at.desc&limit=2000' }),
-    supabase('shipments', { query:'?select=id,container_number,operation_id,status&order=id.desc&limit=3000' }),
+    supabase('shipments', { query:'?select=id,container_number,operation_id&order=id.desc&limit=3000' }),
     supabase('operations', { query:'?select=id,operation_code,status,currency,container_number&order=created_at.desc&limit=3000' }),
     supabase('sales_orders', { query:'?select=id,so_number,status,currency,client_id,importer_id&order=created_at.desc&limit=3000' }),
     supabase('sales_order_items', { query:'?select=id,sales_order_id,product_id,ordered_quantity,unit,entered_line_total&order=created_at.asc&limit=10000' }),

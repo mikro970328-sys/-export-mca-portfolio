@@ -5,7 +5,11 @@ on:
     paths:
       - 'admin/shipment-editor.js'
       - 'admin/shipment-editor.css'
+      - 'admin/containers-module.js'
+      - 'admin/containers-module.css'
+      - 'admin/index.html'
       - 'admin/erp.js'
+      - 'scripts/check-ux7-tracking-visual-owner.mjs'
       - 'scripts/check-ux6-shipment-editor-presentation.mjs'
       - '.github/workflows/ux6-shipment-editor-presentation.yml'
   workflow_dispatch:
@@ -18,11 +22,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - run: node scripts/check-ux7-tracking-visual-owner.mjs
       - run: node scripts/check-ux6-shipment-editor-presentation.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check admin/shipment-editor.js
           node --check admin/erp.js
+          node --check scripts/check-ux7-tracking-visual-owner.mjs
           node --check scripts/check-ux6-shipment-editor-presentation.mjs
       - run: node scripts/check-shipment-importer-independence.mjs
       - run: node scripts/check-ux5-shipment-actions.mjs

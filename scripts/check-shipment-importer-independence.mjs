@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
 const files = {
+  index: 'admin/index.html',
   containers: 'admin/containers-module.js',
   editor: 'admin/shipment-editor.js',
   api: 'api/importers.js'
@@ -16,19 +17,28 @@ for (const file of Object.values(files)) {
 
 for (const file of Object.values(files)) {
   if (!fs.existsSync(file)) continue;
+  if (!file.endsWith('.js')) continue;
   const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
   if (result.status !== 0) errors.push(`Error de sintaxis en ${file}:\n${result.stderr || result.stdout}`);
 }
 
 const containers = read(files.containers);
+const index = read(files.index);
 const editor = read(files.editor);
 const api = read(files.api);
 
 for (const fragment of [
   '<input id="shipmentImporter"',
   'shipmentImporterOptions',
+  'Importadora concreta de este contenedor',
+  'no depende de las registradas para el cliente'
+]) {
+  if (!index.includes(fragment)) errors.push(`Registro estático de contenedor no refleja importadora independiente: ${fragment}`);
+}
+
+for (const fragment of [
   'importer_name:',
-  'Escribe la importadora concreta de este contenedor'
+  'function importerForShipment(shipment)'
 ]) {
   if (!containers.includes(fragment)) errors.push(`Registro de contenedor no refleja importadora independiente: ${fragment}`);
 }
@@ -42,7 +52,7 @@ for (const forbidden of [
 }
 
 for (const fragment of [
-  '<input id="editorImporter"',
+  'id="editorImporter"',
   'editorImporterOptions',
   'importer_name:',
   'No depende de las importadoras donde esté registrado el cliente'

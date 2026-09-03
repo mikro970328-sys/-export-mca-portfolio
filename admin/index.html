@@ -120,13 +120,128 @@
     </div>
   </div>
 </section>
-<section id="registerContainerSection" class="app-section hidden"><div class="native-workspace-shell"><header class="native-workspace-hero"><div class="native-workspace-heading"><span class="native-workspace-kicker">Operación logística</span><h2>Registrar contenedor</h2><p>Crea el registro operativo inicial y completa los datos de transporte a medida que estén disponibles.</p></div></header><section class="card native-workspace-panel registration-card"><h2>Datos del contenedor</h2><div class="grid"><div><label>Cliente</label><select id="shipmentClient"><option value="">Sin cliente / Disponible para venta</option></select><div class="native-workspace-field-help">Puedes registrarlo sin comprador y asignar el cliente después.</div></div><div><label>Número de contenedor *</label><input id="shipmentContainer" placeholder="ABCD1234567" maxlength="11"></div><div><label>Booking</label><input id="shipmentBooking"></div><div><label>B/L</label><input id="shipmentBol"></div><div><label>Naviera</label><input id="shipmentCarrier" placeholder="Crowley"></div><div><label>Producto</label><input id="shipmentProduct" placeholder="Panel Boviet 540W, aceite, huevos..."></div><div><label>Cantidad</label><input id="shipmentQuantity" type="number" min="0" step="0.001"></div><div><label>Unidad</label><input id="shipmentQuantityUnit" placeholder="paneles, cajas, galones, unidades"></div><div><label>Fecha de salida</label><input id="shipmentDepartureDate" type="date"><div class="native-workspace-field-help">Fecha manual indicada por Export MCA.</div></div></div><div class="native-workspace-form-actions"><button id="saveShipment" class="orange" type="button">Guardar contenedor</button></div><div id="shipmentMsg" class="msg"></div></section></div></section>
-<section id="containersSection" class="app-section hidden"><div class="native-workspace-shell"><header class="native-workspace-hero"><div class="native-workspace-heading"><span class="native-workspace-kicker">Visibilidad logística</span><h2>Tracking</h2><p>Sigue cada contenedor, sus hitos, documentos Cuba y acciones operativas autorizadas.</p></div></header><section class="card native-workspace-panel"><div class="native-workspace-panel-head"><h2>Contenedores</h2><p>Busca por cliente, referencia o documento y filtra la operación por estado.</p></div><input id="shipmentSearch" class="search" placeholder="Buscar cliente, contenedor, producto, cantidad, booking, B/L o fecha"><div class="tabs native-workspace-tabs"><button class="tab active" type="button" data-container-filter="active">Activos</button><button class="tab" type="button" data-container-filter="delivered">Entregados</button><button class="tab" type="button" data-container-filter="all">Todos</button></div><div id="shipments"></div></section></div></section>
+<section id="registerContainerSection" class="app-section hidden tracking-registration-section" data-owner="containers-module.js" aria-labelledby="registerContainerTitle">
+  <div class="tracking-register-workspace">
+    <header class="tracking-hero tracking-register-hero">
+      <div class="tracking-hero-copy">
+        <span class="tracking-kicker">Operaciones · Salida logística</span>
+        <h2 id="registerContainerTitle">Registrar contenedor</h2>
+        <p>Crea la referencia operativa inicial. Cliente, importadora y documentos de transporte pueden completarse cuando estén confirmados.</p>
+      </div>
+      <div class="tracking-hero-state" aria-label="Requisito del registro">
+        <span class="tracking-live-dot" aria-hidden="true"></span>
+        <div><strong>Registro manual</strong><span>Solo el número de contenedor es obligatorio</span></div>
+      </div>
+    </header>
+
+    <div id="shipmentMsg" class="tracking-feedback" role="status" aria-live="polite"></div>
+
+    <div class="tracking-registration-layout">
+      <aside class="registration-guide" aria-labelledby="registrationGuideTitle">
+        <span class="tracking-eyebrow">Antes de guardar</span>
+        <h3 id="registrationGuideTitle">Un registro listo para continuar</h3>
+        <p>El contenedor permanecerá dentro del ERP y podrá relacionarse con Cargues, clientes, documentos Cuba y su historial.</p>
+        <ol class="registration-guide-steps">
+          <li><span>1</span><div><strong>Identifica la operación</strong><small>Usa cuatro letras y siete números.</small></div></li>
+          <li><span>2</span><div><strong>Agrega lo confirmado</strong><small>No inventes booking, B/L ni fechas.</small></div></li>
+          <li><span>3</span><div><strong>Continúa en Tracking</strong><small>Las acciones dependerán del estado y tus permisos.</small></div></li>
+        </ol>
+        <div class="registration-guide-note"><strong>Sin comprador todavía</strong><span>Puedes dejar el cliente vacío y asignarlo después.</span></div>
+      </aside>
+
+      <form id="shipmentRegistrationForm" class="registration-form-panel" novalidate>
+        <header class="tracking-panel-head">
+          <div><span class="tracking-eyebrow">Nuevo registro</span><h3>Datos del contenedor</h3><p>Completa únicamente la información real disponible.</p></div>
+          <span class="registration-required">* Obligatorio</span>
+        </header>
+
+        <section class="registration-block" aria-labelledby="registrationAssignmentTitle">
+          <div class="registration-block-head"><span class="registration-step">1</span><div><h4 id="registrationAssignmentTitle">Asignación comercial</h4><p>Comprador e importadora vinculados a esta salida.</p></div></div>
+          <div class="registration-fields">
+            <label class="tracking-field" for="shipmentClient"><span>Cliente</span><select id="shipmentClient"><option value="">Sin cliente / Disponible para venta</option></select><small>Puedes asignarlo posteriormente.</small></label>
+            <label class="tracking-field" for="shipmentImporter"><span>Importadora cubana</span><input id="shipmentImporter" list="shipmentImporterOptions" placeholder="Ej. Cítricos Caribe, Quimimport"><datalist id="shipmentImporterOptions"></datalist><small>Importadora concreta de este contenedor; no depende de las registradas para el cliente.</small></label>
+          </div>
+        </section>
+
+        <section class="registration-block" aria-labelledby="registrationTransportTitle">
+          <div class="registration-block-head"><span class="registration-step">2</span><div><h4 id="registrationTransportTitle">Identificación y transporte</h4><p>Referencias que permiten localizar la operación marítima.</p></div></div>
+          <div class="registration-fields">
+            <label class="tracking-field registration-field-full" for="shipmentContainer"><span>Número de contenedor *</span><input id="shipmentContainer" placeholder="ABCD1234567" maxlength="11" autocomplete="off" inputmode="text" required><small id="registrationContainerHelp" class="registration-container-help">Formato requerido: 4 letras + 7 números. Ejemplo: ABCD1234567.</small></label>
+            <label class="tracking-field" for="shipmentBooking"><span>Booking</span><input id="shipmentBooking" autocomplete="off"></label>
+            <label class="tracking-field" for="shipmentBol"><span>B/L</span><input id="shipmentBol" autocomplete="off"></label>
+            <label class="tracking-field" for="shipmentCarrier"><span>Naviera</span><input id="shipmentCarrier" placeholder="Crowley" autocomplete="organization"></label>
+            <label class="tracking-field" for="shipmentDepartureDate"><span>Fecha de salida</span><input id="shipmentDepartureDate" type="date"><small>Fecha manual indicada por Export MCA.</small></label>
+          </div>
+        </section>
+
+        <section class="registration-block" aria-labelledby="registrationCargoTitle">
+          <div class="registration-block-head"><span class="registration-step">3</span><div><h4 id="registrationCargoTitle">Mercancía</h4><p>Descripción comercial y cantidad transportada.</p></div></div>
+          <div class="registration-fields registration-cargo-fields">
+            <label class="tracking-field registration-field-full" for="shipmentProduct"><span>Producto</span><input id="shipmentProduct" placeholder="Paneles solares, aceite, huevos…" autocomplete="off"></label>
+            <label class="tracking-field" for="shipmentQuantity"><span>Cantidad</span><input id="shipmentQuantity" type="number" min="0" step="0.001" inputmode="decimal"></label>
+            <label class="tracking-field" for="shipmentQuantityUnit"><span>Unidad</span><input id="shipmentQuantityUnit" placeholder="paneles, cajas, galones, unidades" autocomplete="off"></label>
+          </div>
+        </section>
+
+        <footer class="registration-actions">
+          <div id="registrationReadiness" class="registration-readiness"><span class="registration-readiness-dot" aria-hidden="true"></span><span>Completa el número de contenedor para continuar</span></div>
+          <div class="registration-action-buttons"><button id="resetShipmentForm" class="alt" type="button">Limpiar</button><button id="saveShipment" class="tracking-primary" type="submit">Guardar contenedor</button></div>
+        </footer>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section id="containersSection" class="app-section hidden tracking-section" data-owner="containers-module.js" aria-labelledby="trackingTitle">
+  <div class="tracking-workspace">
+    <header class="tracking-hero">
+      <div class="tracking-hero-copy">
+        <span class="tracking-kicker">Operaciones · Visibilidad logística</span>
+        <h2 id="trackingTitle">Tracking</h2>
+        <p>Controla cada contenedor, sus hitos, la relación con Cargues y la documentación oficial preparada para Cuba.</p>
+      </div>
+      <div class="tracking-hero-actions">
+        <div class="tracking-hero-state" aria-label="Estado del módulo"><span class="tracking-live-dot" aria-hidden="true"></span><div><strong>Seguimiento ERP</strong><span id="trackingLastUpdated">Preparando operaciones…</span></div></div>
+        <button id="trackingRegisterShortcut" class="tracking-primary" type="button" hidden>Registrar contenedor</button>
+      </div>
+    </header>
+
+    <section class="tracking-metrics" aria-label="Resumen de contenedores" aria-live="polite">
+      <article><span>Registrados</span><strong id="trackingTotalCount">—</strong><small>Total de operaciones</small></article>
+      <article><span>Activos</span><strong id="trackingActiveCount">—</strong><small>En seguimiento</small></article>
+      <article><span>Entregados</span><strong id="trackingDeliveredCount">—</strong><small>Operaciones cerradas</small></article>
+      <article><span>Sin cliente</span><strong id="trackingUnassignedCount">—</strong><small>Disponibles para venta</small></article>
+      <article><span>Docs READY</span><strong id="trackingDocumentsReadyCount">—</strong><small>Documentación Cuba completa</small></article>
+    </section>
+
+    <div id="trackingFeedback" class="tracking-feedback" role="status" aria-live="polite"></div>
+
+    <section class="tracking-panel tracking-filter-panel" aria-labelledby="trackingFiltersTitle">
+      <header class="tracking-panel-head">
+        <div><span class="tracking-eyebrow">Consulta operativa</span><h3 id="trackingFiltersTitle">Buscar y filtrar</h3><p>Localiza por contenedor, cliente, importadora, producto, booking o B/L.</p></div>
+        <button id="trackingClearFilters" class="alt" type="button">Limpiar filtros</button>
+      </header>
+      <div class="tracking-filter-controls">
+        <label class="tracking-search" for="shipmentSearch"><span class="tracking-search-icon" aria-hidden="true">⌕</span><span class="tracking-visually-hidden">Buscar contenedores</span><input id="shipmentSearch" type="search" placeholder="Buscar contenedor, cliente, producto o documento" autocomplete="off"></label>
+        <div class="tracking-tabs" role="group" aria-label="Filtrar contenedores por estado">
+          <button class="active" type="button" data-container-filter="active" aria-pressed="true">Activos</button>
+          <button type="button" data-container-filter="delivered" aria-pressed="false">Entregados</button>
+          <button type="button" data-container-filter="all" aria-pressed="false">Todos</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="tracking-panel tracking-list-panel" aria-labelledby="trackingListTitle">
+      <header class="tracking-panel-head tracking-list-head"><div><span class="tracking-eyebrow">Operaciones marítimas</span><h3 id="trackingListTitle">Contenedores</h3><p>Abre un registro para consultar su origen, documentos Cuba, historial y acciones habilitadas.</p></div><span id="trackingResultCount" class="tracking-result-count">Consultando…</span></header>
+      <div id="shipments" class="tracking-results" aria-live="polite"><div class="tracking-loading" role="status"><span aria-hidden="true"></span>Consultando contenedores…</div></div>
+    </section>
+  </div>
+</section>
 <section id="publicationsSection" class="app-section hidden"><iframe class="embedded-workspace-frame" src="/admin/publications.html?embedded=1" title="Publicaciones comerciales"></iframe></section>
 <section id="notificationsSection" class="app-section hidden"></section>
 <section id="workersSection" class="app-section hidden"><div class="workers-page native-workspace-shell"><header class="workers-hero native-workspace-hero"><div class="workers-hero-copy native-workspace-heading"><span class="workers-kicker native-workspace-kicker">Administración de equipo</span><h2>Trabajadores</h2><p>Consulta disponibilidad, conserva el historial laboral y administra quién puede recibir nuevas asignaciones.</p></div><div class="workers-summary native-workspace-summary" aria-label="Resumen de trabajadores"><div class="workers-summary-card native-workspace-summary-card"><strong id="workersActiveCount">0</strong><span>Activos</span></div><div class="workers-summary-card native-workspace-summary-card"><strong id="workersInactiveCount">0</strong><span>Desactivados</span></div></div></header><div id="workersFeedback" class="workers-message" role="status" aria-live="polite"></div><div class="workers-layout"><aside id="workerCreatePanel" class="workers-create-panel"><div class="workers-panel-head"><span class="workers-eyebrow">Nuevo integrante</span><h3>Agregar trabajador</h3><p>Registra los datos esenciales para poder asignarlo a operaciones.</p></div><form id="workerCreateForm" class="workers-form"><div><label for="workerName">Nombre completo</label><input id="workerName" autocomplete="name" placeholder="Nombre y apellidos" required></div><div><label for="workerPhone">Teléfono / WhatsApp</label><input id="workerPhone" autocomplete="tel" inputmode="tel" placeholder="+5351234567" required></div><div><label for="workerPosition">Cargo</label><input id="workerPosition" placeholder="Ventas, logística, comercial…"></div><button id="saveWorker" class="workers-primary" type="submit">Guardar trabajador</button><div id="workerMsg" class="workers-message" role="status" aria-live="polite"></div></form></aside><div id="workersReadOnlyNote" class="workers-readonly" hidden><span class="workers-readonly-icon" aria-hidden="true">i</span><span>Puedes consultar el equipo y su historial. La edición está reservada a usuarios con permiso de administración de trabajadores.</span></div><div id="workers" class="workers-roster"><div class="workers-loading" role="status"><span class="workers-spinner" aria-hidden="true"></span>Cargando equipo…</div></div></div></div></section>
 <section id="adminsSection" class="app-section hidden" aria-live="polite"></section>
 </main></div></div>
 <div id="modal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="modalTitle">Historial</h2><button id="closeModal" class="alt">Cerrar</button></div><div id="modalBody"></div></div></div>
-<script src="/admin/admin-shell-runtime.js?v=20260902-ux6a1"></script><script src="/admin/erp.js?v=20260902-ux7clients1"></script>
+<script src="/admin/admin-shell-runtime.js?v=20260902-ux6a1"></script><script src="/admin/erp.js?v=20260903-ux7tracking2"></script>
 </body></html>

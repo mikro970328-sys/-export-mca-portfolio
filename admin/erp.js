@@ -237,13 +237,12 @@
         await loadScript('/admin/dashboard-operational-state.js?v=20260902-greeting1', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
-        await loadStylesheet('/admin/containers-module.css?v=20260901-ux6owner1', 'data-containers-module-style');
-        await loadScript('/admin/containers-module.js?v=20260901-ux6owner1', 'data-containers-module');
+        await loadStylesheet('/admin/containers-module.css?v=20260903-ux7tracking2', 'data-containers-module-style');
+        await loadScript('/admin/containers-module.js?v=20260903-ux7tracking2', 'data-containers-module');
       }
       if (accessCan('logistics.write')) {
-        await loadScript('/admin/registration-form-shell.js?v=20260902-ux6b1', 'data-registration-form-shell');
-        await loadStylesheet('/admin/shipment-editor.css?v=20260901-ux6owner1', 'data-shipment-editor-style');
-        await loadScript('/admin/shipment-editor.js?v=20260901-ux6owner1', 'data-shipment-editor');
+        await loadStylesheet('/admin/shipment-editor.css?v=20260903-ux7tracking2', 'data-shipment-editor-style');
+        await loadScript('/admin/shipment-editor.js?v=20260903-ux7tracking2', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
       await iconSystemPromise;
