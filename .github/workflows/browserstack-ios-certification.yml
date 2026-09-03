@@ -12,6 +12,11 @@ on:
       - 'admin/payables.js'
       - 'admin/ap-traceability.js'
       - 'admin/ap-context-bridge.js'
+      - 'admin/costs.html'
+      - 'admin/costs.css'
+      - 'admin/costs.js'
+      - 'api/costs.js'
+      - 'api/profitability.js'
       - '.github/workflows/browserstack-ios-certification.yml'
   pull_request:
     paths:
@@ -22,6 +27,11 @@ on:
       - 'admin/payables.js'
       - 'admin/ap-traceability.js'
       - 'admin/ap-context-bridge.js'
+      - 'admin/costs.html'
+      - 'admin/costs.css'
+      - 'admin/costs.js'
+      - 'api/costs.js'
+      - 'api/profitability.js'
       - '.github/workflows/browserstack-ios-certification.yml'
   workflow_dispatch:
     inputs:

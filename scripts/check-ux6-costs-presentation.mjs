@@ -7,9 +7,7 @@ const helper=read('api/_cost-actions.js');
 const api=read('api/costs.js');
 const profitabilityApi=read('api/profitability.js');
 const ui=read('admin/costs.js');
-const profitabilityUi=read('admin/profitability.js');
 const css=read('admin/costs.css');
-const profitabilityCss=read('admin/profitability.css');
 const html=read('admin/costs.html');
 const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
@@ -63,18 +61,21 @@ forbid(api,/supabase\('shipments',\s*\{\s*query:'\?select=[^']*\bstatus\b[^']*'\
 forbid(api,/return fail\(res,\s*(?:400|500),\s*raw/,'Costos API no puede devolver errores internos crudos');
 
 for(const text of [
-  "const actionAllowed = (charge,action) => charge?.capabilities?.actions?.[action]?.allowed === true",
-  "actionAllowed(charge,'edit')",
-  "actionAllowed(charge,'post')",
-  "actionAllowed(charge,'void')",
+  "const actionAllowed = (charge, action) => charge?.capabilities?.actions?.[action]?.allowed === true",
+  "actionAllowed(charge, 'edit')",
+  "actionAllowed(charge, 'post')",
+  "actionAllowed(charge, 'void')",
   'state.writeAccess = data.write_access === true',
-  'function safeCostMessage(error,fallback=',
-  'function costDecision({title,copy,accept=',
-  'function closeCostDecision(accepted=false)',
-  'COST_CHARGE_SAVE_FAILED',
-  'COST_CHARGE_TRANSITION_FAILED',
+  'function safeCostMessage(error, fallback =',
+  'function costDecision({ title, copy, accept =',
+  'function closeCostDecision(accepted = false)',
+  'COSTS_UI_FAILED',
+  'function reportCostError(',
   'COSTS_REFRESH_FAILED',
-  'COSTS_INITIAL_LOAD_FAILED'
+  'COSTS_INITIAL_LOAD_FAILED',
+  "owner: 'costs.js'",
+  'function startCosts(',
+  'function handleStoredSession('
 ]) requireText(ui,text,`owner de presentación ${text}`);
 forbid(ui,/\b(?:prompt|alert|confirm)\s*\(/,'Costos no puede usar diálogos nativos');
 forbid(ui,/(?:innerHTML|textContent)\s*=.*error(?:\?\.)?\.message/,'Costos no puede mostrar error.message crudo');
@@ -89,9 +90,9 @@ for(const text of [
   'Órdenes de venta',
   'Costo de mercancía',
   'Cobertura'
-]) requireText(profitabilityUi,text,`Rentabilidad segura ${text}`);
-forbid(profitabilityUi,/(?:innerHTML|textContent)\s*=.*error(?:\?\.)?\.message/,'Rentabilidad no puede mostrar error.message crudo');
-forbid(profitabilityUi,/Cost Charges|PostgreSQL|Warehouse Receipt|Purchase Order|Supplier Bill posted|\bCoverage\b|\bCOGS\b|\bFX\b/,'Rentabilidad no puede exponer terminología de implementación');
+]) requireText(ui,text,`Rentabilidad segura ${text}`);
+forbid(ui,/(?:innerHTML|textContent)\s*=.*error(?:\?\.)?\.message/,'Rentabilidad no puede mostrar error.message crudo');
+forbid(ui,/Cost Charges|PostgreSQL|Warehouse Receipt|Purchase Order|Supplier Bill posted|\bCoverage\b|\bCOGS\b|\bFX\b/,'Rentabilidad no puede exponer terminología de implementación');
 requireText(profitabilityApi,"return fail(res, 500, 'No se pudo cargar la rentabilidad')",'fallback seguro de API Rentabilidad');
 
 for(const text of [
@@ -101,15 +102,15 @@ for(const text of [
   'aria-modal="true"',
   'id="costDecisionCancel"',
   'id="costDecisionAccept"',
-  '/admin/costs.css?v=20260902-ux6owner2',
-  '/admin/costs.js?v=20260901-ux6owner1',
-  '/admin/profitability.css?v=20260901-ux6owner1',
-  '/admin/profitability.js?v=20260901-ux6owner1'
+  '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
+  '/admin/costs.css?v=20260903-ux7costs1',
+  '/admin/costs.js?v=20260903-ux7costs1',
+  '/admin/embedded-auto-refresh.js?v=20260903-ux7costs1'
 ]) requireText(html,text,`HTML ${text}`);
 
-for(const text of ['.cost-decision-modal','.cost-decision-dialog','.cost-decision-actions','.page-msg',':focus-visible','@media(max-width:700px)']) requireText(css,text,`CSS ${text}`);
+for(const text of ['.cost-decision-dialog','.cost-decision-actions','.costs-feedback','.profit-sub-spaced','.profit-grid','@media(max-width:720px)']) requireText(css,text,`CSS ${text}`);
 forbid(css,/@import|purchases\.css/i,'Costos conserva dependencia visual de Compras');
-requireText(profitabilityCss,'.profit-sub-spaced','CSS de Rentabilidad sin inline style');
+if(fs.existsSync('admin/profitability.js')||fs.existsSync('admin/profitability.css'))failures.push('los owners visuales paralelos de Rentabilidad deben permanecer retirados');
 
 for(const text of [
   'begin;',
