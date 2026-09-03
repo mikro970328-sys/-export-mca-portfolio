@@ -73,6 +73,13 @@ const requiredTestContracts = [
   'account-security-iphone-safari',
   "accountState.owner !== 'account-administration.js'",
   'accountState.metricCount !== 4',
+  'Alert Center has one visual owner and responsive exception cards',
+  'alert-center-iphone-safari',
+  "openSection(page, 'notificationsSection')",
+  "alertState.owner !== 'operational-alert-center.js'",
+  'alertState.metricCount !== 4',
+  "item.path === '/api/history'",
+  "checkpoint('alert-center-readonly'",
   'Reports has one visual owner and a contained result region',
   'reports-iphone-safari',
   "reportsState.owner !== 'reports.js'",
@@ -85,6 +92,7 @@ const requiredTestContracts = [
   'PRODUCTS_[A-Z_]+_FAILED',
   'ACCESS_CONTROL_UI_FAILED',
   'ACCOUNT_UI_FAILED',
+  'OPERATIONAL_ALERT_CENTER_UI_FAILED',
   'REPORTS_UI_FAILED'
 ];
 

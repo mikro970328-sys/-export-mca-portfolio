@@ -95,7 +95,7 @@ export default async function handler(req,res){
         try{
           const sent=await sendWhatsApp({to,contentSid,variables:variablesFor(type,row)});const patch={status:sent.status||'queued',delivery_status:sent.status||'queued',provider_message_id:sent.sid,twilio_message_sid:sent.sid,error_message:null,attempt_count:attempt,last_attempt_at:retryAt,sent_at:retryAt,updated_at:retryAt};
           await supabase('notifications',{method:'PATCH',query:`?id=eq.${encodeURIComponent(id)}`,body:patch});await writeAudit(admin,'notification_retry_sent','notification',id,{type,sid:sent.sid,attempt});return ok(res,{retried:true,sid:sent.sid,status:sent.status||'queued'});
-        }catch(error){await supabase('notifications',{method:'PATCH',query:`?id=eq.${encodeURIComponent(id)}`,body:{status:'failed',delivery_status:'failed',error_message:error.message,attempt_count:attempt,last_attempt_at:retryAt,updated_at:retryAt}});await writeAudit(admin,'notification_retry_failed','notification',id,{type,error:error.message,attempt});return fail(res,400,'No se pudo reenviar la notificación',error.message);}
+        }catch(error){await supabase('notifications',{method:'PATCH',query:`?id=eq.${encodeURIComponent(id)}`,body:{status:'failed',delivery_status:'failed',error_message:error.message,attempt_count:attempt,last_attempt_at:retryAt,updated_at:retryAt}});await writeAudit(admin,'notification_retry_failed','notification',id,{type,error:error.message,attempt});console.error('HISTORY_MESSAGE_RETRY_FAILED',{notification_id:id,error});return fail(res,400,'No se pudo reenviar la notificación');}
       }
       return fail(res,405,'Método no permitido');
     }
@@ -105,5 +105,5 @@ export default async function handler(req,res){
     const filter=shipmentId?`shipment_id=eq.${encodeURIComponent(shipmentId)}`:`client_id=eq.${encodeURIComponent(clientId)}`;
     const tasks=[supabase('shipment_history',{query:`?select=*&${filter}&order=created_at.desc&limit=200`}),supabase('notifications',{query:`?select=*&${filter}&order=created_at.desc&limit=200`})];if(clientId)tasks.push(supabase('audit_log',{query:`?select=*&entity_type=eq.client&entity_id=eq.${encodeURIComponent(clientId)}&order=created_at.desc&limit=200`}));
     const [events,notifications,auditEvents=[]]=await Promise.all(tasks);return ok(res,{events:events||[],notifications:notifications||[],audit_events:auditEvents||[]});
-  }catch(error){console.error('HISTORY_API_ERROR',error);return fail(res,400,'No se pudo procesar la solicitud',error.message);}
+  }catch(error){console.error('HISTORY_API_ERROR',error);return fail(res,500,'No se pudo procesar la solicitud');}
 }
