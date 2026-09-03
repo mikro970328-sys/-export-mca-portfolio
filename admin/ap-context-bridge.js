@@ -121,42 +121,10 @@
     if (modal) { observe(modal, () => render().catch(console.error), { attributes:true, attributeFilter:['class'] }); observe(document.getElementById('detailTitle'), () => render().catch(console.error)); }
   }
 
-  function initPayables() {
-    const ap = nav(); if (!ap) return;
-    async function render() {
-      const modal = document.getElementById('detailModal'); if (!modal || modal.classList.contains('hidden')) return;
-      const number = document.getElementById('detailTitle')?.textContent?.trim(); if (!number) return;
-      const body = document.getElementById('detailBody'); if (!body) return;
-      document.getElementById('payablesTraceContext')?.remove();
-      let row = null; let items = [];
-      if (number.startsWith('SB-')) {
-        row = await ap.billByNumber(number); if (!row) return;
-        items = [
-          { label:'Ver proveedor', action:() => ap.openSupplier(row.supplier_id) },
-          { label:`Ver ${row.po_number || 'PO'}`, action:() => ap.openPurchase(row.purchase_order_id) },
-          ...(row.receipts || []).map(receipt => ({ label:`WR ${receipt.receipt_number}`, action:() => ap.openReceipt(receipt.receipt_number) })),
-          ...(row.payments || []).map(payment => ({ label:payment.payment_number, action:() => ap.openPayment(payment.supplier_payment_id) }))
-        ];
-      } else if (number.startsWith('SP-')) {
-        row = await ap.paymentByNumber(number); if (!row) return;
-        items = [
-          { label:'Ver proveedor', action:() => ap.openSupplier(row.supplier_id) },
-          { label:`Ver ${row.po_number || 'PO'}`, action:() => ap.openPurchase(row.purchase_order_id) },
-          ...(row.receipts || []).map(receipt => ({ label:`WR ${receipt.receipt_number}`, action:() => ap.openReceipt(receipt.receipt_number) })),
-          ...(row.bills || []).map(bill => ({ label:bill.bill_number, action:() => ap.openBill(bill.supplier_bill_id) }))
-        ];
-      } else return;
-      const context = block('Trazabilidad AP', items); context.id = 'payablesTraceContext'; body.appendChild(context);
-    }
-    const modal = document.getElementById('detailModal');
-    if (modal) { observe(modal, () => render().catch(console.error), { attributes:true, attributeFilter:['class'] }); observe(document.getElementById('detailTitle'), () => render().catch(console.error)); }
-  }
-
   installStyles();
   if (path.endsWith('/suppliers.html')) initSuppliers();
   else if (path.endsWith('/purchases.html')) initPurchases();
   else if (path.endsWith('/warehouse.html')) initWarehouse();
-  else if (path.endsWith('/payables.html')) initPayables();
 
   window.APContextBridge = Object.freeze({ ready:true, owner:'ap-context-bridge.js' });
   window.dispatchEvent(new CustomEvent('export-mca:ap-context-ready'));

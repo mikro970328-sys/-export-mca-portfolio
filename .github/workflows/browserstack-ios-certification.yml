@@ -7,11 +7,21 @@ on:
     paths:
       - 'e2e/browserstack/**'
       - 'scripts/check-browserstack-ios-readonly.mjs'
+      - 'admin/payables.html'
+      - 'admin/payables.css'
+      - 'admin/payables.js'
+      - 'admin/ap-traceability.js'
+      - 'admin/ap-context-bridge.js'
       - '.github/workflows/browserstack-ios-certification.yml'
   pull_request:
     paths:
       - 'e2e/browserstack/**'
       - 'scripts/check-browserstack-ios-readonly.mjs'
+      - 'admin/payables.html'
+      - 'admin/payables.css'
+      - 'admin/payables.js'
+      - 'admin/ap-traceability.js'
+      - 'admin/ap-context-bridge.js'
       - '.github/workflows/browserstack-ios-certification.yml'
   workflow_dispatch:
     inputs:

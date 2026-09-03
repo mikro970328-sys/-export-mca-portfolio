@@ -3,7 +3,7 @@
   window.__operationalNavigationInstalled=true;
 
   const normalize=value=>String(value||'').trim().toUpperCase();
-  const CONTEXT_SECTIONS=['suppliersSection','purchasesSection','salesSection','warehouseSection','payablesSection'];
+  const CONTEXT_SECTIONS=['suppliersSection','purchasesSection','salesSection','warehouseSection'];
   const BRIDGE_SRC='/admin/operational-context-bridge.js?v=20260830-p6';
   const ENTITY_ACCESS=Object.freeze({
     client:{label:'Clientes',permissions:['clients.read']},
@@ -157,7 +157,7 @@
     callEmbedded('invoicesSection','InvoicesModule.openForSalesOrder',[salesOrderId]);
     return true;
   }
-  function openSupplierBill(billId,options={}){if(!billId)return false;if(options.history!==false)writeContext('supplier_bill',billId,options);window.NavigationShell?.openPayables?.();installBridge('payablesSection').then(()=>callEmbedded('payablesSection','openOperationalSupplierBill',[billId]));return true;}
+  function openSupplierBill(billId,options={}){if(!billId)return false;if(options.history!==false)writeContext('supplier_bill',billId,options);window.NavigationShell?.openPayables?.();return callEmbedded('payablesSection','PayablesModule.openBill',[billId]);}
   async function openSupplier({supplierId=null}={},options={}){if(!supplierId)return false;if(options.history!==false)writeContext('supplier',supplierId,options);window.NavigationShell?.openSuppliers?.();return callContextEmbedded('suppliersSection','openOperationalSupplier',[supplierId]);}
   function openClient({clientId=null}={},options={}){if(!clientId)return false;if(options.history!==false)writeContext('client',clientId,options);section('clientsSection');requestAnimationFrame(()=>window.ClientsModule?.openInformation?.(clientId));return true;}
 

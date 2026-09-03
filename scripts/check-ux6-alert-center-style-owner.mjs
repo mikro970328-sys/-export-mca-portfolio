@@ -37,7 +37,7 @@ const scriptIndex=erp.indexOf(scriptLoad);
 if(styleIndex<0||scriptIndex<0||styleIndex>scriptIndex) failures.push('erp.js debe cargar el stylesheet antes del JavaScript del centro de alertas');
 requireText(erp,'.then(() => loadScript','encadenamiento stylesheet → JavaScript');
 requireText(erp,"accessCan('notifications.read')",'boundary notifications.read');
-requireText(index,'/admin/erp.js?v=20260903-ux7tracking2','revisión del loader ERP');
+requireText(index,'/admin/erp.js?v=20260903-ux7payables1','revisión del loader ERP');
 
 forbid(css,/\bexpediente\b/i,'CSS no puede reintroducir Expedientes');
 forbid(js,/\b(?:prompt|alert|confirm)\s*\(/,'centro de alertas no puede reintroducir diálogos nativos');

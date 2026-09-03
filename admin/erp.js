@@ -265,6 +265,7 @@
       window.ExportMcaAccessControl?.applyNavigation?.();
       await loadScript('/admin/section-state.js?v=20260817-nav1', 'data-section-state');
       await loadScript('/admin/operational-navigation.js?v=20260830-ux2d', 'data-operational-navigation');
+      await loadScript('/admin/ap-traceability.js?v=20260903-ux7payables1', 'data-ap-traceability');
       await loadScript('/admin/admin-data-loader.js?v=20260830-hotfix2', 'data-admin-data-loader');
       window.ExportMcaAccessControl?.applyNavigation?.();
       ensureVisibleSection();

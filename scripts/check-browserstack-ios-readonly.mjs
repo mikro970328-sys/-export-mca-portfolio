@@ -14,6 +14,7 @@ const requiredTestContracts = [
   "openSection(page, 'registerContainerSection')",
   "openSection(page, 'publicationsSection')",
   "openSection(page, 'invoicesSection')",
+  "openSection(page, 'payablesSection')",
   "openSection(page, 'costsSection')",
   "detailAction = actualActions.includes('info')",
   'submitted: false',
@@ -24,13 +25,16 @@ const requiredTestContracts = [
   'frame.contentDocument',
   'invoices-form-iphone-safari',
   'owner: doc?.body?.dataset?.owner',
-  'INVOICES_UI_FAILED'
+  'INVOICES_UI_FAILED',
+  'PAYABLES_UI_FAILED'
 ];
 
 const forbiddenInteractionPatterns = [
   /locator\(['"]#saveShipment['"]\)\.click\(/,
   /locator\(['"]#saveInvoice['"]\)\.click\(/,
   /getElementById\(['"]saveInvoice['"]\)\?*\.click\(/,
+  /locator\(['"]#saveBill['"]\)\.click\(/,
+  /getElementById\(['"]saveBill['"]\)\?*\.click\(/,
   /locator\(['"]#savePayment['"]\)\.click\(/,
   /locator\(['"]#saveBtn['"]\)\.click\(/,
   /locator\(['"]#newCharge['"]\)\.click\(/,

@@ -78,13 +78,13 @@ forbidText(paymentsApi,"rpc/reverse_supplier_payment'",'Supplier payments API le
 forbidText(paymentsApi,"rpc/replace_supplier_payment_applications'",'Supplier payments API legacy mutation');
 
 for(const token of [
-  "const actionAllowed = (row,action) => row?.capabilities?.actions?.[action]?.allowed === true",
-  "actionAllowed(bill,'edit')",
-  "actionAllowed(bill,'post')",
-  "actionAllowed(bill,'void')",
-  "actionAllowed(payment,'allocate')",
-  "actionAllowed(payment,'reverse')",
-  'state.writeAccess = ap.write_access === true && payments.write_access === true'
+  "const actionAllowed = (row, action) => row?.capabilities?.actions?.[action]?.allowed === true",
+  "actionAllowed(bill, 'edit')",
+  "actionAllowed(bill, 'post')",
+  "actionAllowed(bill, 'void')",
+  "actionAllowed(payment, 'allocate')",
+  "actionAllowed(payment, 'reverse')",
+  'state.writeAccess = payables.write_access === true && payments.write_access === true'
 ])requireText(ui,token,'Payables UI');
 for(const token of [
   "if (bill.status === 'draft') actions.push",
@@ -95,10 +95,10 @@ for(const token of [
 ])forbidText(ui,token,'Payables UI action-state inference');
 
 for(const token of [
-  "actionAllowed(bill,'pay')",
-  "if(mode==='direct'&&(!bill||!actionAllowed(bill,'pay')))return",
-  "if(state.paymentMode==='direct'&&(!bill||!actionAllowed(bill,'pay')))return",
-  "body.action='pay_bill'",
+  "actionAllowed(bill, 'pay')",
+  "mode === 'direct' && (!bill || !actionAllowed(bill, 'pay'))",
+  "state.paymentMode === 'direct' && (!bill || !actionAllowed(bill, 'pay'))",
+  "body.action = 'pay_bill'",
   'state.advancePurchaseOrders = Array.isArray(payments.advance_purchase_orders)'
 ])requireText(ui,token,'Payables direct-payment owner');
 forbidText(ui,"bill.status === 'posted' && billBalance",'Payables direct-payment action-state inference');

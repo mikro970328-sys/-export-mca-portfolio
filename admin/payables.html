@@ -1,36 +1,172 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cuentas por pagar · Export MCA</title>
-<link rel="stylesheet" href="/admin/payables.css?v=20260902-ux6owner2">
-<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cuentas por pagar · Export MCA</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <link rel="stylesheet" href="/admin/payables.css?v=20260903-ux7payables1">
 </head>
-<body class="erp-module-page erp-module-payables">
-<main class="wrap ap-wrap">
-  <div class="head module-hero ap-head"><div class="module-heading"><span class="module-kicker ap-kicker">Finanzas de proveedores</span><h1>Cuentas por pagar</h1><div class="muted">Facturas, anticipos y pagos a proveedores. El inventario se mantiene separado.</div></div><div class="actions module-actions ap-head-actions"><button id="newPayment" class="btn" type="button">Pago manual</button><button id="newAdvancePayment" class="btn" type="button">Anticipo</button><button id="newBill" class="btn orange" type="button">Factura de proveedor</button></div></div>
-  <div id="metrics" class="metrics"></div>
-  <section class="panel ap-panel"><div class="toolbar ap-toolbar"><input id="search" class="search" placeholder="Buscar factura, PO, proveedor o pago"><div class="tabs"><button class="btn active" type="button" data-entity="bills">Facturas</button><button class="btn" type="button" data-entity="payments">Pagos</button></div><div id="viewTabs" class="tabs"></div><button id="refresh" class="btn ap-refresh" type="button" aria-label="Actualizar Cuentas por pagar">Actualizar</button></div><div id="list" class="orders"><div class="empty">Cargando Cuentas por pagar…</div></div></section>
-</main>
+<body class="erp-module-page erp-module-payables" data-owner="payables.js">
+  <main class="wrap payables-shell">
+    <header class="module-hero payables-page-head" aria-labelledby="payablesPageTitle">
+      <div class="module-heading payables-page-heading">
+        <div class="module-kicker payables-page-kicker">Finanzas · Obligaciones con proveedores</div>
+        <h1 id="payablesPageTitle">Cuentas por pagar</h1>
+        <p>Controla facturas, anticipos, pagos y saldos de proveedores sin modificar la autoridad física de Compras, Almacén o Inventario.</p>
+      </div>
+      <div class="payables-hero-actions">
+        <div class="payables-hero-state" aria-label="Estado del módulo">
+          <span class="payables-live-dot" aria-hidden="true"></span>
+          <div><strong>Cartera de proveedores</strong><span id="payablesLastUpdated">Preparando obligaciones…</span></div>
+        </div>
+        <div class="payables-primary-actions">
+          <button id="newPayment" class="btn" type="button">Pago manual</button>
+          <button id="newAdvancePayment" class="btn" type="button">Anticipo</button>
+          <button id="newBill" class="btn orange" type="button">Factura de proveedor</button>
+        </div>
+      </div>
+    </header>
 
-<div id="billModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="billTitle">Nueva factura de proveedor</h2><div class="muted">La factura toma proveedor, moneda, producto y unidad desde la Purchase Order.</div></div><button class="btn" type="button" data-close="bill" aria-label="Cerrar factura">✕</button></div>
-<div class="grid3"><div><label>Purchase Order *</label><select id="bPO"></select></div><div><label>Nº factura proveedor</label><input id="bSupplierInvoice" placeholder="Número del proveedor"></div><div><label>Fecha factura</label><input id="bDate" type="date"></div></div>
-<div class="grid"><div><label>Vencimiento</label><input id="bDue" type="date"></div><div><label>Notas</label><input id="bNotes"></div></div>
-<div class="toolbar ap-line-toolbar"><div><b>Líneas a facturar</b><div class="muted">En cada producto puedes usar costo unitario o escribir directamente el total facturado.</div></div><div id="billCalculatedTotal" class="po">Total factura: USD 0.00</div></div><div id="billLines" class="detail-items"></div>
-<div class="actions ap-modal-actions"><button class="btn" type="button" data-close="bill">Cancelar</button><button id="saveBill" class="btn orange" type="button">Guardar factura</button></div><div id="billMsg" class="msg" role="status" aria-live="polite"></div></div></div>
+    <div id="payablesPageMsg" class="payables-feedback" role="status" aria-live="polite"></div>
 
-<div id="paymentModal" class="modal hidden"><div class="dialog compact"><div class="dialog-head"><div><h2 id="paymentTitle">Registrar pago</h2><div id="paymentSubtitle" class="muted">Registra el movimiento con su Purchase Order y referencia.</div></div><button class="btn" type="button" data-close="payment" aria-label="Cerrar pago">✕</button></div>
-<div><label>Purchase Order *</label><select id="pPO"></select></div><div class="grid"><div><label>Monto *</label><input id="pAmount" type="number" min="0" step="0.01"></div><div><label>Fecha</label><input id="pDate" type="date"></div></div>
-<div class="grid"><div><label>Método</label><select id="pMethod"><option value="wire">Wire</option><option value="ach">ACH</option><option value="check">Check</option><option value="cash">Cash</option><option value="other">Otro</option></select></div><div><label>Referencia</label><input id="pReference"></div></div><label>Notas</label><textarea id="pNotes"></textarea>
-<div id="pOpenBalanceHint" class="ap-payment-hint"></div><div class="actions ap-modal-actions"><button class="btn" type="button" data-close="payment">Cancelar</button><button id="savePayment" class="btn orange" type="button">Registrar pago</button></div><div id="paymentMsg" class="msg" role="status" aria-live="polite"></div></div></div>
+    <div id="payablesReadOnlyNote" class="payables-readonly" role="note" hidden>
+      <span class="payables-readonly-icon" aria-hidden="true">i</span>
+      <span>Puedes consultar facturas, pagos, aplicaciones y trazabilidad. Registrar o modificar movimientos requiere permiso de gestión financiera.</span>
+    </div>
 
-<div id="allocationModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="allocationTitle">Aplicar pago</h2><div id="allocationSubtitle" class="muted"></div></div><button class="btn" type="button" data-close="allocation" aria-label="Cerrar distribución">✕</button></div><div id="allocationBills" class="detail-items"></div><div class="actions ap-modal-actions"><button class="btn" type="button" data-close="allocation">Cancelar</button><button id="saveAllocation" class="btn orange" type="button">Guardar distribución</button></div><div id="allocationMsg" class="msg" role="status" aria-live="polite"></div></div></div>
+    <section id="metrics" class="metrics payables-metrics" aria-label="Resumen de Cuentas por pagar" aria-live="polite">
+      <article class="metric payable-metric-bills"><span>Facturas</span><b>—</b><small>Activas y en borrador</small></article>
+      <article class="metric payable-metric-balance"><span>Por pagar</span><b>—</b><small>Saldo contabilizado pendiente</small></article>
+      <article class="metric payable-metric-overdue"><span>Vencidas</span><b>—</b><small>Requieren seguimiento</small></article>
+      <article class="metric payable-metric-paid"><span>Pagado</span><b>—</b><small>Pagos registrados vigentes</small></article>
+      <article class="metric payable-metric-unapplied"><span>Sin aplicar</span><b>—</b><small>Anticipos o pagos pendientes</small></article>
+    </section>
 
-<div id="reverseModal" class="modal hidden"><div class="dialog compact"><div class="dialog-head"><div><h2>Revertir pago</h2><div class="muted">El registro y sus aplicaciones se conservan como historia.</div></div><button class="btn" type="button" data-close="reverse" aria-label="Cerrar reverso">✕</button></div><label>Motivo *</label><textarea id="rReason"></textarea><div class="actions ap-modal-actions"><button class="btn" type="button" data-close="reverse">Cancelar</button><button id="saveReverse" class="btn danger" type="button">Revertir pago</button></div><div id="reverseMsg" class="msg" role="status" aria-live="polite"></div></div></div>
+    <section class="panel payables-list-panel" aria-labelledby="payablesListTitle">
+      <header class="payables-panel-head">
+        <div>
+          <span class="payables-eyebrow">Control financiero</span>
+          <h2 id="payablesListTitle">Obligaciones y pagos</h2>
+          <p>Consulta proveedor, Purchase Order, estado, importe y saldo sin mezclar monedas ni movimientos revertidos.</p>
+        </div>
+        <span id="payablesResultCount" class="payables-result-count">Consultando…</span>
+      </header>
 
-<div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" type="button" data-close="detail" aria-label="Cerrar detalle">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions ap-modal-actions"></div><div id="detailMsg" class="msg" role="status" aria-live="polite"></div></div></div>
-<script src="/admin/ap-traceability-bootstrap.js"></script>
-<script src="/admin/payables.js?v=20260902-ux6owner1"></script>
+      <div class="payables-list-toolbar">
+        <label class="payables-search-field" for="search">
+          <span class="payables-visually-hidden">Buscar en Cuentas por pagar</span>
+          <span class="payables-search-icon" aria-hidden="true">⌕</span>
+          <input id="search" class="search" type="search" autocomplete="off" placeholder="Buscar factura, PO, proveedor o pago">
+        </label>
+        <div class="tabs payables-entity-tabs" role="group" aria-label="Elegir tipo de registro">
+          <button class="btn active" type="button" data-entity="bills" aria-pressed="true">Facturas</button>
+          <button class="btn" type="button" data-entity="payments" aria-pressed="false">Pagos</button>
+        </div>
+        <div id="viewTabs" class="tabs payables-view-tabs" role="group" aria-label="Filtrar registros"></div>
+        <button id="clearPayablesFilters" class="btn payables-clear" type="button">Limpiar</button>
+        <button id="refresh" class="btn payables-refresh" type="button" aria-label="Actualizar Cuentas por pagar" title="Actualizar Cuentas por pagar"><span aria-hidden="true">↻</span></button>
+      </div>
+
+      <div class="payables-table-wrap">
+        <div class="payables-table-head" aria-hidden="true">
+          <span>Registro</span><span>Proveedor</span><span>Purchase Order</span><span>Estado</span><span>Importe</span><span>Pendiente</span><span>Acciones</span>
+        </div>
+        <div id="list" class="payables-list" aria-live="polite">
+          <div class="payables-loading" role="status"><span class="payables-spinner" aria-hidden="true"></span>Consultando Cuentas por pagar…</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="billModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="billTitle" aria-hidden="true">
+    <div class="dialog payable-form-dialog">
+      <div class="dialog-head">
+        <div><span class="payables-dialog-kicker">Obligación del proveedor</span><h2 id="billTitle">Nueva factura de proveedor</h2><div class="muted">Proveedor, moneda, productos y unidades provienen de la Purchase Order seleccionada.</div></div>
+        <button class="btn payables-close-button" type="button" data-close="bill" aria-label="Cerrar formulario de factura">✕</button>
+      </div>
+
+      <section class="payable-form-section" aria-labelledby="billGeneralTitle">
+        <div class="payable-form-section-head"><span class="payable-form-step">1</span><div><h3 id="billGeneralTitle">Información general</h3><p>Orden de compra, referencia del proveedor, fecha y vencimiento.</p></div></div>
+        <div class="grid3">
+          <div><label for="bPO">Purchase Order *</label><select id="bPO"></select></div>
+          <div><label for="bSupplierInvoice">N.º factura del proveedor</label><input id="bSupplierInvoice" placeholder="Número del proveedor" autocomplete="off"></div>
+          <div><label for="bDate">Fecha de factura</label><input id="bDate" type="date"></div>
+        </div>
+        <div class="grid">
+          <div><label for="bDue">Fecha de vencimiento</label><input id="bDue" type="date"></div>
+          <div><label for="bNotes">Notas</label><input id="bNotes" placeholder="Referencia interna opcional"></div>
+        </div>
+      </section>
+
+      <section class="payable-form-section" aria-labelledby="billLinesTitle">
+        <div class="payable-form-section-head payable-lines-head"><span class="payable-form-step">2</span><div><h3 id="billLinesTitle">Líneas a facturar</h3><p>Usa costo unitario o el total exacto facturado; nunca ambos como fuentes independientes.</p></div><strong id="billCalculatedTotal" class="payable-calculated-total">Total: USD 0.00</strong></div>
+        <div id="billLines" class="detail-items payable-lines"></div>
+      </section>
+
+      <div class="actions payables-modal-actions"><button class="btn" type="button" data-close="bill">Cancelar</button><button id="saveBill" class="btn orange" type="button">Guardar borrador</button></div>
+      <div id="billMsg" class="msg payables-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="paymentModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="paymentTitle" aria-hidden="true">
+    <div class="dialog compact payable-payment-dialog">
+      <div class="dialog-head"><div><span class="payables-dialog-kicker">Salida de dinero</span><h2 id="paymentTitle">Registrar pago</h2><div id="paymentSubtitle" class="muted">Registra el movimiento con su Purchase Order y referencia.</div></div><button class="btn payables-close-button" type="button" data-close="payment" aria-label="Cerrar formulario de pago">✕</button></div>
+      <label for="pPO">Purchase Order *</label><select id="pPO"></select>
+      <div class="grid"><div><label for="pAmount">Monto *</label><input id="pAmount" type="number" min="0" step="0.01" inputmode="decimal"></div><div><label for="pDate">Fecha del pago</label><input id="pDate" type="date"></div></div>
+      <div class="grid"><div><label for="pMethod">Método</label><select id="pMethod"><option value="wire">Wire</option><option value="ach">ACH</option><option value="check">Cheque</option><option value="cash">Efectivo</option><option value="other">Otro</option></select></div><div><label for="pReference">Referencia</label><input id="pReference" autocomplete="off"></div></div>
+      <label for="pNotes">Notas</label><textarea id="pNotes" placeholder="Detalle opcional del pago"></textarea>
+      <div id="pOpenBalanceHint" class="payables-payment-hint" role="note"></div>
+      <div class="actions payables-modal-actions"><button class="btn" type="button" data-close="payment">Cancelar</button><button id="savePayment" class="btn orange" type="button">Registrar pago</button></div>
+      <div id="paymentMsg" class="msg payables-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="allocationModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="allocationTitle" aria-hidden="true">
+    <div class="dialog payable-allocation-dialog">
+      <div class="dialog-head"><div><span class="payables-dialog-kicker">Distribución del pago</span><h2 id="allocationTitle">Aplicar pago</h2><div id="allocationSubtitle" class="muted"></div></div><button class="btn payables-close-button" type="button" data-close="allocation" aria-label="Cerrar distribución">✕</button></div>
+      <div id="allocationBills" class="detail-items payable-lines"></div>
+      <div class="actions payables-modal-actions"><button class="btn" type="button" data-close="allocation">Cancelar</button><button id="saveAllocation" class="btn orange" type="button">Guardar distribución</button></div>
+      <div id="allocationMsg" class="msg payables-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="reverseModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="reverseTitle" aria-hidden="true">
+    <div class="dialog compact payable-decision-dialog">
+      <span class="payables-dialog-kicker">Confirmación financiera</span>
+      <h2 id="reverseTitle">Revertir pago</h2>
+      <p class="payables-decision-copy">El pago y sus aplicaciones se conservarán en el historial como un movimiento revertido.</p>
+      <label for="rReason">Motivo *</label><textarea id="rReason" placeholder="Explica por qué se revierte el pago"></textarea>
+      <div class="actions payables-modal-actions payable-decision-actions"><button class="btn" type="button" data-close="reverse">Volver</button><button id="saveReverse" class="btn danger" type="button">Revertir pago</button></div>
+      <div id="reverseMsg" class="msg payables-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="detailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailTitle" aria-hidden="true">
+    <div class="dialog payable-detail-dialog">
+      <div class="dialog-head"><div><span class="payables-dialog-kicker">Cuenta del proveedor</span><h2 id="detailTitle">Detalle financiero</h2><div id="detailSubtitle" class="muted"></div></div><button class="btn payables-close-button" type="button" data-close="detail" aria-label="Cerrar detalle">✕</button></div>
+      <div id="detailBody"></div>
+      <section id="detailTraceability" class="payable-detail-section" aria-labelledby="detailTraceabilityTitle" hidden>
+        <header class="payable-detail-section-head"><h3 id="detailTraceabilityTitle">Trazabilidad AP</h3><span>Relaciones de origen</span></header>
+        <div id="detailTraceabilityActions" class="payable-trace-actions"></div>
+      </section>
+      <div id="detailActions" class="actions payables-modal-actions"></div>
+      <div id="detailMsg" class="msg payables-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="decisionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="decisionTitle" aria-describedby="decisionCopy" aria-hidden="true">
+    <div class="dialog compact payable-decision-dialog">
+      <span class="payables-dialog-kicker">Confirmación financiera</span>
+      <h2 id="decisionTitle">Confirmar acción</h2>
+      <p id="decisionCopy" class="payables-decision-copy"></p>
+      <div class="actions payables-modal-actions payable-decision-actions"><button class="btn" type="button" data-close="decision">Volver</button><button id="decisionAccept" class="btn orange" type="button">Continuar</button></div>
+      <div id="decisionMsg" class="msg payables-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script src="/admin/payables.js?v=20260903-ux7payables1" defer></script>
+  <script src="/admin/embedded-auto-refresh.js?v=20260903-ux7payables1" defer></script>
 </body>
 </html>

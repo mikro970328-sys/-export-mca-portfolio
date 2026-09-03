@@ -4,7 +4,7 @@ const BASE_URL = process.env.ERP_BASE_URL || 'https://admin.exportmca.com';
 const ERP_ORIGIN = new URL(BASE_URL).origin;
 const REQUIRED_SECRETS = ['ERP_E2E_USERNAME', 'ERP_E2E_PASSWORD'];
 const ALLOWED_API_WRITES = new Set(['POST /api/login']);
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|INVOICES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -462,6 +462,138 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
         innerGeometry: { clientWidth: invoicesState.clientWidth, scrollWidth: invoicesState.scrollWidth },
         metrics: invoicesState.metricCount,
         visibleFrames: ownerState.visibleFrames,
+        apiStatus: 200,
+        submitted: false
+      });
+    });
+
+    await test.step('Payables has one owner, separates its document and remains read-only', async () => {
+      await openSection(page, 'payablesSection');
+      const frameElement = page.locator('#payablesSection iframe');
+      await expect(frameElement).toBeVisible();
+      const payablesState = await waitForEmbeddedState(page, frameElement, 'Payables iframe', frame => {
+        const doc = frame.contentDocument;
+        const html = doc?.documentElement;
+        const fits = node => {
+          if (!node || !html) return false;
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.left >= -1 && rect.right <= html.clientWidth + 1;
+        };
+        const metrics = [...(doc?.querySelectorAll('.payables-metrics .metric') || [])];
+        const table = doc?.querySelector('.payables-table-wrap');
+        const result = doc?.getElementById('payablesResultCount')?.textContent?.trim() || '';
+        return {
+          heading: doc?.getElementById('payablesPageTitle')?.textContent?.trim() || '',
+          resultReady: Boolean(result && !result.includes('Consultando')),
+          duplicateLogin: Boolean(doc?.getElementById('loginPage')),
+          owner: doc?.body?.dataset?.owner || '',
+          clientWidth: html?.clientWidth || 0,
+          scrollWidth: html?.scrollWidth || 0,
+          heroFits: fits(doc?.querySelector('.payables-page-head')),
+          statusFits: fits(doc?.querySelector('.payables-hero-state')),
+          metricsFit: metrics.length === 5 && metrics.every(fits),
+          metricCount: metrics.length,
+          panelFits: fits(doc?.querySelector('.payables-list-panel')),
+          tableClientWidth: table?.clientWidth || 0,
+          tableScrollWidth: table?.scrollWidth || 0,
+          tableOverflowX: table ? getComputedStyle(table).overflowX : '',
+          moduleMethods: ['openBill', 'openPayment', 'refresh'].every(name => typeof frame.contentWindow?.PayablesModule?.[name] === 'function'),
+          injectedVisualOwners: ['apContextStyles', 'operationalContextStyles'].filter(id => Boolean(doc?.getElementById(id)))
+        };
+      }, state => state?.duplicateLogin || (state?.heading === 'Cuentas por pagar' && state.resultReady));
+
+      if (payablesState.duplicateLogin) throw new Error('Duplicate login found inside Payables');
+      if (payablesState.owner !== 'payables.js' || !payablesState.moduleMethods) throw new Error('Payables does not expose its canonical visual owner');
+      if (payablesState.scrollWidth !== payablesState.clientWidth) throw new Error('Payables iframe has horizontal document overflow');
+      if (!payablesState.heroFits || !payablesState.statusFits || !payablesState.metricsFit || !payablesState.panelFits) throw new Error('Payables responsive regions do not fit the iPhone viewport');
+      if (payablesState.metricCount !== 5) throw new Error(`Payables metric count ${payablesState.metricCount} != 5`);
+      if (payablesState.tableScrollWidth > payablesState.tableClientWidth && !['auto', 'scroll'].includes(payablesState.tableOverflowX)) throw new Error('Payables internal table overflow is not contained');
+      if (payablesState.injectedVisualOwners.length) throw new Error(`Payables received injected visual owners: ${payablesState.injectedVisualOwners.join(', ')}`);
+
+      const ownerState = await assertOneVisibleSection(page, 'payablesSection');
+      if (ownerState.visibleFrames !== 1) throw new Error('Payables has more than one visible embedded page');
+      const outerGeometry = await assertNoDocumentOverflow(page, 'Cuentas por pagar outer shell');
+
+      const detailStarted = await frameElement.evaluate(frame => {
+        const doc = frame.contentDocument;
+        doc?.querySelector('[data-view="all"]')?.click();
+        const detail = doc?.querySelector('[data-bill-action="detail"]') || doc?.querySelector('[data-payment-action="detail"]');
+        if (!detail) return false;
+        detail.click();
+        return true;
+      });
+      if (!detailStarted) throw new Error('Payables has no read-only detail available for certification');
+
+      const detailState = await waitForEmbeddedState(page, frameElement, 'Payables detail', frame => {
+        const doc = frame.contentDocument;
+        const html = doc?.documentElement;
+        const modal = doc?.getElementById('detailModal');
+        const dialog = modal?.querySelector('.dialog');
+        const rect = dialog?.getBoundingClientRect();
+        const visible = modal && getComputedStyle(modal).display !== 'none' && rect && rect.width > 0;
+        const trace = doc?.getElementById('detailTraceability');
+        const traceText = doc?.getElementById('detailTraceabilityActions')?.textContent?.trim() || '';
+        return {
+          visible: Boolean(visible),
+          dialogFits: Boolean(visible && rect.left >= -1 && rect.right <= (html?.clientWidth || 0) + 1),
+          traceCount: doc?.querySelectorAll('#detailTraceability').length || 0,
+          traceVisible: Boolean(trace && getComputedStyle(trace).display !== 'none'),
+          traceReady: Boolean(traceText && !traceText.includes('Consultando')),
+          duplicateTraceBlocks: doc?.querySelectorAll('#payablesTraceContext,.ap-context').length || 0,
+          injectedVisualOwners: ['apContextStyles', 'operationalContextStyles'].filter(id => Boolean(doc?.getElementById(id))),
+          visibleDialogs: [...(doc?.querySelectorAll('[role="dialog"]') || [])].filter(node => getComputedStyle(node).display !== 'none').length,
+          clientWidth: html?.clientWidth || 0,
+          scrollWidth: html?.scrollWidth || 0
+        };
+      }, state => state?.visible && state?.traceReady);
+      if (!detailState.dialogFits || detailState.traceCount !== 1 || !detailState.traceVisible || detailState.duplicateTraceBlocks || detailState.injectedVisualOwners.length || detailState.visibleDialogs !== 1 || detailState.scrollWidth !== detailState.clientWidth) {
+        throw new Error('Payables detail does not have one contained canonical Trazabilidad AP owner');
+      }
+      await attachPrivateScreenshot(page, testInfo, 'payables-detail-iphone-safari');
+      await frameElement.evaluate(frame => frame.contentDocument?.querySelector('[data-close="detail"]')?.click());
+
+      const formInspection = await frameElement.evaluate(frame => {
+        const doc = frame.contentDocument;
+        const button = doc?.getElementById('newBill');
+        if (!button || button.hidden || button.disabled) return { available: false, hidden: Boolean(button?.hidden), disabled: Boolean(button?.disabled) };
+        button.click();
+        const modal = doc.getElementById('billModal');
+        const dialog = modal?.querySelector('.dialog');
+        const rect = dialog?.getBoundingClientRect();
+        const html = doc.documentElement;
+        return {
+          available: true,
+          visible: Boolean(modal && getComputedStyle(modal).display !== 'none'),
+          selectedPO: doc.getElementById('bPO')?.value || '',
+          saveVisible: Boolean(doc.getElementById('saveBill')),
+          dialogFits: Boolean(rect && rect.left >= -1 && rect.right <= html.clientWidth + 1),
+          visibleDialogs: [...doc.querySelectorAll('[role="dialog"]')].filter(node => getComputedStyle(node).display !== 'none').length,
+          clientWidth: html.clientWidth,
+          scrollWidth: html.scrollWidth
+        };
+      });
+      if (formInspection.available) {
+        if (!formInspection.visible || formInspection.selectedPO || !formInspection.saveVisible || !formInspection.dialogFits || formInspection.visibleDialogs !== 1 || formInspection.scrollWidth !== formInspection.clientWidth) {
+          throw new Error('Payables bill form is not a clean, contained read-only inspection state');
+        }
+        await attachPrivateScreenshot(page, testInfo, 'payables-form-iphone-safari');
+        await frameElement.evaluate(frame => frame.contentDocument?.querySelector('[data-close="bill"]')?.click());
+      }
+
+      const payablesResponses = diagnostics.apiResponses.filter(item => item.path === '/api/payables');
+      const paymentResponses = diagnostics.apiResponses.filter(item => item.path === '/api/supplier-payments');
+      const traceResponses = diagnostics.apiResponses.filter(item => item.path === '/api/ap-links');
+      if (!payablesResponses.some(item => item.status === 200)) throw new Error('Payables API did not return HTTP 200');
+      if (!paymentResponses.some(item => item.status === 200)) throw new Error('Supplier Payments API did not return HTTP 200');
+      if (!traceResponses.some(item => item.status === 200)) throw new Error('AP traceability API did not return HTTP 200');
+      checkpoint('payables-readonly', {
+        outerGeometry,
+        innerGeometry: { clientWidth: payablesState.clientWidth, scrollWidth: payablesState.scrollWidth },
+        metrics: payablesState.metricCount,
+        visibleFrames: ownerState.visibleFrames,
+        traceabilityOwners: detailState.traceCount,
+        formInspected: formInspection.available,
         apiStatus: 200,
         submitted: false
       });

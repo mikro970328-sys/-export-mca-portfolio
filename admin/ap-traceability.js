@@ -1,7 +1,7 @@
 (() => {
   if (window.APTraceability) return;
 
-  const CONTEXT_SECTIONS = ['suppliersSection','purchasesSection','warehouseSection','payablesSection'];
+  const CONTEXT_SECTIONS = ['suppliersSection','purchasesSection','warehouseSection'];
   const BRIDGE_SRC = '/admin/ap-context-bridge.js';
   let cache = null;
   let pending = null;
@@ -77,7 +77,6 @@
 
   async function callPayables(method, id) {
     window.NavigationShell?.openPayables?.();
-    await installBridge('payablesSection');
     const frame = frameFor('payablesSection');
     for (let attempt = 0; attempt < 20; attempt += 1) {
       const fn = frame?.contentWindow?.PayablesModule?.[method];

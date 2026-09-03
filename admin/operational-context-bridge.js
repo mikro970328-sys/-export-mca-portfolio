@@ -260,21 +260,12 @@
     observeChanges(document.getElementById('receiptList'), () => nav.invalidateLinks?.());
   }
 
-  function initPayables() {
-    window.openOperationalSupplierBill = billId => {
-      if (!window.PayablesModule?.openBill) return false;
-      window.PayablesModule.openBill(billId);
-      return true;
-    };
-  }
-
   installStyles();
   let moduleName = 'none';
   if (path.endsWith('/admin/suppliers.html')) { moduleName='suppliers';initSuppliers(); }
   else if (path.endsWith('/admin/purchases.html')) { moduleName='purchases';initPurchases(); }
   else if (path.endsWith('/admin/sales.html')) { moduleName='sales';initSales(); }
   else if (path.endsWith('/admin/warehouse.html')) { moduleName='warehouse';initWarehouse(); }
-  else if (path.endsWith('/admin/payables.html')) { moduleName='payables';initPayables(); }
 
   window.OperationalContextBridge = Object.freeze({ ready:true,module:moduleName,owner:'operational-context-bridge.js' });
   window.dispatchEvent(new CustomEvent('export-mca:context-bridge-ready',{detail:{module:moduleName}}));

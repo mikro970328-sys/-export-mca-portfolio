@@ -1,26 +1,29 @@
-name: UX6 Payables Presentation
+name: UX7 Payables Visual Owner
 
 on:
   pull_request:
     paths:
-      - 'admin/payables.css'
       - 'admin/payables.html'
+      - 'admin/payables.css'
       - 'admin/payables.js'
+      - 'admin/erp.js'
+      - 'admin/index.html'
       - 'admin/ap-traceability.js'
       - 'admin/ap-context-bridge.js'
       - 'admin/operational-navigation.js'
       - 'admin/operational-context-bridge.js'
       - 'api/payables.js'
       - 'api/supplier-payments.js'
-      - 'scripts/check-ux5-supplier-ap-actions.mjs'
-      - 'scripts/check-ux6-payables-presentation.mjs'
+      - 'api/_supplier-ap-actions.js'
       - 'scripts/check-ux7-payables-visual-owner.mjs'
-      - '.github/workflows/ux5-supplier-ap-actions.yml'
-      - '.github/workflows/ux6-payables-presentation.yml'
+      - 'scripts/check-ux6-payables-presentation.mjs'
+      - 'scripts/check-ux5-supplier-ap-actions.mjs'
+      - 'scripts/check-contextual-sync.mjs'
+      - '.github/workflows/ux7-payables-visual-owner.yml'
   workflow_dispatch:
 
 jobs:
-  validate-payables-presentation:
+  validate-payables-visual-owner:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,30 +32,31 @@ jobs:
           node-version: '24'
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Validate Payables UX-6 owner
-        run: node scripts/check-ux6-payables-presentation.mjs
-      - name: Validate Payables UX-7 visual owner
-        run: node scripts/check-ux7-payables-visual-owner.mjs
-      - name: Validate canonical AP actions
-        run: node scripts/check-ux5-supplier-ap-actions.mjs
+      - name: Validate Cuentas por pagar UX-7 owner
+        run: |
+          node scripts/check-ux7-payables-visual-owner.mjs
+          node scripts/check-ux6-payables-presentation.mjs
+          node scripts/check-ux5-supplier-ap-actions.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check admin/payables.js
+          node --check admin/erp.js
           node --check admin/ap-traceability.js
           node --check admin/ap-context-bridge.js
           node --check admin/operational-navigation.js
           node --check admin/operational-context-bridge.js
           node --check api/payables.js
           node --check api/supplier-payments.js
-          node --check scripts/check-ux5-supplier-ap-actions.mjs
-          node --check scripts/check-ux6-payables-presentation.mjs
           node --check scripts/check-ux7-payables-visual-owner.mjs
+          node --check scripts/check-ux6-payables-presentation.mjs
+          node --check scripts/check-ux5-supplier-ap-actions.mjs
+          node --check scripts/check-contextual-sync.mjs
       - name: Validate API runtime imports
         run: node --input-type=module -e "await Promise.all([import('./api/_supplier-ap-actions.js'),import('./api/payables.js'),import('./api/supplier-payments.js')]); console.log('Supplier AP runtime imports OK')"
-      - name: Validate UX-6 presentation cleanup
-        run: node scripts/check-ux6-presentation-cleanup.mjs
       - name: Validate frontend ownership
-        run: node scripts/check-frontend-ownership.mjs
+        run: |
+          node scripts/check-contextual-sync.mjs
+          node scripts/check-frontend-ownership.mjs
       - name: Validate admin shell
         run: node scripts/check-admin-shell-resilience.mjs
       - name: Audit API boundaries
