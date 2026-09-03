@@ -10,7 +10,7 @@ const RUN_CORE = CERT_SCOPE !== 'costs';
 const RUN_COSTS = CERT_SCOPE !== 'core';
 const PROFITABILITY_STATUS_ATTRIBUTE = 'data-profitability-probe-status';
 const PROFITABILITY_STATE_ATTRIBUTE = 'data-profitability-probe-state';
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|ACCESS_CONTROL_UI_FAILED|ACCOUNT_UI_FAILED|OPERATIONAL_ALERT_CENTER_UI_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|ACCESS_CONTROL_UI_FAILED|ACCOUNT_UI_FAILED|OPERATIONAL_ALERT_CENTER_UI_FAILED|TASK_WORKSPACE_OPERATION_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -853,6 +853,75 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         innerGeometry:{ clientWidth:productsState.clientWidth, scrollWidth:productsState.scrollWidth },
         metrics:productsState.metricCount,
         visibleFrames:ownerState.visibleFrames,
+        apiStatus:200,
+        submitted:false
+      });
+    });
+
+    if (RUN_CORE) await test.step('Tasks has one visual owner and responsive work cards', async () => {
+      await openSection(page, 'tasksSection');
+      const section = page.locator('#tasksSection');
+      await expect(section.locator('#tasksLastUpdated')).not.toContainText('Preparando', { timeout:30_000 });
+      await expect(section.locator('#tasksTableWrap .tasks-card, #tasksTableWrap .tasks-empty').first()).toBeVisible();
+
+      const tasksState = await section.evaluate(node => {
+        const visible = element => {
+          if (!element) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        };
+        const fits = element => {
+          if (!visible(element)) return false;
+          const rect = element.getBoundingClientRect();
+          return rect.left >= -1 && rect.right <= window.innerWidth + 1;
+        };
+        const metrics = [...node.querySelectorAll('.tasks-summary-card')];
+        const records = [...node.querySelectorAll('#tasksTableWrap .tasks-card, #tasksTableWrap .tasks-empty')];
+        const dialog = node.querySelector('#tasksModal');
+        return {
+          owner:node.dataset.tasksOwner || '',
+          apiOwner:window.TasksWorkspace?.owner || '',
+          metricCount:metrics.length,
+          metricsReady:metrics.length === 5 && metrics.every(metric => !metric.querySelector('strong')?.textContent?.includes('—')),
+          metricsFit:metrics.length === 5 && metrics.every(fits),
+          heroFits:fits(node.querySelector('.tasks-head')),
+          commandFits:fits(node.querySelector('.tasks-command')),
+          panelFits:fits(node.querySelector('.tasks-panel')),
+          recordsFit:records.length > 0 && records.every(fits),
+          selectedMetrics:node.querySelectorAll('.tasks-summary-card[aria-pressed="true"]').length,
+          searchType:node.querySelector('#tasksSearch')?.getAttribute('type') || '',
+          result:node.querySelector('#tasksResultCount')?.textContent?.trim() || '',
+          lastUpdated:node.querySelector('#tasksLastUpdated')?.textContent?.trim() || '',
+          dialogVisible:visible(dialog),
+          methodsReady:['visibleTasks','taskCounts','render','getState'].every(name => typeof window.TasksWorkspace?.[name] === 'function')
+        };
+      });
+
+      if (tasksState.owner !== 'tasks-workspace.js' || tasksState.apiOwner !== 'tasks-workspace.js' || !tasksState.methodsReady) {
+        throw new Error('Tasks does not expose its canonical visual owner');
+      }
+      if (!tasksState.heroFits || !tasksState.metricsFit || !tasksState.commandFits || !tasksState.panelFits || !tasksState.recordsFit) {
+        throw new Error('Tasks responsive regions do not fit the iPhone viewport');
+      }
+      if (tasksState.metricCount !== 5 || !tasksState.metricsReady || tasksState.selectedMetrics !== 1) {
+        throw new Error('Tasks summary or selected queue state is incomplete');
+      }
+      if (tasksState.searchType !== 'search' || !tasksState.result || !tasksState.lastUpdated || tasksState.dialogVisible) {
+        throw new Error('Tasks workspace is not in its safe initial state');
+      }
+
+      const ownerState = await assertOneVisibleSection(page, 'tasksSection');
+      if (ownerState.visibleFrames !== 0) throw new Error('Tasks unexpectedly mounts an embedded page');
+      const geometry = await assertNoDocumentOverflow(page, 'Mis tareas');
+      await attachPrivateScreenshot(page, testInfo, 'tasks-workspace-iphone-safari');
+
+      const taskResponses = diagnostics.apiResponses.filter(item => item.path === '/api/tasks');
+      if (!taskResponses.some(item => item.status === 200)) throw new Error('Tasks API did not return HTTP 200');
+      checkpoint('tasks-workspace-readonly', {
+        geometry,
+        metrics:tasksState.metricCount,
+        selectedMetrics:tasksState.selectedMetrics,
         apiStatus:200,
         submitted:false
       });

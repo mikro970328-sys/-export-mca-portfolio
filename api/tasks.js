@@ -192,8 +192,9 @@ async function rpc(name, body) {
 
 function errorResponse(res, error) {
   const message = String(error?.message || error || 'TASK_OPERATION_FAILED');
-  const known = message.match(/(TASK_[A-Z0-9_]+)/)?.[1];
+  const known = message.match(/(TASK_[A-Z0-9_]+|ID_INVALID)/)?.[1];
   const clientErrors = new Set([
+    'ID_INVALID',
     'TASK_NOT_FOUND','TASK_TEAM_INVALID','TASK_ASSIGNEE_INVALID','TASK_ASSIGNEE_NOT_TEAM_MEMBER','TASK_ACTOR_INVALID',
     'TASK_STATUS_INVALID','TASK_TRANSITION_INVALID','TASK_REASON_REQUIRED','TASK_COMMENT_REQUIRED','TASK_DEPENDENCY_SELF_FORBIDDEN',
     'TASK_DEPENDENCY_INVALID','TASK_DEPENDENCY_CYCLE','TASK_ACTOR_REQUIRED','TASK_OPEN_DEPENDENCIES'
@@ -336,7 +337,6 @@ export default async function handler(req,res) {
 
     return fail(res,405,'Método no permitido');
   } catch (error) {
-    if (String(error?.message || '').includes('INVALID')) return fail(res,400,String(error.message));
     return errorResponse(res,error);
   }
 }

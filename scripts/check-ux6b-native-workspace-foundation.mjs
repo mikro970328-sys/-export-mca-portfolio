@@ -127,7 +127,7 @@ for(const ref of [
   "/admin/operational-alert-center.js?v=20260903-ux7alerts1",
   "/admin/access-control-administration.js?v=20260903-ux7access1",
   "/admin/account-administration.js?v=20260903-ux7account1",
-  "/admin/tasks-workspace.js?v=20260903-ux7icons2"
+  "/admin/tasks-workspace.js?v=20260903-ux7tasks1"
 ])requireText(loader,ref,`asset revisado ${ref}`);
 
 for(const source of [index,clients,alerts,access,account,tasks]){

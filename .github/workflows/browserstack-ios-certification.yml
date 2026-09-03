@@ -10,6 +10,7 @@ on:
       - 'scripts/check-ux7-access-visual-owner.mjs'
       - 'scripts/check-ux7-account-visual-owner.mjs'
       - 'scripts/check-ux7-alert-center-visual-owner.mjs'
+      - 'scripts/check-ux7-tasks-visual-owner.mjs'
       - 'admin/index.html'
       - 'admin/erp.js'
       - 'admin/access-control-administration.js'
@@ -20,6 +21,7 @@ on:
       - 'admin/navigation-shell.js'
       - 'admin/navigation-shell.css'
       - 'admin/tasks-workspace.js'
+      - 'admin/tasks-workspace.css'
       - 'admin/account-administration.js'
       - 'admin/account-administration.css'
       - 'api/account.js'
@@ -52,6 +54,7 @@ on:
       - 'admin/products.js'
       - 'api/products.js'
       - '.github/workflows/ux7-alert-center-visual-owner.yml'
+      - '.github/workflows/ux7-tasks-visual-owner.yml'
       - '.github/workflows/browserstack-ios-certification.yml'
   pull_request:
     paths:
@@ -60,6 +63,7 @@ on:
       - 'scripts/check-ux7-access-visual-owner.mjs'
       - 'scripts/check-ux7-account-visual-owner.mjs'
       - 'scripts/check-ux7-alert-center-visual-owner.mjs'
+      - 'scripts/check-ux7-tasks-visual-owner.mjs'
       - 'admin/index.html'
       - 'admin/erp.js'
       - 'admin/access-control-administration.js'
@@ -70,6 +74,7 @@ on:
       - 'admin/navigation-shell.js'
       - 'admin/navigation-shell.css'
       - 'admin/tasks-workspace.js'
+      - 'admin/tasks-workspace.css'
       - 'admin/account-administration.js'
       - 'admin/account-administration.css'
       - 'api/account.js'
@@ -102,6 +107,7 @@ on:
       - 'admin/products.js'
       - 'api/products.js'
       - '.github/workflows/ux7-alert-center-visual-owner.yml'
+      - '.github/workflows/ux7-tasks-visual-owner.yml'
       - '.github/workflows/browserstack-ios-certification.yml'
   workflow_dispatch:
     inputs:
