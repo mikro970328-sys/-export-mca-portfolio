@@ -42,6 +42,7 @@ const requiredTestContracts = [
   "openSection(page, 'suppliersSection')",
   "openSection(page, 'productsSection')",
   "openSection(page, 'tasksSection')",
+  "openSection(page, 'workersSection')",
   "openSection(page, 'adminsSection')",
   "openSection(page, 'accountSection')",
   "openSection(page, 'reportsSection')",
@@ -72,6 +73,11 @@ const requiredTestContracts = [
   'tasksState.metricCount !== 5',
   "item.path === '/api/tasks'",
   "checkpoint('tasks-workspace-readonly'",
+  'Workers has one visual owner and responsive directory cards',
+  'workers-directory-iphone-safari',
+  "workersState.owner !== 'workers-module.js'",
+  'workersState.metricCount !== 4',
+  "checkpoint('workers-directory-readonly'",
   'Access control has one visual owner and a responsive directory',
   'access-control-iphone-safari',
   "accessState.owner !== 'access-control-administration.js'",
@@ -101,6 +107,7 @@ const requiredTestContracts = [
   'ACCOUNT_UI_FAILED',
   'OPERATIONAL_ALERT_CENTER_UI_FAILED',
   'TASK_WORKSPACE_OPERATION_FAILED',
+  'WORKERS_UI_FAILED',
   'REPORTS_UI_FAILED'
 ];
 

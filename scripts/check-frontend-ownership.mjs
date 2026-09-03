@@ -35,6 +35,8 @@ const retiredOwners = [
   'admin/client-information.js',
   'admin/expedientes-module.js',
   'admin/invoice-expediente.js',
+  'admin/workers-responsive.js',
+  'admin/workers-actions-menu.js',
   'admin/commercial-documents-shell.js',
   'admin/commercial-documents-loads.js',
   'admin/commercial-documents-invoices.js',
@@ -201,10 +203,14 @@ for (const fragment of [
 
 for (const fragment of [
   'const originalShowSection = window.showSection',
+  'accessControl.sectionAllowed(id)',
   "window.dispatchEvent(new CustomEvent('export-mca:section-changed'",
   'window.initializeOperationalDashboard'
 ]) {
   if (!sectionState.includes(fragment)) errors.push(`section-state.js perdió su responsabilidad: ${fragment}`);
+}
+if (/workersSection[^\n]+master_admin|adminsSection[^\n]+master_admin/.test(sectionState)) {
+  errors.push('section-state.js vuelve a inferir acceso a secciones por rol en vez de permisos efectivos.');
 }
 
 for (const fragment of [

@@ -54,8 +54,6 @@ Clasificación actual de deuda técnica: **alta, pero recuperable sin reescribir
 | `admin/client-extra-fields.js` | Inserta campos y reemplaza el botón Guardar cliente. | Crítica |
 | `admin/client-actions-menu.js` | Oculta botones y crea menú de acciones. | Alta |
 | `admin/erp-core.js` | Reinstala el botón Eliminar en filas de shipments. | Alta |
-| `admin/workers-responsive.js` | Envuelve tablas después de cada render. | Media |
-| `admin/workers-actions-menu.js` | Oculta acciones y crea menú contextual. | Media |
 | `admin/separate-container-tracking.js` | Mueve tarjetas, crea sección y navegación. | Alta |
 | `admin/responsive-columns-control.js` | Detecta y reorganiza el selector de columnas. | Alta |
 | `admin/module-export-controls.js` | Elimina control global e inserta exportaciones por módulo. | Media |

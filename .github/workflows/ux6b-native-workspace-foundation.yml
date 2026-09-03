@@ -7,6 +7,10 @@ on:
       - 'admin/index.html'
       - 'admin/erp.js'
       - 'admin/clients-module.js'
+      - 'admin/workers-module.js'
+      - 'admin/workers-module.css'
+      - 'admin/workers-responsive.js'
+      - 'admin/workers-actions-menu.js'
       - 'admin/registration-form-shell.js'
       - 'admin/containers-module.js'
       - 'admin/containers-module.css'
@@ -15,6 +19,7 @@ on:
       - 'admin/account-administration.js'
       - 'admin/tasks-workspace.js'
       - 'scripts/check-ux6b-native-workspace-foundation.mjs'
+      - 'scripts/check-ux7-workers-visual-owner.mjs'
       - 'scripts/check-ux7-tracking-visual-owner.mjs'
       - 'scripts/check-ux6-clients-owner.mjs'
       - 'scripts/check-ux6-alert-center-style-owner.mjs'
@@ -63,6 +68,7 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check admin/clients-module.js
+          node --check admin/workers-module.js
           node --check admin/containers-module.js
           node --check admin/operational-alert-center.js
           node --check admin/access-control-administration.js
@@ -70,3 +76,4 @@ jobs:
           node --check admin/tasks-workspace.js
           node --check admin/erp.js
           node --check scripts/check-ux6b-native-workspace-foundation.mjs
+          node --check scripts/check-ux7-workers-visual-owner.mjs

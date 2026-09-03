@@ -1,20 +1,33 @@
-name: UX6 Workers Presentation
+name: UX7 Workers Visual Owner
 
 on:
   pull_request:
     paths:
       - 'admin/workers-module.css'
       - 'admin/workers-module.js'
+      - 'admin/workers-responsive.js'
+      - 'admin/workers-actions-menu.js'
       - 'admin/index.html'
       - 'admin/erp.js'
+      - 'admin/section-state.js'
       - 'api/admins.js'
+      - 'e2e/browserstack/ux7-production-readonly.spec.cjs'
+      - 'scripts/check-browserstack-ios-readonly.mjs'
       - 'scripts/check-ux6-workers-presentation.mjs'
+      - 'scripts/check-ux7-workers-visual-owner.mjs'
+      - 'scripts/check-ux6b-native-workspace-foundation.mjs'
+      - 'scripts/check-task-engine.mjs'
+      - 'scripts/check-frontend-ownership.mjs'
       - '.github/workflows/integrate-workers.yml'
+      - '.github/workflows/browserstack-ios-certification.yml'
       - '.github/workflows/ux6-workers-presentation.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  validate-workers-presentation:
+  validate-workers-visual-owner:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,14 +36,17 @@ jobs:
           node-version: '24'
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Validate Workers UX-6 owner
-        run: node scripts/check-ux6-workers-presentation.mjs
+      - name: Validate UX7 Workers ownership and runtime fixtures
+        run: node scripts/check-ux7-workers-visual-owner.mjs
+      - name: Validate real-iPhone read-only contract
+        run: node scripts/check-browserstack-ios-readonly.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check admin/workers-module.js
+          node --check admin/section-state.js
           node --check admin/erp.js
           node --check api/admins.js
-          node --check scripts/check-ux6-workers-presentation.mjs
+          node --check scripts/check-ux7-workers-visual-owner.mjs
       - name: Validate API runtime import
         run: node --input-type=module -e "await import('./api/admins.js'); console.log('Workers API runtime import OK')"
       - name: Validate access control
@@ -39,6 +55,10 @@ jobs:
         run: node scripts/check-session-audit-hardening.mjs
       - name: Validate UX-6 presentation cleanup
         run: node scripts/check-ux6-presentation-cleanup.mjs
+      - name: Validate native workspace and task navigation contracts
+        run: |
+          node scripts/check-ux6b-native-workspace-foundation.mjs
+          node scripts/check-task-engine.mjs
       - name: Validate frontend ownership
         run: node scripts/check-frontend-ownership.mjs
       - name: Validate admin shell
