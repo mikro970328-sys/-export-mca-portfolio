@@ -4,7 +4,7 @@ const BASE_URL = process.env.ERP_BASE_URL || 'https://admin.exportmca.com';
 const ERP_ORIGIN = new URL(BASE_URL).origin;
 const REQUIRED_SECRETS = ['ERP_E2E_USERNAME', 'ERP_E2E_PASSWORD'];
 const ALLOWED_API_WRITES = new Set(['POST /api/login']);
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|INVOICES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -373,6 +373,98 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       if (publicationsState.messageError) throw new Error('Publications displayed an error state');
       await attachPrivateScreenshot(page, testInfo, 'publications-iphone-safari');
       checkpoint('publications', { outerGeometry, innerGeometry, visibleFrames: owner.visibleFrames, duplicateLogin: false });
+    });
+
+    await test.step('Invoices stays embedded, responsive and read-only', async () => {
+      await openSection(page, 'invoicesSection');
+      const frameElement = page.locator('#invoicesSection iframe');
+      await expect(frameElement).toBeVisible();
+      const invoicesState = await waitForEmbeddedState(page, frameElement, 'Invoices iframe', frame => {
+        const doc = frame.contentDocument;
+        const html = doc?.documentElement;
+        const fits = node => {
+          if (!node || !html) return false;
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.left >= -1 && rect.right <= html.clientWidth + 1;
+        };
+        const metrics = [...(doc?.querySelectorAll('.invoices-metrics .metric') || [])];
+        const table = doc?.querySelector('.invoices-table-wrap');
+        const result = doc?.getElementById('invoiceResultCount')?.textContent?.trim() || '';
+        return {
+          heading: doc?.getElementById('invoicesPageTitle')?.textContent?.trim() || '',
+          resultReady: Boolean(result && !result.includes('Consultando')),
+          duplicateLogin: Boolean(doc?.getElementById('loginPage')),
+          owner: doc?.body?.dataset?.owner || '',
+          clientWidth: html?.clientWidth || 0,
+          scrollWidth: html?.scrollWidth || 0,
+          heroFits: fits(doc?.querySelector('.invoices-page-head')),
+          statusFits: fits(doc?.querySelector('.invoices-hero-state')),
+          metricsFit: metrics.length === 5 && metrics.every(fits),
+          metricCount: metrics.length,
+          panelFits: fits(doc?.querySelector('.invoices-list-panel')),
+          tableClientWidth: table?.clientWidth || 0,
+          tableScrollWidth: table?.scrollWidth || 0,
+          tableOverflowX: table ? getComputedStyle(table).overflowX : '',
+          newInvoiceVisible: fits(doc?.getElementById('newInvoice')),
+          moduleMethods: ['openInvoice', 'openCollection', 'openForSalesOrder'].every(name => typeof frame.contentWindow?.InvoicesModule?.[name] === 'function')
+        };
+      }, state => state?.duplicateLogin || (state?.heading === 'Facturación y cobros' && state.resultReady));
+
+      if (invoicesState.duplicateLogin) throw new Error('Duplicate login found inside Invoices');
+      if (invoicesState.owner !== 'invoices.js' || !invoicesState.moduleMethods) throw new Error('Invoices does not expose its canonical visual owner');
+      if (invoicesState.scrollWidth !== invoicesState.clientWidth) throw new Error('Invoices iframe has horizontal document overflow');
+      if (!invoicesState.heroFits || !invoicesState.statusFits || !invoicesState.metricsFit || !invoicesState.panelFits) throw new Error('Invoices responsive regions do not fit the iPhone viewport');
+      if (invoicesState.metricCount !== 5) throw new Error(`Invoices metric count ${invoicesState.metricCount} != 5`);
+      if (invoicesState.tableScrollWidth > invoicesState.tableClientWidth && !['auto', 'scroll'].includes(invoicesState.tableOverflowX)) throw new Error('Invoices internal table overflow is not contained');
+      if (!invoicesState.newInvoiceVisible) throw new Error('Invoices create control is not visible for the certification account');
+
+      const ownerState = await assertOneVisibleSection(page, 'invoicesSection');
+      if (ownerState.visibleFrames !== 1) throw new Error('Invoices has more than one visible embedded page');
+      const outerGeometry = await assertNoDocumentOverflow(page, 'Facturación outer shell');
+
+      const opened = await frameElement.evaluate(frame => {
+        const button = frame.contentDocument?.getElementById('newInvoice');
+        if (!button || button.hidden) return false;
+        button.click();
+        return true;
+      });
+      if (!opened) throw new Error('Invoices read-only form inspection could not start');
+      const formState = await waitForEmbeddedState(page, frameElement, 'Invoices form', frame => {
+        const doc = frame.contentDocument;
+        const html = doc?.documentElement;
+        const modal = doc?.getElementById('invoiceModal');
+        const dialog = modal?.querySelector('.dialog');
+        const rect = dialog?.getBoundingClientRect();
+        const visible = modal && getComputedStyle(modal).display !== 'none' && rect && rect.width > 0;
+        return {
+          visible: Boolean(visible),
+          selectedSale: doc?.getElementById('iSalesOrder')?.value || '',
+          saveVisible: Boolean(doc?.getElementById('saveInvoice')),
+          dialogFits: Boolean(visible && rect.left >= -1 && rect.right <= (html?.clientWidth || 0) + 1),
+          visibleDialogs: [...(doc?.querySelectorAll('[role="dialog"]') || [])].filter(node => getComputedStyle(node).display !== 'none').length,
+          clientWidth: html?.clientWidth || 0,
+          scrollWidth: html?.scrollWidth || 0
+        };
+      }, state => state?.visible === true);
+      if (formState.selectedSale || !formState.saveVisible || !formState.dialogFits || formState.visibleDialogs !== 1 || formState.scrollWidth !== formState.clientWidth) {
+        throw new Error('Invoices form is not a clean, contained read-only inspection state');
+      }
+      await attachPrivateScreenshot(page, testInfo, 'invoices-form-iphone-safari');
+      await frameElement.evaluate(frame => frame.contentDocument?.querySelector('[data-close="invoice"]')?.click());
+      const closed = await frameElement.evaluate(frame => frame.contentDocument?.getElementById('invoiceModal')?.classList.contains('hidden') === true);
+      if (!closed) throw new Error('Invoices form did not close without submission');
+
+      const invoiceResponses = diagnostics.apiResponses.filter(item => item.path === '/api/invoices');
+      if (!invoiceResponses.some(item => item.status === 200)) throw new Error('Invoices API did not return HTTP 200');
+      checkpoint('invoices-readonly', {
+        outerGeometry,
+        innerGeometry: { clientWidth: invoicesState.clientWidth, scrollWidth: invoicesState.scrollWidth },
+        metrics: invoicesState.metricCount,
+        visibleFrames: ownerState.visibleFrames,
+        apiStatus: 200,
+        submitted: false
+      });
     });
 
     await test.step('Costs loads without COSTS_INITIAL_LOAD_FAILED', async () => {

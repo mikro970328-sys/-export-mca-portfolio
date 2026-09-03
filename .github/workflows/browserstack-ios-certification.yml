@@ -1,6 +1,13 @@
 name: BrowserStack iOS UX-7 Certification
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'e2e/browserstack/**'
+      - 'scripts/check-browserstack-ios-readonly.mjs'
+      - '.github/workflows/browserstack-ios-certification.yml'
   pull_request:
     paths:
       - 'e2e/browserstack/**'
@@ -16,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  deployments: read
 
 concurrency:
   group: browserstack-ios-ux7-${{ github.ref }}
@@ -40,7 +48,7 @@ jobs:
         working-directory: e2e/browserstack
 
   iphone-safari:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
     needs: readonly-contract
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -70,6 +78,39 @@ jobs:
             fi
           done
           exit "$missing"
+      - name: Wait for the matching production deployment
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const { data: deployments } = await github.rest.repos.listDeployments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: context.sha,
+                per_page: 30
+              });
+              for (const deployment of deployments) {
+                if (!String(deployment.environment || '').toLowerCase().includes('production')) continue;
+                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  deployment_id: deployment.id,
+                  per_page: 30
+                });
+                const current = statuses[0];
+                if (current?.state === 'success') {
+                  core.info(`Production deployment ${deployment.id} is ready for ${context.sha}`);
+                  return;
+                }
+                if (['error', 'failure', 'inactive'].includes(current?.state)) {
+                  throw new Error(`Production deployment ${deployment.id} ended as ${current.state}`);
+                }
+              }
+              await new Promise(resolve => setTimeout(resolve, 15_000));
+            }
+            throw new Error(`Timed out waiting for the production deployment of ${context.sha}`);
       - name: Run read-only certification on real iPhone Safari
         run: npm run test:ios
         working-directory: e2e/browserstack
