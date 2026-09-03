@@ -1,9 +1,11 @@
 import { readFile } from 'node:fs/promises';
 
 const testPath = new URL('../e2e/browserstack/ux7-production-readonly.spec.cjs', import.meta.url);
+const configPath = new URL('../e2e/browserstack/playwright.config.cjs', import.meta.url);
 const workflowPath = new URL('../.github/workflows/browserstack-ios-certification.yml', import.meta.url);
-const [testSource, workflowSource] = await Promise.all([
+const [testSource, configSource, workflowSource] = await Promise.all([
   readFile(testPath, 'utf8'),
+  readFile(configPath, 'utf8'),
   readFile(workflowPath, 'utf8')
 ]);
 
@@ -62,9 +64,14 @@ const requiredWorkflowContracts = [
   'github.rest.repos.listDeploymentStatuses'
 ];
 const missingWorkflowContracts = requiredWorkflowContracts.filter(contract => !workflowSource.includes(contract));
+const missingConfigContracts = [
+  'timeout: 12 * 60 * 1000',
+  'actionTimeout: 20 * 1000',
+  'navigationTimeout: 45 * 1000'
+].filter(contract => !configSource.includes(contract));
 
-if (missing.length || forbidden.length || missingSecrets.length || missingWorkflowContracts.length) {
-  console.error(JSON.stringify({ missing, forbidden: forbidden.map(String), missingSecrets, missingWorkflowContracts }, null, 2));
+if (missing.length || forbidden.length || missingSecrets.length || missingWorkflowContracts.length || missingConfigContracts.length) {
+  console.error(JSON.stringify({ missing, forbidden: forbidden.map(String), missingSecrets, missingWorkflowContracts, missingConfigContracts }, null, 2));
   process.exit(1);
 }
 
