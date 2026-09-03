@@ -13,42 +13,48 @@ const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.
 const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
 for(const text of [
-  '/admin/invoices.css?v=20260902-ux6owner2',
-  '/admin/invoices.js?v=20260902-ux6owner1',
-  'invoice-lines-toolbar',
+  '/admin/embedded-foundation.css?v=20260902-ux6b3',
+  '/admin/invoices.css?v=20260903-ux7invoices1',
+  '/admin/invoices.js?v=20260903-ux7invoices1',
+  '/admin/embedded-auto-refresh.js?v=20260903-ux7invoices1',
+  'data-owner="invoices.js"',
+  'invoices-table-wrap',
   'invoice-modal-actions'
 ])requireText(html,text,`HTML ${text}`);
 forbid(html,/\sstyle=/i,'Facturas conserva estilos inline en HTML');
 forbid(html,/purchases\.css/i,'Facturas vuelve a depender del CSS de Compras');
 
 for(const text of [
-  '.invoice-lines-toolbar',
+  '.invoices-page-head',
+  '.invoices-hero-state',
+  '.invoices-metrics',
+  '.invoices-list-panel',
+  '.invoices-table-wrap',
+  '.invoice-row',
   '.invoice-modal-actions',
-  '.invoice-count',
-  '.invoice-count.is-empty',
-  '.erp-module-invoices .orders > .row',
-  '.erp-module-invoices .summary',
-  '.erp-module-invoices .detail-item'
+  '.invoice-detail-summary',
+  '@media(max-width:720px)'
 ])requireText(css,text,`CSS ${text}`);
 forbid(css,/@import/i,'Facturas conserva una importación CSS tardía');
+requireText(css,'overflow-x:auto;','Facturas conserva scroll horizontal interno en la tabla');
+requireText(css,'overflow-x:hidden;','Facturas protege el ancho del documento');
 
 for(const text of [
   'SAFE_INVOICE_ERROR_PATTERNS',
-  "function safeInvoiceMessage(error,fallback='No se pudo completar la operación. Intenta nuevamente.')",
-  'function reportInvoiceError(context,error,fallback)',
+  'function safeInvoiceMessage(error, fallback =',
+  'function reportInvoiceError(context, error, fallback =',
   "console.error('INVOICES_UI_FAILED'",
-  "reportInvoiceError('save_invoice',error)",
-  "reportInvoiceError('save_payment',error)",
-  "reportInvoiceError('decision',error)",
-  "reportInvoiceError('refresh',error",
-  "reportInvoiceError('bootstrap',error",
-  "const PAYMENT_STATUS_LABELS=Object.freeze({posted:'Registrado',reversed:'Revertido'})",
-  "PAYMENT_STATUS_LABELS[value]||'Estado no disponible'",
-  "can(invoice,'record_payment')",
-  "can(invoice,'edit')",
-  "can(invoice,'issue')",
-  "can(invoice,'void')",
-  "canPayment(payment,'reverse')"
+  "reportInvoiceError('save_invoice', error)",
+  "reportInvoiceError('save_payment', error)",
+  "reportInvoiceError('decision', error)",
+  "reportInvoiceError('bootstrap', error",
+  'const PAYMENT_STATUS_LABELS = Object.freeze({',
+  "PAYMENT_STATUS_LABELS[value] || 'Estado no disponible'",
+  "can(invoice, 'record_payment')",
+  "can(invoice, 'edit')",
+  "can(invoice, 'issue')",
+  "can(invoice, 'void')",
+  "canPayment(payment, 'reverse')"
 ])requireText(ui,text,`owner de Facturas ${text}`);
 forbid(ui,/\b(?:prompt|alert|confirm)\s*\(/,'Facturas no puede usar diálogos nativos');
 forbid(ui,/(?:textContent|innerHTML)\s*=\s*(?:esc\s*\(\s*)?error(?:\?\.)?\.message/,'Facturas no puede mostrar error.message crudo');
@@ -70,18 +76,20 @@ for(const [source,label,stable,code] of [
 
 for(const text of [
   'loadInvoiceFinanceCapabilityMaps',
-  "can(invoice,'record_payment')",
-  "can(invoice,'edit')",
-  "can(invoice,'issue')",
-  "can(invoice,'void')",
-  "canPayment(payment,'reverse')"
+  "can(invoice, 'record_payment')",
+  "can(invoice, 'edit')",
+  "can(invoice, 'issue')",
+  "can(invoice, 'void')",
+  "canPayment(payment, 'reverse')"
 ])requireText(`${canonicalGate}\n${invoices}\n${ui}`,text,`ownership canónico ${text}`);
 
 for(const text of [
   'node scripts/check-ux6-invoices-presentation.mjs',
+  'node scripts/check-ux7-invoices-visual-owner.mjs',
   'node scripts/check-ux5-invoice-actions.mjs',
   'node scripts/check-sales-customer-finance.mjs',
   'node scripts/check-ux5-customer-finance-actions.mjs',
+  'node scripts/check-contextual-sync.mjs',
   'node scripts/check-frontend-ownership.mjs',
   'node scripts/check-admin-shell-resilience.mjs',
   'node scripts/audit-b9-api-boundaries.mjs',

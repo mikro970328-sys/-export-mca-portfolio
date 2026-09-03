@@ -1,38 +1,147 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Facturación y cobros · Export MCA</title>
-<link rel="stylesheet" href="/admin/invoices.css?v=20260902-ux6owner2">
-<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Facturación y cobros · Export MCA</title>
+  <link rel="icon" href="/logo.png">
+  <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
+  <link rel="stylesheet" href="/admin/invoices.css?v=20260903-ux7invoices1">
 </head>
-<body class="erp-module-page erp-module-invoices">
-<main class="wrap">
-  <div class="head module-hero"><div class="module-heading"><div class="module-kicker">Finanzas comerciales</div><h1>Facturación y cobros</h1><div class="muted">Facturas financieras al cliente y dinero recibido. Los documentos oficiales de Cuba se controlan por contenedor en Tracking.</div></div><button id="newInvoice" class="btn orange">+ Nueva factura</button></div>
-  <div id="metrics" class="metrics"></div>
-  <section class="panel"><div class="toolbar"><input id="search" class="search" placeholder="Buscar factura, venta o cliente"><div class="tabs"><button class="btn active" data-view="open">Abiertas</button><button class="btn" data-view="draft">Borradores</button><button class="btn" data-view="paid">Pagadas</button><button class="btn" data-view="all">Todas</button></div><button id="refresh" class="btn">↻</button></div><div id="invoiceList" class="orders has-explicit-count"></div></section>
-</main>
+<body class="erp-module-page erp-module-invoices" data-owner="invoices.js">
+  <main class="wrap invoices-shell">
+    <header class="module-hero invoices-page-head" aria-labelledby="invoicesPageTitle">
+      <div class="module-heading invoices-page-heading">
+        <div class="module-kicker invoices-page-kicker">Comercial · Cartera del cliente</div>
+        <h1 id="invoicesPageTitle">Facturación y cobros</h1>
+        <p>Controla facturas financieras, saldos y dinero recibido sin mezclar esta cartera con los documentos oficiales de Cuba.</p>
+      </div>
+      <div class="invoices-hero-actions">
+        <div class="invoices-hero-state" aria-label="Estado del módulo">
+          <span class="invoices-live-dot" aria-hidden="true"></span>
+          <div><strong>Cartera financiera</strong><span id="invoiceLastUpdated">Preparando facturación…</span></div>
+        </div>
+        <button id="newInvoice" class="btn orange invoices-primary-action" type="button">Nueva factura</button>
+      </div>
+    </header>
 
-<div id="invoiceModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="invoiceTitle">Nueva factura de cobro</h2><div class="muted">Selecciona la venta y las cantidades a facturar. Esta factura financiera es independiente de los documentos aduanales del contenedor.</div></div><button class="btn" data-close="invoice">✕</button></div>
-<div class="grid3"><div><label>Venta *</label><select id="iSalesOrder"></select></div><div><label>Fecha de factura</label><input id="iIssueDate" type="date"></div><div><label>Fecha vencimiento</label><input id="iDueDate" type="date"></div></div>
-<label>Notas</label><textarea id="iNotes"></textarea>
-<div class="toolbar invoice-lines-toolbar"><div><b>Líneas a facturar</b><div class="muted">Solo cantidades todavía disponibles para facturar.</div></div></div>
-<div id="invoiceLines" class="detail-items"></div>
-<div class="actions invoice-modal-actions"><button class="btn" data-close="invoice">Cancelar</button><button id="saveInvoice" class="btn orange">Guardar borrador</button></div><div id="invoiceMsg" class="msg"></div></div></div>
+    <div id="invoicePageMsg" class="invoice-feedback" role="status" aria-live="polite"></div>
 
-<div id="detailModal" class="modal hidden"><div class="dialog"><div class="dialog-head"><div><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><button class="btn" data-close="detail">✕</button></div><div id="detailBody"></div><div id="detailActions" class="actions invoice-modal-actions"></div><div id="detailMsg" class="msg"></div></div></div>
+    <div id="invoicesReadOnlyNote" class="invoices-readonly" role="note" hidden>
+      <span class="invoices-readonly-icon" aria-hidden="true">i</span>
+      <span>Puedes consultar facturas, saldos y cobros. Crear o modificar información financiera requiere permiso de gestión.</span>
+    </div>
 
-<div id="paymentModal" class="modal hidden"><div class="dialog compact"><div class="dialog-head"><div><h2 id="paymentTitle">Registrar cobro</h2><div id="paymentSubtitle" class="muted"></div></div><button class="btn" data-close="payment">✕</button></div>
-<div class="grid"><div><label>Monto *</label><input id="pAmount" type="number" min="0" step="0.01"></div><div><label>Fecha del cobro</label><input id="pDate" type="date"></div></div>
-<div class="grid"><div><label>Método</label><select id="pMethod"><option value="wire">Wire</option><option value="ach">ACH</option><option value="check">Check</option><option value="cash">Cash</option><option value="other">Otro</option></select></div><div><label>Referencia</label><input id="pReference" placeholder="Wire, ACH, check, etc."></div></div>
-<label>Notas</label><textarea id="pNotes"></textarea>
-<div class="actions invoice-modal-actions"><button class="btn" data-close="payment">Cancelar</button><button id="savePayment" class="btn orange">Registrar cobro</button></div><div id="paymentMsg" class="msg"></div></div></div>
+    <section id="metrics" class="metrics invoices-metrics" aria-label="Resumen de facturación" aria-live="polite">
+      <article class="metric invoice-metric-total"><span>Facturas</span><b>—</b><small>Activas en cartera</small></article>
+      <article class="metric invoice-metric-draft"><span>Borradores</span><b>—</b><small>Pendientes de emisión</small></article>
+      <article class="metric invoice-metric-paid"><span>Pagadas</span><b>—</b><small>Saldo liquidado</small></article>
+      <article class="metric invoice-metric-overdue"><span>Vencidas</span><b>—</b><small>Requieren seguimiento</small></article>
+      <article class="metric invoice-metric-receivable"><span>Por cobrar</span><b>—</b><small>Saldo emitido pendiente</small></article>
+    </section>
 
-<div id="decisionModal" class="modal hidden"><div class="dialog compact"><div class="dialog-head"><div><h2 id="decisionTitle">Confirmar acción</h2><div id="decisionCopy" class="muted"></div></div><button class="btn" data-close="decision">✕</button></div>
-<div id="decisionReasonWrap" class="hidden"><label>Motivo</label><textarea id="decisionReason" placeholder="Motivo del reverso"></textarea></div>
-<div class="actions invoice-modal-actions"><button class="btn" data-close="decision">Cancelar</button><button id="decisionAccept" class="btn orange">Continuar</button></div><div id="decisionMsg" class="msg"></div></div></div>
+    <section class="panel invoices-list-panel" aria-labelledby="invoicesListTitle">
+      <header class="invoices-panel-head">
+        <div>
+          <span class="invoices-eyebrow">Cuentas por cobrar</span>
+          <h2 id="invoicesListTitle">Facturas financieras</h2>
+          <p>Consulta la venta de origen, vencimiento, total, cobros aplicados y saldo pendiente.</p>
+        </div>
+        <span id="invoiceResultCount" class="invoices-result-count">Consultando…</span>
+      </header>
 
-<script src="/admin/invoices.js?v=20260902-ux6owner1"></script>
+      <div class="invoices-list-toolbar">
+        <label class="invoices-search-field" for="search">
+          <span class="invoices-visually-hidden">Buscar facturas</span>
+          <span class="invoices-search-icon" aria-hidden="true">⌕</span>
+          <input id="search" class="search" type="search" autocomplete="off" placeholder="Buscar factura, venta, referencia o cliente">
+        </label>
+        <div class="tabs invoices-view-tabs" role="group" aria-label="Filtrar facturas">
+          <button class="btn active" type="button" data-view="open" aria-pressed="true">Abiertas</button>
+          <button class="btn" type="button" data-view="draft" aria-pressed="false">Borradores</button>
+          <button class="btn" type="button" data-view="paid" aria-pressed="false">Pagadas</button>
+          <button class="btn" type="button" data-view="all" aria-pressed="false">Todas</button>
+        </div>
+        <button id="clearInvoiceFilters" class="btn invoices-clear" type="button">Limpiar</button>
+        <button id="refresh" class="btn invoices-refresh" type="button" aria-label="Actualizar Facturación" title="Actualizar Facturación"><span aria-hidden="true">↻</span></button>
+      </div>
+
+      <div class="invoices-table-wrap">
+        <div class="invoices-table-head" aria-hidden="true">
+          <span>Factura</span><span>Cliente</span><span>Venta</span><span>Estado</span><span>Total</span><span>Saldo</span><span>Acciones</span>
+        </div>
+        <div id="invoiceList" class="invoices-list" aria-live="polite">
+          <div class="invoices-loading" role="status"><span class="invoices-spinner" aria-hidden="true"></span>Consultando facturas…</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="invoiceModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="invoiceTitle" aria-hidden="true">
+    <div class="dialog invoice-form-dialog">
+      <div class="dialog-head">
+        <div><span class="invoices-dialog-kicker">Plan financiero</span><h2 id="invoiceTitle">Nueva factura de cobro</h2><div class="muted">Selecciona la venta y las cantidades a facturar. Esta factura financiera es independiente de los documentos aduanales del contenedor.</div></div>
+        <button class="btn invoices-close-button" type="button" data-close="invoice" aria-label="Cerrar formulario de factura">✕</button>
+      </div>
+
+      <section class="invoice-form-section" aria-labelledby="invoiceGeneralTitle">
+        <div class="invoice-form-section-head"><span class="invoice-form-step">1</span><div><h3 id="invoiceGeneralTitle">Información general</h3><p>Venta de origen, fecha de emisión prevista y vencimiento.</p></div></div>
+        <div class="grid3">
+          <div><label for="iSalesOrder">Venta *</label><select id="iSalesOrder"></select></div>
+          <div><label for="iIssueDate">Fecha de factura</label><input id="iIssueDate" type="date"></div>
+          <div><label for="iDueDate">Fecha de vencimiento</label><input id="iDueDate" type="date"></div>
+        </div>
+        <label for="iNotes">Notas</label><textarea id="iNotes" placeholder="Condiciones o referencia interna opcional"></textarea>
+      </section>
+
+      <section class="invoice-form-section" aria-labelledby="invoiceLinesTitle">
+        <div class="invoice-form-section-head"><span class="invoice-form-step">2</span><div><h3 id="invoiceLinesTitle">Líneas a facturar</h3><p>Solo se muestran cantidades todavía disponibles dentro de la venta.</p></div></div>
+        <div id="invoiceLines" class="detail-items invoice-lines"></div>
+      </section>
+
+      <div class="actions invoice-modal-actions"><button class="btn" type="button" data-close="invoice">Cancelar</button><button id="saveInvoice" class="btn orange" type="button">Guardar borrador</button></div>
+      <div id="invoiceMsg" class="msg invoice-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="detailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailTitle" aria-hidden="true">
+    <div class="dialog invoice-detail-dialog">
+      <div class="dialog-head"><div><span class="invoices-dialog-kicker">Cuenta por cobrar</span><h2 id="detailTitle">Detalle de factura</h2><div id="detailSubtitle" class="muted"></div></div><button class="btn invoices-close-button" type="button" data-close="detail" aria-label="Cerrar detalle de factura">✕</button></div>
+      <div id="detailBody"></div>
+      <div id="detailActions" class="actions invoice-modal-actions"></div>
+      <div id="detailMsg" class="msg invoice-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="paymentModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="paymentTitle" aria-hidden="true">
+    <div class="dialog compact invoice-payment-dialog">
+      <div class="dialog-head"><div><span class="invoices-dialog-kicker">Dinero recibido</span><h2 id="paymentTitle">Registrar cobro</h2><div id="paymentSubtitle" class="muted"></div></div><button class="btn invoices-close-button" type="button" data-close="payment" aria-label="Cerrar formulario de cobro">✕</button></div>
+      <div class="grid">
+        <div><label for="pAmount">Monto *</label><input id="pAmount" type="number" min="0" step="0.01" inputmode="decimal"></div>
+        <div><label for="pDate">Fecha del cobro</label><input id="pDate" type="date"></div>
+      </div>
+      <div class="grid">
+        <div><label for="pMethod">Método</label><select id="pMethod"><option value="wire">Wire</option><option value="ach">ACH</option><option value="check">Check</option><option value="cash">Efectivo</option><option value="other">Otro</option></select></div>
+        <div><label for="pReference">Referencia</label><input id="pReference" placeholder="Wire, ACH, cheque, etc."></div>
+      </div>
+      <label for="pNotes">Notas</label><textarea id="pNotes" placeholder="Detalle opcional del cobro"></textarea>
+      <div class="actions invoice-modal-actions"><button class="btn" type="button" data-close="payment">Cancelar</button><button id="savePayment" class="btn orange" type="button">Registrar cobro</button></div>
+      <div id="paymentMsg" class="msg invoice-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="decisionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="decisionTitle" aria-describedby="decisionCopy" aria-hidden="true">
+    <div class="dialog compact invoice-decision-dialog">
+      <span class="invoices-dialog-kicker">Confirmación financiera</span>
+      <h2 id="decisionTitle">Confirmar acción</h2>
+      <p id="decisionCopy" class="invoice-decision-copy"></p>
+      <div id="decisionReasonWrap" class="hidden"><label for="decisionReason">Motivo</label><textarea id="decisionReason" placeholder="Motivo del reverso"></textarea></div>
+      <div class="actions invoice-modal-actions invoice-decision-actions"><button class="btn" type="button" data-close="decision">Volver</button><button id="decisionAccept" class="btn orange" type="button">Continuar</button></div>
+      <div id="decisionMsg" class="msg invoice-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <script src="/admin/invoices.js?v=20260903-ux7invoices1" defer></script>
+  <script src="/admin/embedded-auto-refresh.js?v=20260903-ux7invoices1" defer></script>
 </body>
 </html>

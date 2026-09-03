@@ -54,7 +54,7 @@ requireText(invoicesApi,'write_access:invoiceData.write_access','Invoices API');
 requireText(ui,'const capability=(entity,key)','Invoices UI');
 requireText(ui,'const can=(entity,key)','Invoices UI');
 requireText(ui,'const canPayment=(payment,key)','Invoices UI');
-for(const token of ["can(invoice,'record_payment')","can(invoice,'edit')","can(invoice,'issue')","can(invoice,'void')","canPayment(payment,'reverse')","$('newInvoice').hidden=!state.writeAccess"]){requireText(ui,token,'Invoices UI');}
+for(const token of ["can(invoice, 'record_payment')","can(invoice, 'edit')","can(invoice, 'issue')","can(invoice, 'void')","canPayment(payment, 'reverse')","$('newInvoice').hidden=!state.writeAccess"]){requireText(ui,token,'Invoices UI');}
 forbidText(ui,"invoice.status==='issued'&&num(f.balance_due)>0",'Invoices UI');
 forbidText(ui,"if(invoice.status==='draft')actions.push",'Invoices UI');
 forbidText(ui,"if(invoice.status==='draft'||invoice.status==='issued')",'Invoices UI');

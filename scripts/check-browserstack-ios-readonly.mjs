@@ -13,6 +13,7 @@ const requiredTestContracts = [
   "openSection(page, 'containersSection')",
   "openSection(page, 'registerContainerSection')",
   "openSection(page, 'publicationsSection')",
+  "openSection(page, 'invoicesSection')",
   "openSection(page, 'costsSection')",
   "detailAction = actualActions.includes('info')",
   'submitted: false',
@@ -20,11 +21,17 @@ const requiredTestContracts = [
   'scrollWidth !== geometry.clientWidth',
   "getAttribute('class')",
   'inputValue()',
-  'frame.contentDocument'
+  'frame.contentDocument',
+  'invoices-form-iphone-safari',
+  'owner: doc?.body?.dataset?.owner',
+  'INVOICES_UI_FAILED'
 ];
 
 const forbiddenInteractionPatterns = [
   /locator\(['"]#saveShipment['"]\)\.click\(/,
+  /locator\(['"]#saveInvoice['"]\)\.click\(/,
+  /getElementById\(['"]saveInvoice['"]\)\?*\.click\(/,
+  /locator\(['"]#savePayment['"]\)\.click\(/,
   /locator\(['"]#saveBtn['"]\)\.click\(/,
   /locator\(['"]#newCharge['"]\)\.click\(/,
   /data-container-action=["'](?:edit|assign_client|manual_update|release|deliver|reactivate|delete)/,
@@ -43,9 +50,17 @@ const requiredWorkflowSecrets = [
   'ERP_E2E_PASSWORD'
 ];
 const missingSecrets = requiredWorkflowSecrets.filter(secret => !workflowSource.includes(`secrets.${secret}`));
+const requiredWorkflowContracts = [
+  'push:',
+  "github.event_name == 'push'",
+  'Wait for the matching production deployment',
+  'github.rest.repos.listDeployments',
+  'github.rest.repos.listDeploymentStatuses'
+];
+const missingWorkflowContracts = requiredWorkflowContracts.filter(contract => !workflowSource.includes(contract));
 
-if (missing.length || forbidden.length || missingSecrets.length) {
-  console.error(JSON.stringify({ missing, forbidden: forbidden.map(String), missingSecrets }, null, 2));
+if (missing.length || forbidden.length || missingSecrets.length || missingWorkflowContracts.length) {
+  console.error(JSON.stringify({ missing, forbidden: forbidden.map(String), missingSecrets, missingWorkflowContracts }, null, 2));
   process.exit(1);
 }
 

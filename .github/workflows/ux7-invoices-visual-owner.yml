@@ -1,25 +1,25 @@
-name: UX6 Invoices Presentation
+name: UX7 Invoices Visual Owner
 
 on:
   pull_request:
     paths:
-      - 'admin/invoices.css'
       - 'admin/invoices.html'
+      - 'admin/invoices.css'
       - 'admin/invoices.js'
       - 'admin/embedded-auto-refresh.js'
       - 'admin/operational-navigation.js'
       - 'admin/operational-context-bridge.js'
       - 'api/invoices.js'
       - 'api/invoice-payments.js'
-      - 'scripts/check-ux5-invoice-actions.mjs'
-      - 'scripts/check-ux6-invoices-presentation.mjs'
       - 'scripts/check-ux7-invoices-visual-owner.mjs'
+      - 'scripts/check-ux6-invoices-presentation.mjs'
+      - 'scripts/check-ux5-invoice-actions.mjs'
       - 'scripts/check-contextual-sync.mjs'
-      - '.github/workflows/ux6-invoices-presentation.yml'
+      - '.github/workflows/ux7-invoices-visual-owner.yml'
   workflow_dispatch:
 
 jobs:
-  validate-invoices-presentation:
+  validate-invoices-visual-owner:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,12 +28,11 @@ jobs:
           node-version: '24'
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Validate Invoices UX-6 owner
+      - name: Validate Facturación UX-7 owner
         run: |
-          node scripts/check-ux6-invoices-presentation.mjs
           node scripts/check-ux7-invoices-visual-owner.mjs
-      - name: Validate canonical Invoice actions
-        run: node scripts/check-ux5-invoice-actions.mjs
+          node scripts/check-ux6-invoices-presentation.mjs
+          node scripts/check-ux5-invoice-actions.mjs
       - name: Validate Customer Finance ownership
         run: |
           node scripts/check-sales-customer-finance.mjs
@@ -41,14 +40,14 @@ jobs:
       - name: Validate JavaScript syntax
         run: |
           node --check admin/invoices.js
-          node --check api/invoices.js
-          node --check api/invoice-payments.js
-          node --check scripts/check-ux5-invoice-actions.mjs
-          node --check scripts/check-ux6-invoices-presentation.mjs
-          node --check scripts/check-ux7-invoices-visual-owner.mjs
-          node --check scripts/check-contextual-sync.mjs
           node --check admin/operational-navigation.js
           node --check admin/operational-context-bridge.js
+          node --check api/invoices.js
+          node --check api/invoice-payments.js
+          node --check scripts/check-ux7-invoices-visual-owner.mjs
+          node --check scripts/check-ux6-invoices-presentation.mjs
+          node --check scripts/check-ux5-invoice-actions.mjs
+          node --check scripts/check-contextual-sync.mjs
       - name: Validate API runtime imports
         run: node --input-type=module -e "await Promise.all([import('./api/_invoice-actions.js'),import('./api/invoices.js'),import('./api/invoice-payments.js')]); console.log('Invoice API runtime imports OK')"
       - name: Validate frontend ownership

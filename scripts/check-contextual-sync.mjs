@@ -8,7 +8,8 @@ const requiredFiles=[
   'admin/operational-navigation.js',
   'admin/operational-context-bridge.js',
   'admin/tasks-navigation.js',
-  'api/operational-links.js'
+  'api/operational-links.js',
+  'admin/invoices.js'
 ];
 for(const file of requiredFiles)if(!fs.existsSync(path.join(root,file)))failures.push(`${file}: falta archivo P6`);
 
@@ -17,6 +18,7 @@ if(requiredFiles.every(file=>fs.existsSync(path.join(root,file)))){
   const bridge=read(requiredFiles[1]);
   const taskNav=read(requiredFiles[2]);
   const api=read(requiredFiles[3]);
+  const invoiceOwner=read(requiredFiles[4]);
 
   for(const required of [
     'const WORKFLOW_ACCESS=',
@@ -42,8 +44,6 @@ if(requiredFiles.every(file=>fs.existsSync(path.join(root,file)))){
   for(const required of [
     'openOperationalPurchaseReceipt',
     'openOperationalSalesSupply',
-    'openOperationalInvoiceCollection',
-    'openOperationalInvoiceForSalesOrder',
     'openOperationalSupplierBill',
     'direct_shipments',
     'Contenedores / Tracking'
@@ -55,6 +55,23 @@ if(requiredFiles.every(file=>fs.existsSync(path.join(root,file)))){
   if(bridge.includes('/admin/loads.html'))failures.push('operational-context-bridge.js: todavía se activa dentro de Cargues');
   if(!nav.includes("callEmbedded('loadsSection','LoadsModule.openLoad'"))failures.push('operational-navigation.js: Cargues no delega al owner canónico LoadsModule');
   if(/CONTEXT_SECTIONS[^;]*loadsSection/.test(nav))failures.push('operational-navigation.js: Cargues sigue incluido en el bridge compartido');
+  if(/function initInvoices\s*\(/.test(bridge))failures.push('operational-context-bridge.js: conserva un segundo owner de Facturación');
+  if(bridge.includes('/admin/invoices.html'))failures.push('operational-context-bridge.js: todavía se activa dentro de Facturación');
+  if(/CONTEXT_SECTIONS[^;]*invoicesSection/.test(nav))failures.push('operational-navigation.js: Facturación sigue incluida en el bridge compartido');
+  for(const required of [
+    "callEmbedded('invoicesSection','InvoicesModule.openInvoice'",
+    "callEmbedded('invoicesSection','InvoicesModule.openCollection'",
+    "callEmbedded('invoicesSection','InvoicesModule.openForSalesOrder'"
+  ]) if(!nav.includes(required))failures.push(`operational-navigation.js: Facturación no delega al owner canónico ${required}`);
+  for(const required of [
+    'window.InvoicesModule = Object.freeze({',
+    'openInvoice,',
+    'openCollection,',
+    'openForSalesOrder',
+    'window.openOperationalInvoice = openInvoice;',
+    'window.openOperationalInvoiceCollection = openCollection;',
+    'window.openOperationalInvoiceForSalesOrder = openForSalesOrder;'
+  ]) if(!invoiceOwner.includes(required))failures.push(`admin/invoices.js: falta navegación canónica ${required}`);
 
   for(const required of ['Abrir trabajo','OperationalNavigation','openWork','stopImmediatePropagation','tasksModalActions']){
     if(!taskNav.includes(required))failures.push(`tasks-navigation.js: falta ${required}`);

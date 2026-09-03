@@ -37,7 +37,7 @@ for(const [module,file] of Object.entries(modules)){
   const html=read(file);
   const count=html.split(foundationRef).length-1;
   if(count!==1)failures.push(`${file} debe cargar una sola vez ${foundationRef}; encontró ${count}`);
-  requireText(html,`<body class="erp-module-page erp-module-${module}">`,`${module}: scope visual del body`);
+  requireText(html,`<body class="erp-module-page erp-module-${module}"`,`${module}: scope visual del body`);
   requireText(html,'module-hero',`${module}: cabecera compartida`);
   requireText(html,'module-kicker',`${module}: jerarquía contextual`);
 

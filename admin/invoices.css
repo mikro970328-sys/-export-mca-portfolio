@@ -1,135 +1,981 @@
+.erp-module-page.erp-module-invoices {
+  --invoices-hero:#0b1d36;
+  --invoices-action:#c4510b;
+  --invoices-action-hover:#a63f06;
+  --invoices-line:#dce4ee;
+  overflow-x:hidden;
+}
+
+.erp-module-invoices [hidden],
 .erp-module-invoices .hidden {
   display:none;
 }
 
-.erp-module-invoices .orders > .row {
+.erp-module-invoices.modal-open {
+  overflow:hidden;
+}
+
+.erp-module-invoices .invoices-shell {
+  min-width:0;
+  padding-bottom:30px;
+}
+
+.erp-module-invoices .invoices-page-head {
+  isolation:isolate;
+  align-items:center;
+  min-height:194px;
+  border:0;
+  padding:30px 32px;
+  background:var(--invoices-hero);
+  box-shadow:0 20px 48px rgba(9,24,46,.18);
+}
+
+.erp-module-invoices .invoices-page-head::before {
+  width:5px;
+  background:var(--orange);
+}
+
+.erp-module-invoices .invoices-page-head::after {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  right:-80px;
+  bottom:-126px;
+  width:320px;
+  height:320px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:50%;
+}
+
+.erp-module-invoices .invoices-page-heading {
+  max-width:760px;
+}
+
+.erp-module-invoices .invoices-page-kicker {
+  color:#ffb27d;
+}
+
+.erp-module-invoices .invoices-page-head h1 {
+  color:#fff;
+  font-size:clamp(30px,4vw,42px);
+}
+
+.erp-module-invoices .invoices-page-head p {
+  max-width:710px;
+  color:#cbd7e6;
+  font-size:14px;
+}
+
+.invoices-hero-actions {
+  display:flex;
+  min-width:260px;
+  align-items:stretch;
+  flex-direction:column;
+  gap:10px;
+}
+
+.invoices-hero-state {
+  display:flex;
+  min-height:58px;
+  align-items:center;
+  gap:11px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:13px;
+  padding:11px 14px;
+  background:rgba(255,255,255,.08);
+  color:#fff;
+}
+
+.invoices-hero-state strong,
+.invoices-hero-state span:not(.invoices-live-dot) {
+  display:block;
+}
+
+.invoices-hero-state strong {
+  font-size:12px;
+}
+
+.invoices-hero-state span:not(.invoices-live-dot) {
+  margin-top:2px;
+  color:#cbd7e6;
+  font-size:10px;
+}
+
+.invoices-live-dot {
+  width:9px;
+  height:9px;
+  flex:0 0 auto;
+  border:2px solid rgba(255,255,255,.45);
+  border-radius:50%;
+  background:#39c37a;
+  box-shadow:0 0 0 5px rgba(57,195,122,.13);
+}
+
+.erp-module-page.erp-module-invoices .btn.invoices-primary-action {
+  width:100%;
+  min-height:44px;
+  border-color:var(--invoices-action);
+  padding-inline:20px;
+  background:var(--invoices-action);
+  box-shadow:0 12px 26px rgba(0,0,0,.2);
+}
+
+.erp-module-page.erp-module-invoices .btn.invoices-primary-action:not(:disabled):hover {
+  border-color:var(--invoices-action-hover);
+  background:var(--invoices-action-hover);
+  color:#fff;
+}
+
+.invoice-feedback {
+  min-height:0;
+  margin:0 0 14px;
+  border-radius:12px;
+  color:var(--muted-strong);
+  font-size:12px;
+}
+
+.invoice-feedback:not(:empty) {
+  min-height:42px;
+  border:1px solid #cfe0f5;
+  padding:11px 14px;
+  background:var(--info-soft);
+}
+
+.invoice-feedback.ok:not(:empty) {
+  border-color:#bde5cf;
+  background:var(--ok-soft);
+  color:var(--ok);
+}
+
+.invoice-feedback.bad:not(:empty) {
+  border-color:#efc0bc;
+  background:var(--bad-soft);
+  color:var(--bad);
+}
+
+.invoices-readonly {
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  margin:0 0 14px;
+  border:1px solid #cfe0f5;
+  border-radius:12px;
+  padding:12px 14px;
+  background:var(--info-soft);
+  color:#31516f;
+  font-size:12px;
+}
+
+.invoices-readonly-icon {
   display:grid;
-  grid-template-columns:110px minmax(180px,1.2fr) 120px 135px 150px 130px auto;
+  width:22px;
+  height:22px;
+  flex:0 0 22px;
+  place-items:center;
+  border-radius:50%;
+  background:#d7e9ff;
+  color:var(--info);
+  font-size:11px;
+  font-weight:900;
+}
+
+.erp-module-invoices .invoices-metrics {
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:18px;
+}
+
+.erp-module-invoices .invoices-metrics .metric {
+  position:relative;
+  min-height:104px;
+  overflow:hidden;
+  padding:17px 18px 15px 21px;
+}
+
+.erp-module-invoices .invoices-metrics .metric::before {
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:4px;
+  background:#aebbd0;
+}
+
+.erp-module-invoices .invoices-metrics .invoice-metric-draft::before {
+  background:#8a98aa;
+}
+
+.erp-module-invoices .invoices-metrics .invoice-metric-paid::before {
+  background:var(--ok);
+}
+
+.erp-module-invoices .invoices-metrics .invoice-metric-overdue::before {
+  background:var(--bad);
+}
+
+.erp-module-invoices .invoices-metrics .invoice-metric-receivable::before {
+  background:var(--orange);
+}
+
+.erp-module-invoices .invoices-metrics .metric b {
+  margin-top:8px;
+  overflow-wrap:anywhere;
+  font-size:24px;
+}
+
+.erp-module-invoices .invoices-metrics .metric small {
+  display:block;
+  margin-top:4px;
+  color:var(--muted);
+  font-size:10px;
+}
+
+.erp-module-invoices .invoices-list-panel {
+  min-width:0;
+  overflow:hidden;
+  border-radius:var(--radius-lg);
+  box-shadow:0 12px 32px rgba(16,35,63,.07);
+}
+
+.invoices-panel-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  border-bottom:1px solid var(--line);
+  padding:20px 22px 18px;
+  background:var(--surface);
+}
+
+.invoices-panel-head h2 {
+  margin:3px 0 0;
+  color:var(--navy-strong);
+  font-size:20px;
+  letter-spacing:-.025em;
+}
+
+.invoices-panel-head p {
+  margin:5px 0 0;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.invoices-eyebrow,
+.invoices-dialog-kicker {
+  display:block;
+  color:#b54708;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.invoices-result-count {
+  display:inline-flex;
+  min-height:29px;
+  flex:0 0 auto;
+  align-items:center;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:5px 10px;
+  background:var(--surface-soft);
+  color:var(--muted-strong);
+  font-size:10px;
+  font-weight:800;
+}
+
+.invoices-list-toolbar {
+  display:grid;
+  grid-template-columns:minmax(230px,1fr) auto auto 40px;
   gap:10px;
   align-items:center;
   border-bottom:1px solid var(--line);
-  padding:13px 4px;
+  padding:14px 16px;
+  background:var(--surface-soft);
 }
 
-.erp-module-invoices .orders > .row:last-child {
+.invoices-search-field {
+  position:relative;
+  min-width:0;
+  margin:0;
+}
+
+.invoices-search-field .search {
+  max-width:none;
+  margin:0;
+  padding-left:38px;
+  background:#fff;
+}
+
+.invoices-search-icon {
+  position:absolute;
+  z-index:1;
+  top:50%;
+  left:13px;
+  color:var(--muted);
+  font-size:16px;
+  transform:translateY(-50%);
+  pointer-events:none;
+}
+
+.invoices-visually-hidden,
+.invoice-cell-label {
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  clip-path:inset(50%);
+  white-space:nowrap;
+}
+
+.erp-module-invoices .invoices-view-tabs {
+  min-width:max-content;
+}
+
+.erp-module-invoices .invoices-view-tabs .active {
+  border-color:var(--navy);
+  background:var(--navy);
+  color:#fff;
+}
+
+.erp-module-invoices .invoices-view-tabs .active:hover {
+  border-color:var(--navy-soft);
+  background:var(--navy-soft);
+  color:#fff;
+}
+
+.erp-module-invoices .invoices-clear {
+  min-height:40px;
+}
+
+.erp-module-invoices .invoices-refresh {
+  display:inline-grid;
+  width:40px;
+  min-width:40px;
+  height:40px;
+  min-height:40px;
+  place-items:center;
+  padding:0;
+  font-size:17px;
+}
+
+.invoices-table-wrap {
+  min-width:0;
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+  background:#fff;
+  scrollbar-color:#b9c5d4 transparent;
+}
+
+.invoices-table-head,
+.invoice-row {
+  display:grid;
+  grid-template-columns:minmax(126px,.85fr) minmax(190px,1.3fr) minmax(130px,.85fr) minmax(120px,.8fr) minmax(140px,.9fr) minmax(140px,.9fr) minmax(190px,1.25fr);
+  min-width:1160px;
+  gap:14px;
+  align-items:center;
+}
+
+.invoices-table-head {
+  position:sticky;
+  top:0;
+  z-index:2;
+  border-bottom:1px solid var(--line);
+  padding:11px 16px;
+  background:#f3f6fa;
+  color:var(--muted-strong);
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.065em;
+  text-transform:uppercase;
+}
+
+.invoices-list {
+  min-width:1160px;
+}
+
+.invoice-row {
+  border-bottom:1px solid var(--invoices-line);
+  padding:14px 16px;
+  background:#fff;
+  transition:background .15s ease;
+}
+
+.invoice-row:last-child {
   border-bottom:0;
 }
 
-.erp-module-invoices .po {
-  color:var(--navy);
-  font-weight:850;
+.invoice-row:hover {
+  background:#fbfcfe;
 }
 
-.erp-module-invoices .small {
-  margin-top:3px;
+.invoice-cell {
+  min-width:0;
+}
+
+.invoice-number {
+  overflow:hidden;
+  color:var(--navy-strong);
+  font-size:14px;
+  font-weight:850;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.invoice-cell-main {
+  display:block;
+  overflow:hidden;
+  color:var(--text);
+  font-size:12px;
+  font-weight:780;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.invoice-cell-sub {
+  display:block;
+  margin-top:4px;
+  overflow:hidden;
   color:var(--muted);
   font-size:10px;
-  line-height:1.45;
+  line-height:1.35;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
-.erp-module-invoices .line {
-  margin-top:9px;
-  padding:11px;
+.invoice-money {
+  color:var(--navy-strong);
+  font-size:12px;
+  font-variant-numeric:tabular-nums;
+  font-weight:800;
 }
 
-.erp-module-invoices .line-title {
+.invoice-money.balance {
+  color:#9a3e08;
+}
+
+.invoice-row-actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:wrap;
+}
+
+.erp-module-page.erp-module-invoices .invoice-row-actions .btn {
+  min-height:34px;
+  padding:7px 9px;
+  font-size:10px;
+}
+
+.invoices-loading,
+.invoices-empty {
+  display:flex;
+  min-height:170px;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:32px;
+  color:var(--muted);
+  font-size:12px;
+  text-align:center;
+}
+
+.invoices-empty {
+  flex-direction:column;
+}
+
+.invoices-empty strong {
   color:var(--navy);
+  font-size:14px;
+}
+
+.invoices-empty span {
+  max-width:470px;
+}
+
+.invoices-spinner {
+  width:19px;
+  height:19px;
+  border:2px solid #d7dfe9;
+  border-top-color:var(--orange);
+  border-radius:50%;
+  animation:invoice-spin .75s linear infinite;
+}
+
+@keyframes invoice-spin {
+  to { transform:rotate(360deg); }
+}
+
+.erp-module-invoices .dialog {
+  overscroll-behavior:contain;
+}
+
+.erp-module-invoices .dialog-head {
+  align-items:flex-start;
+  flex-wrap:nowrap;
+}
+
+.erp-module-invoices .dialog-head > div {
+  min-width:0;
+}
+
+.erp-module-invoices .dialog-head .muted {
+  max-width:780px;
+  margin-top:5px;
+}
+
+.erp-module-page.erp-module-invoices .invoices-close-button {
+  display:grid;
+  width:38px;
+  min-width:38px;
+  height:38px;
+  min-height:38px;
+  flex:0 0 38px;
+  place-items:center;
+  padding:0;
+  font-size:15px;
+}
+
+.invoice-form-dialog {
+  width:min(1040px,100%);
+}
+
+.invoice-form-section {
+  margin-top:15px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  padding:17px;
+  background:#fbfcfe;
+}
+
+.invoice-form-section:first-of-type {
+  margin-top:0;
+}
+
+.invoice-form-section-head {
+  display:flex;
+  align-items:flex-start;
+  gap:11px;
+  margin-bottom:12px;
+}
+
+.invoice-form-section-head h3 {
+  margin:0;
+  color:var(--navy-strong);
+  font-size:15px;
+}
+
+.invoice-form-section-head p {
+  margin:3px 0 0;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.invoice-form-step {
+  display:grid;
+  width:27px;
+  height:27px;
+  flex:0 0 27px;
+  place-items:center;
+  border-radius:9px;
+  background:var(--orange-soft);
+  color:var(--orange-strong);
+  font-size:11px;
+  font-weight:900;
+}
+
+.invoice-lines {
+  display:grid;
+  gap:10px;
+  margin-top:0;
+}
+
+.invoice-line {
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:14px;
+  background:#fff;
+}
+
+.invoice-line-title {
+  color:var(--navy-strong);
   font-size:12px;
   font-weight:850;
 }
 
-.erp-module-invoices .summary {
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:8px;
-  margin:12px 0;
-}
-
-.erp-module-invoices .summary > div {
-  border:1px solid var(--line);
-  border-radius:9px;
-  padding:9px;
-  background:var(--surface-soft);
-}
-
-.erp-module-invoices .summary b {
-  display:block;
-  margin-bottom:4px;
+.invoice-line-meta {
+  margin-top:4px;
   color:var(--muted);
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:.04em;
-  text-transform:uppercase;
-}
-
-.erp-module-invoices .detail-items {
-  margin-top:12px;
-}
-
-.erp-module-invoices .detail-item {
-  border-top:1px solid var(--line);
-  padding:10px 0;
-}
-
-.erp-module-invoices .detail-item:first-child {
-  border-top:0;
-}
-
-.invoice-lines-toolbar {
-  padding:12px 0 0;
-  border:0;
+  font-size:10px;
 }
 
 .invoice-modal-actions {
   justify-content:flex-end;
-  margin-top:14px;
+  margin-top:16px;
 }
 
-.invoice-count {
-  margin-top:12px;
+.invoice-dialog-message {
+  margin-top:10px;
+  text-align:right;
+}
+
+.invoice-detail-summary {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-bottom:17px;
+}
+
+.invoice-detail-summary > article {
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:13px;
+  background:var(--surface-soft);
+}
+
+.invoice-detail-summary span {
+  display:block;
+  color:var(--muted);
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+}
+
+.invoice-detail-summary strong {
+  display:block;
+  margin-top:5px;
+  overflow-wrap:anywhere;
+  color:var(--navy-strong);
+  font-size:14px;
+}
+
+.invoice-detail-section {
+  margin-top:14px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  overflow:hidden;
+}
+
+.invoice-detail-section-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  border-bottom:1px solid var(--line);
+  padding:11px 14px;
+  background:var(--surface-soft);
+}
+
+.invoice-detail-section-head h3 {
+  margin:0;
+  color:var(--navy);
+  font-size:13px;
+}
+
+.invoice-detail-section-head span {
+  color:var(--muted);
+  font-size:10px;
+}
+
+.invoice-detail-items {
+  padding:0 14px;
+}
+
+.invoice-detail-item {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  border-bottom:1px solid var(--line);
+  padding:13px 0;
+}
+
+.invoice-detail-item:last-child {
+  border-bottom:0;
+}
+
+.invoice-detail-item > div:first-child {
+  min-width:0;
+}
+
+.invoice-detail-item-title {
+  color:var(--navy-strong);
+  font-size:12px;
+  font-weight:800;
+}
+
+.invoice-detail-item-meta {
+  margin-top:3px;
+  color:var(--muted);
+  font-size:10px;
+}
+
+.invoice-detail-item-value {
+  flex:0 0 auto;
+  color:var(--navy-strong);
+  font-size:12px;
+  font-variant-numeric:tabular-nums;
   font-weight:800;
   text-align:right;
 }
 
-.invoice-count.is-empty {
-  margin-top:10px;
-  font-weight:400;
+.invoice-payment-actions {
+  display:flex;
+  align-items:flex-end;
+  flex-direction:column;
+  gap:7px;
 }
 
-@media(max-width:980px) {
-  .erp-module-invoices .orders > .row {
-    grid-template-columns:100px 1fr 120px 130px;
+.invoice-notes {
+  margin-top:14px;
+  border-left:4px solid #d5dde8;
+  border-radius:10px;
+  padding:12px 14px;
+  background:var(--surface-soft);
+  color:var(--muted-strong);
+  font-size:11px;
+  white-space:pre-wrap;
+}
+
+.invoice-decision-dialog {
+  width:min(560px,100%);
+}
+
+.invoice-decision-dialog h2 {
+  margin-top:5px;
+}
+
+.invoice-decision-copy {
+  margin:9px 0 0;
+  color:var(--muted-strong);
+  font-size:12px;
+  line-height:1.55;
+}
+
+.invoice-decision-actions {
+  border-top:1px solid var(--line);
+  padding-top:15px;
+}
+
+@media(max-width:1180px) {
+  .erp-module-invoices .invoices-metrics {
+    grid-template-columns:repeat(3,minmax(0,1fr));
   }
 
-  .erp-module-invoices .orders > .row > div:nth-child(5),
-  .erp-module-invoices .orders > .row > div:nth-child(6) {
-    grid-row:2;
+  .invoices-list-toolbar {
+    grid-template-columns:minmax(220px,1fr) auto 40px;
   }
 
-  .erp-module-invoices .orders > .row > .actions {
-    grid-column:4;
-    grid-row:1 / 3;
+  .invoices-clear {
+    display:none;
   }
 }
 
-@media(max-width:650px) {
-  .erp-module-invoices .orders > .row {
-    grid-template-columns:1fr auto;
-  }
-
-  .erp-module-invoices .orders > .row > div {
-    grid-column:1;
-    grid-row:auto;
-  }
-
-  .erp-module-invoices .orders > .row > .actions {
-    grid-column:2;
-    grid-row:1 / 7;
-    align-self:start;
+@media(max-width:900px) {
+  .erp-module-invoices .invoices-page-head {
+    align-items:stretch;
     flex-direction:column;
   }
 
-  .erp-module-invoices .summary {
+  .invoices-hero-actions {
+    min-width:0;
+    flex-direction:row;
+  }
+
+  .invoices-hero-state,
+  .erp-module-page.erp-module-invoices .btn.invoices-primary-action {
+    flex:1;
+  }
+
+  .invoices-list-toolbar {
+    grid-template-columns:1fr 40px;
+  }
+
+  .invoices-view-tabs {
+    grid-column:1 / -1;
+    grid-row:2;
+    overflow-x:auto;
+  }
+}
+
+@media(max-width:720px) {
+  .erp-module-invoices .invoices-page-head {
+    min-height:0;
+    padding:22px 20px;
+  }
+
+  .erp-module-invoices .invoices-page-head::after {
+    right:-120px;
+    bottom:-170px;
+  }
+
+  .invoices-hero-actions {
+    flex-direction:column;
+  }
+
+  .erp-module-invoices .invoices-metrics {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .erp-module-invoices .invoices-metrics .invoice-metric-receivable {
+    grid-column:1 / -1;
+  }
+
+  .invoices-panel-head {
+    align-items:flex-start;
+    flex-direction:column;
+    padding:18px 16px 15px;
+  }
+
+  .invoices-list-toolbar {
+    display:grid;
+    grid-template-columns:1fr 40px;
+    padding:12px;
+  }
+
+  .invoices-table-wrap {
+    overflow-x:visible;
+    padding:12px;
+    background:#f7f9fc;
+  }
+
+  .invoices-table-head {
+    display:none;
+  }
+
+  .invoices-list {
+    display:grid;
+    min-width:0;
+    gap:10px;
+  }
+
+  .invoice-row {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    min-width:0;
+    gap:13px 15px;
+    border:1px solid var(--invoices-line);
+    border-radius:13px;
+    padding:15px;
+    box-shadow:var(--shadow-xs);
+  }
+
+  .invoice-row:last-child {
+    border-bottom:1px solid var(--invoices-line);
+  }
+
+  .invoice-cell-label {
+    position:static;
+    display:block;
+    width:auto;
+    height:auto;
+    margin-bottom:4px;
+    overflow:visible;
+    clip:auto;
+    clip-path:none;
+    color:var(--muted);
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.055em;
+    text-transform:uppercase;
+    white-space:normal;
+  }
+
+  .invoice-row-actions {
+    grid-column:1 / -1;
+    justify-content:flex-start;
+    border-top:1px solid var(--line);
+    padding-top:12px;
+  }
+
+  .invoice-detail-summary {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .invoice-form-section {
+    padding:14px;
+  }
+}
+
+@media(max-width:560px) {
+  .erp-module-invoices .invoices-page-head h1 {
+    font-size:28px;
+  }
+
+  .erp-module-invoices .invoices-metrics .metric {
+    min-height:96px;
+    padding:14px 14px 13px 17px;
+  }
+
+  .erp-module-invoices .invoices-metrics .metric b {
+    font-size:20px;
+  }
+
+  .invoices-list-toolbar {
+    grid-template-columns:minmax(0,1fr) 40px;
+  }
+
+  .invoices-view-tabs {
+    width:100%;
+  }
+
+  .invoice-row {
     grid-template-columns:1fr;
+  }
+
+  .invoice-row-actions {
+    grid-column:1;
+  }
+
+  .erp-module-page.erp-module-invoices .invoice-row-actions .btn {
+    flex:1 1 calc(50% - 6px);
+  }
+
+  .invoice-detail-summary {
+    grid-template-columns:1fr;
+  }
+
+  .invoice-detail-item {
+    flex-direction:column;
+  }
+
+  .invoice-detail-item-value,
+  .invoice-payment-actions {
+    align-items:flex-start;
+    text-align:left;
+  }
+
+  .invoice-modal-actions > button {
+    flex:1;
+  }
+}
+
+@media(max-width:390px) {
+  .erp-module-invoices .invoices-metrics {
+    grid-template-columns:1fr;
+  }
+
+  .erp-module-invoices .invoices-metrics .invoice-metric-receivable {
+    grid-column:auto;
+  }
+
+  .invoices-hero-state {
+    padding-inline:12px;
+  }
+
+  .erp-module-page.erp-module-invoices .invoice-row-actions .btn {
+    flex-basis:100%;
+  }
+}
+
+@media(prefers-reduced-motion:reduce) {
+  .erp-module-invoices .invoices-spinner {
+    animation-duration:.01ms;
+    animation-iteration-count:1;
+  }
+
+  .erp-module-invoices .invoice-row {
+    transition:none;
   }
 }
