@@ -1,0 +1,75 @@
+name: BrowserStack iOS UX-7 Certification
+
+on:
+  pull_request:
+    paths:
+      - 'e2e/browserstack/**'
+      - 'scripts/check-browserstack-ios-readonly.mjs'
+      - '.github/workflows/browserstack-ios-certification.yml'
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: Public ERP URL to certify
+        required: true
+        default: https://admin.exportmca.com
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browserstack-ios-ux7-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  readonly-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: e2e/browserstack/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: e2e/browserstack
+      - name: Verify the no-write test contract
+        run: node scripts/check-browserstack-ios-readonly.mjs
+      - name: Validate Playwright configuration and discover the certification test
+        run: npm run test:list
+        working-directory: e2e/browserstack
+
+  iphone-safari:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: readonly-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+      BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+      ERP_E2E_USERNAME: ${{ secrets.ERP_E2E_USERNAME }}
+      ERP_E2E_PASSWORD: ${{ secrets.ERP_E2E_PASSWORD }}
+      ERP_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.target_url || 'https://admin.exportmca.com' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: e2e/browserstack/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: e2e/browserstack
+      - name: Confirm required secrets without printing them
+        shell: bash
+        run: |
+          missing=0
+          for name in BROWSERSTACK_USERNAME BROWSERSTACK_ACCESS_KEY ERP_E2E_USERNAME ERP_E2E_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "Missing repository secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+      - name: Run read-only certification on real iPhone Safari
+        run: npm run test:ios
+        working-directory: e2e/browserstack
