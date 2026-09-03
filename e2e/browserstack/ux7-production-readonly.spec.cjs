@@ -10,7 +10,7 @@ const RUN_CORE = CERT_SCOPE !== 'costs';
 const RUN_COSTS = CERT_SCOPE !== 'core';
 const PROFITABILITY_STATUS_ATTRIBUTE = 'data-profitability-probe-status';
 const PROFITABILITY_STATE_ATTRIBUTE = 'data-profitability-probe-state';
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -788,6 +788,70 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         outerGeometry,
         innerGeometry:{ clientWidth:suppliersState.clientWidth, scrollWidth:suppliersState.scrollWidth },
         metrics:suppliersState.metricCount,
+        visibleFrames:ownerState.visibleFrames,
+        apiStatus:200,
+        submitted:false
+      });
+    });
+
+    if (RUN_CORE) await test.step('Products has one visual owner and a responsive catalog', async () => {
+      await openSection(page, 'productsSection');
+      const frameElement = page.locator('#productsSection iframe');
+      await expect(frameElement).toBeVisible();
+      const productsState = await waitForEmbeddedState(page, frameElement, 'Products iframe', frame => {
+        const doc = frame.contentDocument;
+        const html = doc?.documentElement;
+        const fits = node => {
+          if (!node || !html) return false;
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.left >= -1 && rect.right <= html.clientWidth + 1;
+        };
+        const metrics = [...(doc?.querySelectorAll('.products-metrics .metric') || [])];
+        const result = doc?.getElementById('productResultCount')?.textContent?.trim() || '';
+        const ready = Boolean(doc?.querySelector('#productList .product-card, #productList .products-empty'));
+        return {
+          heading: doc?.getElementById('productsPageTitle')?.textContent?.trim() || '',
+          resultReady: Boolean(result && !result.includes('Consultando') && !result.includes('No disponible') && ready),
+          duplicateLogin: Boolean(doc?.getElementById('loginPage')),
+          owner: doc?.body?.dataset?.owner || '',
+          clientWidth: html?.clientWidth || 0,
+          scrollWidth: html?.scrollWidth || 0,
+          heroFits: fits(doc?.querySelector('.products-page-head')),
+          statusFits: fits(doc?.querySelector('.products-hero-state')),
+          boundaryFits: fits(doc?.querySelector('.products-boundary-note')),
+          metricsFit: metrics.length === 5 && metrics.every(fits),
+          metricCount: metrics.length,
+          catalogFits: fits(doc?.querySelector('.products-catalog-panel')),
+          selectedTabs: doc?.querySelectorAll('.products-tabs [aria-selected="true"]').length || 0,
+          modalCount: doc?.querySelectorAll('.product-modal').length || 0,
+          visibleModals: [...(doc?.querySelectorAll('.product-modal') || [])].filter(node => getComputedStyle(node).display !== 'none').length,
+          moduleMethods: ['refresh', 'openProduct', 'openDetails'].every(name => typeof frame.contentWindow?.ProductsModule?.[name] === 'function'),
+          lastUpdated: doc?.getElementById('productsLastUpdated')?.textContent?.trim() || ''
+        };
+      }, state => state?.duplicateLogin || (state?.heading === 'Productos' && state.resultReady));
+
+      if (productsState.duplicateLogin) throw new Error('Duplicate login found inside Products');
+      if (productsState.owner !== 'products.js' || !productsState.moduleMethods) throw new Error('Products does not expose its canonical visual owner');
+      if (productsState.scrollWidth !== productsState.clientWidth) throw new Error('Products iframe has horizontal document overflow');
+      if (!productsState.heroFits || !productsState.statusFits || !productsState.boundaryFits || !productsState.metricsFit || !productsState.catalogFits) {
+        throw new Error('Products responsive regions do not fit the iPhone viewport');
+      }
+      if (productsState.metricCount !== 5 || productsState.selectedTabs !== 1) throw new Error('Products summary or status selector is incomplete');
+      if (productsState.modalCount !== 3 || productsState.visibleModals !== 0) throw new Error('Products initial state exposes an unexpected dialog');
+      if (!productsState.lastUpdated || productsState.lastUpdated.includes('Preparando')) throw new Error('Products did not expose a completed refresh state');
+
+      const ownerState = await assertOneVisibleSection(page, 'productsSection');
+      if (ownerState.visibleFrames !== 1) throw new Error('Products has more than one visible embedded page');
+      const outerGeometry = await assertNoDocumentOverflow(page, 'Productos outer shell');
+      await attachPrivateScreenshot(page, testInfo, 'products-iphone-safari');
+
+      const productResponses = diagnostics.apiResponses.filter(item => item.path === '/api/products');
+      if (!productResponses.some(item => item.status === 200)) throw new Error('Products API did not return HTTP 200');
+      checkpoint('products-readonly', {
+        outerGeometry,
+        innerGeometry:{ clientWidth:productsState.clientWidth, scrollWidth:productsState.scrollWidth },
+        metrics:productsState.metricCount,
         visibleFrames:ownerState.visibleFrames,
         apiStatus:200,
         submitted:false

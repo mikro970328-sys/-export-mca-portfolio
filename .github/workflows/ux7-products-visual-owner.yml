@@ -1,0 +1,36 @@
+name: UX7 Products Visual Owner
+
+on:
+  pull_request:
+    paths:
+      - 'admin/products.html'
+      - 'admin/products.css'
+      - 'admin/products.js'
+      - 'api/products.js'
+      - 'e2e/browserstack/ux7-production-readonly.spec.cjs'
+      - 'scripts/check-browserstack-ios-readonly.mjs'
+      - 'scripts/check-ux7-products-visual-owner.mjs'
+      - '.github/workflows/browserstack-ios-certification.yml'
+      - '.github/workflows/ux7-products-visual-owner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-products-visual-owner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate Products visual ownership and runtime fixture
+        run: node scripts/check-ux7-products-visual-owner.mjs
+      - name: Validate adjacent read-only certification contract
+        run: node scripts/check-browserstack-ios-readonly.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/products.js
+          node --check api/products.js
+          node --check scripts/check-ux7-products-visual-owner.mjs
