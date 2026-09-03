@@ -131,6 +131,9 @@ jobs:
               await new Promise(resolve => setTimeout(resolve, 15_000));
             }
             throw new Error(`Timed out waiting for the production deployment of ${context.sha}`);
-      - name: Run read-only certification on real iPhone Safari
-        run: npm run test:ios
+      - name: Run core read-only certification on real iPhone Safari
+        run: npm run test:ios:core
+        working-directory: e2e/browserstack
+      - name: Run Costs read-only certification in a fresh iPhone Safari session
+        run: npm run test:ios:costs
         working-directory: e2e/browserstack

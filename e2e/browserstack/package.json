@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test:ios": "npx browserstack-node-sdk playwright test --config=playwright.config.cjs",
+    "test:ios": "npm run test:ios:core && npm run test:ios:costs",
+    "test:ios:core": "ERP_CERT_SCOPE=core npx browserstack-node-sdk playwright test --config=playwright.config.cjs",
+    "test:ios:costs": "ERP_CERT_SCOPE=costs npx browserstack-node-sdk playwright test --config=playwright.config.cjs",
     "test:list": "playwright test --config=playwright.config.cjs --list"
   },
   "devDependencies": {

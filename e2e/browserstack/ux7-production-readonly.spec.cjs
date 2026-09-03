@@ -4,6 +4,10 @@ const BASE_URL = process.env.ERP_BASE_URL || 'https://admin.exportmca.com';
 const ERP_ORIGIN = new URL(BASE_URL).origin;
 const REQUIRED_SECRETS = ['ERP_E2E_USERNAME', 'ERP_E2E_PASSWORD'];
 const ALLOWED_API_WRITES = new Set(['POST /api/login']);
+const CERT_SCOPE = process.env.ERP_CERT_SCOPE || 'all';
+if (!['all', 'core', 'costs'].includes(CERT_SCOPE)) throw new Error(`Invalid ERP_CERT_SCOPE: ${CERT_SCOPE}`);
+const RUN_CORE = CERT_SCOPE !== 'costs';
+const RUN_COSTS = CERT_SCOPE !== 'core';
 const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
@@ -171,7 +175,7 @@ function expectedGreeting(hour) {
   return 'Buenas noches';
 }
 
-test('UX-7 production is read-only and usable on real iPhone Safari', async ({ page }, testInfo) => {
+test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safari`, async ({ page }, testInfo) => {
   for (const name of REQUIRED_SECRETS) {
     if (!process.env[name]) throw new Error(`Missing required secret: ${name}`);
   }
@@ -200,7 +204,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       checkpoint('authenticated', { status: response.status() });
     });
 
-    await test.step('Dashboard greeting and responsive owner', async () => {
+    if (RUN_CORE) await test.step('Dashboard greeting and responsive owner', async () => {
       await assertOneVisibleSection(page, 'dashboardSection');
       const geometry = await assertNoDocumentOverflow(page, 'Dashboard');
       const localState = await page.evaluate(() => {
@@ -218,7 +222,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       checkpoint('dashboard', { geometry, hour: localState.hour, timeZone: localState.timeZone, greeting: expectedGreeting(localState.hour) });
     });
 
-    await test.step('PWA prerequisites available in Safari', async () => {
+    if (RUN_CORE) await test.step('PWA prerequisites available in Safari', async () => {
       const pwa = await page.evaluate(async () => {
         const link = document.querySelector('link[rel="manifest"]');
         const response = await fetch(link?.href || '/admin/manifest.webmanifest', { cache: 'no-store' });
@@ -254,7 +258,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       checkpoint('pwa-prerequisites', { ...pwa, registrationError: pwa.registrationError ? 'present' : '' });
     });
 
-    await test.step('Tracking has no page overflow and uses one visual owner', async () => {
+    if (RUN_CORE) await test.step('Tracking has no page overflow and uses one visual owner', async () => {
       await openSection(page, 'containersSection');
       await expect(page.locator('#trackingTitle')).toBeVisible();
       await expect(page.locator('#trackingTotalCount')).not.toHaveText('—');
@@ -289,7 +293,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       checkpoint('tracking', { geometry, metrics: metrics.total, ...presentation });
     });
 
-    await test.step('Action menu matches backend capabilities and detail is read-only', async () => {
+    if (RUN_CORE) await test.step('Action menu matches backend capabilities and detail is read-only', async () => {
       const trigger = page.locator('.container-actions-trigger:visible').first();
       await expect(trigger).toBeVisible();
       const shipmentId = await trigger.getAttribute('data-container-menu');
@@ -333,7 +337,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       checkpoint('tracking-actions-and-detail', { actions: actualActions, detailAction });
     });
 
-    await test.step('Register container renders but is never submitted', async () => {
+    if (RUN_CORE) await test.step('Register container renders but is never submitted', async () => {
       await openSection(page, 'registerContainerSection');
       await expect(page.locator('#registerContainerTitle')).toHaveText('Registrar contenedor');
       await expect(page.locator('#shipmentRegistrationForm')).toBeVisible();
@@ -347,7 +351,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       checkpoint('register-container-readonly', { geometry, submitted: false });
     });
 
-    await test.step('Commercial publications stays embedded without duplicate login', async () => {
+    if (RUN_CORE) await test.step('Commercial publications stays embedded without duplicate login', async () => {
       await openSection(page, 'publicationsSection');
       const frameElement = page.locator('#publicationsSection iframe');
       await expect(frameElement).toBeVisible();
@@ -375,7 +379,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       checkpoint('publications', { outerGeometry, innerGeometry, visibleFrames: owner.visibleFrames, duplicateLogin: false });
     });
 
-    await test.step('Invoices stays embedded, responsive and read-only', async () => {
+    if (RUN_CORE) await test.step('Invoices stays embedded, responsive and read-only', async () => {
       await openSection(page, 'invoicesSection');
       const frameElement = page.locator('#invoicesSection iframe');
       await expect(frameElement).toBeVisible();
@@ -467,7 +471,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       });
     });
 
-    await test.step('Payables has one owner, separates its document and remains read-only', async () => {
+    if (RUN_CORE) await test.step('Payables has one owner, separates its document and remains read-only', async () => {
       await openSection(page, 'payablesSection');
       const frameElement = page.locator('#payablesSection iframe');
       await expect(frameElement).toBeVisible();
@@ -599,7 +603,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       });
     });
 
-    await test.step('Costs has one owner, contained regions and canonical profitability', async () => {
+    if (RUN_COSTS) await test.step('Costs has one owner, contained regions and canonical profitability', async () => {
       await openSection(page, 'costsSection');
       const frameElement = page.locator('#costsSection iframe');
       await expect(frameElement).toBeVisible();
@@ -704,6 +708,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
     const sanitized = {
       target: ERP_ORIGIN,
       platform: 'iPhone 16 Pro / iOS 18 / Safari',
+      scope: CERT_SCOPE,
       checkpoints: diagnostics.checkpoints,
       api: {
         total: diagnostics.apiResponses.length,
@@ -720,7 +725,7 @@ test('UX-7 production is read-only and usable on real iPhone Safari', async ({ p
       },
       limitation: 'Playwright-iOS cannot certify Add to Home Screen or a standalone PWA relaunch; this run certifies Safari and the PWA web prerequisites.'
     };
-    await testInfo.attach('ux7-ios-certification.json', {
+    await testInfo.attach(`ux7-ios-certification-${CERT_SCOPE}.json`, {
       body: Buffer.from(JSON.stringify(sanitized, null, 2)),
       contentType: 'application/json'
     });
