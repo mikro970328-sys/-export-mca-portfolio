@@ -181,12 +181,13 @@ Clientes es un módulo pequeño, crítico y ya demostró tener dependencias ocul
 
 ## Fase 5 — Trabajadores
 
+Estado: completada en UX-7.
+
 ### Cambios propuestos
 
-- Crear wrappers responsive directamente al renderizar tablas.
-- Crear menú de acciones directamente durante `renderWorkers`.
-- Mover CSS permanente fuera de inyecciones dinámicas.
-- Eliminar `workers-responsive.js` y `workers-actions-menu.js` después de integrar su comportamiento.
+- El owner canónico renderiza tarjetas responsive, filtros y acciones autorizadas.
+- El CSS permanente vive en `workers-module.css`, sin inyecciones dinámicas.
+- `workers-responsive.js` y `workers-actions-menu.js` fueron retirados.
 
 ### Criterio de salida
 

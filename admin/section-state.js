@@ -6,23 +6,14 @@
   const originalShowSection = window.showSection;
   if (typeof originalShowSection !== 'function') return;
 
-  function getCurrentUser() {
-    try {
-      if (typeof currentUser !== 'undefined' && currentUser) return currentUser;
-    } catch {}
-    return window.currentUser || null;
-  }
-
   function sectionExists(id) {
     return Boolean(id && document.getElementById(id)?.classList.contains('app-section'));
   }
 
   function canOpen(id) {
     if (!sectionExists(id)) return false;
-    const user = getCurrentUser();
-    if (id === 'adminsSection' && user?.role !== 'master_admin') return false;
-    if (id === 'workersSection' && user?.role !== 'master_admin') return false;
-    return true;
+    const accessControl = window.ExportMcaAccessControl;
+    return typeof accessControl?.sectionAllowed === 'function' ? accessControl.sectionAllowed(id) : true;
   }
 
   function revealApp() {

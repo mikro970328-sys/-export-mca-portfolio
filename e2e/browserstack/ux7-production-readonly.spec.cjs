@@ -10,7 +10,7 @@ const RUN_CORE = CERT_SCOPE !== 'costs';
 const RUN_COSTS = CERT_SCOPE !== 'core';
 const PROFITABILITY_STATUS_ATTRIBUTE = 'data-profitability-probe-status';
 const PROFITABILITY_STATE_ATTRIBUTE = 'data-profitability-probe-state';
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|ACCESS_CONTROL_UI_FAILED|ACCOUNT_UI_FAILED|OPERATIONAL_ALERT_CENTER_UI_FAILED|TASK_WORKSPACE_OPERATION_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|WORKERS_UI_FAILED|ACCESS_CONTROL_UI_FAILED|ACCOUNT_UI_FAILED|OPERATIONAL_ALERT_CENTER_UI_FAILED|TASK_WORKSPACE_OPERATION_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -922,6 +922,75 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         geometry,
         metrics:tasksState.metricCount,
         selectedMetrics:tasksState.selectedMetrics,
+        apiStatus:200,
+        submitted:false
+      });
+    });
+
+    if (RUN_CORE) await test.step('Workers has one visual owner and responsive directory cards', async () => {
+      await openSection(page, 'workersSection');
+      const section = page.locator('#workersSection');
+      await expect(section.locator('#workersLastUpdated')).not.toContainText('Preparando', { timeout:30_000 });
+      await expect(section.locator('#workersDirectory .workers-card, #workersDirectory .workers-empty').first()).toBeVisible();
+
+      const workersState = await section.evaluate(node => {
+        const visible = element => {
+          if (!element) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        };
+        const fits = element => {
+          if (!visible(element)) return false;
+          const rect = element.getBoundingClientRect();
+          return rect.left >= -1 && rect.right <= window.innerWidth + 1;
+        };
+        const metrics = [...node.querySelectorAll('.workers-summary-card')];
+        const records = [...node.querySelectorAll('#workersDirectory .workers-card, #workersDirectory .workers-empty')];
+        const dialog = node.querySelector('#workersModal');
+        return {
+          owner:node.dataset.workersOwner || '',
+          apiOwner:window.WorkersModule?.owner || '',
+          metricCount:metrics.length,
+          metricsReady:metrics.length === 4 && metrics.every(metric => !metric.querySelector('strong')?.textContent?.includes('—')),
+          metricsFit:metrics.length === 4 && metrics.every(fits),
+          heroFits:fits(node.querySelector('.workers-head')),
+          commandFits:fits(node.querySelector('.workers-command')),
+          panelFits:fits(node.querySelector('.workers-panel')),
+          recordsFit:records.length > 0 && records.every(fits),
+          selectedTabs:node.querySelectorAll('.workers-tabs [aria-selected="true"]').length,
+          searchType:node.querySelector('#workersSearch')?.getAttribute('type') || '',
+          result:node.querySelector('#workersResultCount')?.textContent?.trim() || '',
+          lastUpdated:node.querySelector('#workersLastUpdated')?.textContent?.trim() || '',
+          dialogVisible:visible(dialog),
+          methodsReady:['visibleWorkers','workerMetrics','render','getState'].every(name => typeof window.WorkersModule?.[name] === 'function')
+        };
+      });
+
+      if (workersState.owner !== 'workers-module.js' || workersState.apiOwner !== 'workers-module.js' || !workersState.methodsReady) {
+        throw new Error('Workers does not expose its canonical visual owner');
+      }
+      if (!workersState.heroFits || !workersState.metricsFit || !workersState.commandFits || !workersState.panelFits || !workersState.recordsFit) {
+        throw new Error('Workers responsive regions do not fit the iPhone viewport');
+      }
+      if (workersState.metricCount !== 4 || !workersState.metricsReady || workersState.selectedTabs !== 1) {
+        throw new Error('Workers summary or status selector is incomplete');
+      }
+      if (workersState.searchType !== 'search' || !workersState.result || !workersState.lastUpdated || workersState.dialogVisible) {
+        throw new Error('Workers directory is not in its safe initial state');
+      }
+
+      const ownerState = await assertOneVisibleSection(page, 'workersSection');
+      if (ownerState.visibleFrames !== 0) throw new Error('Workers unexpectedly mounts an embedded page');
+      const geometry = await assertNoDocumentOverflow(page, 'Trabajadores');
+      await attachPrivateScreenshot(page, testInfo, 'workers-directory-iphone-safari');
+
+      const workerResponses = diagnostics.apiResponses.filter(item => item.path === '/api/admins');
+      if (!workerResponses.some(item => item.status === 200)) throw new Error('Workers API did not return HTTP 200');
+      checkpoint('workers-directory-readonly', {
+        geometry,
+        metrics:workersState.metricCount,
+        selectedTabs:workersState.selectedTabs,
         apiStatus:200,
         submitted:false
       });

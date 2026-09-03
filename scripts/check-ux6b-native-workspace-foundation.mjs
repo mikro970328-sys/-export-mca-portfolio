@@ -25,6 +25,7 @@ const loader=read(files.loader);
 const clients=read(files.clients);
 const containers=read(files.containers);
 const alerts=read(files.alerts);
+const workers=read(files.workers);
 const access=read(files.access);
 const account=read(files.account);
 const tasks=read(files.tasks);
@@ -75,8 +76,7 @@ const sectionMarkup=(id,nextId)=>{
   return start>=0&&end>start?index.slice(start,end):'';
 };
 for(const [id,next] of [
-  ['clientsSection','registerContainerSection'],
-  ['workersSection','adminsSection']
+  ['clientsSection','registerContainerSection']
 ]){
   const markup=sectionMarkup(id,next);
   requireText(markup,'native-workspace-shell',`${id}: shell visual compartido`);
@@ -84,6 +84,10 @@ for(const [id,next] of [
   requireText(markup,'native-workspace-heading',`${id}: jerarquía de título`);
   requireText(markup,'native-workspace-kicker',`${id}: contexto operativo`);
   forbid(markup,/\sstyle\s*=/i,`${id} conserva estilos inline`);
+}
+requireText(index,'<section id="workersSection" class="app-section hidden" aria-live="polite"></section>','Trabajadores: placeholder vacío para el owner visual');
+for(const text of ['workers-shell native-workspace-shell','workers-head native-workspace-hero','native-workspace-heading','native-workspace-kicker']){
+  requireText(workers,text,`Trabajadores: shell compartido ${text}`);
 }
 
 for(const [id,next] of [
@@ -123,6 +127,7 @@ forbid(loader,/registration-form-shell/,'el loader conserva el shell visual reti
 
 for(const ref of [
   "/admin/clients-module.js?v=20260902-ux7clients1",
+  "/admin/workers-module.js?v=20260903-ux7workers1",
   "/admin/containers-module.js?v=20260903-ux7tracking2",
   "/admin/operational-alert-center.js?v=20260903-ux7alerts1",
   "/admin/access-control-administration.js?v=20260903-ux7access1",
