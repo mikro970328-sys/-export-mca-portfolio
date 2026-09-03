@@ -5,7 +5,9 @@ on:
     paths:
       - 'admin/clients-module.js'
       - 'admin/containers-module.js'
+      - 'admin/containers-module.css'
       - 'admin/shipment-editor.js'
+      - 'admin/shipment-editor.css'
       - 'admin/registration-form-shell.js'
       - 'admin/modal-dismissal.js'
       - 'admin/expedientes-module.js'
@@ -91,6 +93,7 @@ on:
       - 'supabase/migrations/20260830225000_p12_executive_report_datasets.sql'
       - 'vercel.json'
       - 'scripts/check-frontend-ownership.mjs'
+      - 'scripts/check-ux7-tracking-visual-owner.mjs'
       - 'scripts/check-shipment-importer-independence.mjs'
       - 'scripts/check-sales-supply-workspace.mjs'
       - 'scripts/check-sales-customer-finance.mjs'
@@ -117,6 +120,8 @@ jobs:
           node-version: '24'
       - name: Validate frontend ownership and UX-A/UX-B/UX-C
         run: node scripts/check-frontend-ownership.mjs
+      - name: Validate UX-7 Tracking visual owner
+        run: node scripts/check-ux7-tracking-visual-owner.mjs
       - name: Validate UX-E5 shipment importer independence
         run: node scripts/check-shipment-importer-independence.mjs
       - name: Validate P1 sales supply workspace

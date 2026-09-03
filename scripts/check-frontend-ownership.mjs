@@ -5,7 +5,6 @@ const files = {
   clients: 'admin/clients-module.js',
   containers: 'admin/containers-module.js',
   shipmentEditor: 'admin/shipment-editor.js',
-  registrationShell: 'admin/registration-form-shell.js',
   modalDismissal: 'admin/modal-dismissal.js',
   navigation: 'admin/navigation-shell.js',
   navigationCss: 'admin/navigation-shell.css',
@@ -22,6 +21,7 @@ const files = {
 };
 
 const retiredOwners = [
+  'admin/registration-form-shell.js',
   'admin/mobile-interaction-core.js',
   'admin/operations-module.js',
   'admin/shipment-row-details.js',
@@ -53,7 +53,6 @@ for (const file of [
   files.clients,
   files.containers,
   files.shipmentEditor,
-  files.registrationShell,
   files.modalDismissal,
   files.navigation,
   files.sectionState,
@@ -76,7 +75,6 @@ for (const file of retiredOwners) {
 
 const clients = read(files.clients);
 const containers = read(files.containers);
-const registrationShell = read(files.registrationShell);
 const modalDismissal = read(files.modalDismissal);
 const navigation = read(files.navigation);
 const navigationCss = read(files.navigationCss);
@@ -117,26 +115,20 @@ for (const fragment of [
 }
 if (!hasOwner(containers, 'containers-module.js')) errors.push('Falta propiedad consolidada de Tracking: owner containers-module.js');
 if (/Ver expediente/i.test(containers)) errors.push('Tracking todavía expone Expediente en su flujo visual.');
-
 for (const fragment of [
-  'window.__registrationFormShellInstalled',
-  "owner: 'registration-form-shell.js'",
-  "responsibility: 'visual-guidance-only'",
-  'registration-block',
-  'registration-readiness'
+  'function syncContainerGuidance()',
+  "trackingOwner:'containers-module.js'",
+  "registrationOwner:'containers-module.js'"
 ]) {
-  if (!registrationShell.includes(fragment)) errors.push(`Falta propiedad visual UX-C en registro de contenedor: ${fragment}`);
+  if (!containers.includes(fragment)) errors.push(`Falta propiedad consolidada de registro + Tracking: ${fragment}`);
 }
-
-for (const forbidden of [
-  '/api/',
-  'fetch(',
-  'saveShipmentRecord',
-  "addEventListener('click', save",
-  'window.loadAll',
-  'window.ContainersModule ='
+for (const fragment of [
+  'id="shipmentRegistrationForm"',
+  'id="registrationReadiness"',
+  'id="containersSection"',
+  'data-owner="containers-module.js"'
 ]) {
-  if (registrationShell.includes(forbidden)) errors.push(`registration-form-shell.js invade lógica de negocio: ${forbidden}`);
+  if (!index.includes(fragment)) errors.push(`Falta estructura estática canónica de registro + Tracking: ${fragment}`);
 }
 
 for (const fragment of [
@@ -247,7 +239,6 @@ for (const fragment of [
 for (const fragment of [
   '/admin/clients-module.js',
   '/admin/containers-module.js',
-  '/admin/registration-form-shell.js',
   '/admin/modal-dismissal.js',
   '/admin/dashboard-operational-state.js',
   '/admin/navigation-shell.js',
@@ -348,7 +339,7 @@ console.log('- Tracking es dueño del readiness y carga manual de Packing List C
 console.log('- Los propietarios/parches retirados no existen ni se cargan.');
 console.log('- navigation-shell.js no contiene llamadas de negocio ni wrappers de datos.');
 console.log('- UX-B/P11 usa api/dashboard.js como proyección operativa; el frontend solo presenta la proyección ejecutiva recibida.');
-console.log('- UX-C mantiene registration-form-shell.js limitado a guía visual; containers-module.js conserva guardado y validación de negocio.');
+console.log('- UX-C consolida registro, guía visual y Tracking en containers-module.js; el shell dinámico anterior permanece retirado.');
 console.log('- UX-C mantiene modal-dismissal.js limitado a política de cierre; index.html conserva apertura y contenido del modal.');
 console.log('- Centro de alertas conserva la propiedad de las alertas mostradas en Inicio.');
 console.log('- Sintaxis JavaScript válida en los propietarios críticos.');

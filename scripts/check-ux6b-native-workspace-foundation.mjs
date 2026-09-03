@@ -5,7 +5,7 @@ const files={
   index:'admin/index.html',
   loader:'admin/erp.js',
   clients:'admin/clients-module.js',
-  registration:'admin/registration-form-shell.js',
+  containers:'admin/containers-module.js',
   alerts:'admin/operational-alert-center.js',
   workers:'admin/workers-module.js',
   access:'admin/access-control-administration.js',
@@ -23,7 +23,7 @@ const css=read(files.foundation);
 const index=read(files.index);
 const loader=read(files.loader);
 const clients=read(files.clients);
-const registration=read(files.registration);
+const containers=read(files.containers);
 const alerts=read(files.alerts);
 const access=read(files.access);
 const account=read(files.account);
@@ -39,8 +39,6 @@ for(const text of [
   '.native-workspace-kicker{',
   '.native-workspace-summary{',
   '.native-workspace-grid{',
-  '#registerContainerSection .registration-shell{',
-  '#registerContainerSection .registration-block{',
   '@media(max-width:1050px)',
   '@media(max-width:760px)',
   '@media(max-width:520px)',
@@ -52,6 +50,7 @@ forbid(css,/!important/i,'la base nativa usa sobrescrituras !important');
 forbid(css,/@import/i,'la base nativa depende de una importación tardía');
 forbid(css,/\b(?:fetch|MutationObserver)\b|\b(?:prompt|alert|confirm)\s*\(/,'la base nativa mezcla comportamiento JavaScript');
 forbid(css,/(?:linear|radial)-gradient/i,'la base nativa reintroduce cabeceras decorativas degradadas');
+forbid(css,/#registerContainerSection|#containersSection/,'la base compartida invade el owner visual de Tracking');
 
 const opening=(css.match(/{/g)||[]).length;
 const closing=(css.match(/}/g)||[]).length;
@@ -66,7 +65,7 @@ const headEnd=index.indexOf('</head>');
 if(themeIndex<0||navigationIndex<0||foundationIndex<0||headEnd<0||!(themeIndex<navigationIndex&&navigationIndex<foundationIndex&&foundationIndex<headEnd)){
   failures.push('index.html debe cargar tema → navegación → base nativa dentro de head');
 }
-requireText(index,'/admin/erp.js?v=20260902-ux7clients1','revisión de caché del loader ERP');
+requireText(index,'/admin/erp.js?v=20260902-ux7tracking1','revisión de caché del loader ERP');
 requireText(loader,"document.querySelector('link[data-native-workspace-foundation]')",'límite de cascada para estilos dinámicos');
 requireText(loader,'insertBefore(link, nativeFoundation)','estilos propietarios antes de la base compartida');
 
@@ -77,8 +76,6 @@ const sectionMarkup=(id,nextId)=>{
 };
 for(const [id,next] of [
   ['clientsSection','registerContainerSection'],
-  ['registerContainerSection','containersSection'],
-  ['containersSection','publicationsSection'],
   ['workersSection','adminsSection']
 ]){
   const markup=sectionMarkup(id,next);
@@ -86,6 +83,17 @@ for(const [id,next] of [
   requireText(markup,'native-workspace-hero',`${id}: cabecera visual compartida`);
   requireText(markup,'native-workspace-heading',`${id}: jerarquía de título`);
   requireText(markup,'native-workspace-kicker',`${id}: contexto operativo`);
+  forbid(markup,/\sstyle\s*=/i,`${id} conserva estilos inline`);
+}
+
+for(const [id,next] of [
+  ['registerContainerSection','containersSection'],
+  ['containersSection','publicationsSection']
+]){
+  const markup=sectionMarkup(id,next);
+  requireText(markup,'data-owner="containers-module.js"',`${id}: owner visual canónico`);
+  requireText(markup,'tracking-hero',`${id}: cabecera propietaria`);
+  requireText(markup,'tracking-kicker',`${id}: contexto operativo`);
   forbid(markup,/\sstyle\s*=/i,`${id} conserva estilos inline`);
 }
 
@@ -107,15 +115,17 @@ for(const text of ['clients-workspace','clients-hero','clients-kicker','clients-
 forbid(clients,/function\s+sectionHtml\s*\(|section\.innerHTML\s*=/,'Clientes vuelve a duplicar el markup compartido desde JavaScript');
 requireText(clients,"console.error('CLIENTS_MARKUP_MISSING')",'Clientes valida su markup canónico');
 
-forbid(registration,/document\.createElement\(['"]style['"]\)|style\.textContent|function\s+installStyles\s*\(/,'Registro de contenedores todavía inyecta CSS desde JavaScript');
-requireText(registration,"querySelector('.registration-card')",'Registro usa su superficie semántica');
-requireText(registration,"owner: 'registration-form-shell.js'",'Registro conserva owner de guía visual');
+forbid(containers,/document\.createElement\(['"]style['"]\)|style\.textContent|function\s+installStyles\s*\(/,'Tracking todavía inyecta CSS desde JavaScript');
+requireText(containers,'function syncContainerGuidance()','Registro conserva guía y validación visual');
+requireText(containers,"registrationOwner:'containers-module.js'",'Registro pertenece al owner canónico de Tracking');
+if(fs.existsSync('admin/registration-form-shell.js'))failures.push('registration-form-shell.js debe permanecer retirado');
+forbid(loader,/registration-form-shell/,'el loader conserva el shell visual retirado del registro');
 
 for(const ref of [
   "/admin/clients-module.js?v=20260902-ux7clients1",
+  "/admin/containers-module.js?v=20260902-ux7tracking1",
   "/admin/operational-alert-center.js?v=20260902-ux6alerts2",
   "/admin/access-control-administration.js?v=20260902-ux6access1",
-  "/admin/registration-form-shell.js?v=20260902-ux6b1",
   "/admin/account-administration.js?v=20260902-ux6b1",
   "/admin/tasks-workspace.js?v=20260902-ux6tasks1"
 ])requireText(loader,ref,`asset revisado ${ref}`);
@@ -129,4 +139,4 @@ if(failures.length){
   process.exit(1);
 }
 
-console.log('UX6B native workspace foundation gate passed for eight native ERP surfaces.');
+console.log('UX6B native workspace foundation gate passed with Tracking isolated in its canonical visual owner.');
