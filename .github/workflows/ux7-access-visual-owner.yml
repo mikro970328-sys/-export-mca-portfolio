@@ -30,6 +30,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate UX7 access ownership and runtime fixture
         run: node scripts/check-ux7-access-visual-owner.mjs
       - name: Validate adjacent access and shell contracts

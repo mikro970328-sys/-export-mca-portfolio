@@ -175,6 +175,7 @@ forbid(accessApi,/return fail\(res,\s*500,[^\n]*error\.message/,'api/access-cont
   'ACCESS_CONTROL_UI_FAILED'
 ].forEach(value => requireText(browserstackGate,value,`gate BrowserStack ${value}`));
 requireText(workflow,'node scripts/check-ux7-access-visual-owner.mjs','workflow del owner de acceso');
+requireText(workflow,'npm install --ignore-scripts --no-audit --no-fund','instalación reproducible de dependencias del workflow');
 
 const openBraces = (styles.match(/{/g) || []).length;
 const closeBraces = (styles.match(/}/g) || []).length;
