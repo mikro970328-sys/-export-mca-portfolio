@@ -1,0 +1,69 @@
+name: UX7 Tasks Visual Owner
+
+on:
+  pull_request:
+    paths:
+      - 'admin/tasks-workspace.js'
+      - 'admin/tasks-workspace.css'
+      - 'admin/tasks-navigation.js'
+      - 'admin/task-supervisor-queue.js'
+      - 'admin/workflow-route-settings.js'
+      - 'admin/erp.js'
+      - 'api/tasks.js'
+      - 'api/task-supervisor-queue.js'
+      - 'api/workflow-routes.js'
+      - 'e2e/browserstack/ux7-production-readonly.spec.cjs'
+      - 'scripts/check-browserstack-ios-readonly.mjs'
+      - 'scripts/check-ux6-tasks-feedback.mjs'
+      - 'scripts/check-task-engine.mjs'
+      - 'scripts/check-workflow-handoffs.mjs'
+      - 'scripts/check-operational-queues.mjs'
+      - 'scripts/check-ux7-tasks-visual-owner.mjs'
+      - 'scripts/check-ux6b-native-workspace-foundation.mjs'
+      - 'scripts/check-ux7-navigation-icons.mjs'
+      - '.github/workflows/browserstack-ios-certification.yml'
+      - '.github/workflows/ux7-tasks-visual-owner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-tasks-visual-owner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install runtime dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate UX7 Tasks ownership and runtime fixtures
+        run: node scripts/check-ux7-tasks-visual-owner.mjs
+      - name: Validate task engine, feedback and workflow contracts
+        run: |
+          node scripts/check-ux6-tasks-feedback.mjs
+          node scripts/check-task-engine.mjs
+          node scripts/check-workflow-handoffs.mjs
+          node scripts/check-operational-queues.mjs
+          node scripts/check-user-notifications.mjs
+      - name: Validate shell, access and integration boundaries
+        run: |
+          node scripts/check-access-control.mjs
+          node scripts/check-ux6b-native-workspace-foundation.mjs
+          node scripts/check-ux7-navigation-icons.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/check-admin-shell-resilience.mjs
+          node scripts/audit-b9-api-boundaries.mjs
+          node scripts/check-b9-database-privileges.mjs
+          node scripts/check-b9-public-boundaries.mjs
+          node scripts/check-integrations.mjs
+      - name: Validate real-iPhone read-only contract
+        run: node scripts/check-browserstack-ios-readonly.mjs
+      - name: Validate JavaScript syntax and API imports
+        run: |
+          node --check admin/tasks-workspace.js
+          node --check admin/erp.js
+          node --check api/tasks.js
+          node --check scripts/check-ux7-tasks-visual-owner.mjs
+          node --input-type=module -e "await import('./api/tasks.js'); console.log('Tasks API import OK')"

@@ -137,7 +137,7 @@ for (const fragment of [
 for (const fragment of [
   "loadScript('/admin/ui-icon-system.js?v=20260903-ux7icons2', 'data-ui-icon-system')",
   "loadScript('/admin/navigation-shell.js?v=20260903-ux7icons2', 'data-navigation-shell')",
-  "loadScript('/admin/tasks-workspace.js?v=20260903-ux7icons2', 'data-tasks-workspace')",
+  "loadScript('/admin/tasks-workspace.js?v=20260903-ux7tasks1', 'data-tasks-workspace')",
   "loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration')",
   "loadStylesheet('/admin/operational-alert-center.css?v=20260903-ux7alerts1', 'data-operational-alert-center-style')",
   "loadScript('/admin/operational-alert-center.js?v=20260903-ux7alerts1', 'data-operational-alert-center')",
