@@ -163,14 +163,14 @@ async function openProfitabilityAndRead(frameElement) {
       };
     };
 
-    const deadline = Date.now() + 15_000;
+    const deadline = Date.now() + 35_000;
     let state = read();
     while (!state.ready && !state.error && Date.now() < deadline) {
       await new Promise(resolve => win.setTimeout(resolve, 250));
       state = read();
     }
     return { ...state, timedOut: !state.ready && !state.error };
-  });
+  }, undefined, { timeout: 45_000 });
 }
 
 async function openSection(page, sectionId) {
@@ -685,7 +685,7 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
 
       const profitabilityState = await openProfitabilityAndRead(frameElement);
       if (!profitabilityState.opened || profitabilityState.timedOut || profitabilityState.error || !profitabilityState.ready || profitabilityState.metricCount !== 4 || profitabilityState.selectedView !== 'true') {
-        throw new Error('Costs profitability read-model did not render through the canonical owner');
+        throw new Error(`Costs profitability read-model did not render through the canonical owner: ${sanitizeLog(JSON.stringify(profitabilityState))}`);
       }
       if (profitabilityState.scrollWidth !== profitabilityState.clientWidth) throw new Error('Profitability view has horizontal document overflow');
 

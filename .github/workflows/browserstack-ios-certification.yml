@@ -72,6 +72,10 @@ jobs:
     needs: readonly-contract
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        scope: [core, costs]
     env:
       BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
       BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
@@ -131,9 +135,6 @@ jobs:
               await new Promise(resolve => setTimeout(resolve, 15_000));
             }
             throw new Error(`Timed out waiting for the production deployment of ${context.sha}`);
-      - name: Run core read-only certification on real iPhone Safari
-        run: npm run test:ios:core
-        working-directory: e2e/browserstack
-      - name: Run Costs read-only certification in a fresh iPhone Safari session
-        run: npm run test:ios:costs
+      - name: Run ${{ matrix.scope }} read-only certification on real iPhone Safari
+        run: npm run test:ios:${{ matrix.scope }}
         working-directory: e2e/browserstack
