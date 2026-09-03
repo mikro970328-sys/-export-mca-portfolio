@@ -1,0 +1,73 @@
+name: B10.1 Secure PWA Web Push
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'admin/admin-shell-runtime.js'
+      - 'admin/alert-phase2-stability.js'
+      - 'admin/notification-inbox.*'
+      - 'admin/push-notifications.css'
+      - 'admin/manifest.webmanifest'
+      - 'admin/app-icon-*.svg'
+      - 'admin/pwa.html'
+      - 'api/*push*.js'
+      - 'api/notification-*.js'
+      - 'sw.js'
+      - 'vercel.json'
+      - 'package*.json'
+      - 'supabase/migrations/*b10_1*.sql'
+      - 'scripts/check-b10-web-push.mjs'
+      - 'scripts/check-b10-web-push-sql.mjs'
+      - '.github/workflows/b10-web-push.yml'
+  pull_request:
+    paths:
+      - 'admin/admin-shell-runtime.js'
+      - 'admin/alert-phase2-stability.js'
+      - 'admin/notification-inbox.*'
+      - 'admin/push-notifications.css'
+      - 'admin/manifest.webmanifest'
+      - 'admin/app-icon-*.svg'
+      - 'admin/pwa.html'
+      - 'api/*push*.js'
+      - 'api/notification-*.js'
+      - 'sw.js'
+      - 'vercel.json'
+      - 'package*.json'
+      - 'supabase/migrations/*b10_1*.sql'
+      - 'scripts/check-b10-web-push.mjs'
+      - 'scripts/check-b10-web-push-sql.mjs'
+      - '.github/workflows/b10-web-push.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-push-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Syntax check
+        run: |
+          node --check api/_notification-reconcile.js
+          node --check api/_web-push.js
+          node --check api/push-subscriptions.js
+          node --check api/push-dispatch.js
+          node --check admin/admin-shell-runtime.js
+          node --check admin/alert-phase2-stability.js
+          node --check admin/notification-inbox.js
+          node --check sw.js
+      - name: Verify B10.1 security and lifecycle
+        run: node scripts/check-b10-web-push.mjs
+      - name: Verify B10.1 PostgreSQL authorization and queue behavior
+        run: node scripts/check-b10-web-push-sql.mjs
+      - name: Preserve P10 inbox ownership
+        run: node scripts/check-user-notifications.mjs
+      - name: Preserve BrowserStack read-only contract
+        run: node scripts/check-browserstack-ios-readonly.mjs

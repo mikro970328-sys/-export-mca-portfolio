@@ -18,7 +18,7 @@
       "schedule": "50 * * * *"
     },
     {
-      "path": "/api/notification-reconcile",
+      "path": "/api/push-dispatch",
       "schedule": "*/5 * * * *"
     }
   ],

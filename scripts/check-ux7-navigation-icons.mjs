@@ -131,7 +131,7 @@ for (const fragment of [
 
 for (const fragment of [
   '/admin/navigation-shell.css?v=20260903-ux7icons2',
-  '/admin/erp.js?v=20260903-ux7icons2'
+  '/admin/erp.js?v=20260903-b10push1'
 ]) requireText(files.index, fragment, 'revisión de caché del shell');
 
 for (const fragment of [
@@ -142,7 +142,7 @@ for (const fragment of [
   "loadStylesheet('/admin/operational-alert-center.css?v=20260903-ux7alerts1', 'data-operational-alert-center-style')",
   "loadScript('/admin/operational-alert-center.js?v=20260903-ux7alerts1', 'data-operational-alert-center')",
   "loadStylesheet('/admin/notification-inbox.css?v=20260903-ux7icons2', 'data-notification-inbox-style')",
-  "loadScript('/admin/notification-inbox.js?v=20260903-ux7icons2', 'data-notification-inbox')",
+  "loadScript('/admin/notification-inbox.js?v=20260903-b10push1', 'data-notification-inbox')",
   "loadScript('/admin/dashboard-operational-state.js?v=20260903-ux7icons2', 'data-dashboard-operational-state')"
 ]) requireText(files.loader, fragment, 'carga versionada del sistema');
 
@@ -150,7 +150,7 @@ const iconReady = files.loader.indexOf('await iconSystemPromise;');
 const shellReveal = files.loader.indexOf('revealAdminShell();');
 if (iconReady < 0 || shellReveal < 0 || iconReady > shellReveal) failures.push('El shell autenticado puede mostrarse antes de que sus iconos estén listos.');
 
-requireText(files.serviceWorker, "const CACHE='export-mca-shell-v4'", 'renovación del caché PWA');
+requireText(files.serviceWorker, "const CACHE='export-mca-shell-v5'", 'renovación del caché PWA');
 requireText(files.alertCss, '.alert-bell>.ui-icon-svg', 'geometría canónica de la campana superior');
 requireText(files.inboxCss, '.notification-inbox-bell>.ui-icon-svg', 'geometría canónica de la campana del Inbox');
 

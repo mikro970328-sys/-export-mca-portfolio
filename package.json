@@ -11,6 +11,10 @@
   },
   "dependencies": {
     "archiver": "^7.0.1",
-    "twilio": "6.1.0"
+    "twilio": "6.1.0",
+    "web-push": "3.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8"
   }
 }

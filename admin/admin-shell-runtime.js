@@ -6,6 +6,8 @@ let currentUser = null;
 let clients = [];
 let shipments = [];
 let admins = [];
+let sessionTransitionPromise = null;
+let logoutPromise = null;
 
 try {
   currentUser = JSON.parse(localStorage.getItem('export_mca_user') || 'null');
@@ -17,6 +19,38 @@ window.$ = $;
 window.clients = clients;
 window.shipments = shipments;
 window.admins = admins;
+
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function localPushCleanup(method) {
+  try {
+    if (typeof window.NotificationInbox?.[method] === 'function') {
+      await window.NotificationInbox[method]();
+      return;
+    }
+    if (!('serviceWorker' in navigator)) return;
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager?.getSubscription?.();
+    await subscription?.unsubscribe?.();
+    registration.active?.postMessage?.({ type:'EXPORT_MCA_BADGE_CLEAR' });
+  } catch {}
+}
+
+function clearStoredSession() {
+  token = '';
+  currentUser = null;
+  localStorage.removeItem('export_mca_token');
+  localStorage.removeItem('export_mca_user');
+}
+
+function transitionExpiredSession(reason = 'expired') {
+  if (sessionTransitionPromise) return sessionTransitionPromise;
+  clearStoredSession();
+  window.dispatchEvent(new CustomEvent('export-mca:auth-invalid', { detail:{ reason } }));
+  sessionTransitionPromise = Promise.race([localPushCleanup('deactivatePushForInvalidSession'), wait(1200)])
+    .finally(() => location.reload());
+  return sessionTransitionPromise;
+}
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -32,6 +66,10 @@ async function api(path, options = {}) {
     const error = new Error((data.error || 'Error') + (data.details ? ` · ${data.details}` : ''));
     error.code = data.code || data.reason_code || null;
     error.status = response.status;
+    if (response.status === 401) {
+      error.authTransition = true;
+      transitionExpiredSession(data.error || 'expired');
+    }
     throw error;
   }
   return data;
@@ -94,9 +132,14 @@ function openModal(title, html) {
 }
 
 function logoutNow() {
-  localStorage.removeItem('export_mca_token');
-  localStorage.removeItem('export_mca_user');
-  location.reload();
+  if (logoutPromise) return logoutPromise;
+  window.dispatchEvent(new CustomEvent('export-mca:session-ending', { detail:{ reason:'logout' } }));
+  logoutPromise = Promise.race([localPushCleanup('deactivatePushForLogout'), wait(2000)])
+    .finally(() => {
+      clearStoredSession();
+      location.reload();
+    });
+  return logoutPromise;
 }
 
 function bindAdminShell() {
@@ -116,10 +159,15 @@ function bindAdminShell() {
 
 bindAdminShell();
 
+window.addEventListener?.('storage', event => {
+  if (event.key === 'export_mca_token' && !event.newValue && token) transitionExpiredSession('other_tab_logout');
+});
+
 window.ExportMcaAdminShellRuntime = Object.freeze({
   owner:'admin-shell-runtime.js',
   showSection,
   openModal,
   closeModal,
-  logout:logoutNow
+  logout:logoutNow,
+  transitionExpiredSession
 });

@@ -1,4 +1,5 @@
-import { authorizeAdmin, fail, ok, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, writeAudit } from './_lib.js';
+import { reconcileAllNotifications } from './_notification-reconcile.js';
 
 function cronAuthorized(req){
   const secret=process.env.CRON_SECRET;
@@ -6,12 +7,7 @@ function cronAuthorized(req){
 }
 
 async function run(){
-  const result=await supabase('rpc/reconcile_user_notifications',{
-    method:'POST',
-    body:{p_now:new Date().toISOString()},
-    prefer:'return=representation'
-  });
-  return Array.isArray(result)?result[0]||{}:result||{};
+  return reconcileAllNotifications(new Date().toISOString());
 }
 
 export default async function handler(req,res){

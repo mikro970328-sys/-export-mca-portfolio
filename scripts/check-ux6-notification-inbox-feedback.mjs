@@ -6,6 +6,7 @@ const files={
   loader:'admin/erp.js',
   index:'admin/index.html',
   inboxApi:'api/notification-inbox.js',
+  reconcileOwner:'api/_notification-reconcile.js',
   historyApi:'api/history.js',
   workflow:'.github/workflows/ux6-notification-inbox-feedback.yml'
 };
@@ -21,6 +22,7 @@ const styles=read(files.styles);
 const loader=read(files.loader);
 const index=read(files.index);
 const inboxApi=read(files.inboxApi);
+const reconcileOwner=read(files.reconcileOwner);
 const historyApi=read(files.historyApi);
 const workflow=read(files.workflow);
 
@@ -70,15 +72,16 @@ for(const text of [
 
 requireText(styles,'.notification-preferences-actions{margin-top:12px}','presentación dedicada de acciones de preferencias');
 requireText(loader,"/admin/notification-inbox.css?v=20260903-ux7icons2",'revisión del CSS del Inbox');
-requireText(loader,"/admin/notification-inbox.js?v=20260903-ux7icons2",'revisión del owner del Inbox');
-requireText(index,'/admin/erp.js?v=20260903-ux7icons2','revisión del loader ERP');
+requireText(loader,"/admin/notification-inbox.js?v=20260903-b10push1",'revisión del owner del Inbox');
+requireText(index,'/admin/erp.js?v=20260903-b10push1','revisión del loader ERP');
 
 for(const text of [
   "authorizeAdmin(req,res,'notifications.read')",
-  "rpc('reconcile_user_notifications'",
   "rpc('act_on_notification_inbox'",
   "return fail(res,500,'No se pudo procesar el inbox de notificaciones')"
 ])requireText(inboxApi,text,`boundary canónico del Inbox ${text}`);
+requireText(inboxApi,'reconcileAllNotifications','boundary canónico del reconciliador compuesto');
+requireText(reconcileOwner,"call('reconcile_user_notifications'",'preservación del RPC P10');
 for(const text of [
   "permission=action==='mark_read'?'notifications.read':'notifications.manage'",
   "if(action!=='retry')return fail(res,400,'Acción no válida')",
