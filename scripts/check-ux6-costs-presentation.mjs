@@ -51,6 +51,7 @@ for(const text of [
   "'rpc/replace_cost_charge_canonical'",
   "'rpc/post_cost_charge_canonical'",
   "'rpc/void_cost_charge_canonical'",
+  "supabase('shipments', { query:'?select=id,container_number,operation_id&order=id.desc&limit=3000' })",
   'COST_ERROR_TRANSLATIONS',
   'SAFE_COST_INPUT_PATTERNS',
   "code:'COST_UNEXPECTED_ERROR'",
@@ -58,6 +59,7 @@ for(const text of [
   'fail(res, failure.status, failure.message, { code:failure.code })'
 ]) requireText(api,text,`backend seguro ${text}`);
 forbid(api,/['"]rpc\/(?:replace_cost_charge|post_cost_charge|void_cost_charge)['"]/,'Costos API no puede invocar mutaciones legacy');
+forbid(api,/supabase\('shipments',\s*\{\s*query:'\?select=[^']*\bstatus\b[^']*'\s*\}\)/,'Costos API no puede consultar shipments.status porque esa columna no existe');
 forbid(api,/return fail\(res,\s*(?:400|500),\s*raw/,'Costos API no puede devolver errores internos crudos');
 
 for(const text of [
