@@ -32,7 +32,7 @@ const dashboardCss=read(files.dashboardCss);
 const dashboardJs=read(files.dashboardJs);
 
 const themeRef='/admin/platform-theme.css?v=20260902-ux7shell1';
-const navigationRef='/admin/navigation-shell.css?v=20260902-ux7shell1';
+const navigationRef='/admin/navigation-shell.css?v=20260903-ux7icons1';
 for(const ref of [themeRef,navigationRef])requireText(index,ref,ref);
 requireText(index,'<meta name="theme-color" content="#09182e">','color del navegador');
 requireText(index,'/admin/manifest.webmanifest?v=3','manifest versionado');
@@ -40,7 +40,7 @@ requireText(pwa,'<meta name="theme-color" content="#09182e">','color PWA');
 requireText(pwa,'/admin/manifest.webmanifest?v=3','manifest PWA versionado');
 requireText(manifest,'"background_color": "#f5f7fb"','fondo del manifest');
 requireText(manifest,'"theme_color": "#09182e"','tema del manifest');
-requireText(serviceWorker,"const CACHE='export-mca-shell-v2'",'caché PWA renovado');
+requireText(serviceWorker,"const CACHE='export-mca-shell-v3'",'caché PWA renovado');
 const themeIndex=index.indexOf(themeRef);
 const navigationIndex=index.indexOf(navigationRef);
 const headEnd=index.indexOf('</head>');

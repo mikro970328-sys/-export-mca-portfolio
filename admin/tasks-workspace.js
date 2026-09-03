@@ -63,10 +63,6 @@
     node.className=`tasks-message ${message?(ok?'ok':'bad'):''}`;
   }
 
-  function taskIcon() {
-    return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h6"/><path d="M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1Z"/><path d="M7 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="m8 13 2.2 2.2L16 9.5"/></svg>';
-  }
-
   function ensureSurface() {
     if(!can('tasks.read'))return false;
     const homeSubmenu=document.querySelector('.nav-group[data-nav-group="home"] .submenu');
@@ -77,9 +73,10 @@
       button.dataset.navLabel='Mis tareas';
       button.setAttribute('aria-label','Mis tareas');
       button.title='Mis tareas';
-      button.innerHTML=`<span class="nav-icon">${taskIcon()}</span><span class="nav-label">Mis tareas</span>`;
+      button.innerHTML='<span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Mis tareas</span>';
       const notifications=homeSubmenu.querySelector('[data-section="notificationsSection"]');
       if(notifications)homeSubmenu.insertBefore(button,notifications);else homeSubmenu.appendChild(button);
+      window.ExportMcaIcons?.hydrate?.(button);
     }
     const main=document.querySelector('.main-shell main');
     if(main && !byId('tasksSection')) {

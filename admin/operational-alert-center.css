@@ -1,5 +1,6 @@
 .alert-bell-wrap{position:relative}
-.alert-bell{position:relative;width:42px;height:42px;padding:0!important;display:grid;place-items:center;font-size:19px}
+.alert-bell{position:relative;width:42px;height:42px;padding:0!important;display:grid;place-items:center;color:var(--navy)!important}
+.alert-bell>.ui-icon-svg{width:20px;height:20px;color:var(--navy);stroke:var(--navy)}
 .alert-badge{position:absolute;right:-5px;top:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#b42318;color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;border:2px solid #fff}
 .alert-badge.hidden{display:none!important}
 .alert-popover{position:absolute;right:0;top:50px;width:min(410px,calc(100vw - 24px));background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 22px 55px rgba(16,24,40,.22);z-index:1300;overflow:hidden}

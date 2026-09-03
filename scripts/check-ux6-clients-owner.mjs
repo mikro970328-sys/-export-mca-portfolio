@@ -53,7 +53,7 @@ for(const text of [
   'id="clientCreateForm"',
   'id="clientSearch"'
 ]) requireText(index,text,`markup canónico ${text}`);
-requireText(index,'/admin/erp.js?v=20260903-ux7payables1','revisión del loader ERP para Clientes');
+requireText(index,'/admin/erp.js?v=20260903-ux7icons1','revisión del loader ERP para Clientes');
 const clientsStart=index.indexOf('<section id="clientsSection"');
 const clientsEnd=index.indexOf('<section id="registerContainerSection"',clientsStart);
 const clientsMarkup=clientsStart>=0&&clientsEnd>clientsStart?index.slice(clientsStart,clientsEnd):'';

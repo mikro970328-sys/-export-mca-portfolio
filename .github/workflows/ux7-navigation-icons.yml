@@ -1,0 +1,63 @@
+name: UX-7 Navigation Icon System
+
+on:
+  pull_request:
+    paths:
+      - 'admin/index.html'
+      - 'admin/erp.js'
+      - 'admin/ui-icon-system.js'
+      - 'admin/navigation-shell.js'
+      - 'admin/navigation-shell.css'
+      - 'admin/tasks-workspace.js'
+      - 'admin/account-administration.js'
+      - 'admin/operational-alert-center.js'
+      - 'admin/operational-alert-center.css'
+      - 'sw.js'
+      - 'e2e/browserstack/**'
+      - 'scripts/check-browserstack-ios-readonly.mjs'
+      - 'scripts/check-ux7-navigation-icons.mjs'
+      - '.github/workflows/browserstack-ios-certification.yml'
+      - '.github/workflows/ux7-navigation-icons.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'admin/index.html'
+      - 'admin/erp.js'
+      - 'admin/ui-icon-system.js'
+      - 'admin/navigation-shell.js'
+      - 'admin/navigation-shell.css'
+      - 'admin/tasks-workspace.js'
+      - 'admin/account-administration.js'
+      - 'admin/operational-alert-center.js'
+      - 'admin/operational-alert-center.css'
+      - 'sw.js'
+      - 'e2e/browserstack/**'
+      - 'scripts/check-browserstack-ios-readonly.mjs'
+      - 'scripts/check-ux7-navigation-icons.mjs'
+      - '.github/workflows/browserstack-ios-certification.yml'
+      - '.github/workflows/ux7-navigation-icons.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  icon-system:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate canonical navigation icon ownership
+        run: node scripts/check-ux7-navigation-icons.mjs
+      - name: Validate real-iPhone read-only contract
+        run: node scripts/check-browserstack-ios-readonly.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/ui-icon-system.js
+          node --check admin/navigation-shell.js
+          node --check admin/tasks-workspace.js
+          node --check admin/account-administration.js
+          node --check admin/operational-alert-center.js
+          node --check admin/erp.js

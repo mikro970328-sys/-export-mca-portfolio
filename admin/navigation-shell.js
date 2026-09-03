@@ -8,25 +8,25 @@
   const GROUP_STATE_KEY = 'export_mca_nav_groups';
 
   const EMBEDDED_SECTIONS = [
-    { id:'warehouseSection', label:'Almacén', icon:'▥', src:'/admin/warehouse.html?embedded=1' },
-    { id:'suppliersSection', label:'Proveedores', icon:'◫', src:'/admin/suppliers.html?embedded=1' },
-    { id:'productsSection', label:'Productos', icon:'◩', src:'/admin/products.html?embedded=1' },
-    { id:'purchasesSection', label:'Compras', icon:'▤', src:'/admin/purchases.html?embedded=1' },
-    { id:'salesSection', label:'Ventas', icon:'▧', src:'/admin/sales.html?embedded=1' },
-    { id:'invoicesSection', label:'Facturación', icon:'▨', src:'/admin/invoices.html?embedded=1' },
-    { id:'payablesSection', label:'Cuentas por pagar', icon:'▩', src:'/admin/payables.html?embedded=1' },
-    { id:'costsSection', label:'Costos y rentabilidad', icon:'◇', src:'/admin/costs.html?embedded=1' },
-    { id:'reportsSection', label:'Reportes', icon:'▥', src:'/admin/reports.html?embedded=1', permission:'reports.read' },
-    { id:'inventorySection', label:'Inventario', icon:'▦', src:'/admin/inventory.html?embedded=1' },
-    { id:'loadsSection', label:'Cargues', icon:'⇄', src:'/admin/loads.html?embedded=1' }
+    { id:'warehouseSection', label:'Almacén', src:'/admin/warehouse.html?embedded=1' },
+    { id:'suppliersSection', label:'Proveedores', src:'/admin/suppliers.html?embedded=1' },
+    { id:'productsSection', label:'Productos', src:'/admin/products.html?embedded=1' },
+    { id:'purchasesSection', label:'Compras', src:'/admin/purchases.html?embedded=1' },
+    { id:'salesSection', label:'Ventas', src:'/admin/sales.html?embedded=1' },
+    { id:'invoicesSection', label:'Facturación', src:'/admin/invoices.html?embedded=1' },
+    { id:'payablesSection', label:'Cuentas por pagar', src:'/admin/payables.html?embedded=1' },
+    { id:'costsSection', label:'Costos y rentabilidad', src:'/admin/costs.html?embedded=1' },
+    { id:'reportsSection', label:'Reportes', src:'/admin/reports.html?embedded=1', permission:'reports.read' },
+    { id:'inventorySection', label:'Inventario', src:'/admin/inventory.html?embedded=1' },
+    { id:'loadsSection', label:'Cargues', src:'/admin/loads.html?embedded=1' }
   ];
 
   const NAV_GROUPS = [
-    { key:'home', label:'Inicio', icon:'⌂', sections:['dashboardSection','notificationsSection'] },
-    { key:'commercial', label:'Comercial', icon:'▧', sections:['clientsSection','salesSection','invoicesSection','publicationsSection'] },
-    { key:'operations', label:'Operaciones', icon:'▣', sections:['purchasesSection','warehouseSection','inventorySection','loadsSection','containersSection','registerContainerSection'] },
-    { key:'finance', label:'Finanzas', icon:'◇', sections:['payablesSection','costsSection','reportsSection'] },
-    { key:'administration', label:'Administración', icon:'◉', sections:['suppliersSection','productsSection','workersSection','adminsSection','accountSection'] }
+    { key:'home', label:'Inicio', sections:['dashboardSection','notificationsSection'] },
+    { key:'commercial', label:'Comercial', sections:['clientsSection','salesSection','invoicesSection','publicationsSection'] },
+    { key:'operations', label:'Operaciones', sections:['purchasesSection','warehouseSection','inventorySection','loadsSection','containersSection','registerContainerSection'] },
+    { key:'finance', label:'Finanzas', sections:['payablesSection','costsSection','reportsSection'] },
+    { key:'administration', label:'Administración', sections:['suppliersSection','productsSection','workersSection','adminsSection','accountSection'] }
   ];
 
   const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
@@ -95,7 +95,7 @@
     button.type = 'button';
     button.dataset.section = config.id;
     button.dataset.navLabel = config.label;
-    button.innerHTML = `<span class="nav-icon" aria-hidden="true">${config.icon}</span><span class="nav-label">${config.label}</span>`;
+    button.innerHTML = `<span class="nav-icon" aria-hidden="true"></span><span class="nav-label">${config.label}</span>`;
     button.setAttribute('aria-label', config.label);
     button.title = config.label;
     button.onclick = event => { event.preventDefault(); openEmbeddedSection(config); };
@@ -135,7 +135,7 @@
     const group = document.createElement('div');
     group.className = 'nav-group';
     group.dataset.navGroup = config.key;
-    group.innerHTML = `<button class="nav-group-btn" type="button" data-nav-label="${config.label}" aria-expanded="false"><span class="nav-icon" aria-hidden="true">${config.icon}</span><span class="nav-label">${config.label}</span><span class="nav-chevron" aria-hidden="true">⌃</span></button><div class="submenu"></div>`;
+    group.innerHTML = `<button class="nav-group-btn" type="button" data-nav-label="${config.label}" aria-expanded="false"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">${config.label}</span><span class="nav-chevron" aria-hidden="true"></span></button><div class="submenu"></div>`;
     return group;
   }
 
@@ -158,6 +158,7 @@
     }
 
     nav.replaceChildren(fragment);
+    window.ExportMcaIcons?.hydrate?.(nav);
   }
 
   function initializeGroups() {
