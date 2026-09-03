@@ -152,15 +152,17 @@ export default async function handler(req, res) {
 
     return fail(res, 400, 'Recurso inválido');
   } catch (error) {
-    if (error.message.includes('access_roles_name_key')) return fail(res, 409, 'Ya existe un rol con ese nombre');
-    if (error.message.includes('teams_name_key')) return fail(res, 409, 'Ya existe un equipo con ese nombre');
-    if (error.message.includes('ACCESS_PERMISSION_INVALID')) return fail(res, 400, 'Uno de los permisos seleccionados no es válido');
-    if (error.message.includes('ACCESS_ROLE_NAME_INVALID')) return fail(res, 400, 'Nombre de rol inválido');
-    if (error.message.includes('SYSTEM_ACCESS_ROLE')) return fail(res, 400, 'El rol de sistema no admite ese cambio');
-    if (error.message.includes('TEAM_INACTIVE')) return fail(res, 400, 'El equipo está inactivo');
-    if (error.message.includes('TEAM_NAME_INVALID')) return fail(res, 400, 'Nombre de equipo inválido');
-    if (error.message.includes('ADMIN_USER_INVALID')) return fail(res, 400, 'Uno de los usuarios seleccionados no está disponible');
-    if (error.message.includes('ADMIN_PERMISSION_DENIED')) return fail(res, 403, 'No tienes permiso para realizar esta acción');
-    return fail(res, 500, 'No se pudo completar la operación', error.message);
+    const message = String(error?.message || '');
+    if (message.includes('access_roles_name_key')) return fail(res, 409, 'Ya existe un rol con ese nombre');
+    if (message.includes('teams_name_key')) return fail(res, 409, 'Ya existe un equipo con ese nombre');
+    if (message.includes('ACCESS_PERMISSION_INVALID')) return fail(res, 400, 'Uno de los permisos seleccionados no es válido');
+    if (message.includes('ACCESS_ROLE_NAME_INVALID')) return fail(res, 400, 'Nombre de rol inválido');
+    if (message.includes('SYSTEM_ACCESS_ROLE')) return fail(res, 400, 'El rol de sistema no admite ese cambio');
+    if (message.includes('TEAM_INACTIVE')) return fail(res, 400, 'El equipo está inactivo');
+    if (message.includes('TEAM_NAME_INVALID')) return fail(res, 400, 'Nombre de equipo inválido');
+    if (message.includes('ADMIN_USER_INVALID')) return fail(res, 400, 'Uno de los usuarios seleccionados no está disponible');
+    if (message.includes('ADMIN_PERMISSION_DENIED')) return fail(res, 403, 'No tienes permiso para realizar esta acción');
+    console.error('[api/access-control]', error);
+    return fail(res, 500, 'No se pudo completar la operación');
   }
 }

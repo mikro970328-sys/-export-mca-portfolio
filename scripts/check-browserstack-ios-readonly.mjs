@@ -41,6 +41,7 @@ const requiredTestContracts = [
   "openSection(page, 'payablesSection')",
   "openSection(page, 'suppliersSection')",
   "openSection(page, 'productsSection')",
+  "openSection(page, 'adminsSection')",
   "openSection(page, 'reportsSection')",
   "openSection(page, 'costsSection')",
   "detailAction = actualActions.includes('info')",
@@ -63,6 +64,10 @@ const requiredTestContracts = [
   'products-iphone-safari',
   "productsState.owner !== 'products.js'",
   'productsState.metricCount !== 5',
+  'Access control has one visual owner and a responsive directory',
+  'access-control-iphone-safari',
+  "accessState.owner !== 'access-control-administration.js'",
+  'accessState.metricCount !== 4',
   'Reports has one visual owner and a contained result region',
   'reports-iphone-safari',
   "reportsState.owner !== 'reports.js'",
@@ -73,6 +78,7 @@ const requiredTestContracts = [
   'PAYABLES_UI_FAILED',
   'SUPPLIERS_[A-Z_]+_FAILED',
   'PRODUCTS_[A-Z_]+_FAILED',
+  'ACCESS_CONTROL_UI_FAILED',
   'REPORTS_UI_FAILED'
 ];
 
