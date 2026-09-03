@@ -12,7 +12,11 @@
     permissionCatalog:[],
     teams:[],
     teamUsers:[],
-    activeTab:null
+    activeTab:null,
+    search:'',
+    statusView:'all',
+    loaded:{ users:false, roles:false, teams:false },
+    lastFocused:null
   };
 
   const byId = id => document.getElementById(id);
@@ -129,6 +133,69 @@
     return account?.access_role?.name || 'Usuario';
   }
 
+  function normalizeSearch(value) {
+    return String(value || '').trim().toLocaleLowerCase('es');
+  }
+
+  function matchesSearch(values) {
+    const query = normalizeSearch(state.search);
+    return !query || values.some(value => normalizeSearch(value).includes(query));
+  }
+
+  function matchesStatus(record) {
+    if (state.statusView === 'all') return true;
+    return state.statusView === 'active' ? record?.is_active !== false : record?.is_active === false;
+  }
+
+  function currentRecords(tab = state.activeTab) {
+    if (tab === 'users') return state.usersData?.admins || [];
+    if (tab === 'roles') return state.roles || [];
+    if (tab === 'teams') return state.teams || [];
+    return [];
+  }
+
+  function visibleRecords(tab = state.activeTab) {
+    return currentRecords(tab).filter(record => {
+      if (!matchesStatus(record)) return false;
+      if (tab === 'users') {
+        const role = record.role === 'master_admin' ? 'Administrador maestro' : record.access_roles?.name || 'Sin rol';
+        return matchesSearch([record.full_name, record.username, role, ...(record.teams || []).map(team => team.name)]);
+      }
+      if (tab === 'roles') return matchesSearch([record.name, record.description, ...(record.permission_keys || [])]);
+      if (tab === 'teams') {
+        const memberNames = (record.member_ids || []).map(id => {
+          const member = state.teamUsers.find(user => String(user.id) === String(id));
+          return member ? `${member.full_name} ${member.username}` : '';
+        });
+        return matchesSearch([record.name, record.description, ...memberNames]);
+      }
+      return false;
+    });
+  }
+
+  function metricValue(records, loaded, predicate = () => true) {
+    return loaded ? String((records || []).filter(predicate).length) : '—';
+  }
+
+  function renderMetrics() {
+    const users = state.usersData?.admins || (state.loaded.teams ? state.teamUsers : []);
+    const roles = state.loaded.roles ? state.roles : state.usersData?.roles || [];
+    const teams = state.loaded.teams ? state.teams : state.usersData?.teams || [];
+    const usersLoaded = state.loaded.users || state.loaded.teams;
+    const rolesLoaded = state.loaded.roles || state.loaded.users;
+    const teamsLoaded = state.loaded.teams || state.loaded.users;
+    const values = {
+      accessUsersMetric:metricValue(users, usersLoaded),
+      accessActiveMetric:metricValue(users, usersLoaded, user => user.is_active !== false),
+      accessRolesMetric:metricValue(roles, rolesLoaded, role => role.is_active !== false),
+      accessTeamsMetric:metricValue(teams, teamsLoaded, team => team.is_active !== false)
+    };
+    Object.entries(values).forEach(([id,value]) => {
+      const node = byId(id);
+      if (node) node.textContent = value;
+    });
+  }
+
   function syncStoredAccount() {
     if (!state.account) return;
     try {
@@ -204,15 +271,24 @@
     return `
       <div class="access-shell native-workspace-shell">
         <header class="access-header native-workspace-hero">
-          <div class="native-workspace-heading"><span class="native-workspace-kicker">Gobierno y seguridad</span><h2>Usuarios y acceso</h2><p>Administra quién entra al ERP, qué puede hacer y a qué equipos pertenece. Los permisos se aplican también en el backend.</p></div>
+          <div class="native-workspace-heading"><span class="native-workspace-kicker">Gobierno y seguridad</span><h2>Usuarios y acceso</h2><p>Controla quién entra al ERP, qué puede hacer y cómo se organiza. Cada permiso se valida también en el backend.</p><div class="access-hero-state"><span class="access-state-dot" aria-hidden="true"></span><span>Control de acceso activo</span><span id="accessLastUpdated">Preparando directorio…</span></div></div>
+          <div class="access-summary native-workspace-summary" aria-label="Resumen de acceso">
+            <div class="access-summary-card native-workspace-summary-card"><strong id="accessUsersMetric">—</strong><span>Usuarios</span></div>
+            <div class="access-summary-card native-workspace-summary-card"><strong id="accessActiveMetric">—</strong><span>Activos</span></div>
+            <div class="access-summary-card native-workspace-summary-card"><strong id="accessRolesMetric">—</strong><span>Roles activos</span></div>
+            <div class="access-summary-card native-workspace-summary-card"><strong id="accessTeamsMetric">—</strong><span>Equipos activos</span></div>
+          </div>
         </header>
-        <div class="access-tabs">${tabs.map(([key,label],index)=>`<button type="button" class="access-tab ${index===0?'active':''}" data-access-tab="${key}">${esc(label)}</button>`).join('')}</div>
+        <section class="access-command" aria-label="Controles del directorio">
+          <div class="access-tabs" role="tablist" aria-label="Áreas de acceso">${tabs.map(([key,label],index)=>`<button type="button" role="tab" class="access-tab ${index===0?'active':''}" data-access-tab="${key}" aria-selected="${index===0?'true':'false'}" aria-controls="accessWorkspaceBody">${esc(label)}</button>`).join('')}</div>
+          <button id="accessCreateButton" type="button" class="access-primary access-create" data-access-action="create-user">Nuevo usuario</button>
+        </section>
         <div id="accessWorkspaceMessage" class="access-message" aria-live="polite"></div>
-        <div id="accessWorkspaceBody"></div>
+        <div id="accessWorkspaceBody" class="access-workspace-body" role="tabpanel" aria-live="polite"></div>
       </div>
-      <div id="accessModal" class="access-modal hidden" role="dialog" aria-modal="true" aria-labelledby="accessModalTitle">
-        <div class="access-dialog">
-          <div class="access-dialog-head"><h3 id="accessModalTitle"></h3><button type="button" class="access-secondary" data-access-close>Cerrar</button></div>
+      <div id="accessModal" class="access-modal hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="accessModalTitle">
+        <div class="access-dialog" tabindex="-1">
+          <div class="access-dialog-head"><div><span class="access-dialog-kicker">Usuarios y acceso</span><h3 id="accessModalTitle"></h3></div><button type="button" class="access-icon-button" data-access-close aria-label="Cerrar diálogo">Cerrar</button></div>
           <div id="accessModalBody" class="access-dialog-body"></div>
           <div id="accessModalMessage" class="access-message access-modal-message" aria-live="polite"></div>
           <div id="accessModalFoot" class="access-dialog-foot"></div>
@@ -233,12 +309,19 @@
       button.addEventListener('click', () => switchTab(button.dataset.accessTab));
     });
     section.addEventListener('click', handleWorkspaceClick);
+    section.addEventListener('input', handleWorkspaceInput);
+    document.addEventListener('keydown', handleModalKeydown);
+    renderMetrics();
   }
 
   function closeModal() {
-    byId('accessModal')?.classList.add('hidden');
+    const modal = byId('accessModal');
+    modal?.classList.add('hidden');
+    modal?.setAttribute('aria-hidden','true');
     if (byId('accessModalBody')) byId('accessModalBody').innerHTML = '';
     if (byId('accessModalFoot')) byId('accessModalFoot').innerHTML = '';
+    if (state.lastFocused?.isConnected) state.lastFocused.focus();
+    state.lastFocused = null;
   }
 
   function setModalMessage(message = '') {
@@ -251,6 +334,7 @@
   function openModal(title, bodyHtml, actions = []) {
     const modal = byId('accessModal');
     if (!modal) return;
+    state.lastFocused = document.activeElement;
     byId('accessModalTitle').textContent = title;
     byId('accessModalBody').innerHTML = bodyHtml;
     setModalMessage('');
@@ -277,6 +361,14 @@
       foot.appendChild(button);
     }
     modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden','false');
+    const dialog = modal.querySelector('.access-dialog');
+    const focusTarget = byId('accessModalBody')?.querySelector('input:not([disabled]), select:not([disabled]), textarea:not([disabled])') || modal.querySelector('button:not([disabled])');
+    queueMicrotask(() => (focusTarget || dialog)?.focus());
+  }
+
+  function handleModalKeydown(event) {
+    if (event.key === 'Escape' && !byId('accessModal')?.classList.contains('hidden')) closeModal();
   }
 
   function confirmAction(title, message, onConfirm, danger = false) {
@@ -300,34 +392,84 @@
     return [...root.querySelectorAll(`input[name="${name}"]:checked`)].map(input => input.value);
   }
 
-  function userCreateForm() {
-    return `<div class="access-panel"><h3>Crear usuario</h3><div class="access-panel-intro">El usuario recibe únicamente los permisos del rol seleccionado.</div><form id="accessCreateUserForm" class="access-form" autocomplete="off"><div><label>Nombre completo</label><input name="full_name" required></div><div><label>Usuario</label><input name="username" required></div><div><label>Contraseña temporal</label><input name="password" type="password" minlength="10" required></div><div><label>Rol de acceso</label><select name="access_role_id" required><option value="">Seleccionar rol</option>${roleOptions()}</select></div><div><label>Equipos</label>${teamChecks()}</div><div class="access-form-actions"><button type="submit" class="access-primary">Crear usuario</button></div></form></div>`;
+  function formReady(form) {
+    if (!form) return false;
+    if (typeof form.checkValidity !== 'function' || form.checkValidity()) return true;
+    form.reportValidity?.();
+    return false;
+  }
+
+  function bindModalSubmit(formId) {
+    byId(formId)?.addEventListener('submit', event => {
+      event.preventDefault();
+      byId('accessModalFoot')?.querySelector('.access-primary, .access-danger')?.click();
+    });
+  }
+
+  function directoryToolbar(title, intro, noun) {
+    return `<div class="access-panel-head"><div><span class="access-eyebrow">Directorio</span><h3>${esc(title)}</h3><p>${esc(intro)}</p></div><span id="accessResultCount" class="access-result-count">0 ${esc(noun)}</span></div><div class="access-toolbar"><label class="access-search"><span class="access-search-label">Buscar</span><input id="accessSearch" type="search" value="${esc(state.search)}" placeholder="Buscar por nombre o detalle" autocomplete="off"></label><div class="access-view-tabs" role="tablist" aria-label="Filtrar por estado"><button type="button" data-access-view="all" role="tab" aria-selected="${state.statusView==='all'}" class="${state.statusView==='all'?'active':''}">Todos</button><button type="button" data-access-view="active" role="tab" aria-selected="${state.statusView==='active'}" class="${state.statusView==='active'?'active':''}">Activos</button><button type="button" data-access-view="inactive" role="tab" aria-selected="${state.statusView==='inactive'}" class="${state.statusView==='inactive'?'active':''}">Desactivados</button></div></div><div id="accessDirectoryList" class="access-list"></div>`;
+  }
+
+  function updateResultCount(visible, total, singular, plural) {
+    const node = byId('accessResultCount');
+    if (!node) return;
+    const label = visible === 1 ? singular : plural;
+    node.textContent = visible === total ? `${visible} ${label}` : `${visible} de ${total} ${plural}`;
+  }
+
+  function initials(value) {
+    return String(value || '?').trim().split(/\s+/).slice(0,2).map(part => part.charAt(0)).join('').toUpperCase() || '?';
+  }
+
+  function emptyDirectory(title, detail, filtered = false) {
+    return `<div class="access-empty"><span class="access-empty-mark" aria-hidden="true">${filtered?'0':'—'}</span><strong>${esc(title)}</strong><span>${esc(detail)}</span></div>`;
+  }
+
+  function renderUsersDirectory() {
+    const target = byId('accessDirectoryList');
+    if (!target) return;
+    const rows = visibleRecords('users');
+    const total = currentRecords('users').length;
+    updateResultCount(rows.length,total,'usuario','usuarios');
+    target.innerHTML = rows.length ? rows.map(user => {
+      const role = user.role === 'master_admin' ? 'Administrador maestro' : user.access_roles?.name || 'Sin rol';
+      const teams = (user.teams || []).map(team => team.name);
+      const editable = user.role !== 'master_admin' || state.account?.role === 'master_admin';
+      const mayEditProfile = editable && user.role !== 'master_admin';
+      const mayChangePassword = editable;
+      return `<article class="access-card" data-status="${user.is_active?'active':'inactive'}"><div class="access-card-main"><span class="access-avatar" aria-hidden="true">${esc(initials(user.full_name))}</span><div class="access-card-copy"><div class="access-card-title-row"><h4>${esc(user.full_name)}</h4><span class="access-status ${user.is_active?'':'inactive'}">${user.is_active?'Activo':'Desactivado'}</span></div><p class="access-handle">@${esc(user.username)}</p><dl class="access-facts"><div><dt>Rol</dt><dd>${esc(role)}</dd></div><div><dt>Equipos</dt><dd>${esc(teams.join(', ') || 'Sin equipo')}</dd></div></dl></div></div><div class="access-row-actions">${mayEditProfile?`<button type="button" class="access-secondary" data-access-action="edit-user" data-id="${esc(user.id)}">Editar</button>`:''}${mayChangePassword?`<button type="button" class="access-secondary" data-access-action="password-user" data-id="${esc(user.id)}">Contraseña</button>`:''}${editable&&user.id!==state.account?.id?`<button type="button" class="${user.is_active?'access-danger':'access-secondary'}" data-access-action="toggle-user" data-id="${esc(user.id)}">${user.is_active?'Desactivar':'Activar'}</button>`:''}</div></article>`;
+    }).join('') : emptyDirectory(
+      total ? 'No hay coincidencias' : 'No hay usuarios registrados',
+      total ? 'Cambia la búsqueda o el filtro de estado para ver otros resultados.' : 'Crea la primera cuenta para comenzar a delegar acceso.',
+      total > 0
+    );
   }
 
   function renderUsersPane() {
-    const data = state.usersData || { admins:[], roles:[], teams:[] };
-    const rows = data.admins || [];
-    const list = rows.length ? rows.map(user => {
-      const role = user.role === 'master_admin' ? 'Administrador maestro' : user.access_roles?.name || 'Sin rol';
-      const teams = (user.teams || []).map(team => team.name).join(', ') || 'Sin equipo';
-      const editable = user.role !== 'master_admin' || state.account?.role === 'master_admin';
-      return `<div class="access-row"><div><div class="access-row-title">${esc(user.full_name)} · ${esc(user.username)}</div><div class="access-row-meta">${esc(role)} · ${esc(teams)}</div><div class="access-role-summary"><span class="access-status ${user.is_active?'':'inactive'}">${user.is_active?'Activo':'Desactivado'}</span></div></div><div class="access-row-actions">${editable?`<button type="button" class="access-secondary" data-access-action="edit-user" data-id="${esc(user.id)}">Editar</button><button type="button" class="access-secondary" data-access-action="password-user" data-id="${esc(user.id)}">Contraseña</button>${user.id!==state.account?.id?`<button type="button" class="${user.is_active?'access-danger':'access-secondary'}" data-access-action="toggle-user" data-id="${esc(user.id)}">${user.is_active?'Desactivar':'Activar'}</button>`:''}`:''}</div></div>`;
-    }).join('') : '<div class="access-empty">No hay usuarios.</div>';
-    byId('accessWorkspaceBody').innerHTML = `<div class="access-grid">${userCreateForm()}<div class="access-panel"><h3>Usuarios</h3><div class="access-panel-intro">Rol, equipos y estado efectivo de cada cuenta.</div><div class="access-list">${list}</div></div></div>`;
-    byId('accessCreateUserForm')?.addEventListener('submit', createUser);
+    byId('accessWorkspaceBody').innerHTML = `<section class="access-panel access-directory-panel" aria-labelledby="accessUsersTitle">${directoryToolbar('Usuarios','Rol, equipos y estado efectivo de cada cuenta.','usuarios')}</section>`;
+    byId('accessWorkspaceBody').querySelector('h3')?.setAttribute('id','accessUsersTitle');
+    renderUsersDirectory();
   }
 
-  async function createUser(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
+  function openCreateUser() {
+    openModal('Nuevo usuario', `<form id="accessCreateUserForm" class="access-form" autocomplete="off"><div class="access-form-grid"><div><label>Nombre completo</label><input name="full_name" autocomplete="name" required></div><div><label>Usuario</label><input name="username" autocomplete="username" required></div></div><div><label>Contraseña temporal</label><input name="password" type="password" minlength="10" autocomplete="new-password" required><small class="access-field-help">Mínimo 10 caracteres. La persona podrá cambiarla desde Mi cuenta.</small></div><div><label>Rol de acceso</label><select name="access_role_id" required><option value="">Seleccionar rol</option>${roleOptions()}</select></div><div><label>Equipos</label>${teamChecks()}</div></form>`, [
+      { label:'Cancelar', className:'access-secondary', onClick:closeModal },
+      { label:'Crear usuario', className:'access-primary', onClick:createUser }
+    ]);
+    bindModalSubmit('accessCreateUserForm');
+  }
+
+  async function createUser() {
+    const form = byId('accessCreateUserForm');
+    if (!formReady(form)) return;
     const data = new FormData(form);
     try {
       await request('/api/admins',{ method:'POST', body:JSON.stringify({ full_name:data.get('full_name'), username:data.get('username'), password:data.get('password'), access_role_id:data.get('access_role_id'), team_ids:selectedValues(form,'team_ids') }) });
-      form.reset();
+      closeModal();
       setMessage('Usuario creado correctamente.',true);
       await loadUsers();
       renderUsersPane();
-    } catch(error) { setMessage(safeAccessMessage(error, 'No se pudo crear el usuario. Revisa los datos e intenta nuevamente.', 'create_user'),false); }
+    } catch(error) { setModalMessage(safeAccessMessage(error, 'No se pudo crear el usuario. Revisa los datos e intenta nuevamente.', 'create_user')); }
   }
 
   function openUserEditor(id) {
@@ -336,8 +478,9 @@
     if (user.role === 'master_admin') return setMessage('La cuenta maestra se administra desde Mi cuenta.',false);
     openModal('Editar usuario', `<form id="accessEditUserForm" class="access-form"><div><label>Nombre completo</label><input name="full_name" value="${esc(user.full_name)}" required></div><div><label>Usuario</label><input name="username" value="${esc(user.username)}" required></div><div><label>Rol de acceso</label><select name="access_role_id" required>${roleOptions(user.access_role_id)}</select></div><div><label>Equipos</label>${teamChecks(user.teams || [])}</div></form>`, [
       { label:'Cancelar', className:'access-secondary', onClick:closeModal },
-      { label:'Guardar cambios', onClick:async()=>{ const form=byId('accessEditUserForm'); const data=new FormData(form); await request('/api/admins',{method:'PATCH',body:JSON.stringify({id:user.id,full_name:data.get('full_name'),username:data.get('username'),access_role_id:data.get('access_role_id'),team_ids:selectedValues(form,'team_ids')})}); closeModal(); setMessage('Usuario actualizado.',true); await loadUsers(); renderUsersPane(); } }
+      { label:'Guardar cambios', onClick:async()=>{ const form=byId('accessEditUserForm'); if(!formReady(form))return; const data=new FormData(form); await request('/api/admins',{method:'PATCH',body:JSON.stringify({id:user.id,full_name:data.get('full_name'),username:data.get('username'),access_role_id:data.get('access_role_id'),team_ids:selectedValues(form,'team_ids')})}); closeModal(); setMessage('Usuario actualizado.',true); await loadUsers(); renderUsersPane(); } }
     ]);
+    bindModalSubmit('accessEditUserForm');
   }
 
   function openPasswordEditor(id) {
@@ -347,6 +490,7 @@
       { label:'Cancelar', className:'access-secondary', onClick:closeModal },
       { label:'Actualizar', onClick:async()=>{ const form=byId('accessPasswordForm'); const password=new FormData(form).get('password'); if(String(password||'').length<10) throw new Error('La contraseña debe tener al menos 10 caracteres'); await request('/api/admins',{method:'PATCH',body:JSON.stringify({id:user.id,password})}); closeModal(); setMessage('Contraseña actualizada.',true); } }
     ]);
+    bindModalSubmit('accessPasswordForm');
   }
 
   function permissionMatrix(selected = [], disabled = false) {
@@ -359,27 +503,54 @@
     return `<div class="access-permission-groups">${[...groups.entries()].map(([module,items])=>`<div class="access-permission-group"><div class="access-permission-title">${esc(module)}</div><div class="access-permission-items">${items.map(item=>`<label class="access-check"><input type="checkbox" name="permission_keys" value="${esc(item.permission_key)}" ${chosen.has(item.permission_key)?'checked':''} ${disabled?'disabled':''}><span><strong>${esc(item.label || item.permission_key)}</strong><small>${esc(item.description || item.permission_key)}</small></span></label>`).join('')}</div></div>`).join('')}</div>`;
   }
 
-  function renderRolesPane() {
-    const list = state.roles.length ? state.roles.map(role => `<div class="access-row"><div><div class="access-row-title">${esc(role.name)}</div><div class="access-row-meta">${esc(role.description || 'Sin descripción')} · ${role.permission_keys?.length || 0} permisos</div><div class="access-role-summary"><span class="access-status ${role.is_active?'':'inactive'}">${role.is_active?'Activo':'Desactivado'}</span>${role.is_system?'<span class="access-role-chip">Sistema</span>':''}</div></div><div class="access-row-actions"><button type="button" class="access-secondary" data-access-action="edit-role" data-id="${esc(role.id)}">${role.is_system?'Ver':'Editar'}</button>${!role.is_system?`<button type="button" class="${role.is_active?'access-danger':'access-secondary'}" data-access-action="toggle-role" data-id="${esc(role.id)}">${role.is_active?'Desactivar':'Activar'}</button>`:''}</div></div>`).join('') : '<div class="access-empty">No hay roles configurados.</div>';
-    byId('accessWorkspaceBody').innerHTML = `<div class="access-grid"><div class="access-panel"><h3>Crear rol</h3><div class="access-panel-intro">Define un conjunto reutilizable de permisos. No se crean perfiles departamentales automáticamente.</div><form id="accessCreateRoleForm" class="access-form"><div><label>Nombre</label><input name="name" required></div><div><label>Descripción</label><textarea name="description" rows="3"></textarea></div><div><label>Permisos</label>${permissionMatrix()}</div><div class="access-form-actions"><button type="submit" class="access-primary">Crear rol</button></div></form></div><div class="access-panel"><h3>Roles</h3><div class="access-list">${list}</div></div></div>`;
-    byId('accessCreateRoleForm')?.addEventListener('submit', createRole);
+  function renderRolesDirectory() {
+    const target = byId('accessDirectoryList');
+    if (!target) return;
+    const rows = visibleRecords('roles');
+    const total = currentRecords('roles').length;
+    updateResultCount(rows.length,total,'rol','roles');
+    target.innerHTML = rows.length ? rows.map(role => {
+      const permissionCount = role.permission_keys?.length || 0;
+      return `<article class="access-card" data-status="${role.is_active?'active':'inactive'}"><div class="access-card-main"><span class="access-avatar access-avatar-role" aria-hidden="true">${esc(initials(role.name))}</span><div class="access-card-copy"><div class="access-card-title-row"><h4>${esc(role.name)}</h4><span class="access-status ${role.is_active?'':'inactive'}">${role.is_active?'Activo':'Desactivado'}</span></div><p class="access-card-description">${esc(role.description || 'Sin descripción')}</p><div class="access-role-summary"><span class="access-role-chip">${permissionCount} ${permissionCount===1?'permiso':'permisos'}</span>${role.is_system?'<span class="access-role-chip system">Sistema</span>':''}</div></div></div><div class="access-row-actions"><button type="button" class="access-secondary" data-access-action="edit-role" data-id="${esc(role.id)}">${role.is_system?'Ver permisos':'Editar'}</button>${!role.is_system?`<button type="button" class="${role.is_active?'access-danger':'access-secondary'}" data-access-action="toggle-role" data-id="${esc(role.id)}">${role.is_active?'Desactivar':'Activar'}</button>`:''}</div></article>`;
+    }).join('') : emptyDirectory(
+      total ? 'No hay coincidencias' : 'No hay roles configurados',
+      total ? 'Cambia la búsqueda o el filtro para encontrar otro rol.' : 'Crea un rol para asignar permisos reutilizables.',
+      total > 0
+    );
   }
 
-  async function createRole(event) {
-    event.preventDefault();
-    const form=event.currentTarget, data=new FormData(form);
+  function renderRolesPane() {
+    byId('accessWorkspaceBody').innerHTML = `<section class="access-panel access-directory-panel" aria-labelledby="accessRolesTitle">${directoryToolbar('Roles y permisos','Conjuntos reutilizables que determinan las acciones disponibles dentro del ERP.','roles')}</section>`;
+    byId('accessWorkspaceBody').querySelector('h3')?.setAttribute('id','accessRolesTitle');
+    renderRolesDirectory();
+  }
+
+  function openCreateRole() {
+    openModal('Nuevo rol', `<form id="accessCreateRoleForm" class="access-form"><div><label>Nombre</label><input name="name" required></div><div><label>Descripción</label><textarea name="description" rows="3"></textarea></div><div><label>Permisos</label><p class="access-field-help">Selecciona únicamente las capacidades necesarias para este rol.</p>${permissionMatrix()}</div></form>`, [
+      { label:'Cancelar', className:'access-secondary', onClick:closeModal },
+      { label:'Crear rol', className:'access-primary', onClick:createRole }
+    ]);
+    bindModalSubmit('accessCreateRoleForm');
+  }
+
+  async function createRole() {
+    const form=byId('accessCreateRoleForm');
+    if (!formReady(form)) return;
+    const data=new FormData(form);
     try {
       await request('/api/access-control?resource=roles',{method:'POST',body:JSON.stringify({name:data.get('name'),description:data.get('description'),permission_keys:selectedValues(form,'permission_keys')})});
-      form.reset(); setMessage('Rol creado correctamente.',true); await loadRoles(); renderRolesPane();
-    } catch(error) { setMessage(safeAccessMessage(error, 'No se pudo crear el rol. Revisa los datos e intenta nuevamente.', 'create_role'),false); }
+      closeModal(); setMessage('Rol creado correctamente.',true); await loadRoles(); renderRolesPane();
+    } catch(error) { setModalMessage(safeAccessMessage(error, 'No se pudo crear el rol. Revisa los datos e intenta nuevamente.', 'create_role')); }
   }
 
   function openRoleEditor(id) {
-    const role=state.roles.find(row=>String(row.id)===String(id)); if(!role)return;
+    const role=state.roles.find(row=>String(row.id)===String(id));
+    if(!role)return;
     openModal(role.is_system?'Rol de sistema':'Editar rol', `<form id="accessEditRoleForm" class="access-form"><div><label>Nombre</label><input name="name" value="${esc(role.name)}" ${role.is_system?'disabled':''} required></div><div><label>Descripción</label><textarea name="description" rows="3" ${role.is_system?'disabled':''}>${esc(role.description||'')}</textarea></div><div><label>Permisos</label>${permissionMatrix(role.permission_keys||[],role.is_system)}</div></form>`, role.is_system ? [{label:'Cerrar',className:'access-secondary',onClick:closeModal}] : [
       {label:'Cancelar',className:'access-secondary',onClick:closeModal},
-      {label:'Guardar cambios',onClick:async()=>{const form=byId('accessEditRoleForm'),data=new FormData(form);await request('/api/access-control?resource=roles',{method:'PATCH',body:JSON.stringify({id:role.id,name:data.get('name'),description:data.get('description'),permission_keys:selectedValues(form,'permission_keys')})});closeModal();setMessage('Rol actualizado.',true);await loadRoles();renderRolesPane();}}
+      {label:'Guardar cambios',onClick:async()=>{const form=byId('accessEditRoleForm');if(!formReady(form))return;const data=new FormData(form);await request('/api/access-control?resource=roles',{method:'PATCH',body:JSON.stringify({id:role.id,name:data.get('name'),description:data.get('description'),permission_keys:selectedValues(form,'permission_keys')})});closeModal();setMessage('Rol actualizado.',true);await loadRoles();renderRolesPane();}}
     ]);
+    if(!role.is_system)bindModalSubmit('accessEditRoleForm');
   }
 
   function teamMemberChecks(selected = []) {
@@ -387,40 +558,158 @@
     return state.teamUsers.length ? `<div class="access-multiselect">${state.teamUsers.filter(user=>user.is_active!==false).map(user=>`<label class="access-member"><input type="checkbox" name="member_ids" value="${esc(user.id)}" ${chosen.has(String(user.id))?'checked':''}><span>${esc(user.full_name)} · ${esc(user.username)}</span></label>`).join('')}</div>` : '<div class="access-empty">No hay usuarios disponibles.</div>';
   }
 
-  function renderTeamsPane() {
-    const list=state.teams.length?state.teams.map(team=>`<div class="access-row"><div><div class="access-row-title">${esc(team.name)}</div><div class="access-row-meta">${esc(team.description||'Sin descripción')} · ${(team.member_ids||[]).length} miembros</div><span class="access-status ${team.is_active?'':'inactive'}">${team.is_active?'Activo':'Desactivado'}</span></div><div class="access-row-actions"><button type="button" class="access-secondary" data-access-action="edit-team" data-id="${esc(team.id)}">Editar</button><button type="button" class="${team.is_active?'access-danger':'access-secondary'}" data-access-action="toggle-team" data-id="${esc(team.id)}">${team.is_active?'Desactivar':'Activar'}</button></div></div>`).join(''):'<div class="access-empty">No hay equipos configurados.</div>';
-    byId('accessWorkspaceBody').innerHTML=`<div class="access-grid"><div class="access-panel"><h3>Crear equipo</h3><div class="access-panel-intro">Los equipos agrupan personas para organización y futuros handoffs; no cambian permisos por sí solos.</div><form id="accessCreateTeamForm" class="access-form"><div><label>Nombre</label><input name="name" required></div><div><label>Descripción</label><textarea name="description" rows="3"></textarea></div><div><label>Miembros</label>${teamMemberChecks()}</div><div class="access-form-actions"><button type="submit" class="access-primary">Crear equipo</button></div></form></div><div class="access-panel"><h3>Equipos</h3><div class="access-list">${list}</div></div></div>`;
-    byId('accessCreateTeamForm')?.addEventListener('submit',createTeam);
+  function renderTeamsDirectory() {
+    const target = byId('accessDirectoryList');
+    if (!target) return;
+    const rows = visibleRecords('teams');
+    const total = currentRecords('teams').length;
+    updateResultCount(rows.length,total,'equipo','equipos');
+    target.innerHTML = rows.length ? rows.map(team => {
+      const members = (team.member_ids || []).map(id => state.teamUsers.find(user => String(user.id) === String(id))).filter(Boolean);
+      const memberLabel = members.length ? members.slice(0,3).map(member => member.full_name).join(', ') + (members.length > 3 ? ` y ${members.length-3} más` : '') : 'Sin miembros';
+      return `<article class="access-card" data-status="${team.is_active?'active':'inactive'}"><div class="access-card-main"><span class="access-avatar access-avatar-team" aria-hidden="true">${esc(initials(team.name))}</span><div class="access-card-copy"><div class="access-card-title-row"><h4>${esc(team.name)}</h4><span class="access-status ${team.is_active?'':'inactive'}">${team.is_active?'Activo':'Desactivado'}</span></div><p class="access-card-description">${esc(team.description || 'Sin descripción')}</p><dl class="access-facts"><div><dt>Miembros</dt><dd>${esc(memberLabel)}</dd></div></dl></div></div><div class="access-row-actions"><button type="button" class="access-secondary" data-access-action="edit-team" data-id="${esc(team.id)}">Editar</button><button type="button" class="${team.is_active?'access-danger':'access-secondary'}" data-access-action="toggle-team" data-id="${esc(team.id)}">${team.is_active?'Desactivar':'Activar'}</button></div></article>`;
+    }).join('') : emptyDirectory(
+      total ? 'No hay coincidencias' : 'No hay equipos configurados',
+      total ? 'Cambia la búsqueda o el filtro para encontrar otro equipo.' : 'Crea un equipo para organizar a las personas del ERP.',
+      total > 0
+    );
   }
 
-  async function createTeam(event){event.preventDefault();const form=event.currentTarget,data=new FormData(form);try{await request('/api/access-control?resource=teams',{method:'POST',body:JSON.stringify({name:data.get('name'),description:data.get('description'),member_ids:selectedValues(form,'member_ids')})});form.reset();setMessage('Equipo creado correctamente.',true);await loadTeams();renderTeamsPane();}catch(error){setMessage(safeAccessMessage(error,'No se pudo crear el equipo. Revisa los datos e intenta nuevamente.','create_team'),false);}}
+  function renderTeamsPane() {
+    byId('accessWorkspaceBody').innerHTML=`<section class="access-panel access-directory-panel" aria-labelledby="accessTeamsTitle">${directoryToolbar('Equipos','Agrupaciones organizativas; por sí solas no conceden permisos.','equipos')}</section>`;
+    byId('accessWorkspaceBody').querySelector('h3')?.setAttribute('id','accessTeamsTitle');
+    renderTeamsDirectory();
+  }
 
-  function openTeamEditor(id){const team=state.teams.find(row=>String(row.id)===String(id));if(!team)return;openModal('Editar equipo',`<form id="accessEditTeamForm" class="access-form"><div><label>Nombre</label><input name="name" value="${esc(team.name)}" required></div><div><label>Descripción</label><textarea name="description" rows="3">${esc(team.description||'')}</textarea></div><div><label>Miembros</label>${teamMemberChecks(team.member_ids||[])}</div></form>`,[{label:'Cancelar',className:'access-secondary',onClick:closeModal},{label:'Guardar cambios',onClick:async()=>{const form=byId('accessEditTeamForm'),data=new FormData(form);await request('/api/access-control?resource=teams',{method:'PATCH',body:JSON.stringify({id:team.id,name:data.get('name'),description:data.get('description'),member_ids:selectedValues(form,'member_ids')})});closeModal();setMessage('Equipo actualizado.',true);await loadTeams();renderTeamsPane();}}]);}
+  function openCreateTeam(){
+    openModal('Nuevo equipo',`<form id="accessCreateTeamForm" class="access-form"><div><label>Nombre</label><input name="name" required></div><div><label>Descripción</label><textarea name="description" rows="3"></textarea></div><div><label>Miembros</label><p class="access-field-help">Los equipos organizan personas, pero no cambian permisos por sí solos.</p>${teamMemberChecks()}</div></form>`,[
+      {label:'Cancelar',className:'access-secondary',onClick:closeModal},
+      {label:'Crear equipo',className:'access-primary',onClick:createTeam}
+    ]);
+    bindModalSubmit('accessCreateTeamForm');
+  }
 
-  async function loadUsers(){state.usersData=await request('/api/admins');}
-  async function loadRoles(){const [roles,permissions]=await Promise.all([request('/api/access-control?resource=roles'),request('/api/access-control?resource=permissions')]);state.roles=roles.roles||[];state.permissionCatalog=permissions.permissions||[];}
-  async function loadTeams(){const result=await request('/api/access-control?resource=teams');state.teams=result.teams||[];state.teamUsers=result.users||[];}
+  async function createTeam(){
+    const form=byId('accessCreateTeamForm');
+    if(!formReady(form))return;
+    const data=new FormData(form);
+    try{
+      await request('/api/access-control?resource=teams',{method:'POST',body:JSON.stringify({name:data.get('name'),description:data.get('description'),member_ids:selectedValues(form,'member_ids')})});
+      closeModal();setMessage('Equipo creado correctamente.',true);await loadTeams();renderTeamsPane();
+    }catch(error){setModalMessage(safeAccessMessage(error,'No se pudo crear el equipo. Revisa los datos e intenta nuevamente.','create_team'));}
+  }
+
+  function openTeamEditor(id){
+    const team=state.teams.find(row=>String(row.id)===String(id));
+    if(!team)return;
+    openModal('Editar equipo',`<form id="accessEditTeamForm" class="access-form"><div><label>Nombre</label><input name="name" value="${esc(team.name)}" required></div><div><label>Descripción</label><textarea name="description" rows="3">${esc(team.description||'')}</textarea></div><div><label>Miembros</label>${teamMemberChecks(team.member_ids||[])}</div></form>`,[
+      {label:'Cancelar',className:'access-secondary',onClick:closeModal},
+      {label:'Guardar cambios',onClick:async()=>{const form=byId('accessEditTeamForm');if(!formReady(form))return;const data=new FormData(form);await request('/api/access-control?resource=teams',{method:'PATCH',body:JSON.stringify({id:team.id,name:data.get('name'),description:data.get('description'),member_ids:selectedValues(form,'member_ids')})});closeModal();setMessage('Equipo actualizado.',true);await loadTeams();renderTeamsPane();}}
+    ]);
+    bindModalSubmit('accessEditTeamForm');
+  }
+
+  function renderActivePane() {
+    if (state.activeTab === 'users') renderUsersPane();
+    else if (state.activeTab === 'roles') renderRolesPane();
+    else if (state.activeTab === 'teams') renderTeamsPane();
+  }
+
+  function renderActiveDirectory() {
+    if (state.activeTab === 'users') renderUsersDirectory();
+    else if (state.activeTab === 'roles') renderRolesDirectory();
+    else if (state.activeTab === 'teams') renderTeamsDirectory();
+  }
+
+  function updateCommand() {
+    const button = byId('accessCreateButton');
+    if (!button) return;
+    const settings = {
+      users:['create-user','Nuevo usuario'],
+      roles:['create-role','Nuevo rol'],
+      teams:['create-team','Nuevo equipo']
+    }[state.activeTab];
+    if (!settings) {
+      button.hidden = true;
+      return;
+    }
+    button.hidden = false;
+    button.dataset.accessAction = settings[0];
+    button.textContent = settings[1];
+  }
+
+  function markUpdated() {
+    const node = byId('accessLastUpdated');
+    if (!node) return;
+    node.textContent = `Actualizado ${new Date().toLocaleTimeString('es-US',{hour:'2-digit',minute:'2-digit'})}`;
+  }
+
+  function renderLoading() {
+    const target = byId('accessWorkspaceBody');
+    if (!target) return;
+    target.innerHTML = '<div class="access-loading" role="status"><span class="access-spinner" aria-hidden="true"></span><span>Cargando directorio…</span></div>';
+  }
+
+  function renderLoadError() {
+    const target = byId('accessWorkspaceBody');
+    if (!target) return;
+    target.innerHTML = '<div class="access-empty access-error" role="status"><span class="access-empty-mark" aria-hidden="true">!</span><strong>No pudimos cargar esta sección</strong><span>La información permanece sin cambios. Intenta nuevamente.</span><button type="button" class="access-secondary" data-access-action="retry">Reintentar</button></div>';
+  }
+
+  async function loadUsers(){state.usersData=await request('/api/admins');state.loaded.users=true;renderMetrics();}
+  async function loadRoles(){const [roles,permissions]=await Promise.all([request('/api/access-control?resource=roles'),request('/api/access-control?resource=permissions')]);state.roles=roles.roles||[];state.permissionCatalog=permissions.permissions||[];state.loaded.roles=true;renderMetrics();}
+  async function loadTeams(){const result=await request('/api/access-control?resource=teams');state.teams=result.teams||[];state.teamUsers=result.users||[];state.loaded.teams=true;renderMetrics();}
 
   async function switchTab(tab){
     if(tab==='users'&&!can('administration.users.manage'))return;
     if(tab==='roles'&&!can('administration.roles.manage'))return;
     if(tab==='teams'&&!can('administration.teams.manage'))return;
     state.activeTab=tab;
-    document.querySelectorAll('[data-access-tab]').forEach(button=>button.classList.toggle('active',button.dataset.accessTab===tab));
-    byId('accessWorkspaceBody').innerHTML='<div class="access-empty">Cargando...</div>';
+    state.search='';
+    state.statusView='all';
+    document.querySelectorAll('[data-access-tab]').forEach(button=>{
+      const selected=button.dataset.accessTab===tab;
+      button.classList.toggle('active',selected);
+      button.setAttribute('aria-selected',String(selected));
+    });
+    updateCommand();
+    renderLoading();
     setMessage('');
     try{
-      if(tab==='users'){await loadUsers();renderUsersPane();}
-      else if(tab==='roles'){await loadRoles();renderRolesPane();}
-      else {await loadTeams();renderTeamsPane();}
-    }catch(error){byId('accessWorkspaceBody').innerHTML='<div class="access-empty">No se pudo cargar esta sección.</div>';setMessage(safeAccessMessage(error,'No se pudo cargar esta sección. Intenta nuevamente.','load_tab'),false);}
+      if(tab==='users')await loadUsers();
+      else if(tab==='roles')await loadRoles();
+      else await loadTeams();
+      renderActivePane();
+      markUpdated();
+    }catch(error){renderLoadError();setMessage(safeAccessMessage(error,'No se pudo cargar esta sección. Intenta nuevamente.','load_tab'),false);}
+  }
+
+  function handleWorkspaceInput(event){
+    if(event.target?.id!=='accessSearch')return;
+    state.search=event.target.value;
+    renderActiveDirectory();
   }
 
   async function handleWorkspaceClick(event){
     const close=event.target.closest('[data-access-close]');if(close){closeModal();return;}
     if(event.target===byId('accessModal')){closeModal();return;}
+    const view=event.target.closest('[data-access-view]');
+    if(view){
+      state.statusView=view.dataset.accessView;
+      document.querySelectorAll('[data-access-view]').forEach(button=>{
+        const selected=button.dataset.accessView===state.statusView;
+        button.classList.toggle('active',selected);
+        button.setAttribute('aria-selected',String(selected));
+      });
+      renderActiveDirectory();
+      return;
+    }
     const action=event.target.closest('[data-access-action]');if(!action)return;
     const id=action.dataset.id,type=action.dataset.accessAction;
+    if(type==='create-user')return openCreateUser();
+    if(type==='create-role')return openCreateRole();
+    if(type==='create-team')return openCreateTeam();
+    if(type==='retry')return switchTab(state.activeTab);
     if(type==='edit-user')return openUserEditor(id);
     if(type==='password-user')return openPasswordEditor(id);
     if(type==='toggle-user'){
@@ -461,6 +750,10 @@
     canAny,
     sectionAllowed,
     firstAllowedSection,
-    state
+    state,
+    visibleRecords,
+    renderActivePane,
+    renderMetrics,
+    owner:'access-control-administration.js'
   });
 })();

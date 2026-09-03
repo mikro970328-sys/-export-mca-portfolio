@@ -1,0 +1,57 @@
+name: UX7 Access Visual Owner
+
+on:
+  pull_request:
+    paths:
+      - 'admin/access-control.css'
+      - 'admin/access-control-administration.js'
+      - 'admin/erp.js'
+      - 'api/admins.js'
+      - 'api/access-control.js'
+      - 'e2e/browserstack/ux7-production-readonly.spec.cjs'
+      - 'scripts/check-access-control.mjs'
+      - 'scripts/check-browserstack-ios-readonly.mjs'
+      - 'scripts/check-ux6-access-feedback.mjs'
+      - 'scripts/check-ux6-shell-ownership.mjs'
+      - 'scripts/check-ux6b-native-workspace-foundation.mjs'
+      - 'scripts/check-ux7-access-visual-owner.mjs'
+      - '.github/workflows/browserstack-ios-certification.yml'
+      - '.github/workflows/ux7-access-visual-owner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-access-visual-owner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate UX7 access ownership and runtime fixture
+        run: node scripts/check-ux7-access-visual-owner.mjs
+      - name: Validate adjacent access and shell contracts
+        run: |
+          node scripts/check-ux6-access-feedback.mjs
+          node scripts/check-access-control.mjs
+          node scripts/check-ux6-shell-ownership.mjs
+          node scripts/check-ux6b-native-workspace-foundation.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/check-admin-shell-resilience.mjs
+      - name: Validate security and integration boundaries
+        run: |
+          node scripts/check-session-audit-hardening.mjs
+          node scripts/audit-b9-api-boundaries.mjs
+          node scripts/check-b9-database-privileges.mjs
+          node scripts/check-b9-public-boundaries.mjs
+          node scripts/check-integrations.mjs
+      - name: Validate real-iPhone read-only contract
+        run: node scripts/check-browserstack-ios-readonly.mjs
+      - name: Validate JavaScript syntax
+        run: |
+          node --check admin/access-control-administration.js
+          node --check admin/erp.js
+          node --check api/access-control.js
+          node --check scripts/check-ux7-access-visual-owner.mjs

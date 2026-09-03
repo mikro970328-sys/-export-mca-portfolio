@@ -10,7 +10,7 @@ const RUN_CORE = CERT_SCOPE !== 'costs';
 const RUN_COSTS = CERT_SCOPE !== 'core';
 const PROFITABILITY_STATUS_ATTRIBUTE = 'data-profitability-probe-status';
 const PROFITABILITY_STATE_ATTRIBUTE = 'data-profitability-probe-state';
-const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
+const ERP_ERROR_MARKERS = /COSTS_INITIAL_LOAD_FAILED|COSTS_(?:REFRESH|UI)_FAILED|PROFITABILITY_LOAD_FAILED|REPORTS_UI_FAILED|SUPPLIERS_[A-Z_]+_FAILED|PRODUCTS_[A-Z_]+_FAILED|ACCESS_CONTROL_UI_FAILED|INVOICES_UI_FAILED|PAYABLES_UI_FAILED|PUBLICATIONS_UI_FAILED|CONTAINER_[A-Z_]+_FAILED|\[admin (?:boot|dashboard|secondary modules)\]|(?:Type|Reference|Syntax)Error|Uncaught/i;
 
 function sanitizeLog(value) {
   return String(value || '')
@@ -853,6 +853,76 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         innerGeometry:{ clientWidth:productsState.clientWidth, scrollWidth:productsState.scrollWidth },
         metrics:productsState.metricCount,
         visibleFrames:ownerState.visibleFrames,
+        apiStatus:200,
+        submitted:false
+      });
+    });
+
+    if (RUN_CORE) await test.step('Access control has one visual owner and a responsive directory', async () => {
+      await openSection(page, 'adminsSection');
+      const section = page.locator('#adminsSection');
+      await expect(section.locator('#accessLastUpdated')).not.toContainText('Preparando', { timeout:30_000 });
+      await expect(section.locator('#accessDirectoryList .access-card, #accessDirectoryList .access-empty').first()).toBeVisible();
+
+      const accessState = await section.evaluate(node => {
+        const visible = element => {
+          if (!element) return false;
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0;
+        };
+        const fits = element => {
+          if (!visible(element)) return false;
+          const rect = element.getBoundingClientRect();
+          return rect.left >= -1 && rect.right <= window.innerWidth + 1;
+        };
+        const metrics = [...node.querySelectorAll('.access-summary-card')];
+        const modal = node.querySelector('#accessModal');
+        const records = [...node.querySelectorAll('#accessDirectoryList .access-card, #accessDirectoryList .access-empty')];
+        return {
+          owner:node.dataset.accessOwner || '',
+          apiOwner:window.ExportMcaAccessControl?.owner || '',
+          metricCount:metrics.length,
+          metricsFit:metrics.length === 4 && metrics.every(fits),
+          heroFits:fits(node.querySelector('.access-header')),
+          commandFits:fits(node.querySelector('.access-command')),
+          panelFits:fits(node.querySelector('.access-directory-panel')),
+          recordsFit:records.length > 0 && records.every(fits),
+          areaTabs:node.querySelectorAll('.access-tabs [role="tab"]').length,
+          selectedAreaTabs:node.querySelectorAll('.access-tabs [aria-selected="true"]').length,
+          selectedStatusTabs:node.querySelectorAll('.access-view-tabs [aria-selected="true"]').length,
+          searchType:node.querySelector('#accessSearch')?.getAttribute('type') || '',
+          result:node.querySelector('#accessResultCount')?.textContent?.trim() || '',
+          lastUpdated:node.querySelector('#accessLastUpdated')?.textContent?.trim() || '',
+          modalVisible:visible(modal),
+          methodReady:['visibleRecords','renderActivePane','renderMetrics'].every(name => typeof window.ExportMcaAccessControl?.[name] === 'function')
+        };
+      });
+
+      if (accessState.owner !== 'access-control-administration.js' || accessState.apiOwner !== 'access-control-administration.js' || !accessState.methodReady) {
+        throw new Error('Access control does not expose its canonical visual owner');
+      }
+      if (!accessState.heroFits || !accessState.metricsFit || !accessState.commandFits || !accessState.panelFits || !accessState.recordsFit) {
+        throw new Error('Access control responsive regions do not fit the iPhone viewport');
+      }
+      if (accessState.metricCount !== 4 || accessState.areaTabs < 1 || accessState.selectedAreaTabs !== 1 || accessState.selectedStatusTabs !== 1) {
+        throw new Error('Access control summary or tab state is incomplete');
+      }
+      if (accessState.searchType !== 'search' || !accessState.result || !accessState.lastUpdated || accessState.modalVisible) {
+        throw new Error('Access control directory is not in its safe initial state');
+      }
+
+      const ownerState = await assertOneVisibleSection(page, 'adminsSection');
+      if (ownerState.visibleFrames !== 0) throw new Error('Access control unexpectedly mounts an embedded page');
+      const geometry = await assertNoDocumentOverflow(page, 'Usuarios y acceso');
+      await attachPrivateScreenshot(page, testInfo, 'access-control-iphone-safari');
+
+      const accessResponses = diagnostics.apiResponses.filter(item => item.path === '/api/admins' || item.path === '/api/access-control');
+      if (!accessResponses.some(item => item.status === 200)) throw new Error('Access control API did not return HTTP 200');
+      checkpoint('access-control-readonly', {
+        geometry,
+        metrics:accessState.metricCount,
+        areaTabs:accessState.areaTabs,
         apiStatus:200,
         submitted:false
       });
