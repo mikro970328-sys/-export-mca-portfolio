@@ -1,0 +1,43 @@
+name: Purchase Safe Revision
+
+on:
+  pull_request:
+    paths:
+      - 'api/purchases.js'
+      - 'admin/purchases.js'
+      - 'admin/purchases.html'
+      - 'api/sales-supply.js'
+      - 'admin/sales-supply-workspace.js'
+      - 'admin/sales.html'
+      - 'supabase/migrations/*purchase_order_safe_revision.sql'
+      - 'scripts/check-purchase-safe-revision.mjs'
+      - '.github/workflows/purchase-safe-revision.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'api/purchases.js'
+      - 'admin/purchases.js'
+      - 'admin/purchases.html'
+      - 'api/sales-supply.js'
+      - 'admin/sales-supply-workspace.js'
+      - 'admin/sales.html'
+      - 'supabase/migrations/*purchase_order_safe_revision.sql'
+      - 'scripts/check-purchase-safe-revision.mjs'
+      - '.github/workflows/purchase-safe-revision.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-safe-revision:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate purchase revisions
+        run: node scripts/check-purchase-safe-revision.mjs
