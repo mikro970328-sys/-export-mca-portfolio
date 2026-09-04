@@ -60,7 +60,7 @@ for(const text of [
 
 for(const text of [
   '/admin/purchases.css?v=20260904-directflow1',
-  '/admin/purchases.js?v=20260904-directflow1',
+  '/admin/purchases.js?v=20260904-safeedit1',
   '/admin/embedded-auto-refresh.js?v=20260904-live2'
 ])requireText(html,text,`cache de Compras ${text}`);
 
