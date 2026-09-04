@@ -29,6 +29,30 @@ const labels=Object.freeze({
   cancelled:'Cancelado'
 });
 
+const NEXT_STAGE=Object.freeze({
+  draft:{action:'reserve',label:'Reservar cargue',target:'Reservado',copy:'Compromete en inventario el saldo de los WR seleccionados.'},
+  reserved:{action:'start_loading',label:'Iniciar carga',target:'En carga',copy:'Confirma que comenzó la preparación física de la mercancía.'},
+  loading:{action:'mark_loaded',label:'Marcar cargado',target:'Cargado',copy:'Confirma que toda la mercancía planificada quedó dentro del contenedor.'},
+  loaded:{action:'dispatch',label:'Despachar cargue',target:'Despachado',copy:'Confirma la salida física y descuenta el inventario del almacén.'}
+});
+
+const ACTION_REASON_LABELS=Object.freeze({
+  PERMISSION_REQUIRED:'Tu cuenta no tiene permiso para ejecutar este paso.',
+  LOAD_HAS_NO_ITEMS:'Agrega mercancía al plan antes de reservar.',
+  LOAD_ALLOCATIONS_REQUIRED:'Selecciona al menos un WR para cada producto.',
+  LOAD_ALLOCATIONS_INCOMPLETE:'Las cantidades del producto y sus WR no coinciden.',
+  INSUFFICIENT_WR_AVAILABLE_BALANCE:'La mercancía planificada supera el saldo disponible de uno de los WR. Edita el plan y ajusta la cantidad antes de reservar.',
+  LOAD_RESERVATION_LEDGER_NOT_ZERO:'Existe una reserva anterior inconsistente que debe revisarse.',
+  LOAD_RESERVATION_LEDGER_MISMATCH:'La reserva no coincide con el movimiento de inventario y debe revisarse.',
+  LOAD_HAS_NO_CONTAINER:'Asigna un contenedor antes de despachar.',
+  SHIPMENT_NOT_ELIGIBLE_FOR_LOAD:'El contenedor asignado ya no está activo o elegible para este cargue.',
+  LOAD_NOT_DRAFT:'Este paso solo corresponde a un cargue en borrador.',
+  LOAD_NOT_RESERVED:'Primero debes reservar el cargue.',
+  LOAD_NOT_LOADING:'Primero debes iniciar la carga.',
+  LOAD_NOT_LOADED:'Primero debes marcar el cargue como cargado.',
+  LOAD_CANNOT_BE_CANCELLED:'Este cargue ya no puede cancelarse en su etapa actual.'
+});
+
 const SALES_STATUS_LABELS=Object.freeze({
   draft:'Borrador',
   confirmed:'Confirmada',
@@ -134,6 +158,30 @@ const unitLabel=value=>{
 };
 const capability=(load,key)=>load?.capabilities?.actions?.[key]||null;
 const can=(load,key)=>capability(load,key)?.allowed===true;
+const canonicalStatus=load=>load?.capabilities?.status||load?.status||'';
+const nextStage=load=>NEXT_STAGE[canonicalStatus(load)]||null;
+
+function canAdvance(load,key){
+  const allowed={
+    reserve:can(load,'reserve'),
+    start_loading:can(load,'start_loading'),
+    mark_loaded:can(load,'mark_loaded'),
+    dispatch:can(load,'dispatch')
+  };
+  return allowed[key]===true;
+}
+
+function actionReason(load,key){
+  const reason=capability(load,key)?.reason;
+  return ACTION_REASON_LABELS[reason]||'Este paso todavía no está habilitado. Abre el cargue para revisar sus requisitos.';
+}
+
+function compactNextStep(load){
+  const step=nextStage(load);
+  if(!step)return `<div class="load-list-next complete"><span>Flujo</span><strong>${canonicalStatus(load)==='cancelled'?'Cancelado':'Finalizado'}</strong><button class="alt" type="button" data-open-load="${esc(load.id)}">Ver detalle</button></div>`;
+  if(canAdvance(load,step.action))return `<div class="load-list-next ready"><span>Siguiente paso</span><strong>${esc(step.target)}</strong><button class="primary" type="button" data-quick-load="${esc(load.id)}" data-quick-action="${esc(step.action)}">${esc(step.label)}</button></div>`;
+  return `<div class="load-list-next blocked"><span>Siguiente paso</span><strong>${esc(step.target)} bloqueado</strong><button class="alt" type="button" data-open-load="${esc(load.id)}">Revisar bloqueo</button><small>${esc(actionReason(load,step.action))}</small></div>`;
+}
 
 function quantityText(quantity,unit,pallets){
   const parts=[];
@@ -208,12 +256,12 @@ function renderRows(){
       <td>${esc(containerLabel(load))}</td>
       <td>${esc(date(load.scheduled_at))}</td>
       <td>${esc(date(load.updated_at))}</td>
-      <td><span class="loads-open-mark" aria-hidden="true">›</span></td>
+      <td>${compactNextStep(load)}</td>
     </tr>`;
   }).join('');
   $('loadCards').innerHTML=rows.map(load=>{
     const key=statusKey(load.status);
-    return `<button class="load-card" type="button" data-open-load="${esc(load.id)}">
+    return `<article class="load-card">
       <span class="load-card-head"><strong>${esc(load.load_number||'Cargue')}</strong><span class="pill ${esc(key)}">${esc(statusLabel(load.status))}</span></span>
       <span class="load-card-grid">
         <span><span>Almacén</span><b>${esc(warehouseLabel(load))}</b></span>
@@ -221,7 +269,8 @@ function renderRows(){
         <span><span>Programado</span><b>${esc(date(load.scheduled_at))}</b></span>
         <span><span>Actualizado</span><b>${esc(date(load.updated_at))}</b></span>
       </span>
-    </button>`;
+      ${compactNextStep(load)}
+    </article>`;
   }).join('');
   $('empty').classList.toggle('hidden',rows.length>0);
   $('empty').innerHTML=rows.length?'':hasActiveFilters()
@@ -270,15 +319,24 @@ function actionButtons(load){
   const actions=[];
   if(can(load,'assign_container')||can(load,'create_container'))actions.push(['container','Asignar contenedor','']);
   if(can(load,'unassign_container'))actions.push(['unassign_container','Quitar contenedor','']);
-  if(can(load,'reserve'))actions.push(['reserve','Reservar','primary']);
   if(can(load,'release'))actions.push(['release','Liberar reserva','']);
-  if(can(load,'start_loading'))actions.push(['start_loading','Iniciar carga','primary']);
-  if(can(load,'mark_loaded'))actions.push(['mark_loaded','Marcar cargado','primary']);
-  if(can(load,'dispatch'))actions.push(['dispatch','Despachar','orange']);
   if(can(load,'edit'))actions.push(['edit','Editar plan','']);
   if(can(load,'cancel'))actions.push(['cancel','Cancelar','danger']);
   if(can(load,'view_tracking'))actions.push(['tracking','Ver Tracking','']);
   return actions;
+}
+
+function nextStageMarkup(load){
+  const step=nextStage(load);
+  if(!step){
+    const copy=canonicalStatus(load)==='cancelled'
+      ?'Este cargue fue cancelado y no tiene más pasos operativos.'
+      :'El cargue completó su flujo de salida. Puedes consultar su trazabilidad.';
+    return `<div class="load-next-step complete"><div><span>Flujo completado</span><strong>${esc(statusLabel(canonicalStatus(load)))}</strong><p>${esc(copy)}</p></div></div>`;
+  }
+  const allowed=canAdvance(load,step.action);
+  const detail=allowed?step.copy:actionReason(load,step.action);
+  return `<div class="load-next-step ${allowed?'ready':'blocked'}"><div><span>Siguiente paso</span><strong>${esc(step.target)}</strong><p>${esc(detail)}</p></div><button class="${allowed?(step.action==='dispatch'?'orange':'primary'):'alt'}" type="button" data-action="${esc(step.action)}" ${allowed?'':'disabled'}>${esc(step.label)}</button></div>`;
 }
 
 function renderLoadDetail(load){
@@ -295,7 +353,7 @@ function renderLoadDetail(load){
   const pending=load.capabilities?.container_pending===true?'<div class="pending-note">Contenedor pendiente de asignar. El despacho se habilitará únicamente cuando el backend confirme un contenedor elegible.</div>':'';
   const notes=String(load.notes||'').trim()||'Sin notas operativas.';
   return `<section class="load-detail-hero"><div><span>Operación</span><strong>${esc(load.load_number||'Cargue')}</strong></div><span class="pill ${esc(statusKey(load.status))}">${esc(statusLabel(load.status))}</span></section>
-    <section class="load-detail-section"><header class="load-detail-section-head"><h3>Estado y acciones disponibles</h3><span class="loads-result-count">${actions.length} acción${actions.length===1?'':'es'}</span></header><div class="load-detail-section-body">${flow(load.status)}<div class="actions load-detail-actions">${actions.length?actions.map(action=>`<button class="${esc(action[2]||'alt')}" type="button" data-action="${esc(action[0])}">${esc(action[1])}</button>`).join(''):'<span class="loads-context-empty">No hay acciones habilitadas para tu rol y el estado actual.</span>'}</div>${pending}<div id="actionMsg" class="load-action-feedback" role="status" aria-live="polite"></div></div></section>
+    <section class="load-detail-section"><header class="load-detail-section-head"><h3>Estado y acciones disponibles</h3><span class="loads-result-count">Control por etapas</span></header><div class="load-detail-section-body">${flow(load.status)}${nextStageMarkup(load)}<div class="actions load-detail-actions">${actions.length?actions.map(action=>`<button class="${esc(action[2]||'alt')}" type="button" data-action="${esc(action[0])}">${esc(action[1])}</button>`).join(''):'<span class="loads-context-empty">No hay acciones adicionales habilitadas.</span>'}</div>${pending}<div id="actionMsg" class="load-action-feedback" role="status" aria-live="polite"></div></div></section>
     <section class="load-detail-section"><header class="load-detail-section-head"><h3>Resumen operativo</h3></header><div class="load-detail-section-body"><div class="load-summary-grid"><div><small>Almacén</small><strong>${esc(warehouseLabel(load))}</strong></div><div><small>Contenedor</small><strong>${esc(containerLabel(load))}</strong></div><div><small>Programado</small><strong>${esc(date(load.scheduled_at))}</strong></div><div><small>Booking</small><strong>${esc(load.shipment?.booking_number||'—')}</strong></div><div><small>B/L</small><strong>${esc(load.shipment?.bol_number||'—')}</strong></div><div><small>Notas</small><strong>${esc(notes)}</strong></div></div></div></section>
     <section class="load-detail-section"><header class="load-detail-section-head"><h3>Mercancía por WR</h3><span class="loads-result-count">${(load.items||[]).length} línea${(load.items||[]).length===1?'':'s'}</span></header><div class="load-detail-section-body">${itemHtml||'<div class="loads-context-empty">Este cargue todavía no tiene mercancía planificada.</div>'}</div></section>
     <section class="load-detail-section"><header class="load-detail-section-head"><h3>Trazabilidad física</h3></header><div class="load-detail-section-body">${trace}</div></section>
@@ -368,18 +426,45 @@ function hideModal(id,{restoreFocus=true}={}){
   if(restoreFocus&&trigger?.focus)trigger.focus();
 }
 
+function updateStatsFromLoads(){
+  state.stats={
+    ...state.stats,
+    total:state.loads.length,
+    draft:state.loads.filter(load=>load.status==='draft').length,
+    reserved:state.loads.filter(load=>load.status==='reserved').length,
+    loading:state.loads.filter(load=>load.status==='loading').length,
+    loaded:state.loads.filter(load=>load.status==='loaded').length,
+    dispatched:state.loads.filter(load=>load.status==='dispatched').length,
+    cancelled:state.loads.filter(load=>load.status==='cancelled').length
+  };
+}
+
+function reconcileLoad(load){
+  if(!load?.id)return;
+  const index=state.loads.findIndex(current=>String(current.id)===String(load.id));
+  if(index>=0)state.loads[index]={...state.loads[index],...load};
+  else state.loads.unshift(load);
+  updateStatsFromLoads();
+  renderMetrics();
+  renderRows();
+}
+
+function presentLoad(load){
+  state.selected=load;
+  $('drawerTitle').textContent=load.load_number||'Cargue';
+  $('drawerSub').textContent=`${statusLabel(load.status)} · ${load.warehouse?.name||'Sin almacén'}`;
+  $('drawerBody').innerHTML=renderLoadDetail(load);
+  if($('drawerModal').classList.contains('hidden'))showModal('drawerModal');
+  renderOperationalContext(load);
+}
+
 async function openLoad(id){
   const loadId=String(id||'').trim();
   if(!loadId)return false;
   if(!token){pendingLoadId=loadId;return false;}
   pendingLoadId='';
   const data=await api('/api/loads?id='+encodeURIComponent(loadId));
-  state.selected=data.load;
-  $('drawerTitle').textContent=data.load.load_number||'Cargue';
-  $('drawerSub').textContent=`${statusLabel(data.load.status)} · ${data.load.warehouse?.name||'Sin almacén'}`;
-  $('drawerBody').innerHTML=renderLoadDetail(data.load);
-  showModal('drawerModal');
-  renderOperationalContext(data.load);
+  presentLoad(data.load);
   return true;
 }
 
@@ -409,8 +494,7 @@ function closeDecision(accepted){
   if(resolve)resolve(accepted===true);
 }
 
-async function handleAction(action){
-  const load=state.selected;
+async function handleAction(action,load=state.selected,reopen=true){
   if(!load)return;
   if(action==='tracking'){
     if(!can(load,'view_tracking'))return;
@@ -435,20 +519,36 @@ async function handleAction(action){
   }
   try{
     bsy(true);
-    showActionMessage();
-    await api('/api/loads',{method:'POST',body:JSON.stringify({action,load_id:load.id})});
-    hideModal('drawerModal',{restoreFocus:false});
-    await refresh();
-    await openLoad(load.id);
+    if(reopen)showActionMessage();
+    else setFeedback('pageMsg');
+    const result=await api('/api/loads',{method:'POST',body:JSON.stringify({action,load_id:load.id})});
+    reconcileLoad(result.load);
+    try{await refresh();}
+    catch(refreshError){console.error('LOADS_REFRESH_AFTER_MUTATION_FAILED',{action,load_id:load.id,error:refreshError});}
+    const updated=result.load||load;
+    const success=`${updated.load_number||'El cargue'} ahora está ${statusLabel(updated.status)}.`;
+    if(reopen){presentLoad(updated);showActionMessage(success,'ok');}
+    else setFeedback('pageMsg',success,'ok');
   }catch(error){
-    showActionMessage(reportLoadError(`action:${action}`,error));
+    const message=reportLoadError(`action:${action}`,error);
+    if(reopen)showActionMessage(message);
+    else setFeedback('pageMsg',message);
   }finally{
     bsy(false);
   }
 }
 
 function bsy(on){
-  document.querySelectorAll('button').forEach(button=>{button.disabled=on;});
+  document.querySelectorAll('button').forEach(button=>{
+    if(on){
+      if(!Object.prototype.hasOwnProperty.call(button.dataset,'loadBusyDisabled'))button.dataset.loadBusyDisabled=button.disabled?'1':'0';
+      button.disabled=true;
+      return;
+    }
+    if(!Object.prototype.hasOwnProperty.call(button.dataset,'loadBusyDisabled'))return;
+    button.disabled=button.dataset.loadBusyDisabled==='1';
+    delete button.dataset.loadBusyDisabled;
+  });
 }
 
 function openPlan(load=null){
@@ -476,7 +576,7 @@ function renderSources(load){
     <header class="product-head"><strong>${esc(group[0].product_name||'Producto')}</strong><span class="muted">${esc(unitLabel(group[0].product_unit||group[0].receipt_unit||'unidades'))}</span></header>
     <div class="product-body">${group.map(source=>{
       const current=existing.get(source.receipt_item_id)||{};
-      return `<div class="source" data-source="${esc(source.receipt_item_id)}" data-product="${esc(source.product_id)}" data-unit="${esc(unitLabel(source.product_unit||source.receipt_unit||'unidades'))}"><div class="source-top"><span><strong>${esc(source.receipt_number||'WR')}</strong>${source.lot_number?` · Lote ${esc(source.lot_number)}`:''}</span><small>Disponible: ${quantityText(source.available_quantity,source.product_unit||source.receipt_unit,source.available_pallets)}</small></div><div class="alloc-grid"><input type="number" step="0.001" min="0" max="${esc(source.available_quantity)}" data-q value="${esc(current.q||'')}" aria-label="Cantidad de ${esc(source.receipt_number||'WR')}" placeholder="Cantidad"><input type="number" step="0.001" min="0" max="${esc(source.available_pallets)}" data-p value="${esc(current.p||'')}" aria-label="Pallets de ${esc(source.receipt_number||'WR')}" placeholder="Pallets"></div></div>`;
+      return `<div class="source" data-source="${esc(source.receipt_item_id)}" data-product="${esc(source.product_id)}" data-unit="${esc(unitLabel(source.product_unit||source.receipt_unit||'unidades'))}" data-receipt="${esc(source.receipt_number||'WR')}"><div class="source-top"><span><strong>${esc(source.receipt_number||'WR')}</strong>${source.lot_number?` · Lote ${esc(source.lot_number)}`:''}</span><small>Disponible: ${quantityText(source.available_quantity,source.product_unit||source.receipt_unit,source.available_pallets)}</small></div><div class="alloc-grid"><input type="number" step="0.001" min="0" max="${esc(source.available_quantity)}" data-q value="${esc(current.q||'')}" aria-label="Cantidad de ${esc(source.receipt_number||'WR')}" placeholder="Cantidad"><input type="number" step="0.001" min="0" max="${esc(source.available_pallets)}" data-p value="${esc(current.p||'')}" aria-label="Pallets de ${esc(source.receipt_number||'WR')}" placeholder="Pallets"></div></div>`;
     }).join('')}</div>
   </article>`).join('')||`<div class="loads-empty">${emptyState('Sin mercancía disponible','Selecciona un almacén que tenga inventario disponible por WR.')}</div>`;
 }
@@ -484,8 +584,16 @@ function renderSources(load){
 function planPayload(){
   const byProduct={};
   document.querySelectorAll('#sourceGroups [data-source]').forEach(row=>{
-    const quantity=Number(row.querySelector('[data-q]').value||0);
-    const pallets=Number(row.querySelector('[data-p]').value||0);
+    const quantityInput=row.querySelector('[data-q]');
+    const palletInput=row.querySelector('[data-p]');
+    const quantity=Number(quantityInput.value||0);
+    const pallets=Number(palletInput.value||0);
+    const maxQuantity=Number(quantityInput.max||0);
+    const maxPallets=Number(palletInput.max||0);
+    const receipt=row.dataset.receipt||'WR';
+    if(!Number.isFinite(quantity)||!Number.isFinite(pallets)||quantity<0||pallets<0)throw new Error(`La cantidad indicada para ${receipt} no es válida.`);
+    if(quantity>maxQuantity+1e-9)throw new Error(`La cantidad indicada para ${receipt} supera el saldo disponible de ${fmt(maxQuantity)}.`);
+    if(pallets>maxPallets+1e-9)throw new Error(`La cantidad de pallets indicada para ${receipt} supera el saldo disponible de ${fmt(maxPallets)}.`);
     if(quantity<=0&&pallets<=0)return;
     const productId=row.dataset.product;
     byProduct[productId]??={product_id:productId,unit:row.dataset.unit,planned_quantity:0,planned_pallets:0,allocations:[]};
@@ -499,12 +607,12 @@ function planPayload(){
 async function savePlan(){
   if(state.editing&&!can(state.editing,'edit'))return setFeedback('planMsg','El cargue ya no admite edición.');
   if(!state.editing&&state.write_access!==true)return setFeedback('planMsg','No tienes permiso para crear cargues.');
-  const lines=planPayload();
-  if(!$('planWarehouse').value)return setFeedback('planMsg','Selecciona un almacén.');
-  if(!lines.length)return setFeedback('planMsg','Selecciona al menos una cantidad de un WR.');
   try{
     bsy(true);
     setFeedback('planMsg');
+    if(!$('planWarehouse').value)throw new Error('Selecciona un almacén.');
+    const lines=planPayload();
+    if(!lines.length)throw new Error('Selecciona al menos una cantidad de un WR.');
     const scheduled=$('planScheduled').value?new Date($('planScheduled').value):null;
     if(scheduled&&Number.isNaN(scheduled.getTime()))throw new Error('La fecha programada no es válida.');
     const body={
@@ -517,8 +625,11 @@ async function savePlan(){
     };
     const data=await api('/api/loads',{method:'POST',body:JSON.stringify(body)});
     hideModal('planModal',{restoreFocus:false});
-    await refresh();
-    await openLoad(data.load.id);
+    reconcileLoad(data.load);
+    try{await refresh();}
+    catch(refreshError){console.error('LOADS_REFRESH_AFTER_MUTATION_FAILED',{action:body.action,load_id:data.load?.id||null,error:refreshError});}
+    presentLoad(data.load);
+    showActionMessage(`${data.load.load_number||'El cargue'} se guardó y ya está actualizado en el ERP.`,'ok');
   }catch(error){
     setFeedback('planMsg',reportLoadError('save_plan',error));
   }finally{
@@ -547,7 +658,7 @@ async function createContainer(){
   try{
     bsy(true);
     setFeedback('containerMsg');
-    await api('/api/loads',{method:'POST',body:JSON.stringify({
+    const data=await api('/api/loads',{method:'POST',body:JSON.stringify({
       action:'create_container',
       load_id:state.selected.id,
       container_number:$('containerNumber').value,
@@ -558,9 +669,11 @@ async function createContainer(){
       importer_id:$('containerImporter').value||null
     })});
     hideModal('containerModal',{restoreFocus:false});
-    hideModal('drawerModal',{restoreFocus:false});
-    await refresh();
-    await openLoad(state.selected.id);
+    reconcileLoad(data.load);
+    try{await refresh();}
+    catch(refreshError){console.error('LOADS_REFRESH_AFTER_MUTATION_FAILED',{action:'create_container',load_id:data.load?.id||null,error:refreshError});}
+    presentLoad(data.load);
+    showActionMessage('Contenedor creado y vinculado. El cargue ya refleja el cambio.','ok');
   }catch(error){
     setFeedback('containerMsg',reportLoadError('create_container',error));
   }finally{
@@ -574,11 +687,13 @@ async function assignExisting(){
   try{
     bsy(true);
     setFeedback('containerMsg');
-    await api('/api/loads',{method:'POST',body:JSON.stringify({action:'assign_existing_container',load_id:state.selected.id,shipment_id:$('existingContainer').value})});
+    const data=await api('/api/loads',{method:'POST',body:JSON.stringify({action:'assign_existing_container',load_id:state.selected.id,shipment_id:$('existingContainer').value})});
     hideModal('containerModal',{restoreFocus:false});
-    hideModal('drawerModal',{restoreFocus:false});
-    await refresh();
-    await openLoad(state.selected.id);
+    reconcileLoad(data.load);
+    try{await refresh();}
+    catch(refreshError){console.error('LOADS_REFRESH_AFTER_MUTATION_FAILED',{action:'assign_existing_container',load_id:data.load?.id||null,error:refreshError});}
+    presentLoad(data.load);
+    showActionMessage('Contenedor vinculado. El cargue ya refleja el cambio.','ok');
   }catch(error){
     setFeedback('containerMsg',reportLoadError('assign_container',error));
   }finally{
@@ -590,6 +705,17 @@ function openLoadFromTarget(target){
   const id=target?.closest?.('[data-open-load]')?.dataset.openLoad;
   if(!id)return;
   openLoad(id).catch(error=>showPageError('detail',error,'No se pudo abrir el Cargue. Intenta nuevamente.'));
+}
+
+function handleLoadListClick(event){
+  const quick=event.target.closest('[data-quick-action]');
+  if(quick){
+    event.stopPropagation();
+    const load=state.loads.find(item=>String(item.id)===String(quick.dataset.quickLoad));
+    if(load)handleAction(quick.dataset.quickAction,load,false);
+    return;
+  }
+  openLoadFromTarget(event.target);
 }
 
 function handleDrawerClick(event){
@@ -626,13 +752,14 @@ function bindEvents(){
   });
   $('search').addEventListener('input',renderRows);
   $('statusFilter').addEventListener('change',renderRows);
-  $('loadRows').addEventListener('click',event=>openLoadFromTarget(event.target));
+  $('loadRows').addEventListener('click',handleLoadListClick);
   $('loadRows').addEventListener('keydown',event=>{
+    if(event.target.closest?.('button'))return;
     if(!['Enter',' '].includes(event.key))return;
     event.preventDefault();
     openLoadFromTarget(event.target);
   });
-  $('loadCards').addEventListener('click',event=>openLoadFromTarget(event.target));
+  $('loadCards').addEventListener('click',handleLoadListClick);
   $('planWarehouse').addEventListener('change',()=>renderSources(state.editing));
   $('savePlan').addEventListener('click',savePlan);
   $('createContainer').addEventListener('click',createContainer);

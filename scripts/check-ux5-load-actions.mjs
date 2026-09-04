@@ -70,7 +70,7 @@ forbidText(ui,'expediente','Loads UI');
 if(/\b(?:prompt|alert|confirm)\s*\(/.test(ui))errors.push('Loads UI: no debe usar diálogos nativos en el flujo modernizado');
 requireText(html,'id="decisionModal"','Loads decision UI');
 requireText(html,'id="decisionAccept"','Loads decision UI');
-requireText(html,'src="/admin/loads.js?v=20260902-ux7loads1"','Loads external UI owner');
+requireText(html,'src="/admin/loads.js?v=20260904-loadflow1"','Loads external UI owner');
 forbidText(html,'openExpediente','Loads HTML');
 
 for(const token of [

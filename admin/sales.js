@@ -29,7 +29,7 @@ function orderTotal(o){const value=o?.progress?.order_total;return value===null|
 function capability(order,key){return order?.capabilities?.actions?.[key]||{allowed:false,reason:'CAPABILITY_UNAVAILABLE'}}
 function can(order,key){return capability(order,key).allowed===true}
 const SAFE_SALES_ERROR_PATTERNS=[
-  /^(?:Selecciona|Indica|Falta|Agrega|No tienes|No hay|Esta Sales Order|La Sales Order|La cantidad|Los pallets|Fecha y hora|Sesión vencida)/i,
+  /^(?:Selecciona|Indica|Falta|Agrega|No tienes|No hay|Esta Sales Order|La Sales Order|La cantidad|Los pallets|Uno de los WR|Fecha y hora|Sesión vencida)/i,
   /^No se pudo procesar (?:Ventas|el Cargue)$/i
 ];
 function safeSalesMessage(error,fallback='No se pudo completar la operación. Intenta nuevamente.'){
@@ -107,7 +107,7 @@ function collectLoadLines(){
   if(!loadOptions)throw new Error('No se cargó el inventario disponible.');const lines=[];
   document.querySelectorAll('#loadLines [data-so-item]').forEach(div=>{
     const item=loadOptions.order.items.find(i=>i.id===div.dataset.soItem);if(!item)return;const allocations=[];let totalQty=0,totalPallets=0;
-    div.querySelectorAll('[data-wr]').forEach(row=>{const qty=n(row.querySelector('.wrQty').value),pallets=n(row.querySelector('.wrPallets').value);if(qty>0||pallets>0){allocations.push({receipt_item_id:row.dataset.wr,allocated_quantity:qty,allocated_pallets:pallets});totalQty+=qty;totalPallets+=pallets}});
+    div.querySelectorAll('[data-wr]').forEach(row=>{const qtyInput=row.querySelector('.wrQty'),palletInput=row.querySelector('.wrPallets'),qty=n(qtyInput.value),pallets=n(palletInput.value),maxQty=n(qtyInput.max),maxPallets=n(palletInput.max);if(qty>maxQty+1e-9)throw new Error(`La cantidad indicada supera el saldo disponible del WR.`);if(pallets>maxPallets+1e-9)throw new Error(`Los pallets indicados superan el saldo disponible del WR.`);if(qty>0||pallets>0){allocations.push({receipt_item_id:row.dataset.wr,allocated_quantity:qty,allocated_pallets:pallets});totalQty+=qty;totalPallets+=pallets}});
     if(!allocations.length)return;if(totalQty>n(item.progress?.unallocated_quantity)+1e-9)throw new Error(`La cantidad de ${item.product?.name||'una línea'} excede el saldo pendiente.`);if(n(item.ordered_pallets)>0&&totalPallets>n(item.progress?.unallocated_pallets)+1e-9)throw new Error(`Los pallets de ${item.product?.name||'una línea'} exceden el saldo pendiente.`);lines.push({sales_order_item_id:item.id,allocations})
   });
   if(!lines.length)throw new Error('Selecciona cantidad de al menos un WR.');return lines;
