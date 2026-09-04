@@ -24,7 +24,7 @@ for(const text of [
   'Recibir en mi almacén',
   'Direct Ship al cliente (sin WR)',
   'id="oDestinationHelp"',
-  '/admin/purchases.js?v=20260904-safeedit1',
+  '/admin/purchases.js?v=20260904-cancelflow1',
   '/admin/embedded-auto-refresh.js?v=20260904-live2'
 ])requireText(purchasesHtml,text,`Compras ${text}`);
 
@@ -32,7 +32,7 @@ for(const text of [
   'function isDirectPurchase(order)',
   'function setPurchaseDestination(mode)',
   "warehouse_id:direct?null:$('oWarehouse').value",
-  'Ventas → Origen / Direct Ship',
+  'Ventas → Asignar mercancía',
   'Direct Ship · sin WR',
   'No entra a inventario',
   'No se creará un WR.'
@@ -47,7 +47,7 @@ for(const text of [
 requireText(purchasesApi,'PO_DIRECT_SHIP_NO_WR','mensaje seguro para una PO Direct Ship');
 
 for(const text of [
-  'Origen / Direct Ship',
+  'Asignar mercancía',
   '/admin/sales.js?v=20260904-directflow1',
   '/admin/embedded-auto-refresh.js?v=20260904-live2'
 ])requireText(salesHtml,text,`ruta visible desde Ventas ${text}`);

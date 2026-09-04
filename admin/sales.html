@@ -65,7 +65,7 @@ document.__financialSalesContextInstalled = true;
 <div id="orderLines"></div>
 <div class="actions sales-modal-actions"><button class="btn" data-close="order">Cancelar</button><button id="saveOrder" class="btn orange">Guardar venta</button></div><div id="orderMsg" class="msg" role="status" aria-live="polite"></div></div></div>
 
-<div id="detailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailTitle"><div class="dialog"><div class="dialog-head"><div><span class="sales-dialog-kicker">Workspace de venta</span><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><div class="actions sales-detail-header-actions"><button id="openCustomerFinance" type="button" class="btn hidden">Anticipos / Proformas</button><button id="openSupplyWorkspace" type="button" class="btn hidden">Origen / Direct Ship</button><button class="btn sales-close-button" type="button" data-close="detail" aria-label="Cerrar detalle de venta">✕</button></div></div><div id="detailBody"></div><div id="detailActions" class="actions sales-modal-actions"></div><div id="detailMsg" class="msg" role="status" aria-live="polite"></div></div></div>
+<div id="detailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailTitle"><div class="dialog"><div class="dialog-head"><div><span class="sales-dialog-kicker">Workspace de venta</span><h2 id="detailTitle"></h2><div id="detailSubtitle" class="muted"></div></div><div class="actions sales-detail-header-actions"><button id="openCustomerFinance" type="button" class="btn hidden">Anticipos / Proformas</button><button id="openSupplyWorkspace" type="button" class="btn hidden">Asignar mercancía</button><button class="btn sales-close-button" type="button" data-close="detail" aria-label="Cerrar detalle de venta">✕</button></div></div><div id="detailBody"></div><div id="detailActions" class="actions sales-modal-actions"></div><div id="detailMsg" class="msg" role="status" aria-live="polite"></div></div></div>
 
 <div id="loadModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="loadTitle"><div class="dialog sales-load-dialog"><div class="dialog-head"><div><span class="sales-dialog-kicker">Logística vinculada</span><h2 id="loadTitle">Preparar Cargue</h2><div class="muted">Selecciona cantidades por WR. La reserva física y la trazabilidad Venta → Cargue → WR se guardan juntas.</div></div><button class="btn sales-close-button" type="button" data-close="load" aria-label="Cerrar preparación de Cargue">✕</button></div>
 <div class="grid"><div><label>Almacén *</label><select id="lWarehouse"></select></div><div><label>Fecha programada</label><input id="lScheduled" type="datetime-local"></div></div>
@@ -76,7 +76,7 @@ document.__financialSalesContextInstalled = true;
 <script src="/admin/sales.js?v=20260904-directflow1"></script>
 <script src="/admin/sales-order-ux.js?v=20260902-ux7sales1"></script>
 <script src="/admin/sales-workspace.js?v=20260902-ux7sales1"></script>
-<script src="/admin/sales-supply-workspace.js?v=20260904-directsimple1"></script>
+<script src="/admin/sales-supply-workspace.js?v=20260904-directclear1"></script>
 <script src="/admin/sales-customer-finance.js?v=20260902-ux6owner1"></script>
 <script src="/admin/sales-controller.js?v=20260901-ux6owner1"></script>
 <script src="/admin/sales-existing-load-link-v2.js?v=20260902-ux6owner1"></script>
