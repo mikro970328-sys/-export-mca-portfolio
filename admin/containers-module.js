@@ -195,6 +195,23 @@
 
   function statusText(shipment){return shipment.operational_status||shipment.last_status||'Registrado';}
   function statusClass(shipment){return shipment.active===false?'done':'';}
+  function isLoaded(shipment){
+    const fulfillment=shipment?.fulfillment||{};
+    return fulfillment.status==='loaded'||fulfillment.status==='dispatched';
+  }
+  function fulfillmentText(shipment){
+    const fulfillment=shipment?.fulfillment||{};
+    if(fulfillment.mode==='direct')return fulfillment.status==='dispatched'?'Direct Ship despachado':'Direct Ship pendiente';
+    if(fulfillment.mode==='warehouse'){
+      const label=({draft:'Borrador',reserved:'Reservado',loading:'Cargando',loaded:'Cargado',dispatched:'Despachado'})[fulfillment.status]||'En proceso';
+      return `${fulfillment.load_number||'Cargue'} · ${label}`;
+    }
+    return 'Sin cargue vinculado';
+  }
+  function fulfillmentHtml(shipment){
+    const className=isLoaded(shipment)?'ready':shipment?.fulfillment?.mode==='unlinked'?'idle':'pending';
+    return `<span class="container-doc-state ${className}">${esc(fulfillmentText(shipment))}</span>`;
+  }
 
   function docPill(readiness){
     if(!readiness||readiness.document_status==='not_required')return '<span class="container-doc-state idle">Aún no requerido</span>';
@@ -215,6 +232,8 @@
       shipment.departure_date,
       shipment.operational_status,
       shipment.last_status,
+      shipment.fulfillment?.load_number,
+      shipment.fulfillment?.status,
       shipment.clients?.name,
       shipment.clients?.company,
       importerForShipment(shipment)?.name
@@ -245,9 +264,11 @@
     const values={
       trackingTotalCount:all.length,
       trackingActiveCount:all.filter(shipment=>shipment.active!==false).length,
+      trackingLoadedCount:all.filter(isLoaded).length,
       trackingDeliveredCount:all.filter(shipment=>shipment.active===false).length,
       trackingUnassignedCount:all.filter(shipment=>!shipment.client_id).length,
-      trackingDocumentsReadyCount:visibleDocuments.filter(shipment=>readinessFor(shipment.id)?.document_status==='ready').length
+      trackingDocumentsReadyCount:visibleDocuments.filter(shipment=>readinessFor(shipment.id)?.document_status==='ready').length,
+      trackingDocumentsPendingCount:visibleDocuments.filter(shipment=>readinessFor(shipment.id)?.document_status==='pending').length
     };
     Object.entries(values).forEach(([id,value])=>{if(byId(id))byId(id).textContent=String(value);});
     const updated=byId('trackingLastUpdated');
@@ -274,12 +295,12 @@
 
   function tableRow(shipment){
     const canOpen=actionAllowed(shipment,'view_info')||actionAllowed(shipment,'view_documents');
-    return `<tr class="${!shipment.client_id?'container-unassigned-row':''}" data-shipment-row="${esc(shipment.id)}" ${canOpen?'tabindex="0"':''}><td><span class="container-reference">${esc(shipment.container_number)}</span><span class="container-reference-meta">${esc(shipment.carrier||'Naviera sin definir')}</span></td><td>${clientHtml(shipment)}</td><td>${importerHtml(shipment)}</td><td>${esc(shipment.product||'—')}</td><td>${esc(formatQuantity(shipment))}</td><td>${esc(formatDate(shipment.departure_date))}</td><td>${esc(shipment.booking_number||'—')}<span class="container-reference-meta">B/L ${esc(shipment.bol_number||'—')}</span></td><td>${documentsHtml(shipment)}</td><td><span class="container-status ${statusClass(shipment)}">${esc(statusText(shipment))}</span><span class="container-mode">Seguimiento ERP</span></td><td class="container-actions-cell">${actionButton(shipment)}</td></tr>`;
+    return `<tr class="${!shipment.client_id?'container-unassigned-row':''}" data-shipment-row="${esc(shipment.id)}" ${canOpen?'tabindex="0"':''}><td><span class="container-reference">${esc(shipment.container_number)}</span><span class="container-reference-meta">${esc(shipment.carrier||'Naviera sin definir')}</span></td><td>${clientHtml(shipment)}</td><td>${importerHtml(shipment)}</td><td>${esc(shipment.product||'—')}</td><td>${esc(formatQuantity(shipment))}</td><td>${esc(formatDate(shipment.departure_date))}</td><td>${esc(shipment.booking_number||'—')}<span class="container-reference-meta">B/L ${esc(shipment.bol_number||'—')}</span></td><td>${documentsHtml(shipment)}</td><td><span class="container-status ${statusClass(shipment)}">${esc(statusText(shipment))}</span>${fulfillmentHtml(shipment)}</td><td class="container-actions-cell">${actionButton(shipment)}</td></tr>`;
   }
 
   function mobileCard(shipment){
     const canOpen=actionAllowed(shipment,'view_info')||actionAllowed(shipment,'view_documents');
-    return `<article class="tracking-card ${!shipment.client_id?'unassigned':''}" data-shipment-row="${esc(shipment.id)}" ${canOpen?'tabindex="0" role="button"':''}><header class="tracking-card-head"><div><span class="container-reference">${esc(shipment.container_number)}</span><span class="container-reference-meta">${esc(shipment.carrier||'Naviera sin definir')}</span></div>${actionButton(shipment)}</header><div class="tracking-card-status"><span class="container-status ${statusClass(shipment)}">${esc(statusText(shipment))}</span>${documentsHtml(shipment)}</div><div class="tracking-card-grid"><div class="tracking-card-field"><span>Cliente</span><strong>${clientHtml(shipment)}</strong></div><div class="tracking-card-field"><span>Importadora</span><strong>${importerHtml(shipment)}</strong></div><div class="tracking-card-field"><span>Producto</span><strong>${esc(shipment.product||'—')}</strong></div><div class="tracking-card-field"><span>Cantidad</span><strong>${esc(formatQuantity(shipment))}</strong></div><div class="tracking-card-field"><span>Salida</span><strong>${esc(formatDate(shipment.departure_date))}</strong></div><div class="tracking-card-field"><span>Booking / B/L</span><strong>${esc(shipment.booking_number||'—')} · ${esc(shipment.bol_number||'—')}</strong></div></div><footer class="tracking-card-footer"><span class="container-mode">Seguimiento ERP</span><span class="container-reference-meta">Abrir información</span></footer></article>`;
+    return `<article class="tracking-card ${!shipment.client_id?'unassigned':''}" data-shipment-row="${esc(shipment.id)}" ${canOpen?'tabindex="0" role="button"':''}><header class="tracking-card-head"><div><span class="container-reference">${esc(shipment.container_number)}</span><span class="container-reference-meta">${esc(shipment.carrier||'Naviera sin definir')}</span></div>${actionButton(shipment)}</header><div class="tracking-card-status"><span class="container-status ${statusClass(shipment)}">${esc(statusText(shipment))}</span>${fulfillmentHtml(shipment)}${documentsHtml(shipment)}</div><div class="tracking-card-grid"><div class="tracking-card-field"><span>Cliente</span><strong>${clientHtml(shipment)}</strong></div><div class="tracking-card-field"><span>Importadora</span><strong>${importerHtml(shipment)}</strong></div><div class="tracking-card-field"><span>Producto</span><strong>${esc(shipment.product||'—')}</strong></div><div class="tracking-card-field"><span>Cantidad</span><strong>${esc(formatQuantity(shipment))}</strong></div><div class="tracking-card-field"><span>Salida</span><strong>${esc(formatDate(shipment.departure_date))}</strong></div><div class="tracking-card-field"><span>Booking / B/L</span><strong>${esc(shipment.booking_number||'—')} · ${esc(shipment.bol_number||'—')}</strong></div></div><footer class="tracking-card-footer"><span class="container-mode">Seguimiento ERP</span><span class="container-reference-meta">Abrir información</span></footer></article>`;
   }
 
   function render(){

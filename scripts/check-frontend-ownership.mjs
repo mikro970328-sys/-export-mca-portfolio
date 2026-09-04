@@ -252,7 +252,7 @@ for (const fragment of [
 ]) {
   if (!loader.includes(fragment)) errors.push(`El loader no carga el propietario requerido: ${fragment}`);
 }
-if (!index.includes('/admin/navigation-shell.css?v=20260903-ux7icons2')) {
+if (!index.includes('/admin/navigation-shell.css?v=20260904-simple-nav1')) {
   errors.push('index.html no carga el owner visual versionado de navegación desde head.');
 }
 if (loader.includes('/admin/expedientes-module.js')) errors.push('El loader todavía carga Expedientes, que UX-2D retiró del flujo operativo.');

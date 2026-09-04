@@ -165,19 +165,6 @@
 
   function ensureSurface() {
     if(!can('tasks.read'))return false;
-    const homeSubmenu=document.querySelector('.nav-group[data-nav-group="home"] .submenu');
-    if(homeSubmenu&&!homeSubmenu.querySelector('[data-section="tasksSection"]')) {
-      const button=document.createElement('button');
-      button.type='button';
-      button.dataset.section='tasksSection';
-      button.dataset.navLabel='Mis tareas';
-      button.setAttribute('aria-label','Mis tareas');
-      button.title='Mis tareas';
-      button.innerHTML='<span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Mis tareas</span>';
-      const notifications=homeSubmenu.querySelector('[data-section="notificationsSection"]');
-      if(notifications)homeSubmenu.insertBefore(button,notifications);else homeSubmenu.appendChild(button);
-      window.ExportMcaIcons?.hydrate?.(button);
-    }
     const main=document.querySelector('.main-shell main');
     if(main&&!byId('tasksSection')) {
       const section=document.createElement('section');

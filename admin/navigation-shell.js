@@ -22,11 +22,13 @@
   ];
 
   const NAV_GROUPS = [
-    { key:'home', label:'Inicio', sections:['dashboardSection','notificationsSection'] },
-    { key:'commercial', label:'Comercial', sections:['clientsSection','salesSection','invoicesSection','publicationsSection'] },
-    { key:'operations', label:'Operaciones', sections:['purchasesSection','warehouseSection','inventorySection','loadsSection','containersSection','registerContainerSection'] },
-    { key:'finance', label:'Finanzas', sections:['payablesSection','costsSection','reportsSection'] },
-    { key:'administration', label:'Administración', sections:['suppliersSection','productsSection','workersSection','adminsSection','accountSection'] }
+    { key:'home', label:'Inicio', sections:['dashboardSection'] },
+    { key:'commercial', label:'Comercial', sections:['salesSection','clientsSection','publicationsSection'] },
+    { key:'purchases', label:'Compras', sections:['purchasesSection','suppliersSection'] },
+    { key:'warehouse', label:'Almacén', sections:['warehouseSection','inventorySection','productsSection'] },
+    { key:'logistics', label:'Logística', sections:['loadsSection','containersSection','registerContainerSection'] },
+    { key:'finance', label:'Finanzas', sections:['invoicesSection','payablesSection','costsSection','reportsSection'] },
+    { key:'administration', label:'Administración', sections:['workersSection','adminsSection','accountSection'] }
   ];
 
   const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
@@ -104,7 +106,7 @@
   }
 
   function ensureEmbeddedSections() {
-    const staging = document.querySelector('.nav-group[data-nav-group="operations"] .submenu') || document.querySelector('.sidebar-nav');
+    const staging = document.querySelector('.sidebar-nav');
     const main = document.querySelector('.main-shell main');
     for (const config of EMBEDDED_SECTIONS) {
       if (!canEmbedded(config)) continue;
@@ -148,6 +150,15 @@
 
     const fragment = document.createDocumentFragment();
     for (const config of NAV_GROUPS) {
+      if (config.key === 'home') {
+        config.sections.forEach(sectionId => {
+          const button = sectionButtons.get(sectionId);
+          if (!button) return;
+          button.classList.add('nav-item');
+          fragment.appendChild(button);
+        });
+        continue;
+      }
       const group = makeNavGroup(config);
       const submenu = group.querySelector('.submenu');
       config.sections.forEach(sectionId => {

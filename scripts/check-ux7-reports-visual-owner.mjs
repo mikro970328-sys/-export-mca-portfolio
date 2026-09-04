@@ -168,7 +168,7 @@ forbid(owner, /method\s*:\s*['"](?:POST|PUT|PATCH|DELETE)['"]/i, 'Reportes intro
   "id:'reportsSection'",
   "src:'/admin/reports.html?embedded=1'",
   "permission:'reports.read'",
-  "sections:['payablesSection','costsSection','reportsSection']"
+  "sections:['invoicesSection','payablesSection','costsSection','reportsSection']"
 ].forEach(value => requireText(navigation,value,`navegación de Reportes ${value}`));
 [
   "openSection(page, 'reportsSection')",

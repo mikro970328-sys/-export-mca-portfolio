@@ -50,8 +50,8 @@ for(const text of [
 ])requireText(css,text,`presentación de Tareas ${text}`);
 
 requireText(loader,"/admin/tasks-workspace.css?v=20260903-ux7tasks1",'revisión del CSS de Tareas');
-requireText(loader,"/admin/tasks-workspace.js?v=20260903-ux7tasks1",'revisión del JS de Tareas');
-requireText(index,'/admin/erp.js?v=20260904-flowclarity1','revisión del loader ERP');
+requireText(loader,"/admin/tasks-workspace.js?v=20260904-notification-entry1",'revisión del JS de Tareas');
+requireText(index,'/admin/erp.js?v=20260904-simple-nav1','revisión del loader ERP');
 
 for(const text of [
   "authorizeAdmin(req,res,'tasks.read')",
