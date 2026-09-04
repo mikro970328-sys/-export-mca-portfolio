@@ -56,7 +56,7 @@ for(const text of [
 ])requireText(css,text,`presentación dedicada ${text}`);
 
 requireText(html,'/admin/sales-supply-workspace.css?v=20260902-ux7sales1','revisión del CSS de Abastecimiento');
-requireText(html,'/admin/sales-supply-workspace.js?v=20260904-directsimple1','revisión del JS de Abastecimiento');
+requireText(html,'/admin/sales-supply-workspace.js?v=20260904-directclear1','revisión del JS de Asignar mercancía');
 
 for(const text of [
   "const errors={",
