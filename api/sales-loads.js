@@ -1,5 +1,6 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 import { loadSalesActionCapabilities } from './_sales-actions.js';
+import { assertLoadPlanAvailability } from './_load-plan-availability.js';
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const number = value => {
@@ -97,6 +98,7 @@ function translatedError(raw) {
     ['LOAD_ALLOCATION_WAREHOUSE_MISMATCH','Todos los WR deben pertenecer al almacén seleccionado.'],
     ['WR_NOT_ACTIVE','Uno de los WR ya no está activo.'],
     ['RECEIPT_ITEM_NOT_FOUND','Uno de los WR seleccionados ya no existe.'],
+    ['INSUFFICIENT_WR_AVAILABLE_BALANCE','Uno de los WR ya no tiene saldo suficiente disponible.'],
     ['LOAD_QUANTITY_INVALID','La cantidad o pallets seleccionados son inválidos.'],
     ['LOAD_QUANTITY_REQUIRED','Indica una cantidad o pallets mayor que cero.'],
     ['LOAD_QUANTITY_REQUIRED_FOR_PALLETS','Ese WR no tiene unidades por pallet para convertir pallets a cantidad.'],
@@ -165,10 +167,12 @@ export default async function handler(req, res) {
     const warehouseId = text(body.warehouse_id, 80);
     if (!warehouseId) throw new Error('WAREHOUSE_REQUIRED');
 
+    const lines = cleanLoadLines(body.lines);
+    await assertLoadPlanAvailability(lines);
     const result = await supabase('rpc/create_load_from_sales_order', { method:'POST', body:{
       p_sales_order_id:orderId,
       p_warehouse_id:warehouseId,
-      p_lines:cleanLoadLines(body.lines),
+      p_lines:lines,
       p_scheduled_at:text(body.scheduled_at, 80) || null,
       p_notes:text(body.notes, 2000) || null,
       p_actor:admin.admin_id || null

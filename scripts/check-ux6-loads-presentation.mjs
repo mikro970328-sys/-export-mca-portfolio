@@ -12,8 +12,8 @@ const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.
 const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
 for(const text of [
-  '/admin/loads.css?v=20260902-ux7loads1',
-  '/admin/loads.js?v=20260902-ux7loads1',
+  '/admin/loads.css?v=20260904-loadflow1',
+  '/admin/loads.js?v=20260904-loadflow1',
   'id="pageMsg"',
   'role="status"',
   'aria-live="polite"',
@@ -83,7 +83,7 @@ forbid(api,/return fail\(res,400,translatedError\(raw\)\)/,'Loads API no puede c
 for(const text of [
   'DB canonical owner',
   'Loads UI',
-  'src="/admin/loads.js?v=20260902-ux7loads1"',
+  'src="/admin/loads.js?v=20260904-loadflow1"',
   "can(load,'dispatch')",
   "can(load,'view_tracking')"
 ])requireText(canonicalGate,text,`gate UX-5 preservado ${text}`);

@@ -1,5 +1,6 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 import { loadLoadActionCapabilityMap, loadLoadActionCapabilities } from './_load-actions.js';
+import { assertLoadPlanAvailability } from './_load-plan-availability.js';
 
 const text=value=>String(value??'').trim()||null;
 const number=value=>{
@@ -122,6 +123,7 @@ function translatedError(raw){
     ['LOAD_HAS_NO_ITEMS','Agrega mercancía al cargue.'],
     ['LOAD_ALLOCATIONS_REQUIRED','Selecciona al menos un WR para cada producto.'],
     ['LOAD_ALLOCATIONS_INCOMPLETE','Las cantidades seleccionadas por WR deben coincidir con el total del producto.'],
+    ['RECEIPT_ITEM_NOT_FOUND','Uno de los WR seleccionados ya no existe.'],
     ['INSUFFICIENT_WR_AVAILABLE_BALANCE','Uno de los WR ya no tiene saldo suficiente disponible.'],
     ['INSUFFICIENT_WR_PHYSICAL_BALANCE','Uno de los WR ya no tiene inventario físico suficiente para el despacho.'],
     ['LOAD_RESERVATION_LEDGER_NOT_ZERO','El ledger del cargue contiene una reserva previa inconsistente.'],
@@ -156,7 +158,9 @@ export default async function handler(req,res){
     const action=text(body.action);
 
     if(action==='create_plan'){
-      const result=await supabase('rpc/create_load_plan',{method:'POST',body:{p_warehouse_id:text(body.warehouse_id),p_lines:normalizeLines(body.lines),p_scheduled_at:text(body.scheduled_at),p_notes:text(body.notes),p_actor:admin.admin_id||null}});
+      const lines=normalizeLines(body.lines);
+      await assertLoadPlanAvailability(lines);
+      const result=await supabase('rpc/create_load_plan',{method:'POST',body:{p_warehouse_id:text(body.warehouse_id),p_lines:lines,p_scheduled_at:text(body.scheduled_at),p_notes:text(body.notes),p_actor:admin.admin_id||null}});
       const load=rpcRow(result);
       if(!load?.id)throw new Error('No se pudo crear el cargue');
       await writeAudit(admin,'load_created','load',load.id,{warehouse_id:body.warehouse_id,commercial_context:'generic'});
@@ -167,7 +171,9 @@ export default async function handler(req,res){
     if(!loadId)return fail(res,400,'Falta el cargue');
 
     if(action==='replace_plan'){
-      await supabase('rpc/replace_load_plan_canonical',{method:'POST',body:{p_load_id:loadId,p_lines:normalizeLines(body.lines),p_scheduled_at:text(body.scheduled_at),p_notes:text(body.notes)}});
+      const lines=normalizeLines(body.lines);
+      await assertLoadPlanAvailability(lines);
+      await supabase('rpc/replace_load_plan_canonical',{method:'POST',body:{p_load_id:loadId,p_lines:lines,p_scheduled_at:text(body.scheduled_at),p_notes:text(body.notes)}});
       await writeAudit(admin,'load_plan_updated','load',loadId,{});
       return ok(res,{load:await getLoadForAdmin(loadId,admin)});
     }
