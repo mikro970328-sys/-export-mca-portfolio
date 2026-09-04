@@ -50,6 +50,13 @@ for(const text of [
   'function openNewOrder()',
   'function openQuickProduct(line)',
   'async function saveQuickProduct()',
+  'function setLinePricingMode(div,mode,convert=false)',
+  'function updateLineSummary(div)',
+  'function lineTotal(item)',
+  'entered_line_total',
+  'line_total:',
+  'Costo unitario',
+  'Valor total',
   "document.querySelectorAll('#orderLines [data-line]')",
   'purchase-order-row',
   'purchases-list-count',
@@ -79,6 +86,9 @@ for(const text of [
   '.purchase-decision-dialog',
   '.purchase-decision-actions',
   '.product-create-inline',
+  '.purchase-line-details',
+  '.purchase-line-feedback',
+  '.lMeasurementHelp.is-error',
   '@media(max-width:650px)',
   '@media(max-width:430px)'
 ]) requireText(css,text,`CSS ${text}`);
@@ -96,14 +106,14 @@ for(const text of [
   'id="purchaseDecisionCancel"',
   'id="purchaseDecisionAccept"',
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
-  '/admin/purchases.css?v=20260902-ux7purchases1',
-  '/admin/purchases.js?v=20260902-ux7purchases1',
-  '/admin/embedded-auto-refresh.js?v=20260902-ux7purchases1'
+  '/admin/purchases.css?v=20260904-directflow1',
+  '/admin/purchases.js?v=20260904-directflow1',
+  '/admin/embedded-auto-refresh.js?v=20260904-live2'
 ]) requireText(html,text,`HTML ${text}`);
 forbid(html,/\sstyle\s*=/i,'Compras conserva estilos inline');
 forbid(html,/purchases-(?:master-refresh|product-catalog)\.js/,'Compras vuelve a cargar un script complementario retirado');
 const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260902-ux6b3');
-const ownerCssIndex=html.indexOf('/admin/purchases.css?v=20260902-ux7purchases1');
+const ownerCssIndex=html.indexOf('/admin/purchases.css?v=20260904-directflow1');
 if(foundationIndex<0||ownerCssIndex<0||foundationIndex>ownerCssIndex)failures.push('la base visual debe cargar antes del CSS propietario de Compras');
 
 for(const file of detachedConsumers){

@@ -28,7 +28,7 @@ requireText(html,'/admin/sales-workspace.css?v=20260902-ux7sales1','CSS del work
 requireText(html,'/admin/sales-supply-workspace.css?v=20260902-ux7sales1','CSS de abastecimiento versionado');
 requireText(html,'/admin/sales-customer-finance.css?v=20260902-ux7sales1','CSS financiero versionado');
 for(const asset of [
-  '/admin/sales.js?v=20260902-ux7sales1',
+  '/admin/sales.js?v=20260904-directflow1',
   '/admin/sales-order-ux.js?v=20260902-ux7sales1',
   '/admin/sales-workspace.js?v=20260902-ux7sales1',
   '/admin/sales-existing-load-link-v2.js?v=20260902-ux6owner1'

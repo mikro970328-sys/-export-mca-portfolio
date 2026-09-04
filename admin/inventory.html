@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Inventario · Export MCA</title>
+  <title>Existencias · Export MCA</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
   <link rel="stylesheet" href="/admin/inventory.css?v=20260902-ux7inventory1">
@@ -13,8 +13,8 @@
     <header class="module-hero inventory-page-head" aria-labelledby="inventoryPageTitle">
       <div class="module-heading inventory-page-heading">
         <div class="module-kicker inventory-page-kicker">Operaciones · Control de existencias</div>
-        <h1 id="inventoryPageTitle">Inventario</h1>
-        <p>Consulta la disponibilidad real por producto y almacén, y sigue cada movimiento hasta su recepción WR de origen.</p>
+        <h1 id="inventoryPageTitle">Existencias</h1>
+        <p>Consulta el saldo actual que dejaron los WR: físico menos reservado y despachado. Aquí no registras entradas; un Direct Ship tampoco aparece como stock propio.</p>
       </div>
       <div class="inventory-hero-state" aria-label="Estado del módulo">
         <span class="inventory-hero-state-dot" aria-hidden="true"></span>
@@ -31,7 +31,7 @@
       <article class="stat"><span>Pallets disponibles</span><b>—</b><small>Listos para asignar</small></article>
     </section>
 
-    <nav class="inventory-view-switcher" aria-label="Áreas de Inventario">
+    <nav class="inventory-view-switcher" aria-label="Áreas de Existencias">
       <div class="tabs inventory-tabs" role="tablist" aria-label="Vista de inventario">
         <button class="tab active" id="stockTab" type="button" role="tab" data-inventory-view="stock" aria-controls="stockView" aria-selected="true">Existencias</button>
         <button class="tab" id="traceTab" type="button" role="tab" data-inventory-view="trace" aria-controls="traceView" aria-selected="false" tabindex="-1">Movimientos y trazabilidad</button>
@@ -97,6 +97,6 @@
   </main>
 
   <script src="/admin/inventory.js?v=20260902-ux7inventory1" defer></script>
-  <script src="/admin/embedded-auto-refresh.js?v=20260902-ux7inventory1" defer></script>
+  <script src="/admin/embedded-auto-refresh.js?v=20260904-live2" defer></script>
 </body>
 </html>

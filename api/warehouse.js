@@ -24,7 +24,8 @@ function translatedError(raw) {
     ['WR_HAS_INVENTORY_HISTORY','No se puede anular porque la recepción ya tiene movimientos de inventario.'],
     ['WR_ASSIGNED_TO_LOAD','No se puede anular porque mercancía de esta recepción está asignada a un Cargue activo.'],
     ['WR_ACTION_INVALID','Acción de recepción inválida.'],
-    ['WR_ACTION_NOT_ALLOWED','La acción ya no está disponible para esta recepción.']
+    ['WR_ACTION_NOT_ALLOWED','La acción ya no está disponible para esta recepción.'],
+    ['WR_QUANTITY_PALLET_MISMATCH','La cantidad recibida debe coincidir con los pallets multiplicados por las unidades por pallet.']
   ];
   const translated = messages.find(([key]) => raw.includes(key))?.[1];
   if (translated) return translated;

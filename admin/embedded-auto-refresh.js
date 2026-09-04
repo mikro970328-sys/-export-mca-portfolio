@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260904-live1';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260904-live2';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -86,7 +86,6 @@
   let shellRefreshRunning = false;
   let shellRefreshQueued = false;
   let frameObserver = null;
-  let lastResumeRefresh = 0;
 
   function normalizeMethod(input, init) {
     return String(init?.method || (input && typeof input === 'object' ? input.method : '') || 'GET').toUpperCase();
@@ -206,11 +205,21 @@
     }
   }
 
+  function scheduleSourceRefresh(frame,scope){
+    const current=state.get(frame);
+    if(!current)return;
+    clearTimeout(current.fallbackTimer);
+    current.fallbackTimer=setTimeout(()=>{
+      current.fallbackTimer=null;
+      refreshFrame(frame,`mutation:${scope}:source-fallback`);
+    },400);
+  }
+
   function announceMutation(scope, sourceFrame) {
     if (!scope) return;
     clearStaleOperationalContext(frameSectionId(sourceFrame));
     refreshSections(RELATED[scope] || [], sourceFrame, `mutation:${scope}`);
-    if(sourceFrame)refreshFrame(sourceFrame, `mutation:${scope}:self`);
+    if(sourceFrame)scheduleSourceRefresh(sourceFrame,scope);
     window.dispatchEvent(new CustomEvent('export-mca:mutation-committed',{detail:{scope}}));
     scheduleShellRefresh(`mutation:${scope}`,scope);
     try{localStorage.setItem(LAST_MUTATION_KEY,JSON.stringify({scope,at:Date.now()}));}catch{}
@@ -239,6 +248,8 @@
     win.fetch = async (input, init = {}) => {
       const method = normalizeMethod(input, init);
       const path = requestPath(input);
+      const current=state.get(frame);
+      if(method==='GET'&&current?.fallbackTimer){clearTimeout(current.fallbackTimer);current.fallbackTimer=null;}
       const response = await original(input, init);
       if (response.ok && WRITE_METHODS.has(method)) announceMutation(mutationScope(path), frame);
       return response;
@@ -255,7 +266,7 @@
     const Observer = win.MutationObserver || MutationObserver;
     current.observer = new Observer(() => {
       const busy = visibleModal(doc);
-      if (current.wasBusy && !busy) refreshFrame(frame, current.pending ? 'close-after-change' : 'modal-close');
+      if(current.wasBusy&&!busy&&current.pending)refreshFrame(frame,'close-after-change');
       current.wasBusy = busy;
     });
     current.observer.observe(doc.body, { attributes:true, attributeFilter:['class'], childList:true, subtree:true });
@@ -267,7 +278,8 @@
     if(old?.document===frame.contentDocument&&frame.contentWindow.__exportMcaAutoRefreshFetchWrapped)return;
     old?.observer?.disconnect?.();
     clearTimeout(old?.timer);
-    state.set(frame, { pending:false, timer:null, observer:null, wasBusy:false, document:frame.contentDocument });
+    clearTimeout(old?.fallbackTimer);
+    state.set(frame, { pending:false, timer:null, fallbackTimer:null, observer:null, wasBusy:false, document:frame.contentDocument });
     installFetchObserver(frame);
     installModalObserver(frame);
   }
@@ -298,33 +310,18 @@
     clearStaleOperationalContext(sectionId);
     const frame = document.querySelector(`#${CSS.escape(sectionId)} iframe`);
     if(frame&&!state.has(frame))installFrame(frame);
-    if (frame) refreshFrame(frame, 'section-open');
-    scheduleShellRefresh('section-open',null);
-  }
-
-  function refreshAfterResume(reason){
-    const now=Date.now();
-    if(now-lastResumeRefresh<1000)return;
-    lastResumeRefresh=now;
-    const sectionId=visibleSectionId();
-    const frame=sectionId?document.querySelector(`#${CSS.escape(sectionId)} iframe`):null;
-    if(frame&&!state.has(frame))installFrame(frame);
-    if(frame)refreshFrame(frame,reason);
-    scheduleShellRefresh(reason,null);
   }
 
   window.addEventListener('export-mca:data-loaded', () => clearStaleOperationalContext(), true);
   window.addEventListener('export-mca:section-changed', event => onSectionOpened(event.detail?.id));
   window.addEventListener('export-mca:navigation-shell-changed',installAll);
-  window.addEventListener('focus',()=>refreshAfterResume('window-focus'));
   window.addEventListener('storage',event=>{
     if(event.key!==LAST_MUTATION_KEY||!event.newValue)return;
     let scope=null;
     try{scope=JSON.parse(event.newValue)?.scope||null;}catch{}
     refreshSections(RELATED[scope]||[],null,`cross-tab:${scope||'change'}`);
-    refreshAfterResume('cross-tab-change');
+    scheduleShellRefresh('cross-tab-change',scope);
   });
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshAfterResume('tab-visible');});
   window.addEventListener('pageshow', installAll);
   window.ExportMcaEmbeddedAutoRefresh = Object.freeze({ installAll, onSectionOpened, refreshFrame, announceMutation, clearStaleOperationalContext });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installAll, { once:true });

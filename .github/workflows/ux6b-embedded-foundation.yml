@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'admin/embedded-foundation.css'
+      - 'admin/embedded-auto-refresh.js'
+      - 'admin/index.html'
+      - 'admin/erp.js'
+      - 'admin/navigation-shell.js'
       - 'admin/sales.html'
       - 'admin/purchases.html'
       - 'admin/warehouse.html'

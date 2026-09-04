@@ -13,8 +13,8 @@ const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
 
 for(const text of [
-  '/admin/embedded-auto-refresh.js?v=20260904-live1',
-  '/admin/erp.js?v=20260903-b10push1'
+  '/admin/embedded-auto-refresh.js?v=20260904-live2',
+  '/admin/erp.js?v=20260904-flowclarity1'
 ])requireText(shell,text,`shell ${text}`);
 
 for(const text of [
@@ -24,14 +24,28 @@ for(const text of [
   'function scheduleShellRefresh(reason,scope)',
   "loader?.loadCore",
   "loader?.loadDashboard",
-  "window.addEventListener('focus'",
-  "document.addEventListener('visibilitychange'",
   "window.addEventListener('storage'",
   "['/api/sales-loads','loads']",
   "['/api/shipments','shipments']",
   "['/api/clients','clients']",
   "new CustomEvent('export-mca:mutation-committed'"
 ])requireText(refresh,text,`sincronización ${text}`);
+
+for(const text of [
+  "if(current.wasBusy&&!busy&&current.pending)refreshFrame(frame,'close-after-change')",
+  'function scheduleSourceRefresh(frame,scope)',
+  'if(sourceFrame)scheduleSourceRefresh(sourceFrame,scope)',
+  "if(method==='GET'&&current?.fallbackTimer)",
+  'refreshSections(RELATED[scope] || [], sourceFrame',
+  "scheduleShellRefresh('cross-tab-change',scope)"
+])requireText(refresh,text,`recarga solo después de cambios ${text}`);
+
+for(const forbidden of [
+  "window.addEventListener('focus'",
+  "document.addEventListener('visibilitychange'",
+  "refreshFrame(frame, 'section-open')",
+  "refreshFrame(sourceFrame, `mutation:${scope}:self`)"
+])if(refresh.includes(forbidden))failures.push(`recarga pasiva prohibida ${forbidden}`);
 
 for(const text of [
   'const NEXT_STAGE=Object.freeze({',

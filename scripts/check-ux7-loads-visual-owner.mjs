@@ -37,7 +37,7 @@ for(const text of [
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/loads.css?v=20260904-loadflow1',
   '/admin/loads.js?v=20260904-loadflow1',
-  '/admin/embedded-auto-refresh.js?v=20260904-live1',
+  '/admin/embedded-auto-refresh.js?v=20260904-live2',
   'class="module-hero loads-page-head"',
   'id="metrics" class="metrics loads-metrics"',
   'id="clearFilters"',

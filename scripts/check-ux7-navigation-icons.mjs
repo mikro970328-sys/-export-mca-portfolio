@@ -131,12 +131,12 @@ for (const fragment of [
 
 for (const fragment of [
   '/admin/navigation-shell.css?v=20260903-ux7icons2',
-  '/admin/erp.js?v=20260903-b10push1'
+  '/admin/erp.js?v=20260904-flowclarity1'
 ]) requireText(files.index, fragment, 'revisión de caché del shell');
 
 for (const fragment of [
   "loadScript('/admin/ui-icon-system.js?v=20260903-ux7icons2', 'data-ui-icon-system')",
-  "loadScript('/admin/navigation-shell.js?v=20260903-ux7icons2', 'data-navigation-shell')",
+  "loadScript('/admin/navigation-shell.js?v=20260904-flowclarity1', 'data-navigation-shell')",
   "loadScript('/admin/tasks-workspace.js?v=20260903-ux7tasks1', 'data-tasks-workspace')",
   "loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration')",
   "loadStylesheet('/admin/operational-alert-center.css?v=20260903-ux7alerts1', 'data-operational-alert-center-style')",
