@@ -107,7 +107,7 @@ for(const text of [
   'id="purchaseDecisionAccept"',
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/purchases.css?v=20260904-directflow1',
-  '/admin/purchases.js?v=20260904-directflow1',
+  '/admin/purchases.js?v=20260904-safeedit1',
   '/admin/embedded-auto-refresh.js?v=20260904-live2'
 ]) requireText(html,text,`HTML ${text}`);
 forbid(html,/\sstyle\s*=/i,'Compras conserva estilos inline');
