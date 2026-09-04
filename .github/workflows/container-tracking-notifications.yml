@@ -24,5 +24,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci
       - name: Validate notification contract
         run: node scripts/check-container-tracking-notifications.mjs
