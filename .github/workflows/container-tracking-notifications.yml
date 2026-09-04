@@ -26,6 +26,6 @@ jobs:
           node-version: '20'
           cache: npm
       - name: Install pinned dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Validate notification contract
         run: node scripts/check-container-tracking-notifications.mjs
