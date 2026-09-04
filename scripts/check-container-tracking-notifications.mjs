@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 
-const migration=fs.readFileSync('supabase/migrations/20260904020033_container_tracking_assignment_notifications.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20260904020411_container_tracking_assignment_notifications.sql','utf8');
 
 assert.match(migration,/create or replace function public\.notify_load_container_assignment\(/);
 assert.match(migration,/perform public\.notify_load_container_assignment\(v_load\.id,p_shipment_id\)/);
