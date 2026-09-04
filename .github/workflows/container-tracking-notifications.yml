@@ -1,0 +1,31 @@
+name: Container Tracking Notifications
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*container_tracking_assignment_notifications.sql'
+      - 'scripts/check-container-tracking-notifications.mjs'
+      - '.github/workflows/container-tracking-notifications.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/*container_tracking_assignment_notifications.sql'
+      - 'scripts/check-container-tracking-notifications.mjs'
+      - '.github/workflows/container-tracking-notifications.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-container-tracking-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate notification contract
+        run: node scripts/check-container-tracking-notifications.mjs
