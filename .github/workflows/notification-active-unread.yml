@@ -1,0 +1,31 @@
+name: Notification Active Unread
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*inactive_notifications_not_unread.sql'
+      - 'scripts/check-notification-active-unread.mjs'
+      - '.github/workflows/notification-active-unread.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/*inactive_notifications_not_unread.sql'
+      - 'scripts/check-notification-active-unread.mjs'
+      - '.github/workflows/notification-active-unread.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-active-unread:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate active unread contract
+        run: node scripts/check-notification-active-unread.mjs
