@@ -12,7 +12,7 @@ const directApi=read('api/direct-shipment-dispatch.js');
 const migration=read('supabase/migrations/20260830053000_p1_direct_shipment_dispatch_lifecycle.sql');
 
 assert(html.includes('/admin/sales-supply-workspace.css?v=20260902-ux7sales1'),'Ventas no carga CSS de abastecimiento versionado');
-assert(html.includes('/admin/sales-supply-workspace.js?v=20260902-ux6supply1'),'Ventas no carga workspace de abastecimiento versionado');
+assert(html.includes('/admin/sales-supply-workspace.js?v=20260904-directsimple1'),'Ventas no carga workspace de abastecimiento versionado');
 assert(html.includes('id="openSupplyWorkspace"'),'Ventas no expone acceso a Abastecimiento');
 assert(html.includes('Origen / Direct Ship'),'Ventas no explica el acceso a Direct Ship');
 assert(salesUi.includes('data-supply-order'),'La lista de Ventas no expone Origen / Direct Ship');
