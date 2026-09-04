@@ -133,7 +133,8 @@
   function renderItem(item){
     const p=item.supply_progress||{},plans=item.supply_plans||[];
     const metrics=[['Vendido',p.ordered_quantity,item.unit],['Stock',p.planned_inventory_quantity,item.unit],['Compra almacén',p.planned_purchase_warehouse_quantity,item.unit],['Direct Ship',p.planned_purchase_direct_quantity,item.unit],['Sin planificar',p.unplanned_quantity,item.unit]];
-    return `<section class="sales-supply-item"><div class="sales-supply-item-head"><div><div class="sales-supply-item-title">${esc(productTitle(item))}</div><div class="sales-supply-item-sub">${fmt(item.ordered_quantity)} ${esc(item.unit)}${Number(item.ordered_pallets||0)>0?` · ${fmt(item.ordered_pallets)} pallets`:''}</div></div><div class="sales-supply-actions"><button type="button" class="btn orange" data-supply-action="new-plan" data-item-id="${esc(item.id)}">Agregar ruta</button></div></div><div class="sales-supply-metrics">${metrics.map(([label,value,unit],index)=>`<div class="sales-supply-metric ${index===4&&Number(value||0)>0?'pending':''}"><span>${esc(label)}</span><b>${fmt(value)} ${esc(unit||'')}</b></div>`).join('')}</div><div class="sales-supply-plan-list">${plans.length?plans.map(plan=>renderPlan(item,plan)).join(''):'<div class="sales-supply-empty">Todavía no hay una ruta de abastecimiento definida para este producto.</div>'}</div></section>`;
+    const directOptions=(state.data.purchase_options||[]).filter(row=>row.product_id===item.product_id&&row.purchase_order?.status==='confirmed'&&row.compatible_methods?.includes('purchase_direct'));
+    return `<section class="sales-supply-item"><div class="sales-supply-item-head"><div><div class="sales-supply-item-title">${esc(productTitle(item))}</div><div class="sales-supply-item-sub">${fmt(item.ordered_quantity)} ${esc(item.unit)}${Number(item.ordered_pallets||0)>0?` · ${fmt(item.ordered_pallets)} pallets`:''}</div></div><div class="sales-supply-actions">${Number(p.unplanned_quantity||0)>0&&directOptions.length?`<button type="button" class="btn orange" data-supply-action="quick-direct" data-item-id="${esc(item.id)}">Preparar Direct Ship</button>`:''}<button type="button" class="btn" data-supply-action="new-plan" data-item-id="${esc(item.id)}">Otras rutas</button></div></div><div class="sales-supply-metrics">${metrics.map(([label,value,unit],index)=>`<div class="sales-supply-metric ${index===4&&Number(value||0)>0?'pending':''}"><span>${esc(label)}</span><b>${fmt(value)} ${esc(unit||'')}</b></div>`).join('')}</div><div class="sales-supply-plan-list">${plans.length?plans.map(plan=>renderPlan(item,plan)).join(''):'<div class="sales-supply-empty">Elige <b>Preparar Direct Ship</b> para enlazar la compra en un solo paso, u Otras rutas para usar inventario/almacén.</div>'}</div></section>`;
   }
 
   function renderPlan(item,plan){
@@ -143,7 +144,11 @@
 
   function renderProcurement(item,plan,allocation){
     const po=allocation.purchase_order||{},poi=allocation.purchase_order_item||{},supplier=po.supplier||{},direct=allocation.direct_shipments||[];
-    return `<div class="sales-supply-proc"><div class="sales-supply-proc-head"><div><div class="sales-supply-proc-title">${esc(po.po_number||'PO')} · ${esc(supplier.name||supplier.legal_name||'Proveedor')}</div><div class="sales-supply-detail">Venta: ${fmt(allocation.allocated_sales_quantity)} ${esc(item.unit)} · Compra: ${fmt(allocation.allocated_purchase_quantity)} ${esc(poi.unit||'unidad de compra')} · ${esc(orderStatus(po.status))}</div></div><div class="sales-supply-actions"><button type="button" class="btn" data-supply-action="open-po" data-po-id="${esc(po.id||poi.purchase_order_id||'')}">Abrir PO</button><button type="button" class="btn" data-supply-action="edit-purchase" data-proc-id="${esc(allocation.id)}" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Editar vínculo</button><button type="button" class="btn" data-supply-action="unlink-purchase" data-proc-id="${esc(allocation.id)}">Desvincular</button>${plan.supply_method==='purchase_direct'?`<button type="button" class="btn orange" data-supply-action="link-direct" data-proc-id="${esc(allocation.id)}" data-item-id="${esc(item.id)}">Vincular contenedor</button><button type="button" class="btn" data-supply-action="new-direct" data-proc-id="${esc(allocation.id)}" data-item-id="${esc(item.id)}">Nuevo contenedor</button>`:''}</div></div>${plan.supply_method==='purchase_direct'?`<div class="sales-supply-direct-list">${direct.length?direct.map(row=>renderDirect(item,allocation,row)).join(''):'<div class="sales-supply-empty">Todavía no hay contenedor asignado a esta compra directa.</div>'}</div>`:''}</div>`;
+    const salesAssigned=direct.reduce((sum,row)=>sum+Number(row.allocated_sales_quantity||0),0);
+    const purchaseAssigned=direct.reduce((sum,row)=>sum+Number(row.allocated_purchase_quantity||0),0);
+    const hasDirectRemaining=Number(allocation.allocated_sales_quantity||0)-salesAssigned>0&&Number(allocation.allocated_purchase_quantity||0)-purchaseAssigned>0;
+    const containerActions=plan.supply_method==='purchase_direct'&&hasDirectRemaining?`<button type="button" class="btn orange" data-supply-action="link-direct" data-proc-id="${esc(allocation.id)}" data-item-id="${esc(item.id)}">Vincular contenedor</button><button type="button" class="btn" data-supply-action="new-direct" data-proc-id="${esc(allocation.id)}" data-item-id="${esc(item.id)}">Nuevo contenedor</button>`:'';
+    return `<div class="sales-supply-proc"><div class="sales-supply-proc-head"><div><div class="sales-supply-proc-title">${esc(po.po_number||'PO')} · ${esc(supplier.name||supplier.legal_name||'Proveedor')}</div><div class="sales-supply-detail">Venta: ${fmt(allocation.allocated_sales_quantity)} ${esc(item.unit)} · Compra: ${fmt(allocation.allocated_purchase_quantity)} ${esc(poi.unit||'unidad de compra')} · ${esc(orderStatus(po.status))}</div></div><div class="sales-supply-actions"><button type="button" class="btn" data-supply-action="open-po" data-po-id="${esc(po.id||poi.purchase_order_id||'')}">Abrir PO</button><button type="button" class="btn" data-supply-action="edit-purchase" data-proc-id="${esc(allocation.id)}" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Editar vínculo</button><button type="button" class="btn" data-supply-action="unlink-purchase" data-proc-id="${esc(allocation.id)}">Desvincular</button>${containerActions}</div></div>${plan.supply_method==='purchase_direct'?`<div class="sales-supply-direct-list">${direct.length?direct.map(row=>renderDirect(item,allocation,row)).join(''):'<div class="sales-supply-empty">Todavía no hay contenedor asignado a esta compra directa.</div>'}</div>`:''}</div>`;
   }
 
   function renderDirect(item,allocation,row){
@@ -163,6 +168,7 @@
     const action=data.supplyAction;
     try{
       if(action==='new-plan')return editPlan(data.itemId,null);
+      if(action==='quick-direct')return quickDirect(data.itemId);
       if(action==='edit-plan'){const found=findPlan(data.planId);return editPlan(data.itemId,found?.plan||null);}
       if(action==='delete-plan')return removePlan(data.planId);
       if(action==='prepare-load')return prepareLoad();
@@ -188,6 +194,13 @@
 
   function removePlan(planId){askAction({title:'Eliminar ruta',message:'Se eliminará esta ruta de abastecimiento. Si tiene una compra vinculada, primero debes desvincularla.',acceptLabel:'Eliminar',onAccept:()=>request('/api/sales-supply',{method:'POST',body:JSON.stringify({action:'delete_plan',plan_id:planId})})});}
 
+  function quickDirect(itemId){
+    const item=findItem(itemId);if(!item)return;
+    const progress=item.supply_progress||{},available=(state.data.purchase_options||[]).filter(row=>row.product_id===item.product_id&&row.purchase_order?.status==='confirmed'&&row.compatible_methods?.includes('purchase_direct'));
+    const options=available.map(row=>`<option value="${esc(row.id)}">${esc(row.purchase_order?.po_number||'PO')} · ${esc(row.purchase_order?.supplier?.name||row.purchase_order?.supplier?.legal_name||'Proveedor')} · ${fmt(row.ordered_quantity)} ${esc(row.unit)}</option>`).join('');
+    openForm({title:'Preparar Direct Ship',subtitle:`${productTitle(item)} · compra y venta en un solo paso`,saveLabel:'Preparar envío',html:`<div class="sales-supply-form"><div class="full"><label>Compra Direct Ship *</label><select id="quickDirectPo"><option value="">Seleccionar compra</option>${options}</select></div><div><label>Cantidad de venta *</label><input id="quickDirectSalesQty" type="number" min="0" step="any" value="${esc(progress.unplanned_quantity||'')}"><div class="sales-supply-helper">${esc(item.unit)}</div></div><div><label>Pallets de venta</label><input id="quickDirectSalesPallets" type="number" min="0" step="any" value="${esc(progress.unplanned_pallets||0)}"></div><div><label>Cantidad de compra *</label><input id="quickDirectPurchaseQty" type="number" min="0" step="any" value="${esc(progress.unplanned_quantity||'')}"><div id="quickDirectPurchaseUnit" class="sales-supply-helper">Selecciona la compra.</div></div><div><label>Pallets de compra</label><input id="quickDirectPurchasePallets" type="number" min="0" step="any" value="${esc(progress.unplanned_pallets||0)}"></div><div class="full"><label>Nota</label><textarea id="quickDirectNotes"></textarea><div class="sales-supply-helper">Al guardar quedarán creadas la ruta Direct Ship y la relación con la PO. Después solo registrarás el contenedor.</div></div></div>`,onOpen:()=>{const select=byId('quickDirectPo'),sync=()=>{const selected=available.find(row=>row.id===select.value);byId('quickDirectPurchaseUnit').textContent=selected?`Unidad de compra: ${selected.unit}.`:'Selecciona la compra.';if(selected&&!byId('quickDirectPurchaseQty').value)byId('quickDirectPurchaseQty').value=selected.ordered_quantity||'';};select.onchange=sync;sync();},onSave:()=>request('/api/sales-supply',{method:'POST',body:JSON.stringify({action:'quick_direct',sales_order_item_id:item.id,purchase_order_item_id:byId('quickDirectPo').value,allocated_sales_quantity:byId('quickDirectSalesQty').value,allocated_sales_pallets:byId('quickDirectSalesPallets').value||0,allocated_purchase_quantity:byId('quickDirectPurchaseQty').value,allocated_purchase_pallets:byId('quickDirectPurchasePallets').value||0,notes:byId('quickDirectNotes').value})})});
+  }
+
   function editPurchase(item,plan,allocation){
     if(!item||!plan)return;
     const isEdit=Boolean(allocation),options=(state.data.purchase_options||[]).filter(row=>row.product_id===item.product_id&&row.compatible_methods?.includes(plan.supply_method)&&!(plan.supply_method==='purchase_warehouse'&&row.purchase_order?.warehouse_id&&row.purchase_order.warehouse_id!==plan.warehouse_id));
@@ -205,7 +218,31 @@
 
   function createDirect(item,allocation){
     if(!item||!allocation)return;
-    openForm({title:'Nuevo contenedor Direct Ship',subtitle:'Se registra en Contenedores y hereda cliente e importadora de la venta.',saveLabel:'Registrar contenedor',html:`<div class="sales-supply-form"><div><label>Contenedor / referencia *</label><input id="supplyNewContainer" maxlength="40"></div><div><label>Naviera</label><input id="supplyNewCarrier"></div><div><label>Booking</label><input id="supplyNewBooking"></div><div><label>B/L</label><input id="supplyNewBol"></div><div><label>Fecha de salida planificada</label><input id="supplyNewDeparture" type="date"></div><div class="full sales-supply-helper">El ERP registrará el contenedor bajo seguimiento canónico interno. La mercancía no se considera despachada hasta marcar el despacho real.</div></div>`,onSave:async()=>{const result=await request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({action:'create',sales_order_id:state.salesOrderId,container_number:byId('supplyNewContainer').value,carrier:byId('supplyNewCarrier').value,booking_number:byId('supplyNewBooking').value,bol_number:byId('supplyNewBol').value,departure_date:byId('supplyNewDeparture').value})});await fetchSupply();setTimeout(()=>linkDirect(item,findProcurement(allocation.id)?.allocation||allocation,result.shipment?.id),0);}});
+    openForm({
+      title:'Registrar contenedor Direct Ship',
+      subtitle:'Se crea en Tracking y queda vinculado automáticamente a esta compra y venta.',
+      saveLabel:'Crear y vincular',
+      html:`<div class="sales-supply-form"><div><label>Contenedor / referencia *</label><input id="supplyNewContainer" maxlength="40"></div><div><label>Naviera</label><input id="supplyNewCarrier"></div><div><label>Booking</label><input id="supplyNewBooking"></div><div><label>B/L</label><input id="supplyNewBol"></div><div><label>Fecha de salida planificada</label><input id="supplyNewDeparture" type="date"></div><div class="full sales-supply-helper">Al guardar aparecerá directamente en Tracking. El despacho real seguirá siendo una acción separada.</div></div>`,
+      onSave:async()=>{
+        const rows=allocation.direct_shipments||[];
+        const salesUsed=rows.reduce((sum,row)=>sum+Number(row.allocated_sales_quantity||0),0);
+        const salesPalletsUsed=rows.reduce((sum,row)=>sum+Number(row.allocated_sales_pallets||0),0);
+        const purchaseUsed=rows.reduce((sum,row)=>sum+Number(row.allocated_purchase_quantity||0),0);
+        const purchasePalletsUsed=rows.reduce((sum,row)=>sum+Number(row.allocated_purchase_pallets||0),0);
+        const remainingSales=Number(allocation.allocated_sales_quantity||0)-salesUsed;
+        const remainingPurchase=Number(allocation.allocated_purchase_quantity||0)-purchaseUsed;
+        if(remainingSales<=0||remainingPurchase<=0)throw new Error('No queda mercancía pendiente para asignar a otro contenedor.');
+        const result=await request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({action:'create',sales_order_id:state.salesOrderId,container_number:byId('supplyNewContainer').value,carrier:byId('supplyNewCarrier').value,booking_number:byId('supplyNewBooking').value,bol_number:byId('supplyNewBol').value,departure_date:byId('supplyNewDeparture').value})});
+        await request('/api/sales-supply',{method:'POST',body:JSON.stringify({
+          action:'link_direct_shipment',procurement_allocation_id:allocation.id,shipment_id:result.shipment?.id,
+          allocated_sales_quantity:remainingSales,
+          allocated_sales_pallets:Math.max(0,Number(allocation.allocated_sales_pallets||0)-salesPalletsUsed),
+          allocated_purchase_quantity:remainingPurchase,
+          allocated_purchase_pallets:Math.max(0,Number(allocation.allocated_purchase_pallets||0)-purchasePalletsUsed),
+          notes:'Vinculado al registrar el contenedor Direct Ship.'
+        })});
+      }
+    });
   }
 
   function dispatchDirect(shipmentId){
