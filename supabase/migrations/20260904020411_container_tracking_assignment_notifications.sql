@@ -1,4 +1,5 @@
 -- B10.2 · Aviso inmediato cuando un contenedor queda vinculado a un Cargue/Tracking.
+-- Versión alineada con el historial aplicado en Supabase.
 -- La notificación usa la categoría existente de cambios de tracking para respetar
 -- las preferencias in-app y Web Push de cada usuario.
 
@@ -120,4 +121,3 @@ grant execute on function public.create_load_shipment_canonical(uuid,text,uuid,u
 
 comment on function public.notify_load_container_assignment(uuid,uuid) is
   'Crea de forma idempotente el aviso personal de Tracking al vincular un contenedor con un Cargue.';
-
