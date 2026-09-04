@@ -71,6 +71,22 @@ export default async function handler(req,res){
       const rows=await supabase('sales_supply_plan_lines',{method:'POST',body:{sales_order_item_id:salesOrderItemId,supply_method:method,warehouse_id:warehouseId,planned_quantity:qty(body.planned_quantity,'PLANNED_QUANTITY'),planned_pallets:pallets(body.planned_pallets),notes:note(body.notes),created_by:admin.admin_id},prefer:'return=representation'})||[];
       await writeAudit(admin,'sales_supply_plan_created','sales_order_item',salesOrderItemId,{plan_id:rows[0]?.id||null,supply_method:method});return ok(res,{record:rows[0]||null});
     }
+    if(action==='quick_direct'){
+      const salesOrderItemId=uuid(body.sales_order_item_id,'SALES_ORDER_ITEM_ID'),poItemId=uuid(body.purchase_order_item_id,'PURCHASE_ORDER_ITEM_ID');
+      const salesQty=qty(body.allocated_sales_quantity,'ALLOCATED_SALES_QUANTITY'),salesPallets=pallets(body.allocated_sales_pallets),purchaseQty=qty(body.allocated_purchase_quantity,'ALLOCATED_PURCHASE_QUANTITY'),purchasePallets=pallets(body.allocated_purchase_pallets);
+      let plan=null;
+      try{
+        const plans=await supabase('sales_supply_plan_lines',{method:'POST',body:{sales_order_item_id:salesOrderItemId,supply_method:'purchase_direct',warehouse_id:null,planned_quantity:salesQty,planned_pallets:salesPallets,notes:note(body.notes),created_by:admin.admin_id},prefer:'return=representation'})||[];
+        plan=plans[0];if(!plan?.id)throw new Error('SUPPLY_QUICK_DIRECT_PLAN_FAILED');
+        const rows=await supabase('sales_procurement_allocations',{method:'POST',body:{supply_plan_line_id:plan.id,purchase_order_item_id:poItemId,allocated_sales_quantity:salesQty,allocated_sales_pallets:salesPallets,allocated_purchase_quantity:purchaseQty,allocated_purchase_pallets:purchasePallets,notes:note(body.notes),created_by:admin.admin_id},prefer:'return=representation'})||[];
+        if(!rows[0]?.id)throw new Error('SUPPLY_QUICK_DIRECT_LINK_FAILED');
+        await writeAudit(admin,'direct_supply_prepared','sales_order_item',salesOrderItemId,{plan_id:plan.id,procurement_allocation_id:rows[0].id,purchase_order_item_id:poItemId});
+        return ok(res,{plan,record:rows[0]});
+      }catch(error){
+        if(plan?.id)try{await supabase('sales_supply_plan_lines',{method:'DELETE',query:`?id=eq.${plan.id}`});}catch(cleanupError){console.error('[sales-supply-quick-direct-cleanup]',cleanupError);}
+        throw error;
+      }
+    }
     if(action==='update_plan'){
       const planId=uuid(body.plan_id,'PLAN_ID'),patch={};
       if(body.planned_quantity!==undefined)patch.planned_quantity=qty(body.planned_quantity,'PLANNED_QUANTITY');if(body.planned_pallets!==undefined)patch.planned_pallets=pallets(body.planned_pallets);if(body.notes!==undefined)patch.notes=note(body.notes);
