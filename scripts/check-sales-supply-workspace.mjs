@@ -4,6 +4,7 @@ const read=path=>fs.readFileSync(path,'utf8');
 const assert=(condition,message)=>{if(!condition)throw new Error(message);};
 
 const html=read('admin/sales.html');
+const salesUi=read('admin/sales.js');
 const ui=read('admin/sales-supply-workspace.js');
 const css=read('admin/sales-supply-workspace.css');
 const api=read('api/sales-supply.js');
@@ -13,6 +14,9 @@ const migration=read('supabase/migrations/20260830053000_p1_direct_shipment_disp
 assert(html.includes('/admin/sales-supply-workspace.css?v=20260902-ux7sales1'),'Ventas no carga CSS de abastecimiento versionado');
 assert(html.includes('/admin/sales-supply-workspace.js?v=20260902-ux6supply1'),'Ventas no carga workspace de abastecimiento versionado');
 assert(html.includes('id="openSupplyWorkspace"'),'Ventas no expone acceso a Abastecimiento');
+assert(html.includes('Origen / Direct Ship'),'Ventas no explica el acceso a Direct Ship');
+assert(salesUi.includes('data-supply-order'),'La lista de Ventas no expone Origen / Direct Ship');
+assert(salesUi.includes('window.SalesSupplyWorkspace?.open'),'La lista de Ventas no abre el flujo Direct Ship');
 
 for(const forbidden of ['MutationObserver','prompt(', 'alert(', 'confirm(']){
   assert(!ui.includes(forbidden),`Abastecimiento contiene patrón prohibido: ${forbidden}`);

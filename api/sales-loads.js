@@ -100,6 +100,7 @@ function translatedError(raw) {
     ['RECEIPT_ITEM_NOT_FOUND','Uno de los WR seleccionados ya no existe.'],
     ['INSUFFICIENT_WR_AVAILABLE_BALANCE','Uno de los WR ya no tiene saldo suficiente disponible.'],
     ['LOAD_QUANTITY_INVALID','La cantidad o pallets seleccionados son inválidos.'],
+    ['LOAD_QUANTITY_PALLET_MISMATCH','La cantidad debe coincidir con los pallets multiplicados por las unidades por pallet del WR.'],
     ['LOAD_QUANTITY_REQUIRED','Indica una cantidad o pallets mayor que cero.'],
     ['LOAD_QUANTITY_REQUIRED_FOR_PALLETS','Ese WR no tiene unidades por pallet para convertir pallets a cantidad.'],
     ['SO_LOAD_PLAN_ENTRY_INVALID','El plan de Cargue contiene una línea inválida.'],

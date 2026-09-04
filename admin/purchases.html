@@ -6,7 +6,7 @@
 <title>Compras · Export MCA</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
-<link rel="stylesheet" href="/admin/purchases.css?v=20260902-ux7purchases1">
+<link rel="stylesheet" href="/admin/purchases.css?v=20260904-directflow1">
 </head>
 <body class="erp-module-page erp-module-purchases" data-owner="purchases.js">
 <main class="wrap purchases-shell">
@@ -14,7 +14,7 @@
     <div class="module-heading purchases-page-heading">
       <div class="module-kicker purchases-page-kicker">Abastecimiento · Control de mercancía</div>
       <h1 id="purchasesPageTitle">Compras</h1>
-      <p>Organiza órdenes a proveedores, recepción física y avance de cada mercancía desde una sola vista operativa.</p>
+      <p>Organiza órdenes a proveedores y define si la mercancía entra a tu almacén o viaja Direct Ship al cliente.</p>
     </div>
     <div class="module-actions">
       <button id="newOrder" class="btn orange purchases-primary-action" type="button">Nueva compra</button>
@@ -28,7 +28,7 @@
       <div>
         <span class="purchases-eyebrow">Órdenes a proveedores</span>
         <h2 id="purchasesListTitle">Compras registradas</h2>
-        <p>Consulta el estado comercial, la recepción en almacén y el valor estimado de cada orden.</p>
+        <p>Consulta el estado comercial, el destino, la recepción cuando aplique y el valor de cada orden.</p>
       </div>
     </div>
     <div class="toolbar purchases-list-toolbar">
@@ -51,11 +51,13 @@
 <div id="orderModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="orderTitle">
   <div class="dialog purchase-order-dialog">
     <div class="dialog-head">
-      <div><span class="purchases-dialog-kicker">Plan de abastecimiento</span><h2 id="orderTitle">Nueva Purchase Order</h2><div class="muted">La orden registra lo comprado; el inventario solo nace cuando se registra una recepción WR.</div></div>
+      <div><span class="purchases-dialog-kicker">Plan de abastecimiento</span><h2 id="orderTitle">Nueva Purchase Order</h2><div class="muted">Elige primero el destino: almacén crea WR al recibir; Direct Ship va al cliente sin entrar a tus existencias.</div></div>
       <button class="btn purchases-close-button" type="button" data-close="order" aria-label="Cerrar formulario de compra">✕</button>
     </div>
-    <div class="grid3"><div><label>Proveedor *</label><select id="oSupplier"></select></div><div><label>Almacén esperado</label><select id="oWarehouse"></select></div><div><label>Moneda *</label><input id="oCurrency" value="USD" maxlength="3"></div></div>
-    <div class="grid3"><div><label>Fecha de orden</label><input id="oDate" type="date"></div><div><label>Llegada estimada</label><input id="oExpected" type="datetime-local"></div><div><label>Referencia proveedor</label><input id="oReference"></div></div>
+    <div class="grid3"><div><label>Proveedor *</label><select id="oSupplier"></select></div><div><label>Destino de la mercancía *</label><select id="oDestinationMode"><option value="warehouse">Recibir en mi almacén</option><option value="direct">Direct Ship al cliente (sin WR)</option></select></div><div id="oWarehouseField"><label>Almacén receptor *</label><select id="oWarehouse"></select></div></div>
+    <div id="oDestinationHelp" class="purchase-destination-help" role="note"></div>
+    <div class="grid3"><div><label>Moneda *</label><input id="oCurrency" value="USD" maxlength="3"></div><div><label>Fecha de orden</label><input id="oDate" type="date"></div><div><label>Llegada estimada</label><input id="oExpected" type="datetime-local"></div></div>
+    <label>Referencia proveedor</label><input id="oReference">
     <label>Notas</label><textarea id="oNotes"></textarea>
     <div class="toolbar purchase-form-section-head"><div><b>Mercancía ordenada</b><div class="muted">Selecciona un producto del catálogo maestro o créalo desde la misma línea. Crear la ficha no genera inventario.</div></div><button id="addOrderLine" class="btn" type="button">+ Línea</button></div>
     <div id="orderLines" class="purchase-order-lines"></div>
@@ -106,7 +108,7 @@
   </div>
 </div>
 
-<script src="/admin/purchases.js?v=20260902-ux7purchases1"></script>
-<script src="/admin/embedded-auto-refresh.js?v=20260902-ux7purchases1"></script>
+<script src="/admin/purchases.js?v=20260904-directflow1"></script>
+<script src="/admin/embedded-auto-refresh.js?v=20260904-live2"></script>
 </body>
 </html>

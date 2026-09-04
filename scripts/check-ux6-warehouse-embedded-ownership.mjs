@@ -24,7 +24,7 @@ const styles=read(files.styles);
 const api=read(files.api);
 const workflow=read(files.workflow);
 
-requireText(shell,"src:'/admin/warehouse.html?embedded=1'",'navegación canónica a Almacén');
+requireText(shell,"src:'/admin/warehouse.html?embedded=1&v=20260904-flowclarity1'",'navegación canónica a Recepciones');
 for(const token of [
   'applyWarehouseCatalogBoundary',
   'contentDocument',
@@ -38,7 +38,7 @@ for(const text of [
   '<link rel="stylesheet" href="/admin/warehouse.css?v=20260902-ux7warehouse1">',
   '<body class="erp-module-page erp-module-warehouse" data-owner="warehouse.js">',
   '<script src="/admin/warehouse.js?v=20260902-ux7warehouse1" defer></script>',
-  '<script src="/admin/embedded-auto-refresh.js?v=20260902-ux7warehouse1" defer></script>',
+  '<script src="/admin/embedded-auto-refresh.js?v=20260904-live2" defer></script>',
   'warehouse-copy-standalone',
   'warehouse-copy-embedded'
 ])requireText(html,text,`HTML de Almacén ${text}`);

@@ -11,6 +11,11 @@ on:
       - 'admin/payables.css'
       - 'admin/costs.css'
       - 'api/purchases.js'
+      - 'api/warehouse.js'
+      - 'supabase/migrations/20260904011201_purchase_line_total_measurement_consistency.sql'
+      - 'supabase/migrations/20260904013221_purchase_direct_ship_no_wr.sql'
+      - 'scripts/check-direct-ship-and-flow-clarity.mjs'
+      - 'scripts/check-purchase-total-and-load-units.mjs'
       - 'scripts/check-ux6-purchases-presentation.mjs'
       - '.github/workflows/ux6-purchases-presentation.yml'
   workflow_dispatch:
@@ -24,11 +29,17 @@ jobs:
         with:
           node-version: '24'
       - name: Validate Purchases UX-7 owner
-        run: node scripts/check-ux6-purchases-presentation.mjs
+        run: |
+          node scripts/check-ux6-purchases-presentation.mjs
+          node scripts/check-purchase-total-and-load-units.mjs
+          node scripts/check-direct-ship-and-flow-clarity.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check api/purchases.js
           node --check admin/purchases.js
+          node --check api/warehouse.js
+          node --check scripts/check-purchase-total-and-load-units.mjs
+          node --check scripts/check-direct-ship-and-flow-clarity.mjs
           node --check scripts/check-ux6-purchases-presentation.mjs
       - name: Validate Purchase API runtime import
         run: node --input-type=module -e "await import('./api/purchases.js'); console.log('Purchase API runtime import OK')"

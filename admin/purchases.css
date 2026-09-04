@@ -332,6 +332,29 @@
   background:var(--surface-soft);
 }
 
+.erp-module-purchases .purchase-destination-help {
+  margin:10px 0 2px;
+  border-left:3px solid #8aa3c4;
+  border-radius:0 8px 8px 0;
+  padding:9px 11px;
+  background:#f6f9fc;
+  color:#475467;
+  font-size:11px;
+  line-height:1.5;
+}
+
+.erp-module-purchases .purchase-destination-help.direct {
+  border-left-color:#c4510b;
+  background:#fff8f1;
+  color:#7a3a0b;
+}
+
+.erp-module-purchases .purchase-direct-pill {
+  border-color:#bfd0e5;
+  background:#f3f7fd;
+  color:#244a83;
+}
+
 .erp-module-purchases .purchase-order-lines,
 .erp-module-purchases .purchase-receive-lines {
   display:grid;
@@ -363,6 +386,38 @@
   margin-top:8px;
   padding:7px 10px;
   font-size:10px;
+}
+
+.erp-module-purchases .purchase-line-details {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:10px;
+}
+
+.erp-module-purchases .purchase-line-feedback {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  align-items:start;
+  margin-top:8px;
+}
+
+.erp-module-purchases .purchase-line-feedback .small {
+  margin:0;
+}
+
+.erp-module-purchases .lPricingHelp {
+  color:#475467;
+}
+
+.erp-module-purchases .lMeasurementHelp.is-ok {
+  color:#18734b;
+}
+
+.erp-module-purchases .lMeasurementHelp.is-error {
+  color:#b42318;
+  font-weight:700;
 }
 
 .erp-module-purchases .summary {
@@ -549,6 +604,11 @@
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
+  .erp-module-purchases .purchase-line-details,
+  .erp-module-purchases .purchase-line-feedback {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
   .erp-module-purchases .receive-line > div:first-child,
   .erp-module-purchases .purchase-receive-line > div:first-child {
     grid-column:1 / -1;
@@ -601,7 +661,9 @@
 
   .erp-module-purchases .summary,
   .erp-module-purchases .receive-line,
-  .erp-module-purchases .purchase-receive-line {
+  .erp-module-purchases .purchase-receive-line,
+  .erp-module-purchases .purchase-line-details,
+  .erp-module-purchases .purchase-line-feedback {
     grid-template-columns:1fr;
   }
 

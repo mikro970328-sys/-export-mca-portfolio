@@ -4,9 +4,11 @@ on:
   pull_request:
     paths:
       - 'admin/sales.html'
+      - 'admin/sales.js'
       - 'admin/sales-supply-workspace.js'
       - 'admin/sales-supply-workspace.css'
       - 'api/sales-supply.js'
+      - 'supabase/migrations/20260904013835_purchase_destination_supply_consistency.sql'
       - 'api/direct-shipment-dispatch.js'
       - 'scripts/check-sales-supply-workspace.mjs'
       - 'scripts/check-ux6-sales-supply-feedback.mjs'
@@ -45,6 +47,7 @@ jobs:
       - name: Validate JavaScript syntax and imports
         run: |
           node --check admin/sales-supply-workspace.js
+          node --check admin/sales.js
           node --check scripts/check-sales-supply-workspace.mjs
           node --check scripts/check-ux6-sales-supply-feedback.mjs
           node --input-type=module -e "await Promise.all([import('./api/sales-supply.js'),import('./api/direct-shipment-dispatch.js')]); console.log('Sales supply runtime imports OK')"

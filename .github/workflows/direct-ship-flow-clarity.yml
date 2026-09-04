@@ -1,0 +1,63 @@
+name: Direct Ship and ERP Flow Clarity
+
+on:
+  pull_request:
+    paths:
+      - 'admin/embedded-auto-refresh.js'
+      - 'admin/erp.js'
+      - 'admin/index.html'
+      - 'admin/inventory.html'
+      - 'admin/navigation-shell.js'
+      - 'admin/operational-navigation.js'
+      - 'admin/purchases.css'
+      - 'admin/purchases.html'
+      - 'admin/purchases.js'
+      - 'admin/sales.html'
+      - 'admin/sales.js'
+      - 'admin/sales-supply-workspace.js'
+      - 'admin/warehouse.html'
+      - 'admin/warehouse.js'
+      - 'api/purchases.js'
+      - 'api/sales-supply.js'
+      - 'supabase/migrations/20260904013221_purchase_direct_ship_no_wr.sql'
+      - 'supabase/migrations/20260904013835_purchase_destination_supply_consistency.sql'
+      - 'scripts/check-direct-ship-and-flow-clarity.mjs'
+      - 'scripts/check-live-erp-refresh.mjs'
+      - 'scripts/check-purchase-total-and-load-units.mjs'
+      - 'scripts/check-sales-supply-workspace.mjs'
+      - '.github/workflows/direct-ship-flow-clarity.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-direct-ship-and-flow-clarity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate the complete operator flow
+        run: |
+          node scripts/check-direct-ship-and-flow-clarity.mjs
+          node scripts/check-live-erp-refresh.mjs
+          node scripts/check-purchase-total-and-load-units.mjs
+          node scripts/check-sales-supply-workspace.mjs
+          node scripts/check-ux6-warehouse-embedded-ownership.mjs
+      - name: Validate JavaScript syntax and runtime import
+        run: |
+          node --check admin/embedded-auto-refresh.js
+          node --check admin/erp.js
+          node --check admin/navigation-shell.js
+          node --check admin/operational-navigation.js
+          node --check admin/purchases.js
+          node --check admin/sales.js
+          node --check admin/warehouse.js
+          node --check api/purchases.js
+          node --check api/sales-supply.js
+          node --check scripts/check-direct-ship-and-flow-clarity.mjs
+          node --input-type=module -e "await Promise.all([import('./api/purchases.js'),import('./api/sales-supply.js')]); console.log('Purchase and Sales supply API runtime imports OK')"
+      - name: Preserve canonical actions and boundaries
+        run: |
+          node scripts/check-ux5-canonical-actions.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/check-b9-database-privileges.mjs

@@ -51,7 +51,7 @@ for(const text of [
 
 requireText(loader,"/admin/tasks-workspace.css?v=20260903-ux7tasks1",'revisión del CSS de Tareas');
 requireText(loader,"/admin/tasks-workspace.js?v=20260903-ux7tasks1",'revisión del JS de Tareas');
-requireText(index,'/admin/erp.js?v=20260903-b10push1','revisión del loader ERP');
+requireText(index,'/admin/erp.js?v=20260904-flowclarity1','revisión del loader ERP');
 
 for(const text of [
   "authorizeAdmin(req,res,'tasks.read')",

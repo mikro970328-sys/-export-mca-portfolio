@@ -38,7 +38,7 @@ for (const text of [
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/warehouse.css?v=20260902-ux7warehouse1',
   '/admin/warehouse.js?v=20260902-ux7warehouse1',
-  '/admin/embedded-auto-refresh.js?v=20260902-ux7warehouse1',
+  '/admin/embedded-auto-refresh.js?v=20260904-live2',
   'class="module-hero warehouse-page-head"',
   'id="stats" class="stats warehouse-metrics"',
   'class="tabs warehouse-tabs" role="tablist"',

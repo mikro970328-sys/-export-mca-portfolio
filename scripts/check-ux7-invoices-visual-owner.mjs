@@ -45,7 +45,7 @@ for (const text of [
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/invoices.css?v=20260903-ux7invoices1',
   '/admin/invoices.js?v=20260903-ux7invoices1',
-  '/admin/embedded-auto-refresh.js?v=20260903-ux7invoices1',
+  '/admin/embedded-auto-refresh.js?v=20260904-live2',
   'class="module-hero invoices-page-head"',
   'id="invoiceLastUpdated"',
   'id="metrics" class="metrics invoices-metrics"',

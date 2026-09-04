@@ -8,16 +8,16 @@
   const GROUP_STATE_KEY = 'export_mca_nav_groups';
 
   const EMBEDDED_SECTIONS = [
-    { id:'warehouseSection', label:'Almacén', src:'/admin/warehouse.html?embedded=1' },
+    { id:'warehouseSection', label:'Recepciones (WR)', src:'/admin/warehouse.html?embedded=1&v=20260904-flowclarity1' },
     { id:'suppliersSection', label:'Proveedores', src:'/admin/suppliers.html?embedded=1' },
     { id:'productsSection', label:'Productos', src:'/admin/products.html?embedded=1' },
-    { id:'purchasesSection', label:'Compras', src:'/admin/purchases.html?embedded=1' },
-    { id:'salesSection', label:'Ventas', src:'/admin/sales.html?embedded=1' },
+    { id:'purchasesSection', label:'Compras', src:'/admin/purchases.html?embedded=1&v=20260904-flowclarity1' },
+    { id:'salesSection', label:'Ventas', src:'/admin/sales.html?embedded=1&v=20260904-flowclarity1' },
     { id:'invoicesSection', label:'Facturación', src:'/admin/invoices.html?embedded=1' },
     { id:'payablesSection', label:'Cuentas por pagar', src:'/admin/payables.html?embedded=1' },
     { id:'costsSection', label:'Costos y rentabilidad', src:'/admin/costs.html?embedded=1' },
     { id:'reportsSection', label:'Reportes', src:'/admin/reports.html?embedded=1', permission:'reports.read' },
-    { id:'inventorySection', label:'Inventario', src:'/admin/inventory.html?embedded=1' },
+    { id:'inventorySection', label:'Existencias', src:'/admin/inventory.html?embedded=1&v=20260904-flowclarity1' },
     { id:'loadsSection', label:'Cargues', src:'/admin/loads.html?embedded=1' }
   ];
 

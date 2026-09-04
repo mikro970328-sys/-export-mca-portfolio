@@ -9,7 +9,7 @@
     client:{label:'Clientes',permissions:['clients.read']},
     sales_order:{label:'Ventas',permissions:['sales.read']},
     purchase_order:{label:'Compras',permissions:['procurement.read']},
-    warehouse_receipt:{label:'Almacén',permissions:['warehouse.read']},
+    warehouse_receipt:{label:'Recepciones (WR)',permissions:['warehouse.read']},
     load:{label:'Logística',permissions:['logistics.read']},
     shipment:{label:'Logística',permissions:['logistics.read']},
     invoice:{label:'Facturación',permissions:['finance.read']},
@@ -19,7 +19,7 @@
   const WORKFLOW_ACCESS=Object.freeze({
     sales_supply_planning:{label:'Abastecimiento de Ventas',permissions:['sales.read','sales.write']},
     sales_procurement_linkage:{label:'Abastecimiento de Ventas',permissions:['sales.read','sales.write']},
-    purchase_receipt:{label:'Compras y Almacén',permissions:['procurement.read','warehouse.write']},
+    purchase_receipt:{label:'Compras y Recepciones',permissions:['procurement.read','warehouse.write']},
     direct_fulfillment:{label:'Direct Ship',permissions:['sales.read','sales.write']},
     prepare_load:{label:'Ventas y Logística',permissions:['sales.read','logistics.write']},
     shipment_cuba_documents:{label:'Documentos Cuba',permissions:['logistics.read','documents.read','documents.write']},
@@ -35,7 +35,7 @@
   const missing=permissions=>(permissions||[]).filter(permission=>!can(permission));
   const permissionLabel=permission=>({
     'clients.read':'ver Clientes','sales.read':'ver Ventas','sales.write':'gestionar Ventas',
-    'procurement.read':'ver Compras','procurement.write':'gestionar Compras','warehouse.read':'ver Almacén','warehouse.write':'recibir en Almacén',
+    'procurement.read':'ver Compras','procurement.write':'gestionar Compras','warehouse.read':'ver Recepciones y Existencias','warehouse.write':'registrar Recepciones WR',
     'logistics.read':'ver Logística','logistics.write':'gestionar Logística','documents.read':'ver Documentos','documents.write':'gestionar Documentos',
     'finance.read':'ver Finanzas','finance.write':'gestionar Finanzas'
   })[permission]||permission;

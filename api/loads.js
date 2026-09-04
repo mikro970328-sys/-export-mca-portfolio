@@ -108,6 +108,7 @@ function translatedError(raw){
     ['LOAD_ACTION_NOT_ALLOWED','El cargue no admite esta acción en su estado actual.'],
     ['LOAD_NOT_FOUND','Cargue no encontrado.'],
     ['LOAD_QUANTITY_INVALID','La cantidad o los pallets seleccionados no son válidos.'],
+    ['LOAD_QUANTITY_PALLET_MISMATCH','La cantidad debe coincidir con los pallets multiplicados por las unidades por pallet del WR.'],
     ['CONTAINER_REFERENCE_INVALID','La referencia del contenedor no es válida. Usa letras/números y, si necesitas, espacios, guion, punto, slash o underscore.'],
     ['LOAD_SHIPMENT_CLIENT_MISMATCH','El cliente del contenedor no coincide con el cliente de la venta vinculada al cargue.'],
     ['LOAD_SHIPMENT_IMPORTER_MISMATCH','La importadora del contenedor no coincide con la importadora de la venta vinculada al cargue.'],

@@ -14,6 +14,8 @@ on:
       - 'api/loads.js'
       - 'api/sales-loads.js'
       - 'api/_load-plan-availability.js'
+      - 'supabase/migrations/20260904011201_purchase_line_total_measurement_consistency.sql'
+      - 'scripts/check-purchase-total-and-load-units.mjs'
       - 'scripts/check-ux5-load-actions.mjs'
       - 'scripts/check-ux6-loads-presentation.mjs'
       - 'scripts/check-ux7-loads-visual-owner.mjs'
@@ -39,7 +41,9 @@ jobs:
       - name: Validate canonical Load actions
         run: node scripts/check-ux5-load-actions.mjs
       - name: Validate live ERP refresh and Load flow
-        run: node scripts/check-live-erp-refresh.mjs
+        run: |
+          node scripts/check-live-erp-refresh.mjs
+          node scripts/check-purchase-total-and-load-units.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check api/loads.js
@@ -51,6 +55,7 @@ jobs:
           node --check scripts/check-ux6-loads-presentation.mjs
           node --check scripts/check-ux7-loads-visual-owner.mjs
           node --check scripts/check-live-erp-refresh.mjs
+          node --check scripts/check-purchase-total-and-load-units.mjs
           node --check admin/operational-navigation.js
           node --check admin/operational-context-bridge.js
       - name: Validate API runtime imports

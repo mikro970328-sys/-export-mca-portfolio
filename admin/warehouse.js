@@ -257,6 +257,6 @@ applyEmbeddedMode();
 window.WarehouseModule=Object.freeze({embedded:embeddedMode,owner:'warehouse.js'});
 load().catch(error=>{
   const message=safeWarehouseMessage(error,'No se pudo cargar Almacén. Intenta nuevamente.','load');
-  document.body.innerHTML=`<main class="wrap warehouse-load-error"><section class="panel"><h1>Almacén</h1><p class="bad">${esc(message)}</p><button id="warehouseReload" class="primary" type="button">Reintentar</button></section></main>`;
+  document.body.innerHTML=`<main class="wrap warehouse-load-error"><section class="panel"><h1>Recepciones (WR)</h1><p class="bad">${esc(message)}</p><button id="warehouseReload" class="primary" type="button">Reintentar</button></section></main>`;
   $('warehouseReload').onclick=()=>location.reload();
 });
