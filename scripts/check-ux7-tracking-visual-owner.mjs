@@ -53,9 +53,9 @@ for(const text of [
   'class="tracking-metrics"',
   'id="trackingTotalCount"',
   'id="trackingActiveCount"',
-  'id="trackingDeliveredCount"',
-  'id="trackingUnassignedCount"',
+  'id="trackingLoadedCount"',
   'id="trackingDocumentsReadyCount"',
+  'id="trackingDocumentsPendingCount"',
   'id="trackingClearFilters"',
   'id="shipmentSearch"',
   'data-container-filter="active"',
@@ -130,12 +130,12 @@ forbid(loader,/registration-form-shell/i,'erp.js conserva el shell visual retira
 if(fs.existsSync('admin/registration-form-shell.js'))failures.push('registration-form-shell.js debe permanecer retirado');
 
 for(const text of [
-  "loadStylesheet('/admin/containers-module.css?v=20260903-ux7tracking2', 'data-containers-module-style')",
-  "loadScript('/admin/containers-module.js?v=20260903-ux7tracking2', 'data-containers-module')",
+  "loadStylesheet('/admin/containers-module.css?v=20260904-owner-tracking1', 'data-containers-module-style')",
+  "loadScript('/admin/containers-module.js?v=20260904-owner-tracking1', 'data-containers-module')",
   "loadStylesheet('/admin/shipment-editor.css?v=20260903-ux7tracking2', 'data-shipment-editor-style')",
   "loadScript('/admin/shipment-editor.js?v=20260903-ux7tracking2', 'data-shipment-editor')"
 ])requireText(loader,text,`asset canónico ${text}`);
-requireText(html,'/admin/erp.js?v=20260904-flowclarity1','revisión de caché del ERP');
+requireText(html,'/admin/erp.js?v=20260904-simple-nav1','revisión de caché del ERP');
 
 for(const text of [
   'class="shipment-editor" data-owner="shipment-editor.js"',
@@ -210,7 +210,7 @@ for(const id of [
   'shipmentClient','shipmentImporter','shipmentImporterOptions','shipmentBooking','shipmentBol','shipmentCarrier',
   'shipmentDepartureDate','shipmentProduct','shipmentQuantity','shipmentQuantityUnit','shipmentSearch',
   'trackingClearFilters','trackingRegisterShortcut','trackingLastUpdated','trackingResultCount','trackingFeedback',
-  'trackingTotalCount','trackingActiveCount','trackingDeliveredCount','trackingUnassignedCount','trackingDocumentsReadyCount'
+  'trackingTotalCount','trackingActiveCount','trackingLoadedCount','trackingDeliveredCount','trackingUnassignedCount','trackingDocumentsReadyCount','trackingDocumentsPendingCount'
 ])fixtureNodes.set(id,fakeElement(id));
 
 const filterButtons=['active','delivered','all'].map(filter=>{
@@ -222,7 +222,7 @@ const filterButtons=['active','delivered','all'].map(filter=>{
 const fixtureWindow={
   shipments:[
     {
-      id:'shipment-1',container_number:'ABCD1234567',client_id:null,active:true,carrier:'Crowley',product:'Producto <Seguro>',quantity:24,quantity_unit:'cajas',departure_date:'2026-09-03',booking_number:'BK-1',bol_number:'BL-1',operational_status:'Registrado',clients:null,
+      id:'shipment-1',container_number:'ABCD1234567',client_id:null,active:true,carrier:'Crowley',product:'Producto <Seguro>',quantity:24,quantity_unit:'cajas',departure_date:'2026-09-03',booking_number:'BK-1',bol_number:'BL-1',operational_status:'Registrado',fulfillment:{mode:'warehouse',status:'loaded',load_number:'LOAD-1'},clients:null,
       capabilities:{actions:{view_info:{allowed:true},view_documents:{allowed:true},edit:{allowed:true},view_history:{allowed:true},assign_client:{allowed:true},manual_tracking:{allowed:true},release:{allowed:true},deliver:{allowed:false},reactivate:{allowed:false},delete:{allowed:false}}}
     },
     {
@@ -280,9 +280,11 @@ if(!fixtureNodes.get('shipments').innerHTML.includes('tracking-mobile-list'))fai
 if(!fixtureNodes.get('shipments').innerHTML.includes('Producto &lt;Seguro&gt;'))failures.push('Tracking no escapa el contenido operativo');
 if(fixtureNodes.get('trackingTotalCount').textContent!=='2')failures.push('Tracking no calcula el total visible recibido del backend');
 if(fixtureNodes.get('trackingActiveCount').textContent!=='1')failures.push('Tracking no presenta el total activo');
+if(fixtureNodes.get('trackingLoadedCount').textContent!=='1')failures.push('Tracking no presenta el total cargado');
 if(fixtureNodes.get('trackingDeliveredCount').textContent!=='1')failures.push('Tracking no presenta el total entregado');
 if(fixtureNodes.get('trackingUnassignedCount').textContent!=='1')failures.push('Tracking no presenta operaciones sin cliente');
 if(fixtureNodes.get('trackingDocumentsReadyCount').textContent!=='1')failures.push('Tracking no limita Docs READY a documentos visibles y listos');
+if(fixtureNodes.get('trackingDocumentsPendingCount').textContent!=='0')failures.push('Tracking no calcula los documentos pendientes visibles');
 if(fixtureNodes.get('registerContainerSection').hidden)failures.push('Tracking oculta el registro pese a shipmentWriteAccess');
 
 fixtureWindow.shipmentWriteAccess=false;

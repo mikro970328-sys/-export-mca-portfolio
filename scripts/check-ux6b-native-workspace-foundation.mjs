@@ -60,13 +60,13 @@ if(opening!==closing)failures.push(`CSS desbalanceado: ${opening} aperturas y ${
 if(index.split(foundationRef).length-1!==1)failures.push('index.html debe cargar una sola vez la base nativa versionada');
 requireText(index,'data-native-workspace-foundation','marcador de precedencia de la base nativa');
 const themeIndex=index.indexOf('/admin/platform-theme.css?v=20260902-ux7shell1');
-const navigationIndex=index.indexOf('/admin/navigation-shell.css?v=20260903-ux7icons2');
+const navigationIndex=index.indexOf('/admin/navigation-shell.css?v=20260904-simple-nav1');
 const foundationIndex=index.indexOf(foundationRef);
 const headEnd=index.indexOf('</head>');
 if(themeIndex<0||navigationIndex<0||foundationIndex<0||headEnd<0||!(themeIndex<navigationIndex&&navigationIndex<foundationIndex&&foundationIndex<headEnd)){
   failures.push('index.html debe cargar tema → navegación → base nativa dentro de head');
 }
-requireText(index,'/admin/erp.js?v=20260904-flowclarity1','revisión de caché del loader ERP');
+requireText(index,'/admin/erp.js?v=20260904-simple-nav1','revisión de caché del loader ERP');
 requireText(loader,"document.querySelector('link[data-native-workspace-foundation]')",'límite de cascada para estilos dinámicos');
 requireText(loader,'insertBefore(link, nativeFoundation)','estilos propietarios antes de la base compartida');
 
@@ -128,11 +128,11 @@ forbid(loader,/registration-form-shell/,'el loader conserva el shell visual reti
 for(const ref of [
   "/admin/clients-module.js?v=20260902-ux7clients1",
   "/admin/workers-module.js?v=20260903-ux7workers1",
-  "/admin/containers-module.js?v=20260903-ux7tracking2",
+  "/admin/containers-module.js?v=20260904-owner-tracking1",
   "/admin/operational-alert-center.js?v=20260903-ux7alerts1",
   "/admin/access-control-administration.js?v=20260903-ux7access1",
   "/admin/account-administration.js?v=20260903-ux7account1",
-  "/admin/tasks-workspace.js?v=20260903-ux7tasks1"
+  "/admin/tasks-workspace.js?v=20260904-notification-entry1"
 ])requireText(loader,ref,`asset revisado ${ref}`);
 
 for(const source of [index,clients,alerts,access,account,tasks]){

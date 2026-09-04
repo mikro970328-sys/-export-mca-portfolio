@@ -240,8 +240,8 @@
         await loadScript('/admin/dashboard-operational-state.js?v=20260903-ux7icons2', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
-        await loadStylesheet('/admin/containers-module.css?v=20260903-ux7tracking2', 'data-containers-module-style');
-        await loadScript('/admin/containers-module.js?v=20260903-ux7tracking2', 'data-containers-module');
+        await loadStylesheet('/admin/containers-module.css?v=20260904-owner-tracking1', 'data-containers-module-style');
+        await loadScript('/admin/containers-module.js?v=20260904-owner-tracking1', 'data-containers-module');
       }
       if (accessCan('logistics.write')) {
         await loadStylesheet('/admin/shipment-editor.css?v=20260903-ux7tracking2', 'data-shipment-editor-style');
@@ -250,11 +250,11 @@
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
       await loadStylesheet('/admin/account-administration.css?v=20260903-ux7account1', 'data-account-administration-style');
       await loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration');
-      await loadScript('/admin/navigation-shell.js?v=20260904-flowclarity1', 'data-navigation-shell');
+      await loadScript('/admin/navigation-shell.js?v=20260904-simple-nav1', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {
         await loadStylesheet('/admin/tasks-workspace.css?v=20260903-ux7tasks1', 'data-tasks-workspace-style');
-        await loadScript('/admin/tasks-workspace.js?v=20260903-ux7tasks1', 'data-tasks-workspace');
+        await loadScript('/admin/tasks-workspace.js?v=20260904-notification-entry1', 'data-tasks-workspace');
         await loadScript('/admin/tasks-navigation.js?v=20260830-p4', 'data-tasks-navigation');
         if (accessCan('tasks.manage')) {
           await loadStylesheet('/admin/workflow-route-settings.css?v=20260830-p5', 'data-workflow-route-settings-style');

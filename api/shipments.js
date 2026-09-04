@@ -160,12 +160,25 @@ export default async function handler(req,res) {
 
   try {
     if (req.method === 'GET') {
-      const [data,capabilityBundle] = await Promise.all([
+      const [data,capabilityBundle,loadRows,directRows,directDispatchRows] = await Promise.all([
         supabase('shipments',{ query:'?select=*,clients(id,name,company,phone,email,welcome_status,active)&order=created_at.desc' }),
-        loadShipmentActionCapabilityMap(admin)
+        loadShipmentActionCapabilityMap(admin),
+        supabase('loads',{ query:'?select=id,load_number,shipment_id,status,loaded_at,dispatched_at&shipment_id=not.is.null&status=neq.cancelled&order=created_at.desc&limit=5000' }),
+        supabase('direct_shipment_allocations',{ query:'?select=shipment_id&order=created_at.desc&limit=5000' }),
+        supabase('direct_shipment_dispatches',{ query:'?select=shipment_id,dispatched_at&limit=5000' })
       ]);
+      const loadByShipment=new Map();
+      for(const load of loadRows||[])if(load.shipment_id&&!loadByShipment.has(String(load.shipment_id)))loadByShipment.set(String(load.shipment_id),load);
+      const directShipments=new Set((directRows||[]).map(row=>String(row.shipment_id||'')).filter(Boolean));
+      const directDispatchByShipment=new Map((directDispatchRows||[]).map(row=>[String(row.shipment_id||''),row]));
       const shipments=(data||[]).map(shipment=>({
         ...shipment,
+        fulfillment:(()=>{
+          const load=loadByShipment.get(String(shipment.id));
+          if(load)return {mode:'warehouse',status:load.status,load_id:load.id,load_number:load.load_number,loaded_at:load.loaded_at||null,dispatched_at:load.dispatched_at||null};
+          if(directShipments.has(String(shipment.id))){const dispatch=directDispatchByShipment.get(String(shipment.id));return {mode:'direct',status:dispatch?'dispatched':'planned',dispatched_at:dispatch?.dispatched_at||null};}
+          return {mode:'unlinked',status:'unlinked'};
+        })(),
         capabilities:capabilityBundle.map.get(String(shipment.id))||{actions:{}}
       }));
       return ok(res,{ shipments,write_access:capabilityBundle.write_access });

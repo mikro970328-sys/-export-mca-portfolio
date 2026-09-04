@@ -50,7 +50,7 @@ for(const forbidden of ['window.open(export','executive_dashboard_rollup','gross
 if(/[?&]token=|(?:searchParams|params)\.set\(\s*['"]token['"]/.test(ui))errors.push('Frontend P12 no puede exponer el token en URL/query string.');
 if(/recognized_merchandise_cogs\s*[+\-*/]|gross_margin\s*[+\-*/]|contribution_margin\s*[+\-*/]|balance_due\s*[+\-*/]/.test(ui))errors.push('Frontend P12 contiene matemática financiera sobre métricas backend.');
 
-for(const fragment of ["id:'reportsSection'","src:'/admin/reports.html?embedded=1'","permission:'reports.read'","sections:['payablesSection','costsSection','reportsSection']","openReports: () => openEmbeddedById('reportsSection')"]){
+for(const fragment of ["id:'reportsSection'","src:'/admin/reports.html?embedded=1'","permission:'reports.read'","sections:['invoicesSection','payablesSection','costsSection','reportsSection']","openReports: () => openEmbeddedById('reportsSection')"]){
   if(!nav.includes(fragment))errors.push(`NavigationShell P12 incompleto: ${fragment}`);
 }
 

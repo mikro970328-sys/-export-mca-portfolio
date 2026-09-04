@@ -128,7 +128,7 @@ forbid(styles,/@import|font-family\s*:\s*Arial|(?:linear|radial)-gradient/i,'tas
 
 [
   "/admin/tasks-workspace.css?v=20260903-ux7tasks1",
-  "/admin/tasks-workspace.js?v=20260903-ux7tasks1"
+  "/admin/tasks-workspace.js?v=20260904-notification-entry1"
 ].forEach(value=>requireText(loader,value,`loader canónico ${value}`));
 
 [
