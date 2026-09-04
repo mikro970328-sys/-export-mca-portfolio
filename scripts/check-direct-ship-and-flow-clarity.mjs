@@ -24,7 +24,7 @@ for(const text of [
   'Recibir en mi almacén',
   'Direct Ship al cliente (sin WR)',
   'id="oDestinationHelp"',
-  '/admin/purchases.js?v=20260904-directflow1',
+  '/admin/purchases.js?v=20260904-safeedit1',
   '/admin/embedded-auto-refresh.js?v=20260904-live2'
 ])requireText(purchasesHtml,text,`Compras ${text}`);
 
