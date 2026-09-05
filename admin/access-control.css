@@ -369,6 +369,61 @@
 .access-field-help,.access-panel-intro{display:block;margin:5px 0 0;color:#748397;font-size:10px;line-height:1.45}
 .access-form-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:4px}
 
+.access-role-selection{
+  display:grid;
+  gap:3px;
+  margin-top:8px;
+  padding:11px 12px;
+  border:1px solid #d7e2ed;
+  border-left:4px solid #3d78ad;
+  border-radius:10px;
+  background:#f7fafd;
+}
+
+.access-role-selection strong{color:#234b70;font-size:12px}
+.access-role-selection span{color:#687b90;font-size:11px;line-height:1.45}
+.access-role-selection.system{border-left-color:#f58220;background:#fff8f1}
+
+.access-role-templates{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-top:9px;
+}
+
+.access-role-template{
+  display:grid;
+  gap:4px;
+  min-width:0;
+  min-height:74px;
+  padding:11px 12px;
+  border:1px solid #d4dee9;
+  border-radius:11px;
+  background:#fff;
+  color:#40546b;
+  text-align:left;
+}
+
+.access-role-template:hover{border-color:#91aac2;background:#f7fafd}
+.access-role-template[aria-pressed="true"]{border-color:#174f87;background:#edf5fc;box-shadow:0 0 0 2px rgba(23,79,135,.1)}
+.access-role-template strong{color:#234561;font-size:12px;line-height:1.3}
+.access-role-template span{color:#748397;font-size:10px;line-height:1.4}
+.access-role-template:focus-visible{outline:3px solid rgba(27,91,154,.2);outline-offset:2px}
+
+.access-role-permission-summary{
+  margin:9px 0 10px;
+  padding:9px 11px;
+  border:1px solid #bcdcc9;
+  border-radius:9px;
+  background:#eff9f3;
+  color:#216642;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.45;
+}
+
+.access-role-permission-summary.empty{border-color:#ead0a8;background:#fff8eb;color:#7d5516}
+
 .access-multiselect{
   display:grid;
   gap:4px;
@@ -488,6 +543,7 @@ body.access-notifications-readonly [data-message-retry]{display:none!important}
   .access-row-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding-left:48px}
   .access-row-actions button{width:100%}
   .access-form-grid{grid-template-columns:1fr}
+  .access-role-templates{grid-template-columns:1fr}
   .access-modal{align-items:flex-end;padding:0}
   .access-dialog{width:100%;max-height:92vh;border-radius:20px 20px 0 0}
   .access-dialog-foot{display:grid;grid-template-columns:1fr}
