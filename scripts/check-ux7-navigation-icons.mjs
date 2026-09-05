@@ -131,7 +131,7 @@ for (const fragment of [
 
 for (const fragment of [
   '/admin/navigation-shell.css?v=20260904-simple-nav1',
-  '/admin/erp.js?v=20260904-simple-nav1'
+  '/admin/erp.js?v=20260905-accessflow1'
 ]) requireText(files.index, fragment, 'revisión de caché del shell');
 
 for (const fragment of [

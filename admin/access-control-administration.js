@@ -23,6 +23,74 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   const token = () => localStorage.getItem('export_mca_token') || '';
   const MANAGEMENT_KEYS = ['administration.users.manage','administration.roles.manage','administration.teams.manage'];
+  const PERMISSION_MODULE_LABELS = Object.freeze({
+    dashboard:'Inicio',
+    clients:'Clientes',
+    sales:'Ventas',
+    procurement:'Compras',
+    warehouse:'Almacén e inventario',
+    logistics:'Logística y Tracking',
+    documents:'Documentos',
+    finance:'Finanzas',
+    reports:'Reportes',
+    notifications:'Notificaciones',
+    publications:'Publicaciones',
+    'administration.workers':'Trabajadores',
+    'administration.users':'Usuarios',
+    'administration.roles':'Roles y permisos',
+    'administration.teams':'Equipos',
+    'administration.audit':'Auditoría'
+  });
+  const ROLE_TEMPLATES = Object.freeze([
+    Object.freeze({
+      key:'sales',
+      label:'Ventas',
+      description:'Clientes, ventas, publicaciones y consulta de Tracking.',
+      roleName:'Ventas',
+      roleDescription:'Gestiona clientes, ventas y publicaciones; consulta logística, documentos y notificaciones.',
+      permissionKeys:Object.freeze(['dashboard.read','clients.read','clients.write','sales.read','sales.write','logistics.read','documents.read','notifications.read','publications.read','publications.write'])
+    }),
+    Object.freeze({
+      key:'procurement',
+      label:'Compras',
+      description:'Proveedores, compras y consulta de almacén y Tracking.',
+      roleName:'Compras',
+      roleDescription:'Gestiona proveedores y compras; consulta almacén, logística, documentos y notificaciones.',
+      permissionKeys:Object.freeze(['dashboard.read','procurement.read','procurement.write','warehouse.read','logistics.read','documents.read','notifications.read'])
+    }),
+    Object.freeze({
+      key:'logistics',
+      label:'Logística / Tracking',
+      description:'Almacén, cargues, contenedores, Tracking y documentos.',
+      roleName:'Logística',
+      roleDescription:'Gestiona almacén, cargues, contenedores, Tracking y documentos; consulta compras y ventas vinculadas.',
+      permissionKeys:Object.freeze(['dashboard.read','sales.read','procurement.read','warehouse.read','warehouse.write','logistics.read','logistics.write','documents.read','documents.write','notifications.read','notifications.manage'])
+    }),
+    Object.freeze({
+      key:'finance',
+      label:'Finanzas',
+      description:'Facturas, cobros, pagos, costos y reportes.',
+      roleName:'Finanzas',
+      roleDescription:'Gestiona facturación, cobros, pagos y costos; consulta clientes, ventas, compras, documentos y reportes.',
+      permissionKeys:Object.freeze(['dashboard.read','clients.read','sales.read','procurement.read','documents.read','finance.read','finance.write','reports.read','notifications.read'])
+    }),
+    Object.freeze({
+      key:'readonly',
+      label:'Supervisor · solo lectura',
+      description:'Puede revisar toda la operación sin cambiar información.',
+      roleName:'Supervisor de consulta',
+      roleDescription:'Consulta la operación completa sin permisos para crear, editar, cancelar ni registrar movimientos.',
+      permissionKeys:Object.freeze(['dashboard.read','clients.read','sales.read','procurement.read','warehouse.read','logistics.read','documents.read','finance.read','reports.read','notifications.read','publications.read','administration.workers.read','administration.audit.read'])
+    }),
+    Object.freeze({
+      key:'custom',
+      label:'Personalizado',
+      description:'Empieza sin permisos y selecciona exactamente lo necesario.',
+      roleName:'',
+      roleDescription:'',
+      permissionKeys:Object.freeze([])
+    })
+  ]);
   const SECTION_PERMISSIONS = {
     dashboardSection:'dashboard.read',
     notificationsSection:'notifications.read',
@@ -382,6 +450,24 @@
     return (state.usersData?.roles || []).filter(role => role.is_active !== false).map(role => `<option value="${esc(role.id)}" ${String(role.id)===String(selected)?'selected':''}>${esc(role.name)}</option>`).join('');
   }
 
+  function roleSelectionMarkup(selected = '') {
+    const role=(state.usersData?.roles||[]).find(item=>String(item.id)===String(selected));
+    return `<div class="access-role-selection ${role?.is_system?'system':''}" data-access-role-summary role="note"><strong>${esc(role?.name||'Selecciona un rol')}</strong><span>${esc(role?.description||'El rol determina las pantallas y acciones disponibles para esta persona.')}</span></div>`;
+  }
+
+  function bindRoleSelection(formId) {
+    const form=byId(formId),select=form?.querySelector('select[name="access_role_id"]'),summary=form?.querySelector('[data-access-role-summary]');
+    if(!form||!select||!summary)return;
+    const update=()=>{
+      const role=(state.usersData?.roles||[]).find(item=>String(item.id)===String(select.value));
+      summary.classList.toggle('system',Boolean(role?.is_system));
+      summary.querySelector('strong').textContent=role?.name||'Selecciona un rol';
+      summary.querySelector('span').textContent=role?.description||'El rol determina las pantallas y acciones disponibles para esta persona.';
+    };
+    select.addEventListener('change',update);
+    update();
+  }
+
   function teamChecks(selected = []) {
     const ids = new Set((selected || []).map(item => String(item.id || item)));
     const teams = (state.usersData?.teams || []).filter(team => team.is_active !== false);
@@ -452,11 +538,12 @@
   }
 
   function openCreateUser() {
-    openModal('Nuevo usuario', `<form id="accessCreateUserForm" class="access-form" autocomplete="off"><div class="access-form-grid"><div><label>Nombre completo</label><input name="full_name" autocomplete="name" required></div><div><label>Usuario</label><input name="username" autocomplete="username" required></div></div><div><label>Contraseña temporal</label><input name="password" type="password" minlength="10" autocomplete="new-password" required><small class="access-field-help">Mínimo 10 caracteres. La persona podrá cambiarla desde Mi cuenta.</small></div><div><label>Rol de acceso</label><select name="access_role_id" required><option value="">Seleccionar rol</option>${roleOptions()}</select></div><div><label>Equipos</label>${teamChecks()}</div></form>`, [
+    openModal('Nuevo usuario', `<form id="accessCreateUserForm" class="access-form" autocomplete="off"><div class="access-form-grid"><div><label>Nombre completo</label><input name="full_name" autocomplete="name" required></div><div><label>Usuario</label><input name="username" autocomplete="username" required></div></div><div><label>Contraseña temporal</label><input name="password" type="password" minlength="10" autocomplete="new-password" required><small class="access-field-help">Mínimo 10 caracteres. La persona podrá cambiarla desde Mi cuenta.</small></div><div><label>Rol de acceso</label><select name="access_role_id" required><option value="">Seleccionar rol</option>${roleOptions()}</select>${roleSelectionMarkup()}</div><div><label>Equipos</label>${teamChecks()}</div></form>`, [
       { label:'Cancelar', className:'access-secondary', onClick:closeModal },
       { label:'Crear usuario', className:'access-primary', onClick:createUser }
     ]);
     bindModalSubmit('accessCreateUserForm');
+    bindRoleSelection('accessCreateUserForm');
   }
 
   async function createUser() {
@@ -476,11 +563,12 @@
     const user = state.usersData?.admins?.find(row => String(row.id) === String(id));
     if (!user) return;
     if (user.role === 'master_admin') return setMessage('La cuenta maestra se administra desde Mi cuenta.',false);
-    openModal('Editar usuario', `<form id="accessEditUserForm" class="access-form"><div><label>Nombre completo</label><input name="full_name" value="${esc(user.full_name)}" required></div><div><label>Usuario</label><input name="username" value="${esc(user.username)}" required></div><div><label>Rol de acceso</label><select name="access_role_id" required>${roleOptions(user.access_role_id)}</select></div><div><label>Equipos</label>${teamChecks(user.teams || [])}</div></form>`, [
+    openModal('Editar usuario', `<form id="accessEditUserForm" class="access-form"><div><label>Nombre completo</label><input name="full_name" value="${esc(user.full_name)}" required></div><div><label>Usuario</label><input name="username" value="${esc(user.username)}" required></div><div><label>Rol de acceso</label><select name="access_role_id" required>${roleOptions(user.access_role_id)}</select>${roleSelectionMarkup(user.access_role_id)}</div><div><label>Equipos</label>${teamChecks(user.teams || [])}</div></form>`, [
       { label:'Cancelar', className:'access-secondary', onClick:closeModal },
       { label:'Guardar cambios', onClick:async()=>{ const form=byId('accessEditUserForm'); if(!formReady(form))return; const data=new FormData(form); await request('/api/admins',{method:'PATCH',body:JSON.stringify({id:user.id,full_name:data.get('full_name'),username:data.get('username'),access_role_id:data.get('access_role_id'),team_ids:selectedValues(form,'team_ids')})}); closeModal(); setMessage('Usuario actualizado.',true); await loadUsers(); renderUsersPane(); } }
     ]);
     bindModalSubmit('accessEditUserForm');
+    bindRoleSelection('accessEditUserForm');
   }
 
   function openPasswordEditor(id) {
@@ -500,7 +588,56 @@
       if (!groups.has(permission.module)) groups.set(permission.module, []);
       groups.get(permission.module).push(permission);
     }
-    return `<div class="access-permission-groups">${[...groups.entries()].map(([module,items])=>`<div class="access-permission-group"><div class="access-permission-title">${esc(module)}</div><div class="access-permission-items">${items.map(item=>`<label class="access-check"><input type="checkbox" name="permission_keys" value="${esc(item.permission_key)}" ${chosen.has(item.permission_key)?'checked':''} ${disabled?'disabled':''}><span><strong>${esc(item.label || item.permission_key)}</strong><small>${esc(item.description || item.permission_key)}</small></span></label>`).join('')}</div></div>`).join('')}</div>`;
+    return `<div class="access-permission-groups">${[...groups.entries()].map(([module,items])=>`<div class="access-permission-group"><div class="access-permission-title">${esc(PERMISSION_MODULE_LABELS[module]||module)}</div><div class="access-permission-items">${items.map(item=>`<label class="access-check"><input type="checkbox" name="permission_keys" value="${esc(item.permission_key)}" ${chosen.has(item.permission_key)?'checked':''} ${disabled?'disabled':''}><span><strong>${esc(item.label || item.permission_key)}</strong><small>${esc(item.description || item.permission_key)}</small></span></label>`).join('')}</div></div>`).join('')}</div>`;
+  }
+
+  function roleTemplatePicker() {
+    return `<div class="access-role-templates" aria-label="Plantillas recomendadas">${ROLE_TEMPLATES.map(template=>`<button type="button" class="access-role-template" data-role-template="${esc(template.key)}" aria-pressed="false"><strong>${esc(template.label)}</strong><span>${esc(template.description)}</span></button>`).join('')}</div>`;
+  }
+
+  function selectedPermissionKeys(form) {
+    return selectedValues(form,'permission_keys').sort();
+  }
+
+  function samePermissionKeys(left,right) {
+    const a=[...(left||[])].sort(),b=[...(right||[])].sort();
+    return a.length===b.length&&a.every((key,index)=>key===b[index]);
+  }
+
+  function syncRoleComposer(form) {
+    if(!form)return;
+    const selected=selectedPermissionKeys(form);
+    const summary=form.querySelector('[data-role-permission-summary]');
+    if(summary){
+      summary.textContent=selected.length
+        ? `${selected.length} permisos seleccionados. Puedes ajustar cualquier opción antes de crear el rol.`
+        : 'Sin permisos seleccionados. Este rol no podrá abrir módulos operativos hasta que elijas al menos uno.';
+      summary.classList.toggle('empty',selected.length===0);
+    }
+    form.querySelectorAll('[data-role-template]').forEach(button=>{
+      const template=ROLE_TEMPLATES.find(item=>item.key===button.dataset.roleTemplate);
+      button.setAttribute('aria-pressed',String(Boolean(template&&samePermissionKeys(selected,template.permissionKeys))));
+    });
+  }
+
+  function applyRoleTemplate(form,key) {
+    const template=ROLE_TEMPLATES.find(item=>item.key===key);
+    if(!form||!template)return;
+    const chosen=new Set(template.permissionKeys);
+    const name=form.elements.namedItem('name'),description=form.elements.namedItem('description');
+    if(name)name.value=template.roleName;
+    if(description)description.value=template.roleDescription;
+    form.querySelectorAll('input[name="permission_keys"]').forEach(input=>{input.checked=chosen.has(input.value);});
+    syncRoleComposer(form);
+    name?.focus();
+  }
+
+  function bindRoleComposer() {
+    const form=byId('accessCreateRoleForm');
+    if(!form)return;
+    form.querySelectorAll('[data-role-template]').forEach(button=>button.addEventListener('click',()=>applyRoleTemplate(form,button.dataset.roleTemplate)));
+    form.addEventListener('change',event=>{if(event.target?.name==='permission_keys')syncRoleComposer(form);});
+    syncRoleComposer(form);
   }
 
   function renderRolesDirectory() {
@@ -526,11 +663,12 @@
   }
 
   function openCreateRole() {
-    openModal('Nuevo rol', `<form id="accessCreateRoleForm" class="access-form"><div><label>Nombre</label><input name="name" required></div><div><label>Descripción</label><textarea name="description" rows="3"></textarea></div><div><label>Permisos</label><p class="access-field-help">Selecciona únicamente las capacidades necesarias para este rol.</p>${permissionMatrix()}</div></form>`, [
+    openModal('Nuevo rol', `<form id="accessCreateRoleForm" class="access-form"><div><label>Comenzar con una plantilla</label><p class="access-field-help">Elige la función de la persona. Después puedes agregar o quitar cualquier permiso.</p>${roleTemplatePicker()}</div><div><label>Nombre del rol</label><input name="name" required></div><div><label>Descripción</label><textarea name="description" rows="3"></textarea></div><div><label>Permisos</label><p class="access-field-help">Lectura permite consultar; gestión permite crear o cambiar información.</p><div class="access-role-permission-summary empty" data-role-permission-summary role="status"></div>${permissionMatrix()}</div></form>`, [
       { label:'Cancelar', className:'access-secondary', onClick:closeModal },
       { label:'Crear rol', className:'access-primary', onClick:createRole }
     ]);
     bindModalSubmit('accessCreateRoleForm');
+    bindRoleComposer();
   }
 
   async function createRole() {
@@ -754,6 +892,7 @@
     visibleRecords,
     renderActivePane,
     renderMetrics,
+    roleTemplates:ROLE_TEMPLATES,
     owner:'access-control-administration.js'
   });
 })();

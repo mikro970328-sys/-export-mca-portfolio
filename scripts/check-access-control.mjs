@@ -77,8 +77,8 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
   }
 
   for (const required of [
-    '/admin/access-control.css?v=20260903-ux7access1',
-    '/admin/access-control-administration.js?v=20260903-ux7access1',
+    '/admin/access-control.css?v=20260905-accessflow1',
+    '/admin/access-control-administration.js?v=20260905-accessflow1',
     'window.ExportMcaAccessControl.initialize()',
     "accessCan('clients.read')",
     "accessCan('logistics.read')",

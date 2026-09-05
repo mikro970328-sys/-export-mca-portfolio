@@ -65,6 +65,11 @@ const workflow = read(files.workflow);
   'function openCreateUser()',
   'function openCreateRole()',
   'function openCreateTeam()',
+  'const ROLE_TEMPLATES = Object.freeze([',
+  'data-role-template=',
+  'function bindRoleSelection(',
+  'function bindRoleComposer()',
+  'roleTemplates:ROLE_TEMPLATES',
   'function renderLoadError()',
   'function handleWorkspaceInput(',
   "owner:'access-control-administration.js'"
@@ -121,6 +126,10 @@ forbid(shell,/id=["'](?:saveAdmin|adminName|adminUsername|adminPassword)["']/,'i
   '.access-modal',
   '.access-dialog',
   '.access-form-grid',
+  '.access-role-selection',
+  '.access-role-templates',
+  '.access-role-template[aria-pressed="true"]',
+  '.access-role-permission-summary',
   '.access-permission-groups',
   '@media(max-width:1180px)',
   '@media(max-width:900px)',
@@ -135,8 +144,8 @@ requireText(styles,'body.access-notifications-readonly [data-alert-action]:not([
 forbid(styles,/@import|font-family\s*:\s*Arial|linear-gradient/i,'access-control.css conserva importación tardía o estética legacy');
 
 [
-  "/admin/access-control.css?v=20260903-ux7access1",
-  "/admin/access-control-administration.js?v=20260903-ux7access1",
+  "/admin/access-control.css?v=20260905-accessflow1",
+  "/admin/access-control-administration.js?v=20260905-accessflow1",
   'await window.ExportMcaAccessControl.initialize()'
 ].forEach(value => requireText(loader,value,`loader canónico ${value}`));
 
@@ -208,6 +217,25 @@ try {
   if (!api || api.owner !== 'access-control-administration.js') {
     failures.push('fixture: el owner canónico no quedó expuesto');
   } else {
+    const templates = [...(api.roleTemplates || [])];
+    const templateMap = new Map(templates.map(template => [template.key,template]));
+    for (const key of ['sales','procurement','logistics','finance','readonly','custom']) {
+      if (!templateMap.has(key)) failures.push(`fixture: falta plantilla de rol ${key}`);
+    }
+    const logistics = templateMap.get('logistics');
+    for (const key of ['warehouse.read','warehouse.write','logistics.read','logistics.write','documents.read','documents.write']) {
+      if (!logistics?.permissionKeys?.includes(key)) failures.push(`fixture: Logística no incluye ${key}`);
+    }
+    const readonly = templateMap.get('readonly');
+    if ((readonly?.permissionKeys || []).some(key => key.endsWith('.write') || key.endsWith('.manage'))) {
+      failures.push('fixture: Supervisor de consulta incluye permisos de escritura o gestión');
+    }
+    for (const template of templates.filter(item => item.key !== 'custom')) {
+      if ((template.permissionKeys || []).some(key => key.startsWith('administration.users.') || key.startsWith('administration.roles.') || key.startsWith('administration.teams.'))) {
+        failures.push(`fixture: la plantilla ${template.key} concede administración de accesos`);
+      }
+    }
+
     Object.assign(api.state,{
       activeTab:'users',
       statusView:'active',
