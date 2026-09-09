@@ -17,7 +17,7 @@ const routes = {'/api/login':login,'/api/account':account,'/api/admins':admins,
 // Host the unmodified Vercel handlers on loopback. Only the /rest/v1 prefix is
 // stripped before proxying to the real PostgREST process; SQL, auth, projection,
 // permissions, request transactions and auditing are not replaced with mocks.
-async function startApi() {
+export async function startOperatorApi({ fallbackHandler } = {}) {
   const rest = new URL(process.env.ERP_TEST_POSTGREST_URL || 'http://127.0.0.1:3000');
   if(rest.protocol!=='http:' || !['127.0.0.1','localhost','[::1]'].includes(rest.hostname)
     || rest.username || rest.password || rest.pathname!=='/' || rest.search) throw Error('PostgREST must be local QA');
@@ -38,7 +38,10 @@ async function startApi() {
       req.pipe(upstream);return;
     }
     const handler=routes[url.pathname];
-    if(!handler){res.writeHead(404);res.end();return;}
+    if(!handler){
+      if(fallbackHandler){await fallbackHandler(req,res,url);return;}
+      res.writeHead(404);res.end();return;
+    }
     req.query=Object.fromEntries(url.searchParams);
     try{await handler(req,res);}
     catch(error){res.writeHead(500,{'Content-Type':'application/json'});res.end(JSON.stringify({error:error.code||'QA_HANDLER_FAILED'}));}
@@ -49,6 +52,7 @@ async function startApi() {
   process.env.SUPABASE_URL=base;
   process.env.SUPABASE_SERVICE_ROLE_KEY=serviceToken;
   return {
+    base,
     async request(path,{method='GET',token,body}={}) {
       const response=await fetch(`${base}/api/${path}`,{method,signal:AbortSignal.timeout(20000),
         headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},
@@ -87,7 +91,7 @@ async function startApi() {
 }
 
 export async function checkOperatorHttp({db,f,users,test}) {
-  const api=await startApi();
+  const api=await startOperatorApi();
   const expect=(r,status)=>assert.equal(r.status,status,`${r.body?.error||''} ${typeof r.body?.details==='string'?r.body.details:r.body?.details?.code||''}`);
   const tokens={};
   const readKeys=['finance.read','reports.read'];

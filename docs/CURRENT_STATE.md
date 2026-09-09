@@ -2,6 +2,14 @@
 
 Última actualización del corte vigente: 2026-09-09
 
+## En curso — aceptación de pantalla con dos operadores
+
+- Rama `test/browser-operator-acceptance`, base `a9698ea1f573836ccbf22b697bcd2767cfa0679a`.
+- Diez escenarios definidos en `docs/BROWSER_OPERATOR_ACCEPTANCE.md`; ejecución pendiente en Chromium de escritorio y WebKit móvil emulado contra PostgreSQL/PostgREST aislados en CI.
+- Archivos: suite y lockfile en `e2e/isolated/`, workflow de navegador y extensión del servidor QA de operadores. No hay cambios productivos ni migraciones.
+- La suite de desarrollo se ejecuta en CI con servicios desechables. El navegador gestionado y los controles de BrowserStack permanecen sin cambios. No equivale a certificación en iPhone real.
+- Siguiente acción: ejecutar, corregir defectos reproducidos en su owner, revisar capturas y controles, registrar commit/Preview/publicación.
+
 ## Corte publicado — operadores y concurrencia
 
 - [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287) integrada; base `95e352e0d466ca8392adef89e8e4897d19cf2da3`, commit publicado `81648443ce66eda2ce4ed2e331146ad631ae751e`. Producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY.

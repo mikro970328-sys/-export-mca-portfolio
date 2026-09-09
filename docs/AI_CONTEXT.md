@@ -4,6 +4,8 @@
 
 ## Punto de entrada vigente
 
+Bloque activo: aceptación de pantallas con dos operadores en `test/browser-operator-acceptance`, base `a9698ea`. Matriz previa en `docs/BROWSER_OPERATOR_ACCEPTANCE.md`; preparada, pendiente CI y revisión visual. Chromium/WebKit móvil emulado en runner con datos aislados. No confundir con iPhone/PWA instalado ni reabrir matrices SQL ya aprobadas. Leer primero el corte vigente de `CURRENT_STATE.md`.
+
 Operadores/concurrencia publicados mediante PR #287, commit `81648443ce66eda2ce4ed2e331146ad631ae751e`, producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY: 22/22 escenarios PostgreSQL/PostgREST reales, siete workflows de PR y seis de main aprobados. Run final de PR `34396893578`, head `e8f61d1ac288c4d5620b6ef870e208a883a5e322`; main `34397039678`. Consultar `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`. No confundir HTTP/SQL con aceptación visual, ni usar Preview para escrituras comerciales: comparte producción. El siguiente bloque es la aceptación visual con dos operadores/backend aislado accesible y móvil/PWA; después mejoras y auditoría integral. No repetir las matrices SQL/HTTP ya aprobadas como si faltaran.
 
 Finanzas publicada mediante PR #285, commit funcional `e33cb87bf278b3886dd0acc42a9f3250c78f5285`, producción `dpl_GP9Jw7tBYUh44h8dK5S4xyscWQeR` READY. Los 40 escenarios (25 SQL, 11 API, cuatro refresco) y 58/58 workflows de PR aprobaron. Matriz y límites en `docs/FINANCE_ACCEPTANCE.md`.

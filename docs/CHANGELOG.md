@@ -2,6 +2,12 @@
 
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
+## 2026-09-09 — Aceptación de navegador (en preparación)
+
+- Se define matriz de diez escenarios por motor para dos identidades, cobros por formulario, refresco, conservación del editor, permisos, conexión y sesiones.
+- Runner de CI con PostgreSQL/PostgREST desechables, Chromium y WebKit móvil emulado. Capturas/diagnósticos; sin credenciales productivas, cambios comerciales ni certificación de iPhone real.
+- Pendiente ejecución y publicación; detalles en `docs/BROWSER_OPERATOR_ACCEPTANCE.md`.
+
 ## 2026-09-09 — Operadores y concurrencia
 
 Estado: publicado mediante [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287), commit `81648443ce66eda2ce4ed2e331146ad631ae751e`, producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY.
