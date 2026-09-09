@@ -20,6 +20,16 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
     // capabilities come from the unchanged real migration, never a QA mock.
     await db.exec(`alter table clients add column phone text, add column email text,
       add column welcome_status text default 'pending';
+      alter table suppliers add column email text, add column phone text,
+        add column address text, add column tax_id text, add column notes text;
+      alter table products add column if not exists description text,
+        add column if not exists hs_code text, add column if not exists country_of_origin text,
+        add column if not exists unit_weight_kg numeric, add column if not exists unit_volume_m3 numeric,
+        add column if not exists currency text default 'USD',
+        add column if not exists created_at timestamptz default now(),
+        add column if not exists updated_at timestamptz default now();
+      grant usage on sequence purchase_order_number_seq, sales_orders_so_serial_seq,
+        invoices_invoice_serial_seq to service_role;
       grant select,insert on shipment_history to service_role;`);
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const { f,users } = await operatorFixture(db);
@@ -79,7 +89,10 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
     const module = (session,name)=>session.page.frameLocator(`#${name}Section iframe`);
     const navigate = async (session,name)=>{
       const page=session.page,button=page.locator(`[data-section="${name}Section"]`).first();
-      if (await page.locator('#mobileMenuBtn').isVisible()) await page.locator('#mobileMenuBtn').click();
+      if (info.project.use.isMobile && !await page.locator('#sidebar').evaluate(el=>el.classList.contains('mobile-open'))) {
+        await page.locator('#sidebarToggle:visible, #mobileMenuBtn:visible').first().click();
+        await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);
+      }
       if (!await button.isVisible()) {
         const group=button.locator('xpath=ancestor::*[contains(concat(" ",normalize-space(@class)," ")," nav-group ")]');
         await group.locator('.nav-group-btn').click();
