@@ -2,6 +2,14 @@
 
 Última actualización del corte vigente: 2026-09-09
 
+## Corte QA — compras, recepción e inventario
+
+- Base `4081f2d1120816f4179a75697af1ac14b75e8e14`, rama `test/purchase-inventory-acceptance`.
+- 27 escenarios aislados aprobados: 19 SQL y 8 de API. Matriz, método, defectos reproducidos y límites en `docs/PURCHASE_INVENTORY_ACCEPTANCE.md`.
+- Corrección preparada en `api/purchases.js`: exceso solo con booleano `true`; moneda inválida, almacén omitido y línea inexistente devuelven 400 seguro. Sin cambios de Supabase ni escrituras comerciales productivas.
+- Se añade CI que ejecuta operaciones reales en PGlite y se actualiza la fixture UX5 a la revisión protegida vigente. Publicación pendiente de la validación de esta rama.
+- Esto cierra estos escenarios de datos, no la aceptación del ERP completo: faltan navegador con backend aislado, dos usuarios, concurrencia real y móvil/PWA, además de los bloques siguientes de ventas/logística y finanzas.
+
 ## Corte vigente — cierre funcional y sincronización
 
 - Base de esta entrega: `main` en `5822d2352fb03c485c3676fba84825f2cd65864c`, PR #278 de sincronización multiusuario.
