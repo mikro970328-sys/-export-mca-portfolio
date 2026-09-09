@@ -65,7 +65,12 @@ async function startApi() {
           if(r.status===200){
             const schema=await fetch(rest,{headers:{Authorization:`Bearer ${serviceToken}`},signal:AbortSignal.timeout(1000)});
             const description=await schema.json();
-            if(description.paths?.['/rpc/register_admin_login_success'])return;
+            if(description.paths?.['/rpc/register_admin_login_success']){
+              const probe=await fetch(`${rest}rpc/register_admin_login_success`,{method:'POST',headers:{Authorization:`Bearer ${serviceToken}`,'Content-Type':'application/json'},body:JSON.stringify({p_admin_user_id:'00000000-0000-0000-0000-000000000000'})});
+              const result=await probe.json();
+              console.log('PostgREST QA login contract',JSON.stringify({status:probe.status,code:result.code,message:result.message,parameters:description.paths['/rpc/register_admin_login_success'].post?.parameters}));
+              return;
+            }
           }
         }catch{}
         await pause(150);

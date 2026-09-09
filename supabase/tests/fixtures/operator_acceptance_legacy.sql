@@ -9,6 +9,8 @@ grant select on public.clients,public.products,public.suppliers,public.shipments
 grant select,insert,update,delete on public.warehouses,public.warehouse_receipts,
   public.warehouse_receipt_items,public.purchase_orders,public.purchase_order_items,
   public.purchase_receipt_allocations to service_role;
+grant select on public.purchase_order_progress,public.purchase_order_item_progress to service_role;
+grant usage on sequence public.warehouse_receipt_number_seq to service_role;
 alter table public.admin_users
   alter column username set not null,
   alter column role set not null,
