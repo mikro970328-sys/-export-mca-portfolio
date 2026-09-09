@@ -68,8 +68,9 @@ async function startApi() {
             if(description.paths?.['/rpc/register_admin_login_success']){
               const probe=await fetch(`${rest}rpc/register_admin_login_success`,{method:'POST',headers:{Authorization:`Bearer ${serviceToken}`,'Content-Type':'application/json'},body:JSON.stringify({p_admin_user_id:'00000000-0000-0000-0000-000000000000'})});
               const result=await probe.json();
-              console.log('PostgREST QA login contract',JSON.stringify({status:probe.status,code:result.code,message:result.message,parameters:description.paths['/rpc/register_admin_login_success'].post?.parameters}));
-              return;
+              // A fresh cache can expose OpenAPI before the first RPC is ready.
+              // A nonexistent QA identity must reach the SQL guard, not a 404.
+              if(probe.status===400 && result.code==='P0001' && result.message==='ADMIN_USER_UNAVAILABLE')return;
             }
           }
         }catch{}

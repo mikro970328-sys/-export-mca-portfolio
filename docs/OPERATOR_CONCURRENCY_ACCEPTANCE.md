@@ -42,7 +42,10 @@ El servidor aloja los handlers sin modificaciones y adapta únicamente el prefij
 ## Evidencia y reproducción
 
 - Esquema ampliado, dos identidades y cobro con `service_role` comprobados localmente con PGlite; no se cuentan como concurrencia real.
-- Los 22 escenarios requieren ambos servicios; resultados pendientes del primer run de PR.
+- 22/22 escenarios aprobados en la [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287): [run 34396574892](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34396574892), head `490e6bfc18b85a2b55e4016c28fea96346bf3cbd`. Los siete workflows de ese head aprobaron.
+- Los seis owners SQL de autenticación, permisos y revocación inspeccionados coinciden con producción descontando formato. Los permisos legacy omitidos en la fixture (tablas/vistas de compras y almacén y secuencia de WR) se restauraron solo en QA tras contrastarlos con producción.
+- Las primeras ejecuciones detectaron esas omisiones de fixture y una aserción contra una columna inexistente de la vista de stock; se corrigieron sin cambiar reglas productivas ni retirar escenarios. El arranque de PostgREST expuso OpenAPI antes de que el primer POST RPC estuviera disponible (404 transitorio): la espera ahora exige alcanzar el guard SQL de una identidad inexistente. Las solicitudes de negocio no tienen reintentos añadidos.
+- Regresión local: 40 escenarios financieros, contrato de permisos y runtime de sesión revocable aprobados. Preview `dpl_U4xZUVVS7j7xpnsD7VqSHq8DHZ2G` READY; Chrome llega al login desde PWA. Es comprobación de entrada, no de acciones comerciales autenticadas en navegador.
 - Para reproducir: levantar servicios/variables de `.github/workflows/operator-acceptance.yml` con base vacía; ejecutar `npm ci --ignore-scripts --no-audit --no-fund` y `node scripts/check-operator-acceptance.mjs`. El proceso cierra sus conexiones y el runner desecha contenedores/datos.
 
 ## Límites y siguiente bloque
