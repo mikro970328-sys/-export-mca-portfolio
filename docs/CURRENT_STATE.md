@@ -5,7 +5,8 @@
 ## Corte vigente — cierre funcional y sincronización
 
 - Base de esta entrega: `main` en `5822d2352fb03c485c3676fba84825f2cd65864c`, PR #278 de sincronización multiusuario.
-- Rama de corrección: `fix/live-sync-recovery`; frontend listo para verificación de Preview y publicación por PR. Este corte no certifica todavía el despliegue de esa rama.
+- Corrección publicada mediante [PR #279](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/279), commit funcional `ab53b7440afd6fb6d0017db57c0969d5c33cbfc9`.
+- Vercel producción `dpl_2kdPSDZ9FoiStHTWvnsY4hyJFoth`: `READY` para ese commit. HTTP 200 verificado en la entrada administrativa, el acceso PWA y el runtime `20260909-live5` de `admin.exportmca.com`.
 - Migración `20260909143701_live_sync_recovery.sql`: aplicada y verificada en Supabase. Es compatible con el frontend anterior; no elimina registros ni cambia contratos de negocio.
 - Se mantienen Vercel, las APIs autenticadas y la autenticación administrativa personalizada; no se añade acceso directo del navegador a Supabase.
 
@@ -24,6 +25,10 @@
 ### Evidencia de validación
 
 - 95/95 scripts `scripts/check-*.mjs` aprobados localmente; incluidos contratos estáticos, APIs y pruebas SQL aisladas.
+- 46/46 workflows aprobados para el último commit de la PR, `b4d976c2e00ea79974b6927ff8cbab2f3c11d07c`; Preview `dpl_9wTU2R7vGqHefqVZQFM2hcCakpkG` READY.
+- QA real en Chrome, dos pestañas autenticadas de la misma cuenta: señal controlada de actualización de tareas, refresco de B de 09:37 a 09:39 mientras A conserva el editor; al cerrar el formulario vacío, A aplica lo pendiente y muestra 09:40. No se crearon tareas ni se modificaron compras, ventas o saldos.
+- Tras asentarse el cambio, los logs de Preview registraron solo el sondeo de versiones durante el intervalo observado, sin cargas de datos en bucle. Las señales de prueba incrementaron exclusivamente `erp_change_state.tasks` (0 → 1 en el ensayo que detectó el defecto; 1 → 2 en la verificación corregida).
+- Consulta pospublicación de logs HTTP 5xx: sin resultados en el intervalo observado. Se observaron avisos Node `DEP0169` con respuestas HTTP 200 en Preview; no se presentan como fallos funcionales ni como auditoría de dependencias completada.
 - Dos sesiones simuladas del runtime real reciben un mismo cambio sin recarga manual. Se probaron además modales, timeout de fetch y JSON, 503, payload inválido, offline/online, segundo plano, logout y respuestas tardías.
 - PostgreSQL aislado: inserción/edición/eliminación múltiples, JSON/null, claves compuestas, UPSERT, deduplicación, rollback, reejecución de la migración y privilegios.
 - La prueba B10 ejecuta el reconciliador real de web push y confirma que una segunda conciliación sin cambios no incrementa la versión de notificaciones.
@@ -32,9 +37,9 @@
 
 ### Límites de esta evidencia
 
-- Las dos sesiones de la prueba son simuladas, no dos operadores autenticados en producción. No se certifica aquí una operación comercial completa ni Safari/iPhone/PWA real.
-- El acceso de Vercel se resolvió con su enlace temporal oficial y el login del ERP mediante el formulario seguro autorizado. La prueba autenticada se ejecuta en dos pestañas de la misma cuenta; la evidencia final se registra en la PR #279.
-- La certificación externa iOS/BrowserStack de la entrega anterior está bloqueada por cuota (`Automate testing time expired`); no se ha eludido ni modificado ese control.
+- Hay cobertura simulada de sesiones independientes y QA de dos pestañas reales de una cuenta; no se certifican dos operadores diferentes en producción, una operación comercial completa ni Safari/iPhone/PWA real.
+- El acceso de Vercel se resolvió con su enlace temporal oficial y el login del ERP mediante el formulario seguro autorizado. La evidencia final está registrada en la PR #279.
+- La certificación externa iOS/BrowserStack de `main` sigue fallando por cuota (`Automate testing time expired`), run `34378335000`; su contrato estático pasó. No se ha eludido ni modificado ese control. Los otros seis workflows de `main` aprobaron.
 - Los avisos preexistentes de Supabase (índices duplicados, protección de contraseñas filtradas y observaciones informativas) se revisan separadamente; esta corrección no equivale a la auditoría integral.
 
 ### Qué falta para declarar el ERP funcionalmente cerrado
