@@ -91,6 +91,7 @@ function translatedError(raw) {
     ['SO_ITEM_NOT_IN_ORDER','Una de las líneas no pertenece a esta Sales Order.'],
     ['SO_LOAD_DUPLICATE_SALES_ITEM','Una línea de la Sales Order está repetida en el Cargue.'],
     ['SO_ALLOCATION_EXCEEDS_ORDER','La cantidad seleccionada excede el saldo pendiente de la Sales Order.'],
+    ['SO_ALLOCATION_CONFLICTS_WITH_DIRECT_SUPPLY','La cantidad seleccionada excede el saldo pendiente de la venta, considerando los cargues y la mercancía planificada como Direct Ship.'],
     ['WAREHOUSE_REQUIRED','Selecciona el almacén desde donde saldrá la mercancía.'],
     ['LOAD_HAS_NO_ITEMS','El Cargue no contiene mercancía.'],
     ['LOAD_ALLOCATIONS_REQUIRED','Selecciona al menos un WR para cada línea incluida.'],

@@ -2,6 +2,14 @@
 
 Última actualización del corte vigente: 2026-09-09
 
+## Corte QA — ventas, logística y documentos
+
+- Base `eae1cf2439d841608e1234a11e8d5209935c6e13`; rama `test/sales-logistics-acceptance`.
+- 39 escenarios aislados aprobados (29 SQL, 10 API) y nueve contratos relacionados. Matriz y límites en `docs/SALES_LOGISTICS_ACCEPTANCE.md`.
+- Corregidos el borrado de asignaciones al editar cargues independientes, la mercancía derivada del contenedor, la precisión de la ruta de compatibilidad de ventas y las respuestas para sobreasignación/contexto. La acción de edición refleja la protección existente de cargues vinculados a ventas.
+- Migración preparada `20260909175528_load_plan_container_consistency.sql`: tres funciones existentes, sin reescritura histórica ni movimientos de stock. Publicación, Preview y aplicación a Supabase pendientes en este punto de la PR.
+- Las pruebas de datos de ventas/logística amplían el corte previo de compras; no certifican navegador autenticado, dos operadores, concurrencia real, Storage ni móvil/PWA. Siguiente bloque: facturación, cobros/pagos, anticipos, costes y reportes.
+
 ## Corte QA — compras, recepción e inventario
 
 - Base `4081f2d1120816f4179a75697af1ac14b75e8e14`; entrega publicada mediante [PR #281](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/281), commit funcional `7af4562d4d91523a6a9a655c9ae2ee289f861dc7`.
