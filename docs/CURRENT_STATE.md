@@ -2,6 +2,15 @@
 
 Última actualización del corte vigente: 2026-09-09
 
+## Corte publicado — aceptación visual aislada multioperador/PWA
+
+- [PR #290](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/290) integrada, commit `dfe47514aeaafa6aa32d34ca960332464749c07a`. Añade QA automatizada; no modifica reglas comerciales, frontend productivo ni Supabase.
+- [Run 34401166506](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34401166506) aprobado: jobs `isolated-operators` e `isolated-browser` correctos; los cinco workflows de la PR aprobaron.
+- Dos cuentas distintas iniciaron sesión en contextos Chromium separados contra handlers reales, PostgreSQL 17.6 y PostgREST 12.2.3 desechables. A registró dos cobros desde la UI; B vio saldo 400 → 280 → 200 sin navegación ni recarga manual.
+- B entró desde `/admin/pwa.html` con perfil/viewport iPhone. El service worker se registró y la ruta abrió el shell. Con el detalle abierto, B mantuvo el saldo anterior; al cerrar el diálogo se aplicó el cambio pendiente, protegiendo trabajo en curso.
+- No hubo cuentas ni operaciones QA en producción. Esta evidencia certifica navegador aislado y ruta PWA móvil emulada, no Safari, instalación standalone ni hardware iPhone real.
+- Siguiente bloque funcional: ampliar los recorridos transversales de navegador que siguen pendientes en la lista de cierre. Después: mejoras priorizadas y auditoría integral.
+
 ## Corte publicado — operadores y concurrencia
 
 - [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287) integrada; base `95e352e0d466ca8392adef89e8e4897d19cf2da3`, commit publicado `81648443ce66eda2ce4ed2e331146ad631ae751e`. Producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY.
@@ -9,7 +18,7 @@
 - No cambia la lógica comercial. Se comprueban saldos/reservas entre conexiones, dos cuentas por HTTP, permisos vigentes, auditoría y revocación de sesiones. Seis owners de acceso/sesión coinciden con producción descontando formato. Regresión financiera local 40/40.
 - Preview final `dpl_FvZropMsHGUfGGFVKaptJ59U5szR` READY; entrada PWA llega al login en Chrome. La espera de arranque exige alcanzar el guard SQL del RPC antes de probar sesiones.
 - Los seis workflows de `main` aprobaron; Operator and Concurrency Acceptance `34397039678`. PWA productiva HTTP 200 y API de versiones HTTP 401 sin sesión. Este cambio solo añade QA/documentación y dependencias de desarrollo; no aplica migraciones ni cambia comportamiento comercial.
-- La Preview comparte producción. El navegador rechaza el backend local; siguen pendientes la aceptación visual aislada y el iPhone/PWA. Sin escrituras comerciales QA en producción ni reintentos manuales de BrowserStack.
+- La Preview comparte producción. La aceptación visual aislada se completó después en la PR #290; iPhone/Safari real sigue pendiente. Sin escrituras comerciales QA en producción ni reintentos manuales de BrowserStack.
 
 ## Corte publicado — finanzas y conciliación
 
@@ -89,7 +98,7 @@ Son criterios de aceptación pendientes de evidencia, no una afirmación de que 
 1. Recorrer compra → recepción/almacén o envío directo → inventario/carga → venta → factura/cobro, incluyendo cancelaciones y errores.
 2. Conciliar saldos de clientes/proveedores, anticipos, costes, existencias y totales de reportes con los documentos de cada recorrido.
 3. Verificar tracking, expedientes/documentos, tareas, alertas y entregas de notificaciones con casos controlados.
-4. Probar permisos por rol, dos usuarios simultáneos y recuperación de sesión/conexión en escritorio y móvil/PWA reales.
+4. Ampliar permisos por rol y recuperación de sesión/conexión en recorridos de navegador; dos usuarios simultáneos y ruta PWA móvil emulada ya están aprobados. Sigue pendiente iPhone/Safari real.
 5. Resolver los defectos encontrados y dejar una matriz de aceptación con evidencia. Después: mejoras priorizadas y auditoría integral de seguridad, datos, rendimiento y operación.
 
 No iniciar una migración arquitectónica ni crear operaciones comerciales reales como sustituto de un entorno/caso QA controlado.

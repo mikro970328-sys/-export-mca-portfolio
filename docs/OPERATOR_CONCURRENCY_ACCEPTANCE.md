@@ -4,6 +4,8 @@ Fecha: 2026-09-09. Base: `95e352e0d466ca8392adef89e8e4897d19cf2da3`.
 
 Publicado mediante [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287), commit `81648443ce66eda2ce4ed2e331146ad631ae751e`; producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY. Esta entrega añade aceptación automatizada; no cambia reglas comerciales ni aplica migraciones a producción.
 
+La cobertura visual aislada se añadió mediante [PR #290](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/290), commit `dfe47514aeaafa6aa32d34ca960332464749c07a`. El run `34401166506` aprobó ambos jobs: la matriz de 22 escenarios y la prueba Chromium con dos operadores.
+
 ## Método
 
 Esta matriz amplía compras, ventas/logística y finanzas con conexiones PostgreSQL independientes y los handlers originales de Vercel sobre HTTP contra PostgREST real. No sustituye la autenticación, permisos, consultas, transacciones ni auditoría por respuestas simuladas.
@@ -40,6 +42,10 @@ El servidor aloja los handlers sin modificaciones y adapta únicamente el prefij
 | HTTP-08 | Cambio de contraseña | Token/contraseña anteriores inválidos; nuevos válidos |
 | HTTP-09 | Rol inactivo y cuenta inactiva | Permisos retirados y sesión rechazada respectivamente |
 | HTTP-10 | Cinco contraseñas inválidas | Bloqueo temporal; otra cuenta sigue operativa |
+| UI-01 | Operadores A/B en contextos Chromium separados | Login y sesiones independientes |
+| UI-02 | A registra cobro 120; B entró por `/admin/pwa.html` con viewport iPhone | B pasa de saldo 400 a 280 sin navegación ni recarga manual |
+| UI-03 | B mantiene el detalle abierto; A registra otro cobro de 80 | B conserva 280 durante el diálogo y muestra 200 al cerrarlo |
+| UI-04 | Ruta PWA y service worker en origen local seguro | Redirección al shell, registro activo y viewport móvil |
 
 ## Evidencia y reproducción
 
@@ -47,6 +53,7 @@ El servidor aloja los handlers sin modificaciones y adapta únicamente el prefij
 - 22/22 escenarios aprobados en la [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287): [run 34396574892](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34396574892), head `490e6bfc18b85a2b55e4016c28fea96346bf3cbd`. Los siete workflows de ese head aprobaron.
 - La revisión final, incluida la espera explícita del contrato RPC, también aprobó 22/22: [run 34396893578](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34396893578), head `e8f61d1ac288c4d5620b6ef870e208a883a5e322`. Siete workflows y ocho check runs aprobados.
 - Main: seis de seis workflows aprobaron; [Operator and Concurrency Acceptance 34397039678](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34397039678). Los otros cinco fueron Finance Acceptance, Purchase and Inventory Acceptance, Sales and Logistics Acceptance, B10.1 Secure PWA Web Push y Pages.
+- Aceptación visual: [run 34401166506](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34401166506), job `isolated-browser` aprobado. Dos contextos cargaron el frontend y los handlers reales contra PostgreSQL/PostgREST desechables. Se comprobaron dos cobros desde la UI, saldo final 200, cero recargas manuales, diferimiento por diálogo y entrada desde la ruta PWA con viewport móvil. Los cinco workflows disparados por la PR aprobaron.
 - Los seis owners SQL de autenticación, permisos y revocación inspeccionados coinciden con producción descontando formato. Los permisos legacy omitidos en la fixture (tablas/vistas de compras y almacén y secuencia de WR) se restauraron solo en QA tras contrastarlos con producción.
 - Las primeras ejecuciones detectaron esas omisiones de fixture y una aserción contra una columna inexistente de la vista de stock; se corrigieron sin cambiar reglas productivas ni retirar escenarios. El arranque de PostgREST expuso OpenAPI antes de que el primer POST RPC estuviera disponible (404 transitorio): la espera ahora exige alcanzar el guard SQL de una identidad inexistente. Las solicitudes de negocio no tienen reintentos añadidos.
 - Regresión local: 40 escenarios financieros, contrato de permisos y runtime de sesión revocable aprobados. Preview final `dpl_FvZropMsHGUfGGFVKaptJ59U5szR` READY; Chrome llega al login desde PWA. Producción: PWA HTTP 200 y API de versiones HTTP 401 sin sesión. Es comprobación de entrada, no de acciones comerciales autenticadas en navegador.
@@ -54,8 +61,6 @@ El servidor aloja los handlers sin modificaciones y adapta únicamente el prefij
 
 ## Límites y siguiente bloque
 
-Versiones por HTTP no demuestran repintado de pantalla. Hay cobertura previa del runtime y Chrome con dos pestañas de una cuenta; falta aceptación visual con dos operadores y datos aislados.
+La UI de dos operadores y el lanzamiento por la ruta PWA ya están cubiertos en integración aislada. La prueba móvil usa Chromium con perfil/viewport iPhone; no es Safari ni una instalación real en hardware. El `display-mode: standalone`, las transiciones de segundo plano propias de iOS y las notificaciones del dispositivo no quedan certificados.
 
-El navegador rechazó el servidor local con `ERR_BLOCKED_BY_CLIENT`; el entorno local también impide el usuario de sistema necesario para PostgreSQL. No se modificaron esos controles. La concurrencia se ejecuta en integración.
-
-Preview sigue enlazada a Supabase productivo: solo comprobar entrada/login. BrowserStack está bloqueado por cuota; no reintentar manualmente ni declarar iPhone/PWA certificado. Quedan la aceptación visual con backend aislado accesible y el dispositivo real, después mejoras y auditoría integral.
+Preview sigue enlazada a Supabase productivo: allí solo se comprueba entrada/login. BrowserStack continúa condicionado por su cuota; no reintentar manualmente ni declarar iPhone real certificado. Quedan los recorridos transversales todavía no cubiertos por navegador, el dispositivo real cuando exista capacidad y, después del cierre funcional, mejoras y auditoría integral.
