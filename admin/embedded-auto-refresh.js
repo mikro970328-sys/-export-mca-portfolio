@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260909-live4';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260909-live5';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -126,7 +126,12 @@
   }
 
   function visibleModal(doc) {
-    return Boolean(doc?.querySelector('.modal:not(.hidden), [role="dialog"]:not(.hidden)'));
+    return [...(doc?.querySelectorAll('.modal, [role="dialog"]')||[])].some(dialog=>{
+      // A dialog can live inside a hidden overlay without its own hidden class.
+      if(!dialog.getClientRects().length)return false;
+      const visibility=doc.defaultView?.getComputedStyle(dialog)?.visibility;
+      return visibility!=='hidden'&&visibility!=='collapse';
+    });
   }
 
   function visibleSectionId() {

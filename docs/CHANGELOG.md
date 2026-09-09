@@ -9,11 +9,12 @@ Estado de este corte: migración `20260909143701_live_sync_recovery.sql` aplicad
 - Se corrige el bloqueo indefinido del polling con deadline de 12 segundos para respuesta y cuerpo, cancelación y reintentos progresivos.
 - Las respuestas tardías de una sesión anterior no repintan ni cierran la sesión nueva. Se detiene al logout y se reanuda tras reconexión/restauración de página.
 - Se mantienen el refresco selectivo, la cadencia 4 s visible/15 s en segundo plano y la protección de formularios modales.
+- La QA autenticada encontró un bloqueo adicional: los paneles de Cuenta, confirmaciones y notificaciones conservan `role="dialog"` dentro de overlays ocultos. Se corrige su detección en el controlador existente, comprobando geometría y visibilidad CSS. La regresión falló antes de esta corrección y pasa con ella; no se añaden observers ni wrappers.
 - Se sustituyen solo los triggers de sincronización por eventos con tablas de transición. Las sentencias sin cambios reales dejan de incrementar versiones; el cursor backend de web push no despierta la interfaz.
 - No se borraron datos operativos ni se ampliaron privilegios. Se conservan las 17 áreas y 66 tablas visibles (198 triggers).
 - Se añaden dos pruebas de regresión, se amplía B10 con el reconciliador real y se integran en GitHub Actions. Total local: 95/95 scripts aprobados.
 - Se verificó en Supabase una repetición de ambos reconciliadores con delta de notificaciones 0, dentro de transacciones revertidas.
-- Se actualizan los assets a `20260909-live4` y se aclara el estado funcional pendiente en `CURRENT_STATE.md`.
+- Se actualizan los assets a `20260909-live5` y se aclara el estado funcional pendiente en `CURRENT_STATE.md`.
 - Límite: no certifica dos operadores productivos ni móvil/PWA real; la cuota iOS externa sigue pendiente.
 
 ## 2026-07-30

@@ -15,10 +15,11 @@
 - Al cerrar o cambiar sesión se cancelan las consultas pendientes y se descartan respuestas de la sesión anterior, incluidos errores 401 tardíos.
 - Sin conexión se pausa la consulta; al volver la conexión o restaurar la página se retoma automáticamente, conservando las versiones de la misma sesión.
 - Se conserva el refresco selectivo y la espera mientras hay un editor modal abierto. No se fuerza una recarga completa de página.
+- La QA autenticada de la primera Preview detectó paneles `role="dialog"` dentro de overlays ocultos que bloqueaban todo refresco. El controlador existente ahora comprueba geometría y visibilidad CSS, y la regresión reproduce ese DOM antes de verificar la corrección.
 - Los triggers emiten versiones únicamente cuando las filas realmente cambian. Sentencias vacías, escrituras idénticas e inserciones deduplicadas permanecen silenciosas.
 - Se excluye del refresco visual el cursor interno `web_push_runtime_state`, cuyo timestamp cambia en cada conciliación aunque no haya novedades.
 - Cobertura productiva: 66 tablas, 198 triggers por evento y los mismos 17 ámbitos. Se preservan los triggers de negocio y auditoría.
-- Asset administrativo versionado como `20260909-live4`; las comprobaciones de carga se actualizan conjuntamente.
+- Asset administrativo versionado como `20260909-live5`; las comprobaciones de carga se actualizan conjuntamente.
 
 ### Evidencia de validación
 
@@ -32,6 +33,7 @@
 ### Límites de esta evidencia
 
 - Las dos sesiones de la prueba son simuladas, no dos operadores autenticados en producción. No se certifica aquí una operación comercial completa ni Safari/iPhone/PWA real.
+- El acceso de Vercel se resolvió con su enlace temporal oficial y el login del ERP mediante el formulario seguro autorizado. La prueba autenticada se ejecuta en dos pestañas de la misma cuenta; la evidencia final se registra en la PR #279.
 - La certificación externa iOS/BrowserStack de la entrega anterior está bloqueada por cuota (`Automate testing time expired`); no se ha eludido ni modificado ese control.
 - Los avisos preexistentes de Supabase (índices duplicados, protección de contraseñas filtradas y observaciones informativas) se revisan separadamente; esta corrección no equivale a la auditoría integral.
 

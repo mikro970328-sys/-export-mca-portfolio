@@ -17,7 +17,11 @@ function harness(shared={tasks:0,products:0}) {
   const calls=[];
   const statuses=[];
   const counters={core:0,dashboard:0,tasks:0,expired:0};
-  const dom={modal:false};
+  const dom={modal:false,visibility:'visible'};
+  // Actual shell dialogs keep role="dialog" on a child of a hidden overlay.
+  // They match the selector even while getClientRects() is empty.
+  const hiddenDialogs=Array.from({length:3},()=>({getClientRects:()=>[]}));
+  const activeDialog={getClientRects:()=>dom.modal?[{}]:[]};
   let transport=async()=>response(shared);
   const clock={
     setTimeout(fn,delay=0){const id=nextTimer++;timers.set(id,{at:now+delay,fn});return id;},
@@ -58,8 +62,9 @@ function harness(shared={tasks:0,products:0}) {
   win.addEventListener('export-mca:live-sync-status',event=>statuses.push(event.detail));
   const doc={
     readyState:'complete',body:{},hidden:false,addEventListener(){},
-    querySelector(selector){return selector.startsWith('.modal')&&dom.modal?{}:null;},
-    querySelectorAll(){return [];}
+    defaultView:{getComputedStyle:node=>({visibility:node===activeDialog?dom.visibility:'visible'})},
+    querySelector(selector){return selector.startsWith('.modal')?hiddenDialogs[0]:null;},
+    querySelectorAll(selector){return selector.includes('.modal')?[hiddenDialogs[0],activeDialog,...hiddenDialogs.slice(1)]:[];}
   };
   vm.runInNewContext(source,{
     window:win,document:doc,
@@ -76,7 +81,7 @@ function harness(shared={tasks:0,products:0}) {
     transport(fn){transport=fn;},
     token(value){if(value)storage.set('export_mca_token',value);else storage.delete('export_mca_token');},
     event(type,extra={}){win.dispatchEvent({type,...extra});},
-    modal(open){dom.modal=open;for(const observer of observers)observer.callback([]);}
+    modal(open,visibility='visible'){dom.modal=open;dom.visibility=visibility;for(const observer of observers)observer.callback([]);}
   };
 }
 
@@ -90,7 +95,7 @@ assert.equal(first.counters.tasks+second.counters.tasks,0,'baseline must not tri
 shared.tasks=1;
 await first.clock.advance(4200);
 await second.clock.advance(4200);
-assert.equal(first.counters.tasks,1);
+assert.equal(first.counters.tasks,1,'dialogs inside hidden overlays must not block live updates');
 assert.equal(second.counters.tasks,1);
 await first.clock.advance(12000);
 assert.equal(first.counters.tasks,1,'unchanged versions must settle without refresh loops');
@@ -101,6 +106,13 @@ assert.equal(second.counters.tasks,1,'external changes must wait for the editor'
 second.modal(false);
 await second.clock.advance(200);
 assert.equal(second.counters.tasks,2,'closing the editor applies the pending change');
+for(const visibility of ['hidden','collapse']){
+  second.modal(true,visibility);
+  shared.tasks+=1;
+  await second.clock.advance(4200);
+  assert.equal(second.counters.tasks,shared.tasks,'CSS-hidden dialogs must not block updates');
+}
+second.modal(false);
 first.live.stopLiveSync();second.live.stopLiveSync();
 
 // A timeout must release the running flag even if a fetch ignores AbortSignal.
