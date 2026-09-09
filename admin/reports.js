@@ -55,6 +55,7 @@
     incomplete:'Incompleta', unavailable:'No disponible', pending:'Pendiente', received:'Recibido',
     not_received:'Sin recibir', in_progress:'En proceso', fulfilled:'Cumplida', unfulfilled:'Sin cumplir',
     customer_payment:'Cobro de cliente', customer_collection:'Cobro de cliente', supplier_payment:'Pago a proveedor',
+    customer_advance:'Anticipo de cliente', customer_advance_refund:'Reembolso de anticipo',
     in:'Entrada', out:'Salida', true:'Sí', false:'No'
   });
   const GOOD_STATES = new Set(['active','posted','paid','complete','completed','available','comparable','received','fulfilled','in','false']);

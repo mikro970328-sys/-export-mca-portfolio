@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260909-live5';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260909-live6';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -29,19 +29,19 @@
   const LIVE_SYNC_MAX_BACKOFF_MS = 60000;
   const LIVE_SYNC_TIMEOUT_MS = 12000;
   const RELATED = {
-    products: ['productsSection','purchasesSection','warehouseSection','inventorySection','loadsSection','salesSection','invoicesSection'],
-    suppliers: ['suppliersSection','purchasesSection','warehouseSection','payablesSection','costsSection'],
-    purchases: ['purchasesSection','warehouseSection','inventorySection','payablesSection','costsSection','loadsSection'],
-    warehouse: ['warehouseSection','purchasesSection','inventorySection','loadsSection','costsSection'],
-    inventory: ['inventorySection','loadsSection','salesSection','costsSection'],
-    loads: ['loadsSection','inventorySection','salesSection','invoicesSection','costsSection'],
-    sales: ['salesSection','invoicesSection','costsSection'],
-    clients: ['salesSection','invoicesSection','publicationsSection'],
-    shipments: ['loadsSection','salesSection','invoicesSection','costsSection'],
+    products: ['productsSection','purchasesSection','warehouseSection','inventorySection','loadsSection','salesSection','invoicesSection','reportsSection'],
+    suppliers: ['suppliersSection','purchasesSection','warehouseSection','payablesSection','costsSection','reportsSection'],
+    purchases: ['purchasesSection','warehouseSection','inventorySection','payablesSection','costsSection','loadsSection','reportsSection'],
+    warehouse: ['warehouseSection','purchasesSection','inventorySection','loadsSection','costsSection','reportsSection'],
+    inventory: ['inventorySection','loadsSection','salesSection','costsSection','reportsSection'],
+    loads: ['loadsSection','inventorySection','salesSection','invoicesSection','costsSection','reportsSection'],
+    sales: ['salesSection','invoicesSection','costsSection','reportsSection'],
+    clients: ['salesSection','invoicesSection','publicationsSection','reportsSection'],
+    shipments: ['loadsSection','salesSection','invoicesSection','costsSection','reportsSection'],
     publications: ['publicationsSection'],
-    invoices: ['invoicesSection','costsSection','payablesSection'],
-    payables: ['payablesSection','costsSection'],
-    costs: ['costsSection'],
+    invoices: ['invoicesSection','costsSection','payablesSection','reportsSection'],
+    payables: ['payablesSection','costsSection','reportsSection'],
+    costs: ['costsSection','reportsSection'],
     tasks: [],
     notifications: [],
     account: [],

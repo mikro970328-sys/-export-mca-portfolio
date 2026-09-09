@@ -2,6 +2,15 @@
 
 Última actualización del corte vigente: 2026-09-09
 
+## En validación — finanzas y conciliación
+
+- [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), rama `test/finance-acceptance`, base `40cb5feba6dbbd4f0ff37afb14678584e4caad19`. Código pendiente de publicación; migración aplicada.
+- 40 escenarios locales aprobados: 25 SQL, 11 API y cuatro del runtime de refresco. Matriz: `docs/FINANCE_ACCEPTANCE.md`.
+- Corregidos anticipos/reembolsos omitidos en caja, contador de facturas vencidas con pago parcial, entradas no finitas y refresco de Reportes tras cambios. Runtime `20260909-live6` preparado.
+- Migración `20260909185121_finance_cash_reconciliation.sql` aplicada: una vista de caja y dos RPC de lectura. Definiciones/permisos coinciden con lo probado; cero diferencias en conciliación con los libros productivos, sin modificar datos comerciales.
+- Preview inicial `dpl_EgkoE7PfmbbAhqTsFM6jA7Bq7EV7` READY; entrada administrativa/PWA verificada. CI inicial 57/58: se corrige una expectativa literal del texto anterior del dashboard; pendiente CI del head final.
+- Pendientes las pruebas transversales de navegador con backend aislado, operadores y móvil; las matrices no equivalen a la aceptación integral ni a la auditoría completa.
+
 ## Corte QA — ventas, logística y documentos
 
 - Base `eae1cf2439d841608e1234a11e8d5209935c6e13`; entrega publicada mediante [PR #283](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/283), commit funcional `eaabea111ddc073f0d51129c6a204ab29068c191`.

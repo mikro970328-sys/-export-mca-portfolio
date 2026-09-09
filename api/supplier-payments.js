@@ -47,7 +47,7 @@ function cleanApplications(applications) {
     const billId = text(row.supplier_bill_id,80);
     const amount = text(row.amount,80);
     if (!billId) throw new Error(`Falta la factura en la distribución ${index + 1}`);
-    if (!amount || Number(amount) <= 0) throw new Error(`Indica un monto válido en la distribución ${index + 1}`);
+    if (!amount || !Number.isFinite(Number(amount)) || Number(amount) <= 0) throw new Error(`Indica un monto válido en la distribución ${index + 1}`);
     return { supplier_bill_id:billId, amount };
   });
 }
@@ -123,7 +123,7 @@ export default async function handler(req, res) {
       const billId = text(body.supplier_bill_id,80);
       if (!billId) throw new Error('Selecciona una factura de proveedor');
       const amount = Number(body.amount || 0);
-      if (!(amount > 0)) throw new Error('El monto del pago debe ser mayor que cero');
+      if (!Number.isFinite(amount) || !(amount > 0)) throw new Error('El monto del pago debe ser mayor que cero');
       const result = await supabase('rpc/pay_supplier_bill_canonical', { method:'POST', body:{
         p_supplier_bill_id:billId,p_amount:amount,p_payment_date:text(body.payment_date,40) || null,p_method:text(body.method,100) || null,
         p_reference:text(body.reference,300) || null,p_notes:text(body.notes,2000) || null,p_actor:admin.admin_id || null
@@ -138,7 +138,7 @@ export default async function handler(req, res) {
       const poId = text(body.purchase_order_id,80);
       if (!poId) throw new Error('Selecciona una Purchase Order');
       const amount = Number(body.amount || 0);
-      if (!(amount > 0)) throw new Error('El monto del pago debe ser mayor que cero');
+      if (!Number.isFinite(amount) || !(amount > 0)) throw new Error('El monto del pago debe ser mayor que cero');
       const result = await supabase('rpc/register_supplier_payment', { method:'POST', body:{
         p_purchase_order_id:poId,p_amount:amount,p_payment_date:text(body.payment_date,40) || null,p_method:text(body.method,100) || null,
         p_reference:text(body.reference,300) || null,p_notes:text(body.notes,2000) || null,p_actor:admin.admin_id || null

@@ -49,7 +49,7 @@ const workflow = read(files.workflow);
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/costs.css?v=20260903-ux7costs1',
   '/admin/costs.js?v=20260903-ux7costs1',
-  '/admin/embedded-auto-refresh.js?v=20260909-live5',
+  '/admin/embedded-auto-refresh.js?v=20260909-live6',
   'class="module-hero costs-page-head"',
   'id="costsPageTitle">Costos y rentabilidad',
   'class="costs-hero-state"',
@@ -470,7 +470,7 @@ if (fixtureFetches.some(value => !value.startsWith('GET '))) failures.push('El f
 ].forEach(value => requireText(capabilityOwner, value, 'capabilities de Costos ' + value));
 
 requireText(navigation, "openCosts: () => openEmbeddedById('costsSection')", 'navegación canónica de Costos');
-requireText(autoRefresh, "costs: ['costsSection']", 'auto-refresh canónico de Costos');
+requireText(autoRefresh, "costs: ['costsSection','reportsSection']", 'auto-refresh canónico de Costos y Reportes');
 requireText(ux6Gate, 'admin/profitability.js', 'gate UX-6 protege el retiro del owner paralelo');
 requireText(profitabilityGate, 'no debe asignar/calcular métricas B6', 'gate financiero conserva autoridad backend');
 
