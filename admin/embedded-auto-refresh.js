@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260904-live2';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260909-live3';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -23,6 +23,10 @@
 
   const WRITE_METHODS = new Set(['POST','PUT','PATCH','DELETE']);
   const LAST_MUTATION_KEY = 'export_mca_last_mutation';
+  const LIVE_SYNC_PATH = '/api/live-updates';
+  const LIVE_SYNC_VISIBLE_MS = 4000;
+  const LIVE_SYNC_HIDDEN_MS = 15000;
+  const LIVE_SYNC_MAX_BACKOFF_MS = 60000;
   const RELATED = {
     products: ['productsSection','purchasesSection','warehouseSection','inventorySection','loadsSection','salesSection','invoicesSection'],
     suppliers: ['suppliersSection','purchasesSection','warehouseSection','payablesSection','costsSection'],
@@ -36,8 +40,13 @@
     publications: ['publicationsSection'],
     invoices: ['invoicesSection','costsSection','payablesSection'],
     payables: ['payablesSection','costsSection'],
-    costs: ['costsSection']
+    costs: ['costsSection'],
+    tasks: [],
+    notifications: [],
+    account: [],
+    workers: []
   };
+  const ALL_RELATED_SECTIONS = [...new Set(Object.values(RELATED).flat())];
   const API_SCOPE = [
     ['/api/sales-loads','loads'],
     ['/api/shipments-register','shipments'],
@@ -86,6 +95,12 @@
   let shellRefreshRunning = false;
   let shellRefreshQueued = false;
   let frameObserver = null;
+  let livePollTimer = null;
+  let livePollRunning = false;
+  let livePollFailures = 0;
+  let liveVersions = null;
+  let pendingExternalReason = 'live-change';
+  const pendingExternalScopes = new Set();
 
   function normalizeMethod(input, init) {
     return String(init?.method || (input && typeof input === 'object' ? input.method : '') || 'GET').toUpperCase();
@@ -205,6 +220,144 @@
     }
   }
 
+  function callNativeRefresh(label, refresh) {
+    if(typeof refresh!=='function')return null;
+    try{
+      return Promise.resolve(refresh()).catch(error=>console.warn(`[live-sync] ${label} refresh failed`,error));
+    }catch(error){
+      console.warn(`[live-sync] ${label} refresh failed`,error);
+      return null;
+    }
+  }
+
+  function refreshNativeScopes(scopes) {
+    const wanted=new Set(scopes||[]);
+    const all=wanted.has('erp');
+    const jobs=[];
+    const add=(label,refresh)=>{const job=callNativeRefresh(label,refresh);if(job)jobs.push(job);};
+    if(all||wanted.has('tasks'))add('tasks',()=>window.TasksWorkspace?.load?.());
+    if(all||wanted.has('notifications'))add('alerts',()=>window.OperationalAlertCenter?.load?.());
+    if(all||wanted.has('workers'))add('workers',()=>window.WorkersModule?.load?.());
+    if(all||wanted.has('account')){
+      add('access',()=>window.ExportMcaAccessControl?.initialize?.());
+      add('account',()=>window.ExportMcaAccountAdministration?.refresh?.());
+    }
+    return Promise.allSettled(jobs);
+  }
+
+  function flushExternalScopes() {
+    if(!pendingExternalScopes.size||visibleModal(document))return false;
+    const scopes=[...pendingExternalScopes];
+    pendingExternalScopes.clear();
+    const sectionIds=scopes.includes('erp')
+      ? ALL_RELATED_SECTIONS
+      : scopes.flatMap(scope=>RELATED[scope]||[]);
+    refreshSections(sectionIds,null,`${pendingExternalReason}:${scopes.join(',')}`);
+    refreshNativeScopes(scopes);
+    scheduleShellRefresh(pendingExternalReason,scopes.join(','));
+    window.dispatchEvent(new CustomEvent('export-mca:external-change',{detail:{reason:pendingExternalReason,scopes}}));
+    return true;
+  }
+
+  function queueExternalScopes(scopes, reason = 'live-change') {
+    for(const scope of scopes||[])if(scope==='erp'||Object.hasOwn(RELATED,scope))pendingExternalScopes.add(scope);
+    if(!pendingExternalScopes.size)return false;
+    pendingExternalReason=reason;
+    return flushExternalScopes();
+  }
+
+  function normalizeLiveVersions(payload) {
+    const normalized={};
+    for(const [scope,value] of Object.entries(payload?.versions||{})){
+      const version=Number(value);
+      if(Object.hasOwn(RELATED,scope)&&Number.isSafeInteger(version)&&version>=0)normalized[scope]=version;
+    }
+    return normalized;
+  }
+
+  function applyLiveSnapshot(payload) {
+    const next=normalizeLiveVersions(payload);
+    if(liveVersions===null){
+      liveVersions=next;
+      return [];
+    }
+    const changed=Object.keys(next).filter(scope=>
+      !Object.hasOwn(liveVersions,scope)||liveVersions[scope]!==next[scope]
+    );
+    liveVersions=next;
+    if(changed.length)queueExternalScopes(changed,'multiuser-change');
+    return changed;
+  }
+
+  async function requestLiveSnapshot() {
+    const token=localStorage.getItem('export_mca_token')||'';
+    if(!token)return null;
+    const response=await fetch(LIVE_SYNC_PATH,{
+      method:'GET',
+      cache:'no-store',
+      headers:{Authorization:`Bearer ${token}`}
+    });
+    if(response.status===401){
+      stopLiveSync();
+      window.dispatchEvent(new CustomEvent('export-mca:live-sync-status',{detail:{status:'unauthorized'}}));
+      window.ExportMcaAdminShellRuntime?.transitionExpiredSession?.('live_sync_unauthorized');
+      return null;
+    }
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  }
+
+  function livePollDelay() {
+    const base=document.hidden?LIVE_SYNC_HIDDEN_MS:LIVE_SYNC_VISIBLE_MS;
+    return Math.min(base*(2**Math.min(livePollFailures,4)),LIVE_SYNC_MAX_BACKOFF_MS);
+  }
+
+  function scheduleLivePoll(delay=livePollDelay()) {
+    clearTimeout(livePollTimer);
+    livePollTimer=null;
+    if(!localStorage.getItem('export_mca_token'))return false;
+    livePollTimer=setTimeout(pollLiveState,Math.max(0,delay));
+    return true;
+  }
+
+  async function pollLiveState() {
+    if(livePollRunning)return false;
+    if(!localStorage.getItem('export_mca_token')){
+      stopLiveSync();
+      return false;
+    }
+    livePollRunning=true;
+    try{
+      const payload=await requestLiveSnapshot();
+      if(payload){
+        const changed=applyLiveSnapshot(payload);
+        livePollFailures=0;
+        window.dispatchEvent(new CustomEvent('export-mca:live-sync-status',{detail:{status:'connected',changed}}));
+      }
+      return true;
+    }catch(error){
+      livePollFailures+=1;
+      if(livePollFailures===1)console.warn('[live-sync] update check failed',error);
+      window.dispatchEvent(new CustomEvent('export-mca:live-sync-status',{detail:{status:'retrying'}}));
+      return false;
+    }finally{
+      livePollRunning=false;
+      scheduleLivePoll();
+    }
+  }
+
+  function startLiveSync(immediate=false) {
+    if(!localStorage.getItem('export_mca_token'))return false;
+    return scheduleLivePoll(immediate?0:livePollDelay());
+  }
+
+  function stopLiveSync() {
+    clearTimeout(livePollTimer);
+    livePollTimer=null;
+    livePollFailures=0;
+    liveVersions=null;
+  }
+
   function scheduleSourceRefresh(frame,scope){
     const current=state.get(frame);
     if(!current)return;
@@ -300,9 +453,11 @@
           node?.matches?.('.app-section iframe')||node?.querySelector?.('.app-section iframe')
         ));
         if(addedFrame)installAll();
+        if(pendingExternalScopes.size&&!visibleModal(document))flushExternalScopes();
       });
-      frameObserver.observe(document.body,{childList:true,subtree:true});
+      frameObserver.observe(document.body,{attributes:true,attributeFilter:['class'],childList:true,subtree:true});
     }
+    startLiveSync();
   }
 
   function onSectionOpened(sectionId) {
@@ -316,14 +471,21 @@
   window.addEventListener('export-mca:section-changed', event => onSectionOpened(event.detail?.id));
   window.addEventListener('export-mca:navigation-shell-changed',installAll);
   window.addEventListener('storage',event=>{
+    if(event.key==='export_mca_token'){
+      if(event.newValue)startLiveSync(true);else stopLiveSync();
+      return;
+    }
     if(event.key!==LAST_MUTATION_KEY||!event.newValue)return;
     let scope=null;
     try{scope=JSON.parse(event.newValue)?.scope||null;}catch{}
-    refreshSections(RELATED[scope]||[],null,`cross-tab:${scope||'change'}`);
-    scheduleShellRefresh('cross-tab-change',scope);
+    queueExternalScopes([scope||'erp'],'cross-tab-change');
   });
-  window.addEventListener('pageshow', installAll);
-  window.ExportMcaEmbeddedAutoRefresh = Object.freeze({ installAll, onSectionOpened, refreshFrame, announceMutation, clearStaleOperationalContext });
+  window.addEventListener('export-mca:admin-ready',()=>startLiveSync(true));
+  window.addEventListener('pageshow',()=>{installAll();startLiveSync(true);});
+  window.ExportMcaEmbeddedAutoRefresh = Object.freeze({
+    installAll,onSectionOpened,refreshFrame,announceMutation,clearStaleOperationalContext,
+    applyLiveSnapshot,pollLiveState,startLiveSync,stopLiveSync,queueExternalScopes
+  });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installAll, { once:true });
   else installAll();
 })();

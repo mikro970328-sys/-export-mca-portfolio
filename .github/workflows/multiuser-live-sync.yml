@@ -1,0 +1,42 @@
+name: Multiuser Live Sync
+
+on:
+  pull_request:
+    paths:
+      - 'admin/embedded-auto-refresh.js'
+      - 'admin/*.html'
+      - 'api/live-updates.js'
+      - 'supabase/migrations/*multiuser_live_sync.sql'
+      - 'scripts/check-live-erp-refresh.mjs'
+      - 'scripts/check-multiuser-live-sync.mjs'
+      - '.github/workflows/multiuser-live-sync.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'admin/embedded-auto-refresh.js'
+      - 'admin/*.html'
+      - 'api/live-updates.js'
+      - 'supabase/migrations/*multiuser_live_sync.sql'
+      - 'scripts/check-live-erp-refresh.mjs'
+      - 'scripts/check-multiuser-live-sync.mjs'
+      - '.github/workflows/multiuser-live-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-multiuser-live-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify multiuser synchronization contract
+        run: node scripts/check-multiuser-live-sync.mjs
+      - name: Verify existing refresh behavior
+        run: node scripts/check-live-erp-refresh.mjs
+

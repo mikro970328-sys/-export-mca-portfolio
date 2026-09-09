@@ -13,7 +13,7 @@ const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
 
 for(const text of [
-  '/admin/embedded-auto-refresh.js?v=20260904-live2',
+  '/admin/embedded-auto-refresh.js?v=20260909-live3',
   '/admin/erp.js?v=20260905-accessflow1'
 ])requireText(shell,text,`shell ${text}`);
 
@@ -32,12 +32,20 @@ for(const text of [
 ])requireText(refresh,text,`sincronización ${text}`);
 
 for(const text of [
+  "const LIVE_SYNC_PATH = '/api/live-updates'",
+  'function applyLiveSnapshot(payload)',
+  "queueExternalScopes(changed,'multiuser-change')",
+  "window.addEventListener('export-mca:admin-ready'",
+  "new CustomEvent('export-mca:external-change'"
+])requireText(refresh,text,`sincronización multiusuario ${text}`);
+
+for(const text of [
   "if(current.wasBusy&&!busy&&current.pending)refreshFrame(frame,'close-after-change')",
   'function scheduleSourceRefresh(frame,scope)',
   'if(sourceFrame)scheduleSourceRefresh(sourceFrame,scope)',
   "if(method==='GET'&&current?.fallbackTimer)",
   'refreshSections(RELATED[scope] || [], sourceFrame',
-  "scheduleShellRefresh('cross-tab-change',scope)"
+  "queueExternalScopes([scope||'erp'],'cross-tab-change')"
 ])requireText(refresh,text,`recarga solo después de cambios ${text}`);
 
 for(const forbidden of [
@@ -105,7 +113,7 @@ vm.runInNewContext(refresh,{
   document:fixtureDocument,
   location:{href:'https://erp.example/admin/index.html',hash:'',pathname:'/admin/index.html',search:''},
   history:{state:null,replaceState(){}},
-  localStorage:{setItem(){}},
+  localStorage:{getItem(){return '';},setItem(){}},
   MutationObserver:FixtureObserver,
   CustomEvent:FixtureEvent,
   CSS:{escape:value=>String(value)},
