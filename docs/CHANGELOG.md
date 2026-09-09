@@ -2,11 +2,13 @@
 
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
-## 2026-09-09 — Operadores y concurrencia (validado en PR #287)
+## 2026-09-09 — Operadores y concurrencia
+
+Estado: publicado mediante [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287), commit `81648443ce66eda2ce4ed2e331146ad631ae751e`, producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY.
 
 - Se prepara la matriz de 22 escenarios con PostgreSQL 17.6, PostgREST real, dos operadores y cuentas QA desechables. La concurrencia se comprueba mediante bloqueos observados entre conexiones.
 - Se reutiliza el esquema financiero sin cambiar reglas comerciales; se añaden las migraciones reales de permisos, sesiones y sincronización y una fixture legacy de acceso. `pg` se añade solo como dependencia de desarrollo.
-- 22/22 escenarios aprobados en CI (run `34396574892`, head `490e6bfc18b85a2b55e4016c28fea96346bf3cbd`) y siete workflows aprobados. Se corrigieron omisiones del entorno QA y su espera de arranque, sin cambiar reglas productivas. Regresión financiera local 40/40. Detalles y límites en `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`.
+- 22/22 escenarios aprobados en CI final (run `34396893578`, head `e8f61d1ac288c4d5620b6ef870e208a883a5e322`), siete workflows de PR y seis de main. Se corrigieron omisiones del entorno QA y su espera de arranque, sin cambiar reglas productivas. Regresión financiera local 40/40. Preview llega al login; PWA productiva 200 y API de versiones 401 sin sesión. Detalles y límites en `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`.
 
 ## 2026-09-09 — Aceptación financiera y conciliación de caja
 

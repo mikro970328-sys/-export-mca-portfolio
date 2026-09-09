@@ -4,7 +4,7 @@
 
 ## Punto de entrada vigente
 
-Operadores/concurrencia validados en PR #287, base `95e352e0d466ca8392adef89e8e4897d19cf2da3`: 22/22 escenarios PostgreSQL/PostgREST reales y siete workflows aprobados para el head `490e6bfc18b85a2b55e4016c28fea96346bf3cbd`. Consultar `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md` y el corte vigente para el head final y publicación. No confundir HTTP/SQL con aceptación visual, ni usar Preview para escrituras comerciales: comparte producción.
+Operadores/concurrencia publicados mediante PR #287, commit `81648443ce66eda2ce4ed2e331146ad631ae751e`, producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY: 22/22 escenarios PostgreSQL/PostgREST reales, siete workflows de PR y seis de main aprobados. Run final de PR `34396893578`, head `e8f61d1ac288c4d5620b6ef870e208a883a5e322`; main `34397039678`. Consultar `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`. No confundir HTTP/SQL con aceptación visual, ni usar Preview para escrituras comerciales: comparte producción. El siguiente bloque es la aceptación visual con dos operadores/backend aislado accesible y móvil/PWA; después mejoras y auditoría integral. No repetir las matrices SQL/HTTP ya aprobadas como si faltaran.
 
 Finanzas publicada mediante PR #285, commit funcional `e33cb87bf278b3886dd0acc42a9f3250c78f5285`, producción `dpl_GP9Jw7tBYUh44h8dK5S4xyscWQeR` READY. Los 40 escenarios (25 SQL, 11 API, cuatro refresco) y 58/58 workflows de PR aprobaron. Matriz y límites en `docs/FINANCE_ACCEPTANCE.md`.
 
