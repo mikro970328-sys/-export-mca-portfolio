@@ -6,9 +6,11 @@
 
 - [PR #290](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/290) integrada, commit `dfe47514aeaafa6aa32d34ca960332464749c07a`. Añade QA automatizada; no modifica reglas comerciales, frontend productivo ni Supabase.
 - [Run 34401166506](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34401166506) aprobado: jobs `isolated-operators` e `isolated-browser` correctos; los cinco workflows de la PR aprobaron.
+- Main volvió a aprobar la aceptación aislada en el run `34401420872`. BrowserStack main `34401420975` conservó su contrato estático aprobado y falló en ambos jobs de dispositivo por `Automate testing time expired`; no es un fallo funcional del ERP ni se reintentó.
 - Dos cuentas distintas iniciaron sesión en contextos Chromium separados contra handlers reales, PostgreSQL 17.6 y PostgREST 12.2.3 desechables. A registró dos cobros desde la UI; B vio saldo 400 → 280 → 200 sin navegación ni recarga manual.
 - B entró desde `/admin/pwa.html` con perfil/viewport iPhone. El service worker se registró y la ruta abrió el shell. Con el detalle abierto, B mantuvo el saldo anterior; al cerrar el diálogo se aplicó el cambio pendiente, protegiendo trabajo en curso.
 - No hubo cuentas ni operaciones QA en producción. Esta evidencia certifica navegador aislado y ruta PWA móvil emulada, no Safari, instalación standalone ni hardware iPhone real.
+- La prueba aislada queda excluida explícitamente de la configuración BrowserStack: solo su job con PostgreSQL/PostgREST puede ejecutarla; la certificación externa conserva exclusivamente sus casos productivos de solo lectura.
 - Siguiente bloque funcional: ampliar los recorridos transversales de navegador que siguen pendientes en la lista de cierre. Después: mejoras priorizadas y auditoría integral.
 
 ## Corte publicado — operadores y concurrencia

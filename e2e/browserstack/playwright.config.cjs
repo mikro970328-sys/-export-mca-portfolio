@@ -3,6 +3,9 @@ const { defineConfig } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.cjs',
+  // The isolated multi-operator suite owns its own Chromium/PostgreSQL job.
+  // It must never consume BrowserStack device minutes or run against production.
+  testIgnore: '**/operator-live-sync.spec.cjs',
   // Each read-only production scope runs in an isolated real-iPhone session.
   // BrowserStack device startup and screenshots can legitimately push the
   // longer core journey beyond five minutes.
