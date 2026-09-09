@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
 
 const read=file=>fs.readFileSync(file,'utf8');
 const api=read('api/loads.js');
@@ -13,7 +15,7 @@ const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
 for(const text of [
   '/admin/loads.css?v=20260904-loadflow1',
-  '/admin/loads.js?v=20260904-loadflow1',
+  '/admin/loads.js?v=20260909-loadcard1',
   'id="pageMsg"',
   'role="status"',
   'aria-live="polite"',
@@ -83,7 +85,7 @@ forbid(api,/return fail\(res,400,translatedError\(raw\)\)/,'Loads API no puede c
 for(const text of [
   'DB canonical owner',
   'Loads UI',
-  'src="/admin/loads.js?v=20260904-loadflow1"',
+  'src="/admin/loads.js?v=20260909-loadcard1"',
   "can(load,'dispatch')",
   "can(load,'view_tracking')"
 ])requireText(canonicalGate,text,`gate UX-5 preservado ${text}`);
@@ -98,6 +100,47 @@ for(const text of [
   'node scripts/check-b9-public-boundaries.mjs',
   'node scripts/check-integrations.mjs'
 ])requireText(workflow,text,`workflow ${text}`);
+
+// Execute the existing owner, not a duplicate card renderer. Lightweight DOM
+// sinks cover every lifecycle stage with/without write capabilities; actual
+// mobile visibility and clicking are covered by isolated commercial COM-07.
+let cardChecks=0;
+for(const status of ['draft','reserved','loading','loaded','dispatched','cancelled']){
+  for(const allowed of [false,true]){
+    const label=`${status}/${allowed?'writer':'reader'}`;
+    try{
+      const nodes=new Map();
+      const document={getElementById(id){
+        if(!nodes.has(id))nodes.set(id,{value:'',innerHTML:'',textContent:'',classList:{toggle(){}}});
+        return nodes.get(id);
+      }};
+      const opened=[],actions=[];
+      const fixture={id:'qa-load',load_number:'CG-QA',status,capabilities:{status,actions:
+        Object.fromEntries(['reserve','start_loading','mark_loaded','dispatch'].map(key=>[key,{allowed,reason:'PERMISSION_REQUIRED'}]))}};
+      const context=vm.createContext({document,window:{addEventListener(){}},
+        localStorage:{getItem(){return '';}},location:{search:'?embedded=1'},
+        URLSearchParams,console,fixture,opened,actions});
+      vm.runInContext(ui,context,{timeout:1000});
+      vm.runInContext('state.loads=[fixture];renderRows();',context,{timeout:1000});
+      const cards=document.getElementById('loadCards').innerHTML;
+      const buttons=cards.match(/<button\b[^>]*>[\s\S]*?<\/button>/g)||[];
+      const details=buttons.filter(button=>button.includes('data-open-load="qa-load"'));
+      assert.ok(details.length>0,'mobile card must open detail independently of next action');
+      assert.ok(details.some(button=>button.includes('type="button"')&&!/\bdisabled\b|data-quick-action/.test(button)),
+        'detail must be a separate enabled native button');
+      assert.equal(cards.includes('data-quick-action='),allowed&&['draft','reserved','loading','loaded'].includes(status),
+        'quick actions must still obey capabilities');
+      vm.runInContext(`openLoad=id=>{opened.push(id);return Promise.resolve(true);};
+        handleAction=(...args)=>actions.push(args);
+        handleLoadListClick({target:{closest:selector=>selector==='[data-open-load]'?{dataset:{openLoad:fixture.id}}:null}});`,
+        context,{timeout:1000});
+      assert.deepEqual(opened,['qa-load']);
+      assert.equal(actions.length,0,'opening a card must not reserve or advance it');
+      cardChecks++;
+    }catch(error){failures.push(`mobile card ${label}: ${error.message}`);}
+  }
+}
+console.log(`Loads mobile detail regression: ${cardChecks}/12 passed.`);
 
 if(failures.length){
   console.error('UX6 Loads presentation gate failed:\n'+failures.map(item=>`- ${item}`).join('\n'));
