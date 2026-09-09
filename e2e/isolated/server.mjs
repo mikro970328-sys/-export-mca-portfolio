@@ -7,7 +7,7 @@ export const root = fileURLToPath(new URL('../../', import.meta.url));
 const routeNames = ['products','suppliers','purchases','warehouse','inventory','loads','sales',
   'payables','supplier-payments','costs','profitability','reports','ap-links','publications',
   'sales-order-ux','sales-workspace','sales-loads','sales-supply','customer-advances',
-  'proformas','shipment-document-readiness','shipments','clients','operational-links'];
+  'proformas','shipment-document-readiness','shipments','clients','importers','operational-links'];
 const mime = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
   '.json':'application/json', '.webmanifest':'application/manifest+json',
   '.png':'image/png', '.svg':'image/svg+xml', '.ico':'image/x-icon' };

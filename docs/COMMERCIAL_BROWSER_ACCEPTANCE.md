@@ -79,7 +79,11 @@ Primera ejecución `34404900511`, head `540dc78`: detectó columnas legacy omiti
 en la base QA y permisos de numeración ausentes, antes de crear la compra. Se
 completó únicamente la fixture aislada, tras contrastarla con producción. El
 helper de navegación móvil debe abrir el botón visible del encabezado, no
-suponer que `mobileMenuBtn` es el control mostrado por el tema vigente.
+  tomar una instantánea prematura de visibilidad ni pulsar el control interior
+  que permanece fuera del viewport. La segunda ejecución `34405334186` llegó
+  a crear la compra; se selecciona explícitamente la vista Todas para incluir
+  borradores (el filtro inicial Abiertas no los muestra). Se completa además
+  la ruta QA de Importadoras con su handler original.
 
 Chromium completo y WebKit móvil emulado no equivalen a Safari en hardware
 iPhone, PWA instalada ni push del dispositivo. BrowserStack permanece separado,

@@ -90,7 +90,10 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
     const navigate = async (session,name)=>{
       const page=session.page,button=page.locator(`[data-section="${name}Section"]`).first();
       if (info.project.use.isMobile && !await page.locator('#sidebar').evaluate(el=>el.classList.contains('mobile-open'))) {
-        await page.locator('#sidebarToggle:visible, #mobileMenuBtn:visible').first().click();
+        // The inner sidebar toggle has geometry even when translated offscreen.
+        // Wait for and click the actual header control, not an isVisible snapshot
+        // taken while the authenticated shell is still being initialized.
+        await page.locator('#mobileMenuBtn').click();
         await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);
       }
       if (!await button.isVisible()) {
@@ -138,7 +141,8 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
     let po,so,load,invoice;
     await step('COM-01 PWA logins and purchase creation do not create stock',async()=>{
       await navigate(b,'inventory');await inventoryValues(0,0,0);
-      await navigate(a,'purchases');await purchase.locator('#newOrder').click();
+      await navigate(a,'purchases');await purchase.locator('[data-view="all"]').click();
+      await purchase.locator('#newOrder').click();
       await purchase.locator('#oSupplier').selectOption(f.supplier);
       await purchase.locator('#oWarehouse').selectOption(f.warehouse);
       await purchase.locator('#oReference').fill('QA commercial chain');
@@ -193,7 +197,8 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await screenshot(b,'05-complete-stock');
     });
     await step('COM-06 create and confirm sale with the received product',async()=>{
-      await navigate(a,'sales');await sales.locator('#newOrder').click();
+      await navigate(a,'sales');await sales.locator('[data-view="all"]').click();
+      await sales.locator('#newOrder').click();
       await sales.locator('#oClientPickerButton').click();
       await sales.locator(`[data-client-id="${f.client}"]`).click();
       await sales.locator('#oImporter').selectOption(f.importer);
@@ -301,6 +306,7 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       };
       const saleRow=(await report('sales')).find(row=>row.sales_order_id===so.id || row.so_number===so.so_number);
       expect([saleRow.order_total,saleRow.recognized_merchandise_cogs,saleRow.direct_cost_amount,saleRow.contribution_margin].map(Number)).toEqual([400,250,50,100]);
+      expect(saleRow.merchandise_cost_coverage).toBe('estimated');
       const invoiceRow=(await report('invoices'))[0];
       expect([invoiceRow.invoice_total,invoiceRow.paid_amount,invoiceRow.balance_due].map(Number)).toEqual([400,400,0]);
       const cash=await report('cash');
@@ -309,7 +315,7 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       expect(stockRows.reduce((sum,row)=>sum+Number(row.physical_quantity),0)).toBe(0);
       const actors=await f.rows("select distinct actor_admin_id from audit_log where entity_id in ($1,$2,$3,$4) and action<>'login'",[po.id,so.id,load.id,invoice.id]);
       expect(actors.length).toBeGreaterThan(0);expect(actors.every(row=>row.actor_admin_id===users.a.id)).toBe(true);
-      evidence.reconciliation={sale:400,purchase:250,collected:400,receivable:0,directCost:50,contribution:100,physicalStock:0};
+      evidence.reconciliation={sale:400,purchase:250,collected:400,receivable:0,directCost:50,contribution:100,physicalStock:0,costCoverage:'estimated'};
       await screenshot(a,'12-reconciled-report');
     });
     expect({a:a.navigations,b:b.navigations,bf:b.frames}).toEqual(nav);
