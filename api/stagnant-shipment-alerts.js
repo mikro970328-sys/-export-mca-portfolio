@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase, upstreamFailureStatus, writeAudit } from './_lib.js';
 import { DAY, alertKey, validDate, elapsedDays, repeatDue, loadConditionMap, reconcileAlert, closeCondition, changedAction } from './_alert-lifecycle.js';
 
 const EVENT_TYPE='shipment_stagnant_status';
@@ -47,5 +47,5 @@ export default async function handler(req,res){
   const isCron=cronAuthorized(req),admin=isCron?{username:'vercel-cron',admin_id:null}:await authorizeAdmin(req,res,'notifications.manage');if(!admin)return;
   if(req.method!=='GET')return fail(res,405,'Método no permitido');
   try{const result=await runCheck();await writeAudit(admin,'stagnant_shipment_alerts_check','system',null,result);return ok(res,result);}
-  catch(error){console.error('STAGNANT_SHIPMENT_ALERTS_ERROR',error);return fail(res,400,'No se pudieron comprobar los contenedores detenidos',error.message);}
+  catch(error){console.error('STAGNANT_SHIPMENT_ALERTS_ERROR',error);return fail(res,upstreamFailureStatus(error),'No se pudieron comprobar los contenedores detenidos',error.message);}
 }

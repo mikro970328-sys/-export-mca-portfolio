@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, upstreamFailureStatus, writeAudit } from './_lib.js';
 import { HOUR, DAY, alertKey, validDate, elapsedHours, repeatDue, loadConditionMap, reconcileAlert, closeCondition, changedAction } from './_alert-lifecycle.js';
 
 const CLIENT_ALERT_AFTER=48*HOUR;
@@ -144,5 +144,5 @@ export default async function handler(req,res){
       const result=await actOnAlert(admin,id,bodyAction,body);await writeAudit(admin,`operational_alert_${bodyAction}`,'notification',id,{result});return ok(res,{notification:result});
     }
     return fail(res,405,'Método no permitido');
-  }catch(error){console.error('OPERATIONAL_ALERTS_ERROR',error);return fail(res,400,'No se pudieron procesar las alertas operativas',error.message);}
+  }catch(error){console.error('OPERATIONAL_ALERTS_ERROR',error);return fail(res,upstreamFailureStatus(error),'No se pudieron procesar las alertas operativas',error.message);}
 }
