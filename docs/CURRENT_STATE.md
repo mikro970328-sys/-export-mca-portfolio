@@ -1,6 +1,57 @@
 # Current State — Export MCA ERP
 
-Última actualización: 2026-07-30 23:22 ET
+Última actualización del corte vigente: 2026-09-09
+
+## Corte vigente — cierre funcional y sincronización
+
+- Base de esta entrega: `main` en `5822d2352fb03c485c3676fba84825f2cd65864c`, PR #278 de sincronización multiusuario.
+- Rama de corrección: `fix/live-sync-recovery`; frontend listo para verificación de Preview y publicación por PR. Este corte no certifica todavía el despliegue de esa rama.
+- Migración `20260909143701_live_sync_recovery.sql`: aplicada y verificada en Supabase. Es compatible con el frontend anterior; no elimina registros ni cambia contratos de negocio.
+- Se mantienen Vercel, las APIs autenticadas y la autenticación administrativa personalizada; no se añade acceso directo del navegador a Supabase.
+
+### Corrección de esta entrega
+
+- Las consultas de sincronización tienen un límite de 12 segundos, incluido el cuerpo JSON. Los fallos se reintentan con espera progresiva hasta 60 segundos, sin superponer consultas.
+- Al cerrar o cambiar sesión se cancelan las consultas pendientes y se descartan respuestas de la sesión anterior, incluidos errores 401 tardíos.
+- Sin conexión se pausa la consulta; al volver la conexión o restaurar la página se retoma automáticamente, conservando las versiones de la misma sesión.
+- Se conserva el refresco selectivo y la espera mientras hay un editor modal abierto. No se fuerza una recarga completa de página.
+- Los triggers emiten versiones únicamente cuando las filas realmente cambian. Sentencias vacías, escrituras idénticas e inserciones deduplicadas permanecen silenciosas.
+- Se excluye del refresco visual el cursor interno `web_push_runtime_state`, cuyo timestamp cambia en cada conciliación aunque no haya novedades.
+- Cobertura productiva: 66 tablas, 198 triggers por evento y los mismos 17 ámbitos. Se preservan los triggers de negocio y auditoría.
+- Asset administrativo versionado como `20260909-live4`; las comprobaciones de carga se actualizan conjuntamente.
+
+### Evidencia de validación
+
+- 95/95 scripts `scripts/check-*.mjs` aprobados localmente; incluidos contratos estáticos, APIs y pruebas SQL aisladas.
+- Dos sesiones simuladas del runtime real reciben un mismo cambio sin recarga manual. Se probaron además modales, timeout de fetch y JSON, 503, payload inválido, offline/online, segundo plano, logout y respuestas tardías.
+- PostgreSQL aislado: inserción/edición/eliminación múltiples, JSON/null, claves compuestas, UPSERT, deduplicación, rollback, reejecución de la migración y privilegios.
+- La prueba B10 ejecuta el reconciliador real de web push y confirma que una segunda conciliación sin cambios no incrementa la versión de notificaciones.
+- En Supabase se ejecutaron ambos reconciliadores con el mismo instante en transacciones revertidas, antes de publicar el frontend. La repetición pasó de 15 señales falsas en la base anterior a 0 con la corrección, tanto en el ensayo como tras aplicar la migración.
+- `anon` y `authenticated` no pueden leer el estado; `service_role` conserva solo lectura y no puede invocar directamente la función privada ni escribir versiones.
+
+### Límites de esta evidencia
+
+- Las dos sesiones de la prueba son simuladas, no dos operadores autenticados en producción. No se certifica aquí una operación comercial completa ni Safari/iPhone/PWA real.
+- La certificación externa iOS/BrowserStack de la entrega anterior está bloqueada por cuota (`Automate testing time expired`); no se ha eludido ni modificado ese control.
+- Los avisos preexistentes de Supabase (índices duplicados, protección de contraseñas filtradas y observaciones informativas) se revisan separadamente; esta corrección no equivale a la auditoría integral.
+
+### Qué falta para declarar el ERP funcionalmente cerrado
+
+Son criterios de aceptación pendientes de evidencia, no una afirmación de que falten esos módulos:
+
+1. Recorrer compra → recepción/almacén o envío directo → inventario/carga → venta → factura/cobro, incluyendo cancelaciones y errores.
+2. Conciliar saldos de clientes/proveedores, anticipos, costes, existencias y totales de reportes con los documentos de cada recorrido.
+3. Verificar tracking, expedientes/documentos, tareas, alertas y entregas de notificaciones con casos controlados.
+4. Probar permisos por rol, dos usuarios simultáneos y recuperación de sesión/conexión en escritorio y móvil/PWA reales.
+5. Resolver los defectos encontrados y dejar una matriz de aceptación con evidencia. Después: mejoras priorizadas y auditoría integral de seguridad, datos, rendimiento y operación.
+
+No iniciar una migración arquitectónica ni crear operaciones comerciales reales como sustituto de un entorno/caso QA controlado.
+
+## Archivo histórico — corte del 2026-07-30
+
+Lo que sigue conserva el contexto de aquella fecha; no describe el estado actual de producción.
+
+Última actualización histórica: 2026-07-30 23:22 ET
 
 ## Objetivo actual
 

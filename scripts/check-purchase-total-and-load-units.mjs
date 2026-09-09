@@ -61,7 +61,7 @@ for(const text of [
 for(const text of [
   '/admin/purchases.css?v=20260904-directflow1',
   '/admin/purchases.js?v=20260904-cancelflow1',
-  '/admin/embedded-auto-refresh.js?v=20260909-live3'
+  '/admin/embedded-auto-refresh.js?v=20260909-live4'
 ])requireText(html,text,`cache de Compras ${text}`);
 
 if(failures.length){

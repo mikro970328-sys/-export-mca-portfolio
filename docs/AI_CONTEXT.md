@@ -1,6 +1,14 @@
 # AI Context — Export MCA ERP
 
-Última actualización: 2026-07-30
+Última actualización: 2026-09-09
+
+## Punto de entrada vigente
+
+Consultar primero el corte de septiembre en `docs/CURRENT_STATE.md`. La base productiva ya incluye la sincronización multiusuario de la PR #278. El siguiente cambio acotado es `fix/live-sync-recovery`: recuperación de consultas y supresión de señales de cambio falsas; no es una reescritura del ERP.
+
+Orden solicitado por el propietario: cerrar la validación funcional, después mejoras y finalmente auditoría integral. Las verificaciones de seguridad y regresión de cada cambio no se posponen hasta esa auditoría.
+
+Las descripciones de deuda y estados de julio que siguen son una referencia histórica, no prueba de que esos archivos sigan activos. Conservar las reglas de trabajo, pero contrastar cada hallazgo con el código actual y no reabrir fases ya entregadas sin evidencia.
 
 ## Propósito de este archivo
 
