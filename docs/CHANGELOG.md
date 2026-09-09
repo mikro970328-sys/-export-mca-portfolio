@@ -4,12 +4,15 @@ Este archivo registra cambios técnicos y funcionales confirmados. No se debe re
 
 ## 2026-09-09 — Permisos y diálogos con dos operadores (PR #289)
 
-Estado: validado en rama; pendiente publicación tras integrar main #290/#291.
+Estado: Publicado mediante [PR #289](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/289), commit `55c6ae255b7abcd26068b941f0bc7c43c9f7d1d4`. Producción `dpl_4pshzRmzZGJmzntku1i5K8mz4KYG` READY.
 
 - Corregidas las acciones obsoletas tras cambiar permisos y el cierre del detalle cubierto por el encabezado móvil, mediante los owners existentes de sincronización y CSS.
-- Run `34401479844`, head `26cf44003b17767381e25581546190506f589219`: 20/20 escenarios (diez en Chromium completo y diez en WebKit móvil), 52/52 workflows. Capturas revisadas; Preview `dpl_FsU26kh4ANZUpSzhXMcZgUKhsk22` READY y entrada PWA al login verificada.
+- Run final de PR `34402541189`, head `cb133dda4e8c2e165e4fd9f48ecd5c5b9e7927b5`: 20/20 escenarios (diez por motor), 52/52 workflows; 55 check runs aprobados y uno omitido por condición. Preview `dpl_enFr3jigPxHr9aK9hLRHyo1qb2Be` READY y entrada PWA al login verificada.
 - Cobertura de cobros, auditoría, formularios, permisos, conexión, recarga, revocación y nuevo login. Cero errores JavaScript, API 404/5xx, red externa o caídas.
 - Chromium completo evita la caída nativa BadgeService del shell reducido sin modificar sesión ni SW. Sin migraciones ni operaciones comerciales QA productivas; WebKit emulado no certifica iPhone real. Matriz: `docs/BROWSER_OPERATOR_ACCEPTANCE.md`.
+
+- Main: ocho de nueve workflows aprobados, incluidos Browser Operator Acceptance `34402916794` y Operator and Concurrency Acceptance `34402917038`. BrowserStack `34402916772` aprobó su contrato de solo lectura; ambos jobs de iPhone fallaron por `Automate testing time expired`, sin reintentos manuales.
+- Producción: PWA, shell, runtime live7 y ambos CSS viewport1 responden HTTP 200; las revisiones publicadas contienen las correcciones. API de versiones y Facturas responden HTTP 401 sin sesión. Consulta de logs 5xx para este deployment sin resultados en el intervalo observado 20:37:06–20:47:06 UTC.
 
 ## 2026-09-09 — Aceptación visual aislada multioperador/PWA
 

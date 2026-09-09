@@ -2,13 +2,15 @@
 
 Última actualización del corte vigente: 2026-09-09
 
-## Corte validado — permisos, diálogos y dos operadores (PR #289)
+## Corte publicado — permisos, diálogos y dos operadores (PR #289)
 
-- Run `34401479844`, head `26cf44003b17767381e25581546190506f589219`: 20/20 escenarios (diez en Chromium completo y diez en WebKit móvil), 52/52 workflows. Capturas revisadas; Preview `dpl_FsU26kh4ANZUpSzhXMcZgUKhsk22` READY y entrada PWA al login verificada.
-- Correcciones en los owners existentes: `account` invalida capacidades sin descartar editores; el iframe cabe bajo el encabezado y el cierre queda accesible. Runtime `20260909-live7`, CSS de shell `20260909-viewport1`. Sin migraciones ni datos comerciales QA productivos.
-- La revocación y el nuevo login aprueban con la sesión/SW originales; Chromium reducido caía por falta nativa de BadgeService y se usa el canal Chromium completo.
-- Se integra main `58f523b` (#290/#291) conservando su prueba y documentación. Pendientes controles de la integración y publicación.
-- Matriz: `docs/BROWSER_OPERATOR_ACCEPTANCE.md`. Faltan otros recorridos transversales e iPhone/Safari/PWA instalado. BrowserStack sigue limitado por cuota; sin reintentos manuales.
+- Publicado mediante [PR #289](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/289), commit `55c6ae255b7abcd26068b941f0bc7c43c9f7d1d4`. Producción `dpl_4pshzRmzZGJmzntku1i5K8mz4KYG` READY.
+- Run final de PR `34402541189`, head `cb133dda4e8c2e165e4fd9f48ecd5c5b9e7927b5`: 20/20 escenarios (diez por motor), 52/52 workflows; 55 check runs aprobados y uno omitido por condición. Preview `dpl_enFr3jigPxHr9aK9hLRHyo1qb2Be` READY y entrada PWA al login verificada. Capturas revisadas del cierre móvil, editor preservado, sesión revocada y saldo final USD 195.
+- Correcciones en los owners existentes: `account` invalida capacidades sin descartar editores; el iframe cabe bajo el encabezado y el cierre queda accesible. Runtime `20260909-live7`, CSS `20260909-viewport1`. Sin migraciones ni datos comerciales QA productivos.
+- Se conservaron los avances simultáneos #290/#291 y el aislamiento de BrowserStack #292. Chromium completo supera la revocación con la sesión/SW originales; el ejecutable reducido caía por falta nativa de BadgeService.
+- Main: ocho de nueve workflows aprobados, incluidos Browser Operator Acceptance `34402916794` y Operator and Concurrency Acceptance `34402917038`. BrowserStack `34402916772` aprobó su contrato de solo lectura; ambos jobs de iPhone fallaron por `Automate testing time expired`, sin reintentos manuales.
+- Producción: PWA, shell, runtime live7 y ambos CSS viewport1 responden HTTP 200; las revisiones publicadas contienen las correcciones. API de versiones y Facturas responden HTTP 401 sin sesión. Consulta de logs 5xx para este deployment sin resultados en el intervalo observado 20:37:06–20:47:06 UTC.
+- Matriz: `docs/BROWSER_OPERATOR_ACCEPTANCE.md`. Siguiente bloque: ampliar recorridos transversales comerciales, tareas, tracking/documentos y notificaciones con datos controlados. La certificación de iPhone/Safari/PWA instalado sigue pendiente. Después: mejoras y auditoría integral.
 
 ## Corte publicado — aceptación visual aislada multioperador/PWA
 
@@ -108,7 +110,7 @@ Son criterios de aceptación pendientes de evidencia, no una afirmación de que 
 1. Recorrer compra → recepción/almacén o envío directo → inventario/carga → venta → factura/cobro, incluyendo cancelaciones y errores.
 2. Conciliar saldos de clientes/proveedores, anticipos, costes, existencias y totales de reportes con los documentos de cada recorrido.
 3. Verificar tracking, expedientes/documentos, tareas, alertas y entregas de notificaciones con casos controlados.
-4. Ampliar permisos por rol y recuperación de sesión/conexión en recorridos de navegador; dos usuarios simultáneos y ruta PWA móvil emulada ya están aprobados. Sigue pendiente iPhone/Safari real.
+4. Ampliar permisos y sesión a otros recorridos. Facturación con dos operadores, retirada/restitución de escritura, offline/online, recarga, revocación y nuevo login ya aprobaron en Chromium y WebKit móvil emulado. Sigue pendiente iPhone/Safari real.
 5. Resolver los defectos encontrados y dejar una matriz de aceptación con evidencia. Después: mejoras priorizadas y auditoría integral de seguridad, datos, rendimiento y operación.
 
 No iniciar una migración arquitectónica ni crear operaciones comerciales reales como sustituto de un entorno/caso QA controlado.
