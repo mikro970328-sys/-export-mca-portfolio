@@ -130,6 +130,7 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       const close = await frame(session).locator('[data-close="detail"]').boundingBox();
       const header = await session.page.locator('.topbar').boundingBox();
       expect(close.y).toBeGreaterThanOrEqual(header.y+header.height);
+      if(amount===120) await screenshot(session,'02-payment-detail-controls');
       await frame(session).locator('[data-close="detail"]').click();
       await expect(frame(session).locator('#detailModal')).toBeHidden();
     };
@@ -145,6 +146,7 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       }
       const loginActors = (await f.rows("select actor_admin_id from audit_log where action='login'")).map(r=>r.actor_admin_id);
       expect(loginActors).toEqual(expect.arrayContaining([users.a.id,users.b.id]));
+      await row(b).scrollIntoViewIfNeeded();
       await screenshot(b,'01-two-operators-initial-balance');
     });
     const nav = { a:a.navigations, b:b.navigations, af:a.framesNavigated, bf:b.framesNavigated };
@@ -221,12 +223,14 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       expect(result.status).toBe(200);
       await expect(b.page.locator('#loginPage')).toBeVisible();
       await expect(a.page.locator('#loginPage')).toBeHidden();await balance(a,195);
+      await screenshot(b,'09-session-revoked');
     });
     await step('UI-10 fresh login restores current data without repeating a collection', async()=> {
       await login(b,'b');await balance(b,195);
       expect((await f.rows('select id from payments where invoice_id=$1',[invoice.id])).length).toBe(3);
       const totals = await f.one('select sum(amount) as total from payments where invoice_id=$1',[invoice.id]);
       expect(Number(totals.total)).toBe(205);
+      await row(b).scrollIntoViewIfNeeded();
       await screenshot(b,'10-fresh-session-current-balance');
     });
     expect(diagnostics.errors).toEqual([]);

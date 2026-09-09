@@ -14,7 +14,9 @@ export default defineConfig({
   reporter: [['line']],
   outputDir: 'test-results',
   projects: [
-    { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 1000 } } },
+    // Full Chromium implements the service-worker BadgeService used on logout.
+    // The reduced headless shell terminates its renderer on that native call.
+    { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'], channel:'chromium', viewport: { width: 1440, height: 1000 } } },
     // WebKit with a touch viewport is not Safari on a real installed iPhone PWA.
     { name: 'webkit-mobile', use: { ...devices['iPhone 13'] } }
   ]
