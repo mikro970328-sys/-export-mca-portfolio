@@ -157,3 +157,10 @@ Estado: **documentación fusionada en `main`; sin cambios funcionales**
 - La consolidación funcional de Clientes no está en `main`.
 - Producción conserva el módulo anterior.
 - La documentación de continuidad y el baseline de Clientes están disponibles en `main`.
+# 2026-09-09 — Aceptación de ventas y logística (preparada)
+
+- 39 escenarios de comportamiento en base aislada (29 SQL, 10 API), 74 migraciones reales y CI sin credenciales.
+- Corrección atómica del reemplazo de cargues independientes y de la mercancía del contenedor al editar/asignar.
+- La ruta de compatibilidad de ventas conserva el total exacto; validación de importes y respuestas 400 para sobreasignación/contexto.
+- Las acciones de cargues reflejan la protección existente de vínculos comerciales. Matriz y límites: `docs/SALES_LOGISTICS_ACCEPTANCE.md`.
+- Publicación y migración productiva pendientes al preparar la PR; no se registran escrituras comerciales QA en producción.

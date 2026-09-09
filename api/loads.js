@@ -112,6 +112,8 @@ function translatedError(raw){
     ['CONTAINER_REFERENCE_INVALID','La referencia del contenedor no es válida. Usa letras/números y, si necesitas, espacios, guion, punto, slash o underscore.'],
     ['LOAD_SHIPMENT_CLIENT_MISMATCH','El cliente del contenedor no coincide con el cliente de la venta vinculada al cargue.'],
     ['LOAD_SHIPMENT_IMPORTER_MISMATCH','La importadora del contenedor no coincide con la importadora de la venta vinculada al cargue.'],
+    ['LOAD_SALES_CONTEXT_SHIPMENT_MISMATCH','El cliente o la importadora del contenedor no coincide con la venta vinculada al cargue.'],
+    ['LOAD_HAS_SALES_ALLOCATIONS','La mercancía de este cargue está vinculada a una venta y no admite reemplazar el plan.'],
     ['LOAD_ALREADY_HAS_CONTAINER','Este cargue ya tiene un contenedor asignado.'],
     ['LOAD_SHIPMENT_LOCKED_BY_STATUS','El contenedor ya no puede cambiarse en el estado actual del cargue.'],
     ['LOAD_HAS_NO_CONTAINER','Asigna un contenedor antes de despachar la mercancía.'],
