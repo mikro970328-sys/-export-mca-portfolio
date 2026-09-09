@@ -7,6 +7,7 @@
   let pendingCollectionId = '';
   let pendingSalesOrderId = '';
   const modalReturnFocus = new Map();
+  let invoiceDraft = null;
 
   const state = {
     invoices: [],
@@ -274,6 +275,10 @@
     const id = modalId(name);
     const modal = $(id);
     if (!modal) return;
+    if (id === 'invoiceModal') {
+      invoiceDraft?.destroy({ flush:true });
+      invoiceDraft = null;
+    }
     modal.classList.add('hidden');
     modal.setAttribute('aria-hidden', 'true');
     if (!document.querySelector('.modal:not(.hidden)')) document.body.classList.remove('modal-open');
@@ -316,11 +321,57 @@
     $('invoiceLines').innerHTML = rows.length ? rows.join('') : emptyState('Sin saldo disponible', 'Esta venta no tiene cantidades pendientes de facturar.');
   }
 
+  function captureInvoiceDraft() {
+    return {
+      sales_order_id:$('iSalesOrder').value,
+      issue_date:$('iIssueDate').value,
+      due_date:$('iDueDate').value,
+      notes:$('iNotes').value,
+      lines:[...document.querySelectorAll('[data-invoice-line]')].map(node => ({
+        sales_order_item_id:node.dataset.invoiceLine,
+        quantity:node.querySelector('[data-qty]')?.value || '',
+        notes:node.querySelector('[data-note]')?.value || ''
+      }))
+    };
+  }
+
+  function restoreInvoiceDraft(data = {}) {
+    $('iSalesOrder').value = data.sales_order_id || '';
+    if (data.sales_order_id && $('iSalesOrder').value !== String(data.sales_order_id)) throw new Error('La venta del borrador ya no está disponible.');
+    $('iIssueDate').value = data.issue_date || '';
+    $('iDueDate').value = data.due_date || '';
+    $('iNotes').value = data.notes || '';
+    const editing = state.editingId ? state.invoices.find(row => row.id === state.editingId) : null;
+    renderInvoiceLines(editing);
+    const saved = new Map((Array.isArray(data.lines) ? data.lines : []).map(line => [String(line.sales_order_item_id), line]));
+    document.querySelectorAll('[data-invoice-line]').forEach(node => {
+      const line = saved.get(String(node.dataset.invoiceLine));
+      if (!line) return;
+      const quantity = node.querySelector('[data-qty]');
+      const notes = node.querySelector('[data-note]');
+      if (quantity) quantity.value = line.quantity || '';
+      if (notes) notes.value = line.notes || '';
+    });
+  }
+
+  function activateInvoiceDraft(invoice = null, entrySalesOrderId = '') {
+    const suffix = invoice ? invoice.id : entrySalesOrderId ? `sale-${entrySalesOrderId}` : 'general';
+    invoiceDraft = window.ExportMcaDrafts?.register({
+      root:document.querySelector('#invoiceModal .invoice-form-dialog'),
+      key:`invoice:${invoice ? 'edit' : 'new'}:${suffix}`,
+      title:invoice ? `edición de ${invoice.invoice_number}` : 'nueva factura',
+      capture:captureInvoiceDraft,
+      restore:restoreInvoiceDraft
+    }) || null;
+  }
+
   function openCreate(salesOrderId = '') {
     if (!state.writeAccess) {
       setPageMessage('No tienes permiso para crear facturas financieras.');
       return false;
     }
+    invoiceDraft?.destroy({ flush:true });
+    invoiceDraft = null;
     state.editingId = null;
     $('invoiceTitle').textContent = 'Nueva factura de cobro';
     fillSalesOrderOptions();
@@ -334,6 +385,7 @@
     if (salesOrderId && $('iSalesOrder').value !== String(salesOrderId)) {
       message('invoiceMsg', 'La venta ya no tiene cantidades disponibles para facturar.');
     }
+    activateInvoiceDraft(null, salesOrderId);
     openModal('invoice', 'iSalesOrder');
     return true;
   }
@@ -341,6 +393,8 @@
   function openEdit(id) {
     const invoice = state.invoices.find(row => String(row.id) === String(id));
     if (!invoice || !can(invoice, 'edit')) return false;
+    invoiceDraft?.destroy({ flush:true });
+    invoiceDraft = null;
     state.editingId = invoice.id;
     $('invoiceTitle').textContent = `Editar ${invoice.invoice_number}`;
     fillSalesOrderOptions(invoice);
@@ -351,6 +405,7 @@
     $('iNotes').value = invoice.notes || '';
     renderInvoiceLines(invoice);
     message('invoiceMsg', '');
+    activateInvoiceDraft(invoice);
     openModal('invoice', 'iIssueDate');
     return true;
   }
@@ -387,6 +442,9 @@
           lines
         })
       });
+      invoiceDraft?.clear({ silent:true });
+      invoiceDraft?.destroy({ flush:false });
+      invoiceDraft = null;
       closeModal('invoice', false);
       setPageMessage(state.editingId ? 'Factura actualizada correctamente.' : 'Borrador de factura creado correctamente.', 'ok');
       await refresh();

@@ -19,6 +19,7 @@
   const modalTriggers = new Map();
   let decisionResolver = null;
   let decisionPreviousFocus = null;
+  let supplierDraft = null;
 
   const token = () => localStorage.getItem('export_mca_token') || '';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -299,8 +300,15 @@
     state.editingId = item?.id || null;
     $('supplierModalTitle').textContent = item ? `Editar ${item.name}` : 'Nuevo proveedor';
     $('saveSupplier').textContent = item ? 'Guardar cambios' : 'Guardar proveedor';
+    supplierDraft?.destroy({ flush:true });
+    supplierDraft = null;
     fillForm(item);
     formMessage();
+    supplierDraft = window.ExportMcaDrafts?.register({
+      root:$('supplierForm'),
+      key:item ? `supplier:${item.id}` : 'supplier:new',
+      title:item ? `edición de ${item.name}` : 'nuevo proveedor'
+    }) || null;
     openModal('supplierModal', '#supplierName');
     return true;
   }
@@ -342,6 +350,9 @@
         method:state.editingId ? 'PATCH' : 'POST',
         body:JSON.stringify(body)
       });
+      supplierDraft?.clear({ silent:true });
+      supplierDraft?.destroy({ flush:false });
+      supplierDraft = null;
       closeModal('supplierModal');
       const changed = Boolean(state.editingId);
       state.editingId = null;
@@ -417,6 +428,8 @@
   }
 
   function closeSupplierEditor() {
+    supplierDraft?.destroy({ flush:true });
+    supplierDraft = null;
     state.editingId = null;
     closeModal('supplierModal');
   }

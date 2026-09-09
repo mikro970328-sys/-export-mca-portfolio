@@ -19,6 +19,7 @@
   const modalTriggers = new Map();
   let decisionResolver = null;
   let decisionPreviousFocus = null;
+  let productDraft = null;
 
   const token = () => localStorage.getItem('export_mca_token') || '';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -332,8 +333,15 @@
     state.editingId = item?.id || null;
     $('productModalTitle').textContent = item ? `Editar ${item.name}` : 'Nuevo producto';
     $('saveProduct').textContent = item ? 'Guardar cambios' : 'Guardar producto';
+    productDraft?.destroy({ flush:true });
+    productDraft = null;
     fillForm(item);
     formMessage();
+    productDraft = window.ExportMcaDrafts?.register({
+      root:$('productForm'),
+      key:item ? `product:${item.id}` : 'product:new',
+      title:item ? `edición de ${item.name}` : 'nuevo producto'
+    }) || null;
     openModal('productModal', '#productName');
     return true;
   }
@@ -380,6 +388,9 @@
         method:state.editingId ? 'PATCH' : 'POST',
         body:JSON.stringify(body)
       });
+      productDraft?.clear({ silent:true });
+      productDraft?.destroy({ flush:false });
+      productDraft = null;
       closeModal('productModal');
       const changed = Boolean(state.editingId);
       state.editingId = null;
@@ -455,6 +466,8 @@
   }
 
   function closeProductEditor() {
+    productDraft?.destroy({ flush:true });
+    productDraft = null;
     state.editingId = null;
     closeModal('productModal');
   }

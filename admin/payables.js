@@ -7,6 +7,7 @@
   let pendingPaymentId = '';
   let traceSequence = 0;
   const modalReturnFocus = new Map();
+  let billDraft = null;
 
   const state = {
     bills: [],
@@ -355,6 +356,10 @@
     const id = modalId(name);
     const modal = $(id);
     if (!modal) return;
+    if (id === 'billModal') {
+      billDraft?.destroy({ flush:true });
+      billDraft = null;
+    }
     modal.classList.add('hidden');
     modal.setAttribute('aria-hidden', 'true');
     if (!document.querySelector('.modal:not(.hidden)')) document.body.classList.remove('modal-open');
@@ -476,8 +481,68 @@
     updateBillPreview();
   }
 
+  function captureBillDraft() {
+    return {
+      purchase_order_id:$('bPO').value,
+      supplier_invoice_number:$('bSupplierInvoice').value,
+      bill_date:$('bDate').value,
+      due_date:$('bDue').value,
+      notes:$('bNotes').value,
+      lines:[...document.querySelectorAll('[data-bill-line]')].map(node => ({
+        purchase_order_item_id:node.dataset.billLine,
+        billed_quantity:node.querySelector('[data-qty]')?.value || '',
+        unit_cost:node.querySelector('[data-cost]')?.value || '',
+        line_total:node.querySelector('[data-total]')?.value || '',
+        pricing_mode:node.dataset.pricingMode === 'total' ? 'total' : 'unit',
+        notes:node.querySelector('[data-note]')?.value || ''
+      }))
+    };
+  }
+
+  function restoreBillDraft(data = {}) {
+    $('bPO').value = data.purchase_order_id || '';
+    if (data.purchase_order_id && $('bPO').value !== String(data.purchase_order_id)) throw new Error('La Purchase Order del borrador ya no está disponible.');
+    $('bSupplierInvoice').value = data.supplier_invoice_number || '';
+    $('bDate').value = data.bill_date || '';
+    $('bDue').value = data.due_date || '';
+    $('bNotes').value = data.notes || '';
+    const editing = state.editingBillId ? state.bills.find(row => row.id === state.editingBillId) : null;
+    renderBillLines(editing);
+    const saved = new Map((Array.isArray(data.lines) ? data.lines : []).map(line => [String(line.purchase_order_item_id), line]));
+    for (const line of saved.values()) {
+      if (num(line.billed_quantity) > 0 && !document.querySelector(`[data-bill-line="${CSS.escape(String(line.purchase_order_item_id))}"]`)) throw new Error('Una línea del borrador ya no está disponible.');
+    }
+    document.querySelectorAll('[data-bill-line]').forEach(node => {
+      const line = saved.get(String(node.dataset.billLine));
+      if (!line) return;
+      node.dataset.pricingMode = line.pricing_mode === 'total' ? 'total' : 'unit';
+      const quantity = node.querySelector('[data-qty]');
+      const cost = node.querySelector('[data-cost]');
+      const total = node.querySelector('[data-total]');
+      const notes = node.querySelector('[data-note]');
+      if (quantity) quantity.value = line.billed_quantity || '';
+      if (cost) cost.value = line.unit_cost || '';
+      if (total) total.value = line.line_total || '';
+      if (notes) notes.value = line.notes || '';
+      syncBillLine(node, node.dataset.pricingMode === 'total' ? 'total' : 'cost');
+    });
+    updateBillPreview();
+  }
+
+  function activateBillDraft(bill = null) {
+    billDraft = window.ExportMcaDrafts?.register({
+      root:document.querySelector('#billModal .payable-form-dialog'),
+      key:bill ? `supplier-bill:${bill.id}` : 'supplier-bill:new',
+      title:bill ? `edición de ${bill.bill_number}` : 'nueva factura de proveedor',
+      capture:captureBillDraft,
+      restore:restoreBillDraft
+    }) || null;
+  }
+
   function openBillCreate() {
     if (!state.writeAccess || !eligiblePOs().length) return false;
+    billDraft?.destroy({ flush:true });
+    billDraft = null;
     state.editingBillId = null;
     $('billTitle').textContent = 'Nueva factura de proveedor';
     fillBillPOs();
@@ -490,6 +555,7 @@
     $('billLines').innerHTML = emptyState('Selecciona una Purchase Order', 'Mostraremos únicamente las cantidades disponibles para facturar.');
     message('billMsg', '');
     updateBillPreview();
+    activateBillDraft();
     openModal('bill', 'bPO');
     return true;
   }
@@ -497,6 +563,8 @@
   function openBillEdit(id) {
     const bill = state.bills.find(row => String(row.id) === String(id));
     if (!bill || !actionAllowed(bill, 'edit')) return false;
+    billDraft?.destroy({ flush:true });
+    billDraft = null;
     state.editingBillId = bill.id;
     $('billTitle').textContent = `Editar ${bill.bill_number}`;
     fillBillPOs(bill);
@@ -508,6 +576,7 @@
     $('bNotes').value = bill.notes || '';
     renderBillLines(bill);
     message('billMsg', '');
+    activateBillDraft(bill);
     openModal('bill', 'bSupplierInvoice');
     return true;
   }
@@ -551,6 +620,9 @@
           lines
         })
       });
+      billDraft?.clear({ silent:true });
+      billDraft?.destroy({ flush:false });
+      billDraft = null;
       const confirmation = state.editingBillId ? 'Factura de proveedor actualizada correctamente.' : 'Borrador de factura de proveedor creado correctamente.';
       closeModal('bill', false);
       await refresh();
