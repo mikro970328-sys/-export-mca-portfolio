@@ -2,12 +2,14 @@
 
 Última actualización del corte vigente: 2026-09-09
 
-## Corte validado — permisos, diálogos y dos operadores (PR #289)
+## Corte publicado — permisos, diálogos y dos operadores
 
-- Run `34401479844`, head `26cf44003b17767381e25581546190506f589219`: 20/20 escenarios (diez en Chromium completo y diez en WebKit móvil), 52/52 workflows. Capturas revisadas; Preview `dpl_FsU26kh4ANZUpSzhXMcZgUKhsk22` READY y entrada PWA al login verificada.
+- [PR #289](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/289) integrada, commit `55c6ae255b7abcd26068b941f0bc7c43c9f7d1d4`; producción `dpl_4pshzRmzZGJmzntku1i5K8mz4KYG` READY.
+- Candidato: run `34401479844`, 20/20 escenarios (diez en Chromium completo y diez en WebKit móvil), 52/52 workflows. Capturas revisadas; Preview `dpl_FsU26kh4ANZUpSzhXMcZgUKhsk22` READY.
 - Correcciones en los owners existentes: `account` invalida capacidades sin descartar editores; el iframe cabe bajo el encabezado y el cierre queda accesible. Runtime `20260909-live7`, CSS de shell `20260909-viewport1`. Sin migraciones ni datos comerciales QA productivos.
 - La revocación y el nuevo login aprueban con la sesión/SW originales; Chromium reducido caía por falta nativa de BadgeService y se usa el canal Chromium completo.
-- Se integra main `58f523b` (#290/#291) conservando su prueba y documentación. Pendientes controles de la integración y publicación.
+- Main: Browser Operator Acceptance `34402916794` aprobó Chromium/WebKit; Operator and Concurrency Acceptance `34402917038` aprobó sus dos jobs. Los otros seis controles terminaron correctamente. BrowserStack `34402916772` quedó rojo únicamente por cuota `Automate testing time expired`; contrato estático aprobado y sin reintento manual.
+- Producción: PWA 200, runtime live7 200 con dependencia de cuenta publicada y `/api/live-updates` 401 esperado sin sesión.
 - Matriz: `docs/BROWSER_OPERATOR_ACCEPTANCE.md`. Faltan otros recorridos transversales e iPhone/Safari/PWA instalado. BrowserStack sigue limitado por cuota; sin reintentos manuales.
 
 ## Corte publicado — aceptación visual aislada multioperador/PWA

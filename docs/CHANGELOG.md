@@ -4,12 +4,13 @@ Este archivo registra cambios técnicos y funcionales confirmados. No se debe re
 
 ## 2026-09-09 — Permisos y diálogos con dos operadores (PR #289)
 
-Estado: validado en rama; pendiente publicación tras integrar main #290/#291.
+Estado: publicado mediante [PR #289](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/289), commit `55c6ae255b7abcd26068b941f0bc7c43c9f7d1d4`; producción `dpl_4pshzRmzZGJmzntku1i5K8mz4KYG` READY.
 
 - Corregidas las acciones obsoletas tras cambiar permisos y el cierre del detalle cubierto por el encabezado móvil, mediante los owners existentes de sincronización y CSS.
 - Run `34401479844`, head `26cf44003b17767381e25581546190506f589219`: 20/20 escenarios (diez en Chromium completo y diez en WebKit móvil), 52/52 workflows. Capturas revisadas; Preview `dpl_FsU26kh4ANZUpSzhXMcZgUKhsk22` READY y entrada PWA al login verificada.
 - Cobertura de cobros, auditoría, formularios, permisos, conexión, recarga, revocación y nuevo login. Cero errores JavaScript, API 404/5xx, red externa o caídas.
 - Chromium completo evita la caída nativa BadgeService del shell reducido sin modificar sesión ni SW. Sin migraciones ni operaciones comerciales QA productivas; WebKit emulado no certifica iPhone real. Matriz: `docs/BROWSER_OPERATOR_ACCEPTANCE.md`.
+- Main volvió a aprobar ambos motores (`34402916794`) y ambos jobs de operadores/concurrencia (`34402917038`); seis controles adicionales correctos. BrowserStack `34402916772` falló por cuota expirada, con su contrato estático aprobado y sin reintento manual. PWA/live7 200 y API privada 401 sin sesión.
 
 ## 2026-09-09 — Aceptación visual aislada multioperador/PWA
 

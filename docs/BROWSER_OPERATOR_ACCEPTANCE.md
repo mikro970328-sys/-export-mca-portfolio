@@ -44,8 +44,12 @@ Run `34401066282`, head `99006ad`: WebKit móvil aprobó los diez escenarios, si
 
 Se configura `channel: chromium`, el [modo headless de Chromium completo documentado por Playwright](https://playwright.dev/docs/browsers#chromium-new-headless-mode), manteniendo las mismas diez exigencias y ambos operadores. La nueva ejecución aprobó: ver evidencia final.
 
-## Evidencia final antes de integrar main
+## Evidencia final y publicación
 
 [Run 34401479844](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34401479844), head `26cf44003b17767381e25581546190506f589219`: diez de diez escenarios en Chromium completo y diez de diez en WebKit móvil. Los 52 workflows del head aprobaron. Ambos diagnósticos registran cero errores JavaScript, API 404, API 5xx, peticiones externas o caídas de página. Capturas revisadas del detalle (cierre bajo el encabezado), formulario conservado, revocación y saldo final USD 195; tres cobros por un total de USD 205. Preview `dpl_FsU26kh4ANZUpSzhXMcZgUKhsk22` READY y entrada PWA al login verificada.
 
-Durante la validación se publicaron #290/#291 en main `58f523b9e08525285dc9e353abc43faf1d8b9586`, con una prueba visual inicial independiente. Se integran conservando sus archivos y su registro; la matriz de esta PR amplía permisos, formularios, conexión/sesión y WebKit. La versión combinada necesita controles antes de publicarse.
+Durante la validación se publicaron #290–#292, con una prueba visual inicial independiente y separación explícita de BrowserStack. La integración conservó sus archivos y registros; esta matriz amplía permisos, formularios, conexión/sesión y WebKit.
+
+La PR #289 se publicó en el commit `55c6ae255b7abcd26068b941f0bc7c43c9f7d1d4`. En main, Browser Operator Acceptance `34402916794` aprobó Chromium completo y WebKit móvil, y Operator and Concurrency Acceptance `34402917038` aprobó la matriz funcional y la prueba visual inicial. Los otros seis controles concluyeron correctamente. BrowserStack `34402916772` conservó su contrato estático aprobado y falló en dispositivo por `Automate testing time expired`; no se reintentó ni se presenta como defecto del ERP.
+
+Producción `dpl_4pshzRmzZGJmzntku1i5K8mz4KYG` quedó READY. `/admin/pwa.html` y `embedded-auto-refresh.js?v=20260909-live7` responden 200; el runtime servido contiene la invalidación de dependencias por cuenta. `/api/live-updates` responde 401 sin sesión, como exige el contrato privado. No se realizaron escrituras comerciales productivas.
