@@ -92,6 +92,8 @@ const migration = fs.readFileSync(
   'utf8'
 );
 await db.exec(migration);
+await db.exec(fs.readFileSync('supabase/migrations/20260909125237_multiuser_live_sync.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/20260909143701_live_sync_recovery.sql','utf8'));
 
 const userId = '00000000-0000-4000-8000-000000000001';
 const deniedUserId = '00000000-0000-4000-8000-000000000008';
@@ -132,7 +134,10 @@ assert.equal(result.push_deliveries_queued, 5);
 const deniedInbox = await db.query(`select count(*)::integer as count from public.notification_inbox_items where recipient_admin_id=$1`, [deniedUserId]);
 assert.equal(deniedInbox.rows[0].count, 0);
 
+const notificationVersionBefore = (await db.query("select version from public.erp_change_state where scope='notifications'")).rows[0].version;
 const second = await db.query(`select public.reconcile_web_push_notifications(now()) as result`);
+const notificationVersionAfter = (await db.query("select version from public.erp_change_state where scope='notifications'")).rows[0].version;
+assert.equal(notificationVersionAfter,notificationVersionBefore,'repeated real push reconciliation must not cause a live-sync loop');
 assert.equal(second.rows[0].result.push_deliveries_queued, 0);
 const queueCount = await db.query(`select count(*)::integer as count from public.push_delivery_queue`);
 assert.equal(queueCount.rows[0].count, 5);

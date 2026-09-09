@@ -7,8 +7,12 @@ on:
       - 'admin/*.html'
       - 'api/live-updates.js'
       - 'supabase/migrations/*multiuser_live_sync.sql'
+      - 'supabase/migrations/*live_sync_recovery.sql'
+      - 'supabase/migrations/*b10*web_push*.sql'
       - 'scripts/check-live-erp-refresh.mjs'
       - 'scripts/check-multiuser-live-sync.mjs'
+      - 'scripts/check-live-sync-recovery-*.mjs'
+      - 'scripts/check-b10-web-push-sql.mjs'
       - '.github/workflows/multiuser-live-sync.yml'
   push:
     branches: [main]
@@ -17,8 +21,12 @@ on:
       - 'admin/*.html'
       - 'api/live-updates.js'
       - 'supabase/migrations/*multiuser_live_sync.sql'
+      - 'supabase/migrations/*live_sync_recovery.sql'
+      - 'supabase/migrations/*b10*web_push*.sql'
       - 'scripts/check-live-erp-refresh.mjs'
       - 'scripts/check-multiuser-live-sync.mjs'
+      - 'scripts/check-live-sync-recovery-*.mjs'
+      - 'scripts/check-b10-web-push-sql.mjs'
       - '.github/workflows/multiuser-live-sync.yml'
   workflow_dispatch:
 
@@ -39,4 +47,9 @@ jobs:
         run: node scripts/check-multiuser-live-sync.mjs
       - name: Verify existing refresh behavior
         run: node scripts/check-live-erp-refresh.mjs
-
+      - name: Verify timeout, session and reconnection behavior
+        run: node scripts/check-live-sync-recovery-runtime.mjs
+      - name: Verify SQL change signals and privileges
+        run: node scripts/check-live-sync-recovery-sql.mjs
+      - name: Verify real web push reconciliation stays quiet when unchanged
+        run: node scripts/check-b10-web-push-sql.mjs

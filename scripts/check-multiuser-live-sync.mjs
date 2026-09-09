@@ -59,7 +59,7 @@ if (/SUPABASE_(?:SERVICE_ROLE|SECRET|ANON|PUBLISHABLE)|createClient\s*\(/.test(r
 
 for (const name of fs.readdirSync('admin').filter(name => name.endsWith('.html'))) {
   const html = read(`admin/${name}`);
-  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260909-live3')) {
+  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260909-live5')) {
     failures.push(`admin/${name}: conserva una versión anterior del runtime de sincronización`);
   }
 }
@@ -168,7 +168,7 @@ const fixtureDocument = {
   hidden:false,
   addEventListener(){},
   querySelector(selector){return selector.startsWith('.modal')&&modalOpen?{}:null;},
-  querySelectorAll(){return [];}
+  querySelectorAll(selector){return selector.startsWith('.modal')&&modalOpen?[{getClientRects:()=>[{}]}]:[];}
 };
 const fixtureStorage = {
   getItem(){return '';},

@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260909-live3';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260909-live5';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -27,6 +27,7 @@
   const LIVE_SYNC_VISIBLE_MS = 4000;
   const LIVE_SYNC_HIDDEN_MS = 15000;
   const LIVE_SYNC_MAX_BACKOFF_MS = 60000;
+  const LIVE_SYNC_TIMEOUT_MS = 12000;
   const RELATED = {
     products: ['productsSection','purchasesSection','warehouseSection','inventorySection','loadsSection','salesSection','invoicesSection'],
     suppliers: ['suppliersSection','purchasesSection','warehouseSection','payablesSection','costsSection'],
@@ -96,7 +97,9 @@
   let shellRefreshQueued = false;
   let frameObserver = null;
   let livePollTimer = null;
-  let livePollRunning = false;
+  let liveRequest = null;
+  let liveSyncEnabled = false;
+  let liveSessionToken = '';
   let livePollFailures = 0;
   let liveVersions = null;
   let pendingExternalReason = 'live-change';
@@ -123,7 +126,12 @@
   }
 
   function visibleModal(doc) {
-    return Boolean(doc?.querySelector('.modal:not(.hidden), [role="dialog"]:not(.hidden)'));
+    return [...(doc?.querySelectorAll('.modal, [role="dialog"]')||[])].some(dialog=>{
+      // A dialog can live inside a hidden overlay without its own hidden class.
+      if(!dialog.getClientRects().length)return false;
+      const visibility=doc.defaultView?.getComputedStyle(dialog)?.visibility;
+      return visibility!=='hidden'&&visibility!=='collapse';
+    });
   }
 
   function visibleSectionId() {
@@ -267,11 +275,17 @@
   }
 
   function normalizeLiveVersions(payload) {
+    if(!payload?.versions||typeof payload.versions!=='object'||Array.isArray(payload.versions)){
+      throw new Error('LIVE_SYNC_INVALID_RESPONSE');
+    }
     const normalized={};
     for(const [scope,value] of Object.entries(payload?.versions||{})){
+      if(!Object.hasOwn(RELATED,scope))continue;
       const version=Number(value);
-      if(Object.hasOwn(RELATED,scope)&&Number.isSafeInteger(version)&&version>=0)normalized[scope]=version;
+      if(!['number','string'].includes(typeof value)||value===''||!Number.isSafeInteger(version)||version<0)throw new Error('LIVE_SYNC_INVALID_VERSION');
+      normalized[scope]=version;
     }
+    if(!Object.keys(normalized).length)throw new Error('LIVE_SYNC_EMPTY_RESPONSE');
     return normalized;
   }
 
@@ -289,22 +303,43 @@
     return changed;
   }
 
-  async function requestLiveSnapshot() {
-    const token=localStorage.getItem('export_mca_token')||'';
-    if(!token)return null;
-    const response=await fetch(LIVE_SYNC_PATH,{
-      method:'GET',
-      cache:'no-store',
-      headers:{Authorization:`Bearer ${token}`}
+  async function requestLiveSnapshot(request) {
+    let timeout;
+    const cancelled=new Promise((resolve,reject)=>{
+      request.cancel=()=>{
+        request.controller.abort();
+        reject(new Error('LIVE_SYNC_CANCELLED'));
+      };
+      timeout=setTimeout(()=>{
+        request.controller.abort();
+        reject(new Error('LIVE_SYNC_TIMEOUT'));
+      },LIVE_SYNC_TIMEOUT_MS);
     });
-    if(response.status===401){
-      stopLiveSync();
-      window.dispatchEvent(new CustomEvent('export-mca:live-sync-status',{detail:{status:'unauthorized'}}));
-      window.ExportMcaAdminShellRuntime?.transitionExpiredSession?.('live_sync_unauthorized');
-      return null;
+    try{
+      // The deadline also covers a response body that never finishes loading.
+      return await Promise.race([cancelled,(async()=>{
+        const response=await fetch(LIVE_SYNC_PATH,{
+          method:'GET',cache:'no-store',signal:request.controller.signal,
+          headers:{Authorization:`Bearer ${request.token}`}
+        });
+        return {status:response.status,ok:response.ok,payload:response.ok?await response.json():null};
+      })()]);
+    }finally{
+      clearTimeout(timeout);
     }
-    if(!response.ok)throw new Error(`HTTP ${response.status}`);
-    return response.json();
+  }
+
+  function currentLiveRequest(request) {
+    return liveSyncEnabled&&liveRequest===request&&liveSessionToken===request.token
+      &&localStorage.getItem('export_mca_token')===request.token;
+  }
+
+  function pauseLiveSync() {
+    clearTimeout(livePollTimer);
+    livePollTimer=null;
+    const request=liveRequest;
+    liveRequest=null;
+    request?.cancel?.();
   }
 
   function livePollDelay() {
@@ -315,47 +350,82 @@
   function scheduleLivePoll(delay=livePollDelay()) {
     clearTimeout(livePollTimer);
     livePollTimer=null;
-    if(!localStorage.getItem('export_mca_token'))return false;
+    if(!liveSyncEnabled||!liveSessionToken||window.navigator?.onLine===false
+      ||localStorage.getItem('export_mca_token')!==liveSessionToken)return false;
     livePollTimer=setTimeout(pollLiveState,Math.max(0,delay));
     return true;
   }
 
   async function pollLiveState() {
-    if(livePollRunning)return false;
+    if(liveRequest||!liveSyncEnabled)return false;
     if(!localStorage.getItem('export_mca_token')){
       stopLiveSync();
       return false;
     }
-    livePollRunning=true;
+    if(localStorage.getItem('export_mca_token')!==liveSessionToken)return startLiveSync(true);
+    if(window.navigator?.onLine===false)return false;
+    clearTimeout(livePollTimer);
+    livePollTimer=null;
+    const request={token:liveSessionToken,controller:new AbortController(),cancel:null};
+    liveRequest=request;
     try{
-      const payload=await requestLiveSnapshot();
-      if(payload){
-        const changed=applyLiveSnapshot(payload);
-        livePollFailures=0;
-        window.dispatchEvent(new CustomEvent('export-mca:live-sync-status',{detail:{status:'connected',changed}}));
+      const response=await requestLiveSnapshot(request);
+      if(!currentLiveRequest(request))return false;
+      if(response.status===401){
+        stopLiveSync();
+        window.dispatchEvent(new CustomEvent('export-mca:live-sync-status',{detail:{status:'unauthorized'}}));
+        window.ExportMcaAdminShellRuntime?.transitionExpiredSession?.('live_sync_unauthorized');
+        return false;
       }
+      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      const changed=applyLiveSnapshot(response.payload);
+      livePollFailures=0;
+      window.dispatchEvent(new CustomEvent('export-mca:live-sync-status',{detail:{status:'connected',changed}}));
       return true;
     }catch(error){
+      if(!currentLiveRequest(request))return false;
       livePollFailures+=1;
       if(livePollFailures===1)console.warn('[live-sync] update check failed',error);
       window.dispatchEvent(new CustomEvent('export-mca:live-sync-status',{detail:{status:'retrying'}}));
       return false;
     }finally{
-      livePollRunning=false;
-      scheduleLivePoll();
+      // A cancelled request must never overwrite a newer session/request.
+      if(liveRequest===request){
+        liveRequest=null;
+        if(liveSessionToken!==localStorage.getItem('export_mca_token'))startLiveSync(true);
+        else scheduleLivePoll();
+      }
     }
   }
 
   function startLiveSync(immediate=false) {
-    if(!localStorage.getItem('export_mca_token'))return false;
+    const token=localStorage.getItem('export_mca_token')||'';
+    if(!token){stopLiveSync();return false;}
+    if(token!==liveSessionToken){
+      stopLiveSync();
+      liveSessionToken=token;
+    }
+    liveSyncEnabled=true;
+    if(liveRequest||(!immediate&&livePollTimer!==null))return true;
     return scheduleLivePoll(immediate?0:livePollDelay());
   }
 
   function stopLiveSync() {
-    clearTimeout(livePollTimer);
-    livePollTimer=null;
+    liveSyncEnabled=false;
+    liveSessionToken='';
+    pauseLiveSync();
     livePollFailures=0;
     liveVersions=null;
+    pendingExternalScopes.clear();
+    clearTimeout(shellRefreshTimer);
+    shellRefreshQueued=false;
+    document.querySelectorAll('.app-section iframe').forEach(frame=>{
+      const current=state.get(frame);
+      if(!current)return;
+      current.pending=false;
+      clearTimeout(current.timer);
+      clearTimeout(current.fallbackTimer);
+    });
   }
 
   function scheduleSourceRefresh(frame,scope){
@@ -481,6 +551,14 @@
     queueExternalScopes([scope||'erp'],'cross-tab-change');
   });
   window.addEventListener('export-mca:admin-ready',()=>startLiveSync(true));
+  window.addEventListener('export-mca:session-ending',stopLiveSync);
+  window.addEventListener('export-mca:auth-invalid',stopLiveSync);
+  window.addEventListener('pagehide',pauseLiveSync);
+  window.addEventListener('offline',()=>{
+    pauseLiveSync();
+    window.dispatchEvent(new CustomEvent('export-mca:live-sync-status',{detail:{status:'offline'}}));
+  });
+  window.addEventListener('online',()=>startLiveSync(true));
   window.addEventListener('pageshow',()=>{installAll();startLiveSync(true);});
   window.ExportMcaEmbeddedAutoRefresh = Object.freeze({
     installAll,onSectionOpened,refreshFrame,announceMutation,clearStaleOperationalContext,
