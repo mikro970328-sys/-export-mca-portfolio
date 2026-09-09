@@ -2,6 +2,16 @@
 
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
+## 2026-09-09 — Aceptación de compras, recepción e inventario
+
+Estado: validación local, rama `test/purchase-inventory-acceptance`; publicación pendiente.
+
+- 19 escenarios SQL y 8 de API aprobados con 31 migraciones reales en una base PGlite desechable. Se conservan cero filas operativas al terminar; no se escribieron datos comerciales en producción.
+- Se reprodujo y corrigió la aceptación de `"false"` como permiso de exceso: ahora se requiere el booleano `true`.
+- Moneda inválida, almacén omitido y línea inexistente se presentan como errores de entrada seguros (400), en lugar de fallos genéricos 500.
+- La fixture UX5 de compras se alinea con la edición protegida ya vigente. Se añade workflow y matriz `PURCHASE_INVENTORY_ACCEPTANCE.md`.
+- Límite: autenticación/transporte de API simulados y SQL sin concurrencia entre conexiones. No certifica navegador, iPhone/PWA ni el ciclo completo de ventas, despacho, finanzas o auditoría.
+
 ## 2026-09-09 — Recuperación de sincronización y señales reales
 
 Estado: publicado mediante [PR #279](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/279), commit funcional `ab53b7440afd6fb6d0017db57c0969d5c33cbfc9`. Vercel producción `dpl_2kdPSDZ9FoiStHTWvnsY4hyJFoth` READY; entrada ERP/PWA y asset live5 verificados con HTTP 200. Migración `20260909143701_live_sync_recovery.sql` aplicada y comprobada.

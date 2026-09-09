@@ -39,13 +39,12 @@ declare s jsonb;
 begin
   s:=public.purchase_order_action_state('18500000-0000-4000-8000-000000000001'::uuid);
   if coalesce((s#>>'{actions,receive_remaining,allowed}')::boolean,false) is not true then raise exception 'UX5_CONFIRMED_RECEIVE_EXPECTED'; end if;
-  if coalesce((s#>>'{actions,edit,allowed}')::boolean,false) is true then raise exception 'UX5_CONFIRMED_EDIT_FORBIDDEN'; end if;
-  begin
-    perform public.assert_purchase_order_action('18500000-0000-4000-8000-000000000001'::uuid,'edit');
-    raise exception 'UX5_EDIT_ASSERT_DID_NOT_BLOCK';
-  exception when others then
-    if position('PO_NOT_DRAFT' in sqlerrm)=0 then raise; end if;
-  end;
+  -- September safe revision permits corrections while keeping structure locked.
+  if coalesce((s#>>'{actions,edit,allowed}')::boolean,false) is not true then raise exception 'UX5_CONFIRMED_PROTECTED_EDIT_EXPECTED'; end if;
+  if s#>>'{actions,edit,mode}' <> 'protected' then raise exception 'UX5_CONFIRMED_EDIT_MODE_EXPECTED'; end if;
+  if coalesce((s#>>'{actions,edit,supplier_locked}')::boolean,false) is not true then raise exception 'UX5_CONFIRMED_SUPPLIER_LOCK_EXPECTED'; end if;
+  if coalesce((s#>>'{actions,edit,currency_locked}')::boolean,false) is not true then raise exception 'UX5_CONFIRMED_CURRENCY_LOCK_EXPECTED'; end if;
+  perform public.assert_purchase_order_action('18500000-0000-4000-8000-000000000001'::uuid,'edit');
 end;
 $$;
 
