@@ -4,7 +4,7 @@
 
 ## Punto de entrada vigente
 
-Consultar primero el corte de septiembre en `docs/CURRENT_STATE.md`. La base productiva ya incluye la sincronización multiusuario de la PR #278. El siguiente cambio acotado es `fix/live-sync-recovery`: recuperación de consultas y supresión de señales de cambio falsas; no es una reescritura del ERP.
+Consultar primero el corte de septiembre en `docs/CURRENT_STATE.md`. La base productiva incluye la sincronización multiusuario de la PR #278 y la recuperación de la PR #279 (runtime `20260909-live5`): consultas con límite, señales SQL reales y detección correcta de formularios visibles. Publicación confirmada; no volver a pedir acceso a aquella Preview como si siguiera bloqueada. El siguiente trabajo es cerrar la matriz de aceptación funcional pendiente.
 
 Orden solicitado por el propietario: cerrar la validación funcional, después mejoras y finalmente auditoría integral. Las verificaciones de seguridad y regresión de cada cambio no se posponen hasta esa auditoría.
 

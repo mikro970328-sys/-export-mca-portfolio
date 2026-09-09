@@ -4,7 +4,7 @@ Este archivo registra cambios técnicos y funcionales confirmados. No se debe re
 
 ## 2026-09-09 — Recuperación de sincronización y señales reales
 
-Estado de este corte: migración `20260909143701_live_sync_recovery.sql` aplicada y comprobada; frontend preparado en `fix/live-sync-recovery` para Preview y publicación por PR. La evidencia final de publicación se registra en la PR, no se anticipa aquí.
+Estado: publicado mediante [PR #279](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/279), commit funcional `ab53b7440afd6fb6d0017db57c0969d5c33cbfc9`. Vercel producción `dpl_2kdPSDZ9FoiStHTWvnsY4hyJFoth` READY; entrada ERP/PWA y asset live5 verificados con HTTP 200. Migración `20260909143701_live_sync_recovery.sql` aplicada y comprobada.
 
 - Se corrige el bloqueo indefinido del polling con deadline de 12 segundos para respuesta y cuerpo, cancelación y reintentos progresivos.
 - Las respuestas tardías de una sesión anterior no repintan ni cierran la sesión nueva. Se detiene al logout y se reanuda tras reconexión/restauración de página.
@@ -13,9 +13,10 @@ Estado de este corte: migración `20260909143701_live_sync_recovery.sql` aplicad
 - Se sustituyen solo los triggers de sincronización por eventos con tablas de transición. Las sentencias sin cambios reales dejan de incrementar versiones; el cursor backend de web push no despierta la interfaz.
 - No se borraron datos operativos ni se ampliaron privilegios. Se conservan las 17 áreas y 66 tablas visibles (198 triggers).
 - Se añaden dos pruebas de regresión, se amplía B10 con el reconciliador real y se integran en GitHub Actions. Total local: 95/95 scripts aprobados.
+- El último commit de la PR aprobó 46/46 workflows. La QA autenticada en dos pestañas de una cuenta confirmó refresco automático, espera durante el editor y aplicación al cerrarlo, con una señal de versión controlada y sin escrituras comerciales.
 - Se verificó en Supabase una repetición de ambos reconciliadores con delta de notificaciones 0, dentro de transacciones revertidas.
 - Se actualizan los assets a `20260909-live5` y se aclara el estado funcional pendiente en `CURRENT_STATE.md`.
-- Límite: no certifica dos operadores productivos ni móvil/PWA real; la cuota iOS externa sigue pendiente.
+- Límite: no certifica dos operadores productivos ni móvil/PWA real. BrowserStack de `main` (run `34378335000`) falla por cuota agotada; los otros seis workflows aprobaron.
 
 ## 2026-07-30
 
