@@ -5,13 +5,22 @@ Rama: `test/sales-logistics-acceptance`.
 
 ## Resultado del corte
 
-39 escenarios aprobados localmente: 29 SQL y 10 de API. También aprobaron nueve
-contratos relacionados. La PR #283 cuenta con 11 controles aprobados y Preview
-`dpl_5hMtARU3RYe82B5aLo18uVWT5teF` READY en su head inicial
-`2c6dbb76f679a947bbf4824e51b4270c08d60d58`. Chrome alcanza el login desde la
-entrada administrativa y `/admin/pwa.html`; no se efectuaron escrituras comerciales.
-La migración ya se aplicó y verificó en Supabase; la publicación de las API sigue
-pendiente hasta completar el merge y verificar producción.
+Publicado mediante [PR #283](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/283),
+commit funcional `eaabea111ddc073f0d51129c6a204ab29068c191`.
+
+- 39 escenarios aprobados: 29 SQL y 10 de API, además de nueve contratos relacionados.
+- 11/11 workflows del head final `5b6e2304724a56cb5fbc0ecf6d339ecfe30e17b8`;
+  `Sales and Logistics Acceptance`, run `34387584826`.
+- Preview final `dpl_41o9mDtgrVs7oLm4DcZccyfEpX1r` READY. Chrome alcanza el login
+  desde `/admin/index.html` y `/admin/pwa.html`. No se efectuaron escrituras comerciales.
+- Migración aplicada y verificada en Supabase; detalles y permisos más abajo.
+- Producción `dpl_5Q4TvBzV7Vh2aLuv3y5Eu9WcxAzP` READY para el commit funcional.
+  `admin.exportmca.com/admin/pwa.html` respondió 200 con la entrada administrativa;
+  `/api/loads`, `/api/sales` y `/api/sales-loads` respondieron 401 sin sesión.
+- Consulta de logs productivos HTTP 5xx sin resultados en el intervalo observado
+  (2026-09-09 18:00:23–18:15:23 UTC).
+- 3/3 workflows del commit funcional en `main`: compras/inventario `34387731941`,
+  ventas/logística `34387731943` y Pages `34387730253`.
 
 Este bloque continúa la aceptación de compras/inventario de la PR #281. Valida
 operaciones y respuestas con datos aislados; no declara terminado el ERP completo.

@@ -2,6 +2,17 @@
 
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
+## 2026-09-09 — Aceptación de ventas, logística y documentos
+
+Estado: publicado mediante [PR #283](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/283), commit funcional `eaabea111ddc073f0d51129c6a204ab29068c191`. Producción `dpl_5Q4TvBzV7Vh2aLuv3y5Eu9WcxAzP` READY.
+
+- 39 escenarios aislados (29 SQL, 10 API), 74 migraciones reales y CI sin credenciales.
+- Edición atómica de cargues independientes y mercancía derivada del contenedor al editar/asignar; protección existente de vínculos de venta reflejada en las acciones.
+- La ruta de compatibilidad de ventas conserva el total exacto; importes inválidos, sobreasignación y contexto incompatible reciben errores 400 claros.
+- Migración `20260909180837_load_plan_container_consistency.sql` aplicada; las tres funciones y sus permisos coinciden con lo probado. Sin reescritura histórica ni operaciones comerciales QA en producción.
+- 11/11 workflows de PR y 3/3 del commit funcional de `main`; Preview con login administrativo/PWA, producción con PWA 200 y API sin sesión 401. Sin 5xx en la consulta observada.
+- Matriz y límites: `docs/SALES_LOGISTICS_ACCEPTANCE.md`. Pendientes finanzas/conciliación y pruebas transversales de navegador, operadores y móvil.
+
 ## 2026-09-09 — Aceptación de compras, recepción e inventario
 
 Estado: publicado mediante [PR #281](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/281), commit funcional `7af4562d4d91523a6a9a655c9ae2ee289f861dc7`. Producción `dpl_BAwNdKzGntGJioneE5M5RKhj1DaM` READY.
@@ -157,10 +168,3 @@ Estado: **documentación fusionada en `main`; sin cambios funcionales**
 - La consolidación funcional de Clientes no está en `main`.
 - Producción conserva el módulo anterior.
 - La documentación de continuidad y el baseline de Clientes están disponibles en `main`.
-# 2026-09-09 — Aceptación de ventas y logística (preparada)
-
-- 39 escenarios de comportamiento en base aislada (29 SQL, 10 API), 74 migraciones reales y CI sin credenciales.
-- Corrección atómica del reemplazo de cargues independientes y de la mercancía del contenedor al editar/asignar.
-- La ruta de compatibilidad de ventas conserva el total exacto; validación de importes y respuestas 400 para sobreasignación/contexto.
-- Las acciones de cargues reflejan la protección existente de vínculos comerciales. Matriz y límites: `docs/SALES_LOGISTICS_ACCEPTANCE.md`.
-- Publicación y migración productiva pendientes al preparar la PR; no se registran escrituras comerciales QA en producción.
