@@ -2,6 +2,12 @@
 
 Última actualización del corte vigente: 2026-09-09
 
+## En validación — operadores y concurrencia
+
+- Rama `test/operator-concurrency-acceptance`, base `95e352e0d466ca8392adef89e8e4897d19cf2da3`.
+- Matriz de 22 escenarios PostgreSQL/PostgREST reales en CI: `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`. Resultados pendientes de PR; no contar la comprobación local del esquema como concurrencia.
+- La Preview comparte producción. El navegador rechaza el backend local; siguen pendientes la aceptación visual aislada y el iPhone/PWA. Sin escrituras comerciales QA en producción ni reintentos manuales de BrowserStack.
+
 ## Corte publicado — finanzas y conciliación
 
 - [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), base `40cb5feba6dbbd4f0ff37afb14678584e4caad19`, commit funcional publicado `e33cb87bf278b3886dd0acc42a9f3250c78f5285`. Producción `dpl_GP9Jw7tBYUh44h8dK5S4xyscWQeR` READY.
