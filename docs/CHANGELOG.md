@@ -4,13 +4,15 @@ Este archivo registra cambios técnicos y funcionales confirmados. No se debe re
 
 ## 2026-09-09 — Aceptación financiera y conciliación de caja
 
-Estado: validación local en `test/finance-acceptance`; pendiente publicación.
+Estado: publicado mediante [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), commit funcional `e33cb87bf278b3886dd0acc42a9f3250c78f5285`. Producción `dpl_GP9Jw7tBYUh44h8dK5S4xyscWQeR` READY.
 
 - 40 escenarios aislados: facturas/cobros, anticipos/reembolsos, proformas, AP, costes, rentabilidad, reportes y refresco.
 - Caja incluye anticipos y devoluciones sin volver a contar aplicaciones. Dashboard y reportes usan la misma fuente; no cambia AR/AP, libros de pago ni rentabilidad.
 - Facturas vencidas con cobro parcial permanecen en el contador. Cantidades/importes no finitos se rechazan antes del RPC.
 - Reportes se refresca por el mapa de dependencias existente; runtime `20260909-live6` y etiquetas de caja actualizadas.
-- Migración de lectura y workflow sin credenciales; método, fallos reproducidos y límites en `docs/FINANCE_ACCEPTANCE.md`.
+- Migración de lectura `20260909185121_finance_cash_reconciliation.sql` aplicada; definiciones y permisos verificados, cero discrepancias con los libros productivos. Sin datos comerciales QA en producción.
+- 58/58 workflows de PR; ocho de nueve workflows únicos de main aprobaron. iOS automático bloqueado por cuota BrowserStack. PWA/shell/live6 HTTP 200; API sin sesión HTTP 401; sin 5xx en la consulta observada.
+- Método, fallos reproducidos y límites en `docs/FINANCE_ACCEPTANCE.md`. Siguiente bloque: navegador con backend aislado, operadores simultáneos y móvil/PWA; después mejoras y auditoría integral.
 
 ## 2026-09-09 — Aceptación de ventas, logística y documentos
 

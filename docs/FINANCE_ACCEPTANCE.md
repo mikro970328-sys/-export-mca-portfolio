@@ -1,6 +1,6 @@
 # Aceptación financiera — Export MCA ERP
 
-Estado: [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), desde `40cb5feba6dbbd4f0ff37afb14678584e4caad19`. Preview y migración verificadas; pendiente CI final y publicación del código.
+Estado: publicado mediante [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), desde `40cb5feba6dbbd4f0ff37afb14678584e4caad19`. Commit funcional `e33cb87bf278b3886dd0acc42a9f3250c78f5285`, producción `dpl_GP9Jw7tBYUh44h8dK5S4xyscWQeR` READY.
 
 ## Contrato y regresión
 
@@ -24,10 +24,13 @@ La migración `20260909185121_finance_cash_reconciliation.sql` añade una vista 
 ## Evidencia de entrega
 
 - Head inicial `3f06d8c856770d3c8ebffa8754f5526250db5f59`, Preview `dpl_EgkoE7PfmbbAhqTsFM6jA7Bq7EV7` READY. Navegador Chrome: entrada administrativa y PWA muestran el formulario de acceso. No se declara un flujo autenticado de negocio.
-- CI inicial: 57/58 workflows aprobaron, incluido Finance Acceptance (`34391336034`). La única falla exigía literalmente la explicación anterior del dashboard; se actualiza esa expectativa a la explicación de anticipos/reembolsos y pasa localmente, sin omitir el gate. Falta revalidar el head final.
+- CI inicial: 57/58 workflows aprobaron, incluido Finance Acceptance (`34391336034`). La única falla exigía literalmente la explicación anterior del dashboard; se actualizó esa expectativa a la explicación de anticipos/reembolsos, sin omitir el gate.
+- Head final `616126e288cf7c9d1b4946d89c9623bcbfde832c`: 58/58 workflows aprobados, Finance Acceptance `34391915963`, 60 checks success/skipped según el diseño del workflow. Preview final `dpl_54Mc37jyVvrQbk75XU7QqduLciaZ` READY y formulario de entrada PWA verificado.
 - El workflow de iOS en PR aprueba su contrato de solo lectura; el job de dispositivo está omitido por el diseño del workflow. Eso no certifica Safari/iPhone ni consume una nueva sesión de dispositivo.
 - Supabase asignó la versión `20260909185121`: se conserva ese nombre en git con los mismos bytes SQL revisados. Ambas funciones y la vista coinciden con lo probado; `anon` y `authenticated` sin acceso, `service_role` con lectura/ejecución y vista `security_invoker=true`.
 - Conciliación productiva por consultas de lectura: cero discrepancias entre los cuatro libros y la vista; cero discrepancias del dashboard. Cuatro eventos existentes, cuatro en el reporte. Revisión de importes no finitos: cero en los cuatro libros. No hubo escrituras comerciales QA.
+- HTTP productivo: `/admin/pwa.html`, `/admin/index.html` y live6 responden 200; shell referencia live6 y runtime contiene la dependencia de Reportes. `/api/invoices`, `/api/supplier-payments` y `/api/reports` responden 401 sin sesión. Consulta de logs 5xx sin resultados, intervalo observado 18:44:02–18:59:02 UTC de 2026-09-09.
+- Main, última ejecución por nombre: ocho de nueve workflows únicos aprobaron; Finance Acceptance `34392107499`, compras `34392107090`, ventas/logística `34392106927`, Pages `34392105402`. Hubo dos eventos push automáticos del mismo commit y un Pages anterior cancelado. Ambos runs iOS (`34392104514`, `34392106929`) fallaron por cuota `Automate testing time expired`, en las suites core y costs; no por una aserción del ERP. El contrato de solo lectura sí aprobó. No se lanzaron reintentos manuales ni se modificaron gates.
 
 ## Matriz ejecutada
 
@@ -53,4 +56,4 @@ PGlite desechable con los propietarios SQL financieros reales: 85 archivos de mi
 
 Cada escenario revierte sus filas. Preview comparte la base productiva: no se realizan allí escrituras comerciales QA. No certifica JWT real, transporte PostgREST, Storage, concurrencia entre conexiones ni iPhone instalado. Compras y logística ya tienen matrices propias.
 
-Siguiente bloque: pruebas transversales con navegador y backend aislado, operadores simultáneos y móvil/PWA. BrowserStack continúa limitado por cuota; no se repite una ejecución iOS pagada ni se da esa validación por terminada. Después, mejoras y auditoría integral según el orden solicitado.
+Siguiente bloque: pruebas transversales con navegador y backend aislado, operadores simultáneos y móvil/PWA. La certificación automática iOS de main quedó bloqueada por cuota; esa validación continúa pendiente. Después, mejoras y auditoría integral según el orden solicitado.

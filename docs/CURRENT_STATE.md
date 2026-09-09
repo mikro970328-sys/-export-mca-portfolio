@@ -2,13 +2,15 @@
 
 Última actualización del corte vigente: 2026-09-09
 
-## En validación — finanzas y conciliación
+## Corte publicado — finanzas y conciliación
 
-- [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), rama `test/finance-acceptance`, base `40cb5feba6dbbd4f0ff37afb14678584e4caad19`. Código pendiente de publicación; migración aplicada.
+- [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), base `40cb5feba6dbbd4f0ff37afb14678584e4caad19`, commit funcional publicado `e33cb87bf278b3886dd0acc42a9f3250c78f5285`. Producción `dpl_GP9Jw7tBYUh44h8dK5S4xyscWQeR` READY.
 - 40 escenarios locales aprobados: 25 SQL, 11 API y cuatro del runtime de refresco. Matriz: `docs/FINANCE_ACCEPTANCE.md`.
-- Corregidos anticipos/reembolsos omitidos en caja, contador de facturas vencidas con pago parcial, entradas no finitas y refresco de Reportes tras cambios. Runtime `20260909-live6` preparado.
+- Corregidos anticipos/reembolsos omitidos en caja, contador de facturas vencidas con pago parcial, entradas no finitas y refresco de Reportes tras cambios. Runtime vigente `20260909-live6`.
 - Migración `20260909185121_finance_cash_reconciliation.sql` aplicada: una vista de caja y dos RPC de lectura. Definiciones/permisos coinciden con lo probado; cero diferencias en conciliación con los libros productivos, sin modificar datos comerciales.
-- Preview inicial `dpl_EgkoE7PfmbbAhqTsFM6jA7Bq7EV7` READY; entrada administrativa/PWA verificada. CI inicial 57/58: se corrige una expectativa literal del texto anterior del dashboard; pendiente CI del head final.
+- Head final de PR `616126e288cf7c9d1b4946d89c9623bcbfde832c`: 58/58 workflows aprobados, Finance Acceptance run `34391915963`; Preview `dpl_54Mc37jyVvrQbk75XU7QqduLciaZ` READY y entrada PWA llega al login. La expectativa literal del texto anterior del dashboard se corrigió y su gate también aprobó.
+- Producción: PWA, shell y runtime live6 responden 200; las API de Facturas, Pagos Proveedores y Reportes responden 401 sin sesión. Consulta de logs 5xx sin resultados en el intervalo observado 18:44:02–18:59:02 UTC.
+- Main: ocho de nueve workflows únicos aprobaron, tomando la última ejecución por nombre; Finance Acceptance `34392107499`. La plataforma registró dos eventos push del mismo commit: los runs iOS `34392104514` y `34392106929` fallaron por `Automate testing time expired`, tanto core como costs; sus contratos de solo lectura aprobaron. Pages anterior fue cancelado y su sucesor `34392105402` aprobó. No se lanzaron reintentos manuales ni se alteraron controles.
 - Pendientes las pruebas transversales de navegador con backend aislado, operadores y móvil; las matrices no equivalen a la aceptación integral ni a la auditoría completa.
 
 ## Corte QA — ventas, logística y documentos
@@ -19,7 +21,7 @@
 - Migración `20260909180837_load_plan_container_consistency.sql` aplicada a Supabase: tres funciones existentes, sin reescritura histórica ni movimientos de stock. Definiciones y permisos contrastados con el entorno probado.
 - Head final de PR `5b6e2304724a56cb5fbc0ecf6d339ecfe30e17b8`: 11/11 controles y Preview `dpl_41o9mDtgrVs7oLm4DcZccyfEpX1r` READY; entrada administrativa y PWA llegan al login. Los 3/3 workflows del commit funcional de `main` también aprobaron.
 - Producción `dpl_5Q4TvBzV7Vh2aLuv3y5Eu9WcxAzP` READY: PWA responde 200 y las tres API modificadas responden 401 sin sesión. Consulta pospublicación de logs 5xx sin resultados en el intervalo observado.
-- Las pruebas de datos de ventas/logística amplían el corte previo de compras; no certifican navegador autenticado, dos operadores, concurrencia real, Storage ni móvil/PWA. Siguiente bloque: facturación, cobros/pagos, anticipos, costes y reportes.
+- Las pruebas de datos de ventas/logística amplían el corte previo de compras; no certifican navegador autenticado, dos operadores, concurrencia real, Storage ni móvil/PWA. Finanzas se completó después en el corte publicado de la PR #285.
 
 ## Corte QA — compras, recepción e inventario
 
