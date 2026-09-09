@@ -2,6 +2,8 @@
 
 Fecha: 2026-09-09. Base: `95e352e0d466ca8392adef89e8e4897d19cf2da3`.
 
+Publicado mediante [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287), commit `81648443ce66eda2ce4ed2e331146ad631ae751e`; producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY. Esta entrega añade aceptación automatizada; no cambia reglas comerciales ni aplica migraciones a producción.
+
 ## Método
 
 Esta matriz amplía compras, ventas/logística y finanzas con conexiones PostgreSQL independientes y los handlers originales de Vercel sobre HTTP contra PostgREST real. No sustituye la autenticación, permisos, consultas, transacciones ni auditoría por respuestas simuladas.
@@ -43,9 +45,11 @@ El servidor aloja los handlers sin modificaciones y adapta únicamente el prefij
 
 - Esquema ampliado, dos identidades y cobro con `service_role` comprobados localmente con PGlite; no se cuentan como concurrencia real.
 - 22/22 escenarios aprobados en la [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287): [run 34396574892](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34396574892), head `490e6bfc18b85a2b55e4016c28fea96346bf3cbd`. Los siete workflows de ese head aprobaron.
+- La revisión final, incluida la espera explícita del contrato RPC, también aprobó 22/22: [run 34396893578](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34396893578), head `e8f61d1ac288c4d5620b6ef870e208a883a5e322`. Siete workflows y ocho check runs aprobados.
+- Main: seis de seis workflows aprobaron; [Operator and Concurrency Acceptance 34397039678](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34397039678). Los otros cinco fueron Finance Acceptance, Purchase and Inventory Acceptance, Sales and Logistics Acceptance, B10.1 Secure PWA Web Push y Pages.
 - Los seis owners SQL de autenticación, permisos y revocación inspeccionados coinciden con producción descontando formato. Los permisos legacy omitidos en la fixture (tablas/vistas de compras y almacén y secuencia de WR) se restauraron solo en QA tras contrastarlos con producción.
 - Las primeras ejecuciones detectaron esas omisiones de fixture y una aserción contra una columna inexistente de la vista de stock; se corrigieron sin cambiar reglas productivas ni retirar escenarios. El arranque de PostgREST expuso OpenAPI antes de que el primer POST RPC estuviera disponible (404 transitorio): la espera ahora exige alcanzar el guard SQL de una identidad inexistente. Las solicitudes de negocio no tienen reintentos añadidos.
-- Regresión local: 40 escenarios financieros, contrato de permisos y runtime de sesión revocable aprobados. Preview `dpl_U4xZUVVS7j7xpnsD7VqSHq8DHZ2G` READY; Chrome llega al login desde PWA. Es comprobación de entrada, no de acciones comerciales autenticadas en navegador.
+- Regresión local: 40 escenarios financieros, contrato de permisos y runtime de sesión revocable aprobados. Preview final `dpl_FvZropMsHGUfGGFVKaptJ59U5szR` READY; Chrome llega al login desde PWA. Producción: PWA HTTP 200 y API de versiones HTTP 401 sin sesión. Es comprobación de entrada, no de acciones comerciales autenticadas en navegador.
 - Para reproducir: levantar servicios/variables de `.github/workflows/operator-acceptance.yml` con base vacía; ejecutar `npm ci --ignore-scripts --no-audit --no-fund` y `node scripts/check-operator-acceptance.mjs`. El proceso cierra sus conexiones y el runner desecha contenedores/datos.
 
 ## Límites y siguiente bloque

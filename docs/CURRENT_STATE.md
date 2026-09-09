@@ -2,12 +2,13 @@
 
 Última actualización del corte vigente: 2026-09-09
 
-## Validado en PR — operadores y concurrencia
+## Corte publicado — operadores y concurrencia
 
-- Rama `test/operator-concurrency-acceptance`, base `95e352e0d466ca8392adef89e8e4897d19cf2da3`.
-- [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287): 22/22 escenarios PostgreSQL/PostgREST reales, run `34396574892`, head `490e6bfc18b85a2b55e4016c28fea96346bf3cbd`; siete workflows aprobados. Matriz y ajustes de fixture: `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`.
+- [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287) integrada; base `95e352e0d466ca8392adef89e8e4897d19cf2da3`, commit publicado `81648443ce66eda2ce4ed2e331146ad631ae751e`. Producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY.
+- 22/22 escenarios PostgreSQL/PostgREST reales; run final de PR `34396893578`, head `e8f61d1ac288c4d5620b6ef870e208a883a5e322`. Siete workflows y ocho check runs aprobados. Matriz y ajustes de fixture: `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`.
 - No cambia la lógica comercial. Se comprueban saldos/reservas entre conexiones, dos cuentas por HTTP, permisos vigentes, auditoría y revocación de sesiones. Seis owners de acceso/sesión coinciden con producción descontando formato. Regresión financiera local 40/40.
-- Preview `dpl_U4xZUVVS7j7xpnsD7VqSHq8DHZ2G` READY; entrada PWA llega al login en Chrome. La última revisión añade una espera explícita por el contrato RPC durante el arranque; comprobar su CI antes de integrar.
+- Preview final `dpl_FvZropMsHGUfGGFVKaptJ59U5szR` READY; entrada PWA llega al login en Chrome. La espera de arranque exige alcanzar el guard SQL del RPC antes de probar sesiones.
+- Los seis workflows de `main` aprobaron; Operator and Concurrency Acceptance `34397039678`. PWA productiva HTTP 200 y API de versiones HTTP 401 sin sesión. Este cambio solo añade QA/documentación y dependencias de desarrollo; no aplica migraciones ni cambia comportamiento comercial.
 - La Preview comparte producción. El navegador rechaza el backend local; siguen pendientes la aceptación visual aislada y el iPhone/PWA. Sin escrituras comerciales QA en producción ni reintentos manuales de BrowserStack.
 
 ## Corte publicado — finanzas y conciliación
