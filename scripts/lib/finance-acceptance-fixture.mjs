@@ -1,8 +1,8 @@
 // Real business RPCs shared by SQL and handler acceptance. No network or secrets.
-export async function financeFixture(db) {
+export async function financeFixture(db, { actor: existingActor } = {}) {
   const rows=async(sql,params=[]) => (await db.query(sql,params)).rows;
   const one=async(sql,params=[]) => (await rows(sql,params))[0];
-  const actor=(await one("insert into admin_users(username,role) values('QA finance','master_admin') returning id")).id;
+  const actor=existingActor || (await one("insert into admin_users(username,role) values('QA finance','master_admin') returning id")).id;
   const supplier=(await one("insert into suppliers(name,country) values('QA finance supplier','USA') returning id")).id;
   const warehouse=(await one("insert into warehouses(code,name,country) values('QA-FIN','QA finance','USA') returning id")).id;
   const product=(await one("insert into products(sku,name,unit,default_units_per_pallet) values('QA-FIN','QA finance boxes','cajas',10) returning id")).id;

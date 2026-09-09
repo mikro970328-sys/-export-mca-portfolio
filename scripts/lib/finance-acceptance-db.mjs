@@ -29,6 +29,13 @@ export async function createFinanceAcceptanceDb() {
   const db = new PGlite({ extensions:{ pgcrypto } });
   await db.waitReady;
   try {
+    await applyFinanceAcceptanceSchema(db);
+    return db;
+  } catch (error) { await db.close(); throw error; }
+}
+
+// Shared unchanged SQL slice for PGlite and real, multi-connection PostgreSQL QA.
+export async function applyFinanceAcceptanceSchema(db) {
     for (const file of ['supabase/tests/fixtures/purchase_acceptance_legacy.sql',
       'supabase/tests/fixtures/sales_logistics_acceptance_legacy.sql',
       'supabase/tests/fixtures/finance_acceptance_legacy.sql', ...financeAcceptanceMigrations]) {
@@ -44,6 +51,4 @@ export async function createFinanceAcceptanceDb() {
       try { await db.exec(sql); }
       catch (error) { throw new Error(`Finance migration ${file}: ${error.message}`); }
     }
-    return db;
-  } catch (error) { await db.close(); throw error; }
 }

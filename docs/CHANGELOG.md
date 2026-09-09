@@ -2,6 +2,12 @@
 
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
+## 2026-09-09 — Operadores y concurrencia (validado en PR #287)
+
+- Se prepara la matriz de 22 escenarios con PostgreSQL 17.6, PostgREST real, dos operadores y cuentas QA desechables. La concurrencia se comprueba mediante bloqueos observados entre conexiones.
+- Se reutiliza el esquema financiero sin cambiar reglas comerciales; se añaden las migraciones reales de permisos, sesiones y sincronización y una fixture legacy de acceso. `pg` se añade solo como dependencia de desarrollo.
+- 22/22 escenarios aprobados en CI (run `34396574892`, head `490e6bfc18b85a2b55e4016c28fea96346bf3cbd`) y siete workflows aprobados. Se corrigieron omisiones del entorno QA y su espera de arranque, sin cambiar reglas productivas. Regresión financiera local 40/40. Detalles y límites en `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`.
+
 ## 2026-09-09 — Aceptación financiera y conciliación de caja
 
 Estado: publicado mediante [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), commit funcional `e33cb87bf278b3886dd0acc42a9f3250c78f5285`. Producción `dpl_GP9Jw7tBYUh44h8dK5S4xyscWQeR` READY.

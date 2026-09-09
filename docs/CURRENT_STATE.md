@@ -2,6 +2,14 @@
 
 Última actualización del corte vigente: 2026-09-09
 
+## Validado en PR — operadores y concurrencia
+
+- Rama `test/operator-concurrency-acceptance`, base `95e352e0d466ca8392adef89e8e4897d19cf2da3`.
+- [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287): 22/22 escenarios PostgreSQL/PostgREST reales, run `34396574892`, head `490e6bfc18b85a2b55e4016c28fea96346bf3cbd`; siete workflows aprobados. Matriz y ajustes de fixture: `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`.
+- No cambia la lógica comercial. Se comprueban saldos/reservas entre conexiones, dos cuentas por HTTP, permisos vigentes, auditoría y revocación de sesiones. Seis owners de acceso/sesión coinciden con producción descontando formato. Regresión financiera local 40/40.
+- Preview `dpl_U4xZUVVS7j7xpnsD7VqSHq8DHZ2G` READY; entrada PWA llega al login en Chrome. La última revisión añade una espera explícita por el contrato RPC durante el arranque; comprobar su CI antes de integrar.
+- La Preview comparte producción. El navegador rechaza el backend local; siguen pendientes la aceptación visual aislada y el iPhone/PWA. Sin escrituras comerciales QA en producción ni reintentos manuales de BrowserStack.
+
 ## Corte publicado — finanzas y conciliación
 
 - [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), base `40cb5feba6dbbd4f0ff37afb14678584e4caad19`, commit funcional publicado `e33cb87bf278b3886dd0acc42a9f3250c78f5285`. Producción `dpl_GP9Jw7tBYUh44h8dK5S4xyscWQeR` READY.
