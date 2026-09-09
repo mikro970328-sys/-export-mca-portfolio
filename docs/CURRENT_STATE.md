@@ -2,6 +2,14 @@
 
 Última actualización del corte vigente: 2026-09-09
 
+## En validación — cadena comercial y selección de almacén (PR #295)
+
+- Rama `test/commercial-browser-acceptance`, base `5e2620bd6afe151807b3a17d6ebab394e5eee16b`. No afirmar publicado hasta verificar merge y deployment.
+- Se añade compra → WR parciales → inventario → venta/cargue/despacho → factura/cobros → coste/reportes en PostgreSQL/PostgREST aislados, Chromium y WebKit móvil. La suite anterior de operadores se conserva en jobs con bases independientes.
+- Run `34405757054`: se reprodujo en Chromium una respuesta tardía de catálogos que vacía el almacén al abrir recepción; WebKit aprobó las dos recepciones y el exceso cancelado. Se corrige el owner `fillMasters` preservando selecciones presentes, con asset `20260909-masters1`. Regresión específica 1/4 antes, 4/4 después.
+- Los otros fallos iniciales correspondían a columnas/grants legacy faltantes en QA, contrastados con producción en modo lectura. No hay migración ni operación comercial QA productiva.
+- 108 comprobaciones locales previas de compras/ventas/finanzas aprobadas; las matrices previas de operadores aprobaron en ambos motores. Pendiente el recorrido comercial final del head corregido. Matriz y límites: `docs/COMMERCIAL_BROWSER_ACCEPTANCE.md`.
+
 ## Corte publicado — permisos, diálogos y dos operadores (PR #289)
 
 - Publicado mediante [PR #289](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/289), commit `55c6ae255b7abcd26068b941f0bc7c43c9f7d1d4`. Producción `dpl_4pshzRmzZGJmzntku1i5K8mz4KYG` READY.

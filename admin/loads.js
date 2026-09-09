@@ -262,7 +262,7 @@ function renderRows(){
   $('loadCards').innerHTML=rows.map(load=>{
     const key=statusKey(load.status);
     return `<article class="load-card">
-      <span class="load-card-head"><strong>${esc(load.load_number||'Cargue')}</strong><span class="pill ${esc(key)}">${esc(statusLabel(load.status))}</span></span>
+      <span class="load-card-head"><button class="alt" type="button" data-open-load="${esc(load.id)}" aria-label="Abrir ${esc(load.load_number||'cargue')}"><strong>${esc(load.load_number||'Cargue')}</strong></button><span class="pill ${esc(key)}">${esc(statusLabel(load.status))}</span></span>
       <span class="load-card-grid">
         <span><span>Almacén</span><b>${esc(warehouseLabel(load))}</b></span>
         <span><span>Contenedor</span><b>${esc(containerLabel(load))}</b></span>
