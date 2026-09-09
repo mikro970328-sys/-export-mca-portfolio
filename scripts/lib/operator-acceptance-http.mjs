@@ -61,11 +61,17 @@ async function startApi() {
       while(Date.now()<deadline) {
         try {
           const r=await fetch(`${rest}admin_users?select=id&limit=0`,{headers:{Authorization:`Bearer ${serviceToken}`},signal:AbortSignal.timeout(1000)});
-          await r.text();if(r.status===200)return;
+          await r.text();
+          if(r.status===200){
+            const schema=await fetch(rest,{headers:{Authorization:`Bearer ${serviceToken}`},signal:AbortSignal.timeout(1000)});
+            const description=await schema.json();
+            if(description.paths?.['/rpc/register_admin_login_success'])return;
+          }
         }catch{}
         await pause(150);
       }
-      throw Error('Real PostgREST did not become ready after the schema reload');
+      const signature=(await db.query("select proname,proargnames,proargmodes,proretset,has_function_privilege('service_role',oid,'execute') as allowed from pg_proc where proname='register_admin_login_success'")).rows;
+      throw Error(`Real PostgREST login RPC missing after schema reload: ${JSON.stringify(signature)}`);
     },
     async close(){
       server.closeIdleConnections();await new Promise(resolve=>server.close(resolve));

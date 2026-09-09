@@ -7,7 +7,8 @@ grant select on public.clients,public.products,public.suppliers,public.shipments
 -- Supabase's historical table grants predate this slice. These privileges were
 -- inspected on the live schema; restore them only in the disposable QA fixture.
 grant select,insert,update,delete on public.warehouses,public.warehouse_receipts,
-  public.warehouse_receipt_items to service_role;
+  public.warehouse_receipt_items,public.purchase_orders,public.purchase_order_items,
+  public.purchase_receipt_allocations to service_role;
 alter table public.admin_users
   alter column username set not null,
   alter column role set not null,
