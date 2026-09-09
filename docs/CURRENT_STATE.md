@@ -5,7 +5,7 @@
 ## En curso — aceptación de pantalla con dos operadores
 
 - Rama `test/browser-operator-acceptance`, base `a9698ea1f573836ccbf22b697bcd2767cfa0679a`.
-- PR #289. Chromium aprobó UI-01 a UI-04 y reprodujo UI-05: las capacidades de Facturación quedaban antiguas tras retirar permisos. Corrección integrada en el mapa de sincronización; runtime live7 y dos regresiones locales aprobadas. Pendiente segunda ejecución. WebKit aprobó UI-01/UI-02 y encontró un detalle que seguía abierto; se añade aserción de cierre y diagnóstico para aislarlo.
+- PR #289. Run `34400008852`, head `8319d83`: Chromium aprobó UI-01 a UI-08 y confirmó la corrección de permisos; revocación pendiente de diagnóstico. WebKit reprodujo el cierre oculto detrás del encabezado: se ajusta la altura del iframe en el CSS owner y se exige geometría accesible. Pendiente nueva ejecución.
 - Archivos: suite y lockfile en `e2e/isolated/`, workflow de navegador y extensión del servidor QA de operadores. Incluye corrección del refresco por permisos; aún sin publicar y sin migraciones.
 - La suite de desarrollo se ejecuta en CI con servicios desechables. El navegador gestionado y los controles de BrowserStack permanecen sin cambios. No equivale a certificación en iPhone real.
 - Siguiente acción: ejecutar, corregir defectos reproducidos en su owner, revisar capturas y controles, registrar commit/Preview/publicación.

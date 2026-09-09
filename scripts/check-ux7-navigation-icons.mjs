@@ -130,7 +130,7 @@ for (const fragment of [
 ]) requireText(files.dashboard, fragment, 'iconografía semántica del Dashboard');
 
 for (const fragment of [
-  '/admin/navigation-shell.css?v=20260904-simple-nav1',
+  '/admin/navigation-shell.css?v=20260909-viewport1',
   '/admin/erp.js?v=20260905-accessflow1'
 ]) requireText(files.index, fragment, 'revisión de caché del shell');
 

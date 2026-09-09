@@ -1,7 +1,7 @@
 # Aceptación en navegador de dos operadores
 
 Fecha: 2026-09-09. Base: `a9698ea1f573836ccbf22b697bcd2767cfa0679a`.
-Rama: `test/browser-operator-acceptance`. Estado: preparada; pendiente ejecución en CI.
+Rama: `test/browser-operator-acceptance`. Estado: PR #289 en validación; dos defectos reproducidos y correcciones en revisión.
 
 ## Dependencias y alcance
 
@@ -34,4 +34,6 @@ La [guía oficial de CI](https://playwright.dev/docs/ci-intro) y la [documentaci
 
 Primera ejecución Chromium, run `34399244149`, head `a01b455`: UI-01 a UI-04 aprueban; UI-05 falla porque retirar `finance.write` deja el botón de cobro y las capacidades anteriores en pantalla. El backend ya impide escribir con el permiso retirado; el defecto es de actualización de interfaz. `account` refrescaba únicamente permisos/cuenta nativos y no invalidaba los módulos embebidos.
 
-La corrección integra el ámbito `account` en el mapa existente de módulos dependientes; reutiliza su refresco y aplazamiento por editor, sin observers ni wrappers adicionales. Runtime `20260909-live7` y contratos de carga actualizados conjuntamente. Dos regresiones del runtime verifican invalidación por cambio de rol sin modificación comercial, silencio si la versión no cambia y conservación del modal. Pendiente verificar en navegador la corrección.
+La corrección integra el ámbito `account` en el mapa existente de módulos dependientes; reutiliza su refresco y aplazamiento por editor, sin observers ni wrappers adicionales. Runtime `20260909-live7` y contratos de carga actualizados conjuntamente. Dos regresiones del runtime verifican invalidación por cambio de rol sin modificación comercial, silencio si la versión no cambia y conservación del modal. La segunda ejecución Chromium (`34400008852`, head `8319d83`) confirmó UI-01 a UI-08, incluyendo retirada y restitución de escritura. La revocación termina antes del timeout y se está instrumentando el ciclo de página antes de atribuirlo al producto. WebKit confirmó que el cierre del detalle no recibe el clic: la captura muestra el encabezado sobre el botón. El iframe tenía un mínimo de 720 px y podía desplazar su diálogo detrás del encabezado fijo. El CSS del shell ahora reserva un viewport completo bajo el encabezado, con altura dinámica; la prueba exige que iframe y cierre queden accesibles. Ambos cambios conservan los owners existentes.
+
+El servidor aislado también sirve los handlers originales de publicaciones y pagos a proveedores que cargan los módulos presentes. Las rutas API inexistentes (404), errores 5xx, errores JavaScript y salidas de red externas son fallos de aceptación. Las respuestas 403 de módulos sin permiso son esperadas.

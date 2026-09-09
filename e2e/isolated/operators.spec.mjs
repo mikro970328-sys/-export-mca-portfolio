@@ -12,7 +12,9 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
   let api;
   const contexts = [];
   const nativeFetch = globalThis.fetch;
-  const diagnostics = { api:[], errors:[], blockedExternal:[], checkpoints:[], clicks:[] };
+  const diagnostics = { api:[], errors:[], blockedExternal:[], checkpoints:[], clicks:[], lifecycle:[] };
+  const lifecycle = (operator,event,detail={}) => diagnostics.lifecycle.push({operator,event,...detail});
+  browser.on('disconnected',()=>lifecycle('all','browser-disconnected'));
   try {
     const { f, users } = await operatorFixture(db);
     const invoice = await f.invoice(await f.sale());
@@ -60,10 +62,16 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
         return route.abort('blockedbyclient');
       });
       const page = await context.newPage();
+      page.on('close',()=>lifecycle(key,'page-close'));
+      page.on('crash',()=>lifecycle(key,'page-crash'));
+      context.on('close',()=>lifecycle(key,'context-close'));
       const state = { context, page, liveVersion:-1, navigations:0, framesNavigated:0, liveResponses:0 };
       sessions[key] = state;
       page.on('framenavigated', frame => {
-        if (frame===page.mainFrame()) state.navigations++;
+        if (frame===page.mainFrame()) {
+          state.navigations++;
+          lifecycle(key,'navigation',{path:new URL(frame.url()).pathname});
+        }
         else if (frame.url().includes('/admin/invoices.html')) state.framesNavigated++;
       });
       page.on('pageerror', error => diagnostics.errors.push({ operator:key, message:error.message }));
@@ -104,6 +112,12 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       await row(session).locator('[data-invoice-action="payment"]').click();
       await expect(frame(session).locator('#paymentModal')).toBeVisible();
     };
+    const assertWorkspaceFits = async session => {
+      const header = await session.page.locator('.topbar').boundingBox();
+      const workspace = await session.page.locator('#invoicesSection iframe').boundingBox();
+      expect(workspace.y).toBeGreaterThanOrEqual(header.y+header.height);
+      expect(workspace.y+workspace.height).toBeLessThanOrEqual(session.page.viewportSize().height);
+    };
     const collect = async (session,amount) => {
       await openPayment(session);
       await frame(session).locator('#pAmount').fill(String(amount));
@@ -112,6 +126,10 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       expect((await response).status()).toBe(200);
       await expect(frame(session).locator('#paymentModal')).toBeHidden();
       await expect(frame(session).locator('#detailModal')).toBeVisible();
+      await assertWorkspaceFits(session);
+      const close = await frame(session).locator('[data-close="detail"]').boundingBox();
+      const header = await session.page.locator('.topbar').boundingBox();
+      expect(close.y).toBeGreaterThanOrEqual(header.y+header.height);
       await frame(session).locator('[data-close="detail"]').click();
       await expect(frame(session).locator('#detailModal')).toBeHidden();
     };
@@ -182,6 +200,7 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       await balance(b,220);
       await b.context.setOffline(false);
       await balance(b,195);
+      await assertWorkspaceFits(b);
       expect({ a:a.navigations,b:b.navigations,af:a.framesNavigated,bf:b.framesNavigated }).toEqual(nav);
     });
     await step('UI-08 refresh restores session and one responsive workspace', async()=> {
@@ -212,9 +231,14 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
     });
     expect(diagnostics.errors).toEqual([]);
     expect(diagnostics.blockedExternal).toEqual([]);
+    expect(diagnostics.api.filter(r=>r.status===404)).toEqual([]);
     // Unauthorized eager modules may answer 403; any 5xx is a real failure.
     expect(diagnostics.api.filter(r=>r.status>=500)).toEqual([]);
     expect(diagnostics.checkpoints).toHaveLength(10);
+  } catch (error) {
+    diagnostics.failure = {message:error.message,cause:String(error.cause||''),
+      pages:contexts.map(context=>context.pages().map(page=>({url:page.url(),closed:page.isClosed()})))};
+    throw error;
   } finally {
     const diagnosticPath = info.outputPath('diagnostics.json');
     fs.mkdirSync(info.outputDir,{recursive:true});

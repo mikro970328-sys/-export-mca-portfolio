@@ -1,5 +1,9 @@
 # Changelog — Export MCA ERP
 
+## 2026-09-09 — diagnóstico visual de operadores (PR #289, en curso)
+
+La segunda ejecución confirma permisos vivos en Chromium (UI-01 a UI-08). WebKit reproduce el detalle cubierto por el encabezado; el CSS owner limita el iframe al viewport disponible. Se amplían las comprobaciones de geometría y el diagnóstico de revocación, sin modificar sesiones antes de conocer la causa.
+
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
 ## 2026-09-09 — Aceptación de navegador (en preparación)
