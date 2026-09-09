@@ -4,10 +4,12 @@
 
 ## Corte QA — ventas, logística y documentos
 
-- Base `eae1cf2439d841608e1234a11e8d5209935c6e13`; rama `test/sales-logistics-acceptance`.
+- Base `eae1cf2439d841608e1234a11e8d5209935c6e13`; entrega publicada mediante [PR #283](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/283), commit funcional `eaabea111ddc073f0d51129c6a204ab29068c191`.
 - 39 escenarios aislados aprobados (29 SQL, 10 API) y nueve contratos relacionados. Matriz y límites en `docs/SALES_LOGISTICS_ACCEPTANCE.md`.
 - Corregidos el borrado de asignaciones al editar cargues independientes, la mercancía derivada del contenedor, la precisión de la ruta de compatibilidad de ventas y las respuestas para sobreasignación/contexto. La acción de edición refleja la protección existente de cargues vinculados a ventas.
-- Migración `20260909180837_load_plan_container_consistency.sql` aplicada a Supabase: tres funciones existentes, sin reescritura histórica ni movimientos de stock. Definiciones y permisos contrastados con el entorno probado. PR #283: head inicial `2c6dbb76f679a947bbf4824e51b4270c08d60d58`, 11/11 controles y Preview `dpl_5hMtARU3RYe82B5aLo18uVWT5teF` READY; entrada administrativa y PWA llegan al login. Pendiente merge/verificación productiva de las API.
+- Migración `20260909180837_load_plan_container_consistency.sql` aplicada a Supabase: tres funciones existentes, sin reescritura histórica ni movimientos de stock. Definiciones y permisos contrastados con el entorno probado.
+- Head final de PR `5b6e2304724a56cb5fbc0ecf6d339ecfe30e17b8`: 11/11 controles y Preview `dpl_41o9mDtgrVs7oLm4DcZccyfEpX1r` READY; entrada administrativa y PWA llegan al login. Los 3/3 workflows del commit funcional de `main` también aprobaron.
+- Producción `dpl_5Q4TvBzV7Vh2aLuv3y5Eu9WcxAzP` READY: PWA responde 200 y las tres API modificadas responden 401 sin sesión. Consulta pospublicación de logs 5xx sin resultados en el intervalo observado.
 - Las pruebas de datos de ventas/logística amplían el corte previo de compras; no certifican navegador autenticado, dos operadores, concurrencia real, Storage ni móvil/PWA. Siguiente bloque: facturación, cobros/pagos, anticipos, costes y reportes.
 
 ## Corte QA — compras, recepción e inventario
