@@ -1,16 +1,25 @@
 # Changelog — Export MCA ERP
 
-## 2026-09-09 — diagnóstico visual de operadores (PR #289, en curso)
-
-La segunda ejecución confirma permisos vivos en Chromium (UI-01 a UI-08). WebKit reproduce el detalle cubierto por el encabezado; el CSS owner limita el iframe al viewport disponible. Se amplían las comprobaciones de geometría y el diagnóstico de revocación, sin modificar sesiones antes de conocer la causa.
-
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
-## 2026-09-09 — Aceptación de navegador (en preparación)
+## 2026-09-09 — Permisos y diálogos con dos operadores (PR #289)
 
-- Se define matriz de diez escenarios por motor para dos identidades, cobros por formulario, refresco, conservación del editor, permisos, conexión y sesiones.
-- Runner de CI con PostgreSQL/PostgREST desechables, Chromium y WebKit móvil emulado. Capturas/diagnósticos; sin credenciales productivas, cambios comerciales ni certificación de iPhone real.
-- Primera ejecución reprodujo capacidades obsoletas al retirar permisos: el ámbito de cuenta ahora invalida módulos embebidos mediante el controlador existente. Runtime live7 y dos regresiones de permisos aprobadas localmente; pendiente validación final y publicación. Detalles en `docs/BROWSER_OPERATOR_ACCEPTANCE.md`.
+Estado: validado en rama; pendiente publicación tras integrar main #290/#291.
+
+- Corregidas las acciones obsoletas tras cambiar permisos y el cierre del detalle cubierto por el encabezado móvil, mediante los owners existentes de sincronización y CSS.
+- Run `34401479844`, head `26cf44003b17767381e25581546190506f589219`: 20/20 escenarios (diez en Chromium completo y diez en WebKit móvil), 52/52 workflows. Capturas revisadas; Preview `dpl_FsU26kh4ANZUpSzhXMcZgUKhsk22` READY y entrada PWA al login verificada.
+- Cobertura de cobros, auditoría, formularios, permisos, conexión, recarga, revocación y nuevo login. Cero errores JavaScript, API 404/5xx, red externa o caídas.
+- Chromium completo evita la caída nativa BadgeService del shell reducido sin modificar sesión ni SW. Sin migraciones ni operaciones comerciales QA productivas; WebKit emulado no certifica iPhone real. Matriz: `docs/BROWSER_OPERATOR_ACCEPTANCE.md`.
+
+## 2026-09-09 — Aceptación visual aislada multioperador/PWA
+
+Estado: publicado mediante [PR #290](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/290), commit `dfe47514aeaafa6aa32d34ca960332464749c07a`. Cambio exclusivo de QA; sin reglas comerciales, migraciones ni datos productivos.
+
+- Se añade un servidor de integración que aloja el frontend y los handlers reales contra PostgreSQL/PostgREST desechables.
+- Dos operadores distintos abren Facturación en contextos Chromium separados; el segundo entra por `/admin/pwa.html` con perfil/viewport iPhone.
+- Dos cobros UI cambian el saldo 400 → 280 → 200 en B sin navegación ni recarga manual. Un detalle abierto conserva 280 y recibe 200 al cerrarse.
+- El service worker y la ruta de lanzamiento PWA quedan comprobados en Chromium. No equivale a Safari, modo standalone ni hardware iPhone real.
+- Run `34401166506`: ambos jobs aprobaron; cinco de cinco workflows de la PR correctos. Matriz y límites en `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`.
 
 ## 2026-09-09 — Operadores y concurrencia
 

@@ -1,7 +1,7 @@
 # Aceptación en navegador de dos operadores
 
 Fecha: 2026-09-09. Base: `a9698ea1f573836ccbf22b697bcd2767cfa0679a`.
-Rama: `test/browser-operator-acceptance`. Estado: PR #289 en validación; dos defectos reproducidos y correcciones en revisión.
+Rama: `test/browser-operator-acceptance`. Estado: 20/20 escenarios y 52/52 workflows aprobados; integración con main #290/#291 en verificación.
 
 ## Dependencias y alcance
 
@@ -42,4 +42,10 @@ El servidor aislado también sirve los handlers originales de publicaciones y pa
 
 Run `34401066282`, head `99006ad`: WebKit móvil aprobó los diez escenarios, sin errores JavaScript, salidas externas, API 404 ni 5xx. Capturas revisadas: formulario preservado y workspace separado del encabezado. Chromium volvió a aprobar UI-01 a UI-08 y registró `page-crash` al revocar B. El log nativo identifica `No binder found for interface blink.mojom.BadgeService for the service worker scope`, seguido de terminación del renderer. La limpieza de badge del service worker provoca el fallo del ejecutable reducido `chrome-headless-shell`; no se altera la implementación de sesión ni el service worker del ERP.
 
-Se configura `channel: chromium`, el [modo headless de Chromium completo documentado por Playwright](https://playwright.dev/docs/browsers#chromium-new-headless-mode), manteniendo las mismas diez exigencias y ambos operadores. Pendiente verificar la nueva ejecución.
+Se configura `channel: chromium`, el [modo headless de Chromium completo documentado por Playwright](https://playwright.dev/docs/browsers#chromium-new-headless-mode), manteniendo las mismas diez exigencias y ambos operadores. La nueva ejecución aprobó: ver evidencia final.
+
+## Evidencia final antes de integrar main
+
+[Run 34401479844](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34401479844), head `26cf44003b17767381e25581546190506f589219`: diez de diez escenarios en Chromium completo y diez de diez en WebKit móvil. Los 52 workflows del head aprobaron. Ambos diagnósticos registran cero errores JavaScript, API 404, API 5xx, peticiones externas o caídas de página. Capturas revisadas del detalle (cierre bajo el encabezado), formulario conservado, revocación y saldo final USD 195; tres cobros por un total de USD 205. Preview `dpl_FsU26kh4ANZUpSzhXMcZgUKhsk22` READY y entrada PWA al login verificada.
+
+Durante la validación se publicaron #290/#291 en main `58f523b9e08525285dc9e353abc43faf1d8b9586`, con una prueba visual inicial independiente. Se integran conservando sus archivos y su registro; la matriz de esta PR amplía permisos, formularios, conexión/sesión y WebKit. La versión combinada necesita controles antes de publicarse.
