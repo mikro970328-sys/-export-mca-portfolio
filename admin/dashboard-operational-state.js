@@ -139,9 +139,9 @@
           ${metricCard('Ventas emitidas',money(a.issued_sales,currency),`${integer(a.issued_invoice_count)} factura(s)`)}
           ${metricCard('Ventas confirmadas',money(a.booked_sales_order_value,currency),`${integer(a.so_confirmed_count)} venta(s) confirmada(s)`)}
           ${metricCard('Compras comprometidas',money(a.po_committed_value,currency),`${integer(a.po_committed_count)} compra(s) comprometida(s)`)}
-          ${metricCard('Cobrado',money(a.cash_collected,currency),`${integer(a.customer_payment_count)} cobro(s)`,'positive')}
-          ${metricCard('Pagado',money(a.cash_paid,currency),`${integer(a.supplier_payment_count)} pago(s)`)}
-          ${metricCard('Flujo neto de caja',money(a.net_cash_flow,currency),'Cobros contabilizados menos pagos contabilizados',Number(a.net_cash_flow||0)<0?'negative':'positive')}
+          ${metricCard('Cobrado',money(a.cash_collected,currency),`${integer(a.customer_payment_count)} cobro(s) · ${integer(a.customer_advance_count)} anticipo(s)`,'positive')}
+          ${metricCard('Pagado',money(a.cash_paid,currency),`${integer(a.supplier_payment_count)} pago(s) · ${integer(a.customer_advance_refund_count)} reembolso(s)`)}
+          ${metricCard('Flujo neto de caja',money(a.net_cash_flow,currency),'Incluye anticipos y reembolsos registrados',Number(a.net_cash_flow||0)<0?'negative':'positive')}
           ${metricCard('Cuentas por cobrar',money(b.ar_balance,currency),`${integer(b.open_ar_invoice_count)} factura(s) abierta(s) · ${integer(b.overdue_ar_count)} vencida(s)`)}
           ${metricCard('Cuentas por pagar',money(b.ap_balance,currency),`${integer(b.open_ap_bill_count)} cuenta(s) abierta(s) · ${integer(b.overdue_ap_count)} vencida(s)`)}
           ${metricCard('Costo de ventas reconocido',marginReady?money(a.recognized_cogs,currency):'No disponible',marginDetail)}

@@ -45,7 +45,7 @@ for (const text of [
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/invoices.css?v=20260903-ux7invoices1',
   '/admin/invoices.js?v=20260903-ux7invoices1',
-  '/admin/embedded-auto-refresh.js?v=20260909-live5',
+  '/admin/embedded-auto-refresh.js?v=20260909-live6',
   'class="module-hero invoices-page-head"',
   'id="invoiceLastUpdated"',
   'id="metrics" class="metrics invoices-metrics"',
@@ -344,7 +344,7 @@ forbid(navigation, /openInvoice[^\n]*installBridge\('invoicesSection'\)/, 'openI
 forbid(bridge, /function initInvoices\s*\(/, 'el bridge conserva un segundo owner de Facturación');
 forbid(bridge, /\/admin\/invoices\.html/, 'el bridge todavía se activa dentro de Facturación');
 requireText(contextualGate, "InvoicesModule.openInvoice", 'gate contextual actualizado para el owner de Facturación');
-requireText(autoRefresh, "invoices: ['invoicesSection','costsSection','payablesSection']", 'auto-refresh conserva dependencias de Facturación');
+requireText(autoRefresh, "invoices: ['invoicesSection','costsSection','payablesSection','reportsSection']", 'auto-refresh conserva dependencias de Facturación');
 
 for (const text of [
   'admin/invoices.html',

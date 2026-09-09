@@ -46,7 +46,7 @@ function cleanLines(lines){
     const salesOrderItemId=text(line.sales_order_item_id,80);
     const quantity=text(line.quantity,80);
     if(!salesOrderItemId)throw new Error(`Falta la línea ${index+1} de la Sales Order`);
-    if(!quantity||Number(quantity)<=0)throw new Error(`Indica una cantidad válida en la línea ${index+1}`);
+    if(!quantity||!Number.isFinite(Number(quantity))||Number(quantity)<=0)throw new Error(`Indica una cantidad válida en la línea ${index+1}`);
     return {sales_order_item_id:salesOrderItemId,quantity,notes:text(line.notes,1000)||null};
   });
 }
@@ -95,6 +95,7 @@ async function loadSalesOrders(){
 function buildMetrics(invoices){
   const active=invoices.filter(invoice=>invoice.status!=='void');
   const issued=active.filter(invoice=>invoice.status==='issued');
+  const today=new Date().toISOString().slice(0,10);
   const receivableByCurrency=new Map();
   for(const invoice of issued){
     const balance=Number(invoice.financial?.balance_due||0);
@@ -107,7 +108,10 @@ function buildMetrics(invoices){
     invoice_count:active.length,
     draft_count:active.filter(invoice=>invoice.status==='draft').length,
     paid_count:issued.filter(invoice=>invoice.financial?.payment_status==='paid').length,
-    overdue_count:issued.filter(invoice=>invoice.financial?.payment_status==='overdue').length,
+    overdue_count:issued.filter(invoice=>{
+      const dueDate=text(invoice.financial?.due_date||invoice.due_date,10);
+      return Number(invoice.financial?.balance_due||0)>0&&dueDate&&dueDate<today;
+    }).length,
     receivable_by_currency:[...receivableByCurrency.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([currency,amount])=>({currency,amount}))
   };
 }

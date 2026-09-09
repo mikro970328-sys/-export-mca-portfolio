@@ -2,6 +2,16 @@
 
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
+## 2026-09-09 — Aceptación financiera y conciliación de caja
+
+Estado: validación local en `test/finance-acceptance`; pendiente publicación.
+
+- 40 escenarios aislados: facturas/cobros, anticipos/reembolsos, proformas, AP, costes, rentabilidad, reportes y refresco.
+- Caja incluye anticipos y devoluciones sin volver a contar aplicaciones. Dashboard y reportes usan la misma fuente; no cambia AR/AP, libros de pago ni rentabilidad.
+- Facturas vencidas con cobro parcial permanecen en el contador. Cantidades/importes no finitos se rechazan antes del RPC.
+- Reportes se refresca por el mapa de dependencias existente; runtime `20260909-live6` y etiquetas de caja actualizadas.
+- Migración de lectura y workflow sin credenciales; método, fallos reproducidos y límites en `docs/FINANCE_ACCEPTANCE.md`.
+
 ## 2026-09-09 — Aceptación de ventas, logística y documentos
 
 Estado: publicado mediante [PR #283](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/283), commit funcional `eaabea111ddc073f0d51129c6a204ab29068c191`. Producción `dpl_5Q4TvBzV7Vh2aLuv3y5Eu9WcxAzP` READY.

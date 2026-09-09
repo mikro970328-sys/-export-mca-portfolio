@@ -1,0 +1,75 @@
+name: Finance Acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'api/*invoice*.js'
+      - 'api/*finance*.js'
+      - 'api/*supplier*.js'
+      - 'api/*cost*.js'
+      - 'api/*executive*.js'
+      - 'api/reports.js'
+      - 'api/_lib.js'
+      - 'admin/embedded-auto-refresh.js'
+      - 'admin/dashboard-operational-state.js'
+      - 'admin/reports.*'
+      - 'supabase/migrations/**'
+      - 'migrations/**'
+      - 'supabase/tests/fixtures/*acceptance*.sql'
+      - 'scripts/check-finance-*.mjs'
+      - 'scripts/lib/*acceptance*.mjs'
+      - 'package*.json'
+      - '.github/workflows/finance-acceptance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'api/*invoice*.js'
+      - 'api/*finance*.js'
+      - 'api/*supplier*.js'
+      - 'api/*cost*.js'
+      - 'api/*executive*.js'
+      - 'api/reports.js'
+      - 'api/_lib.js'
+      - 'admin/embedded-auto-refresh.js'
+      - 'admin/dashboard-operational-state.js'
+      - 'admin/reports.*'
+      - 'supabase/migrations/**'
+      - 'migrations/**'
+      - 'supabase/tests/fixtures/*acceptance*.sql'
+      - 'scripts/check-finance-*.mjs'
+      - 'scripts/lib/*acceptance*.mjs'
+      - 'package*.json'
+      - '.github/workflows/finance-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-financial-flows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Real financial SQL and report reconciliation
+        run: node scripts/check-finance-acceptance.mjs
+      - name: Real API handlers with isolated financial SQL
+        run: node scripts/check-finance-api.mjs
+      - name: Report refresh after local and external financial actions
+        run: node scripts/check-finance-refresh.mjs
+      - name: Existing financial and refresh contracts
+        run: |
+          node scripts/check-ux5-invoice-actions.mjs
+          node scripts/check-ux5-customer-finance-actions.mjs
+          node scripts/check-ux5-supplier-ap-actions.mjs
+          node scripts/check-ux6-costs-presentation.mjs
+          node scripts/check-executive-dashboard.mjs
+          node scripts/check-executive-reports.mjs
+          node scripts/check-sales-customer-finance.mjs
+          node scripts/check-live-erp-refresh.mjs
+          node scripts/check-live-sync-recovery-runtime.mjs

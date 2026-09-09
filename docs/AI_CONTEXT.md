@@ -4,6 +4,8 @@
 
 ## Punto de entrada vigente
 
+Continuación financiera en rama `test/finance-acceptance`: 40 escenarios locales (25 SQL, 11 API, cuatro refresco) y correcciones documentadas en `docs/FINANCE_ACCEPTANCE.md`. Consultar el primer corte de `CURRENT_STATE.md` para Preview, CI, migración y publicación; no dar la rama por productiva antes de esa evidencia.
+
 Consultar primero el corte de septiembre en `docs/CURRENT_STATE.md`. Producción incluye la sincronización de las PR #278/#279 (runtime `20260909-live5`), la aceptación de compras/inventario de la PR #281 y la aceptación de ventas/logística de la PR #283. Las matrices están en `docs/PURCHASE_INVENTORY_ACCEPTANCE.md` y `docs/SALES_LOGISTICS_ACCEPTANCE.md`; no repetir estos bloques como si faltaran ni confundirlos con aceptación de navegador, concurrencia o móvil. El siguiente bloque es finanzas y conciliación de reportes; siguen pendientes las pruebas transversales de navegador, operadores e iPhone/PWA.
 
 Orden solicitado por el propietario: cerrar la validación funcional, después mejoras y finalmente auditoría integral. Las verificaciones de seguridad y regresión de cada cambio no se posponen hasta esa auditoría.
