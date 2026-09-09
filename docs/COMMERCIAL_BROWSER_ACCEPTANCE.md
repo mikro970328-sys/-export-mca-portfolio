@@ -29,7 +29,7 @@ no de documentos independientes insertados para cada pantalla.
 | COM-09 | Cargar; despacho bloqueado sin contenedor; crear/vincular y despachar; B muestra stock cero |
 | COM-10 | Crear y emitir factura de esa venta por USD 400 |
 | COM-11 | Cobrar 150 y 250; exactamente dos cobros, total 400, saldo cero |
-| COM-12 | Gasto directo 50; reportes de venta, AR, caja e inventario coinciden; COGS 250 y contribución 100 |
+| COM-12 | Gasto directo 50; reportes de venta, AR, caja e inventario coinciden; COGS estimado 250 y contribución 100 |
 
 ## Entorno y evidencia
 
@@ -40,8 +40,8 @@ no de documentos independientes insertados para cada pantalla.
   base ya inicializada por otra.
 - Se reutilizan las 91 migraciones del bloque de operadores y se añade la
   migración real de capacidades de contenedores `20260831235500`, sin modificar.
-  La fixture local completa campos legacy de Clientes, Proveedores y Productos,
-  el acceso de servicio a `shipment_history` y tres secuencias de numeración.
+  La fixture local completa campos legacy de Clientes, Proveedores, Productos e
+  Importadoras, acceso a historial/documentos de cargue y tres secuencias.
   Tipos/defaults y privilegios se contrastaron en modo lectura con producción;
   no es un volcado íntegro de producción.
 - Se insertan solo catálogos y cuentas QA aleatorias como preparación. Los roles
@@ -73,17 +73,37 @@ El inicializador rechaza bases remotas, nombres no QA o bases no vacías.
 Para WebKit se usa `--project=webkit-mobile` con otra base nueva. Los artefactos
 del workflow se conservan 14 días.
 
-## Límites y siguiente bloque
+## Resultados intermedios y defecto reproducido
 
 Primera ejecución `34404900511`, head `540dc78`: detectó columnas legacy omitidas
 en la base QA y permisos de numeración ausentes, antes de crear la compra. Se
 completó únicamente la fixture aislada, tras contrastarla con producción. El
 helper de navegación móvil debe abrir el botón visible del encabezado, no
-  tomar una instantánea prematura de visibilidad ni pulsar el control interior
-  que permanece fuera del viewport. La segunda ejecución `34405334186` llegó
-  a crear la compra; se selecciona explícitamente la vista Todas para incluir
-  borradores (el filtro inicial Abiertas no los muestra). Se completa además
-  la ruta QA de Importadoras con su handler original.
+tomar una instantánea prematura de visibilidad ni pulsar el control interior
+que permanece fuera del viewport. La segunda ejecución `34405334186` llegó
+a crear la compra; se selecciona explícitamente la vista Todas para incluir
+borradores (el filtro inicial Abiertas no los muestra). Se completa además
+la ruta QA de Importadoras con su handler original.
+
+Tercera ejecución `34405757054`, head `cdce92b`: Chromium aprobó compra y
+confirmación, pero al recibir obtuvo `WAREHOUSE_REQUIRED`. La respuesta de
+catálogos iniciada antes de abrir el diálogo reconstruía los `<select>` y
+borraba el almacén receptor. WebKit, más lento, aprobó las dos recepciones y
+la cancelación del exceso; después señaló dependencias legacy todavía omitidas
+del workspace de venta (lectura de `load_expediente_documents` y datos de
+Importadora). Se completaron en QA, contrastando tipos y permisos productivos.
+
+El defecto de selección sí pertenece al frontend real: `fillMasters` del owner
+de Compras reemplazaba opciones sin conservar los valores presentes. La nueva
+regresión `check-purchase-master-refresh.mjs` ejecuta esa función original:
+1/4 antes y 4/4 después de corregirla. Ahora conserva proveedor, destino de la
+orden y almacén receptor, incluso cuando cambia la selección antes de terminar
+la petición; mantiene vacío un destino Direct Ship y no reintroduce catálogos
+que dejaron de existir. Asset `20260909-masters1`; sin observers, wrappers ni
+cambios de SQL productivo. Se exige además el almacén seleccionado en cada
+recepción del recorrido real de navegador.
+
+## Límites y siguiente bloque
 
 Chromium completo y WebKit móvil emulado no equivalen a Safari en hardware
 iPhone, PWA instalada ni push del dispositivo. BrowserStack permanece separado,
@@ -93,6 +113,10 @@ Esta cadena de almacén no certifica todavía el ciclo Direct Ship de navegador,
 anulación de WR con historia, facturas/pagos de proveedor, anticipos, todas las
 variantes monetarias, seguimiento externo, subida/descarga documental o entrega
 de mensajes. Los ensayos SQL/API anteriores de esos módulos siguen vigentes.
+La cobertura del coste es `estimated`, comprobada explícitamente: proviene de
+los WR/PO y no se presenta como costo real facturado por el proveedor. Un gasto
+contabilizado no equivale a un pago; la caja de este recorrido conserva los dos
+cobros reales por USD 400, sin inventar una salida de dinero por ese gasto.
 No se envían WhatsApp/correos, no se escriben operaciones QA en Supabase y no
 se aplican migraciones productivas. La Preview comparte producción y solo se
 usa para comprobar entrada/publicación.

@@ -22,6 +22,8 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       add column welcome_status text default 'pending';
       alter table suppliers add column email text, add column phone text,
         add column address text, add column tax_id text, add column notes text;
+      alter table importers add column address text, add column country text default 'Cuba',
+        add column email text, add column phone text;
       alter table products add column if not exists description text,
         add column if not exists hs_code text, add column if not exists country_of_origin text,
         add column if not exists unit_weight_kg numeric, add column if not exists unit_volume_m3 numeric,
@@ -30,6 +32,7 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
         add column if not exists updated_at timestamptz default now();
       grant usage on sequence purchase_order_number_seq, sales_orders_so_serial_seq,
         invoices_invoice_serial_seq to service_role;
+      grant select on load_expediente_documents, documents to service_role;
       grant select,insert on shipment_history to service_role;`);
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const { f,users } = await operatorFixture(db);
@@ -172,6 +175,7 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await purchase.locator('.rrQty').fill(String(quantity));
       await purchase.locator('.rrPallets').fill(String(pallets));
       await purchase.locator('.rrLot').fill(lot);
+      await expect(purchase.locator('#rWarehouse')).toHaveValue(f.warehouse);
       const result=await mutation(a,'purchases',()=>purchase.locator('#saveReceipt').click(),status);
       if (status===200) await expect(purchase.locator('#receiveModal')).toBeHidden();
       return result;

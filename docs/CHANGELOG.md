@@ -2,6 +2,14 @@
 
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
+## 2026-09-09 — Cadena comercial y selecciones de Compras (PR #295)
+
+Estado: en validación, pendiente de publicación.
+
+- Nueva cadena de navegador con compra, recepciones parciales, existencias entre operadores, venta/cargue, despacho, factura, cobros y conciliación. Datos exclusivamente aislados; se conserva la matriz anterior.
+- La ejecución real reprodujo el borrado del almacén receptor por una respuesta tardía de catálogos. `fillMasters` conserva ahora los valores presentes, sin reintroducir opciones eliminadas. Regresión específica: 1/4 antes, 4/4 después. Asset `20260909-masters1`.
+- Sin migraciones ni datos comerciales QA productivos. Matriz, método y límites en `docs/COMMERCIAL_BROWSER_ACCEPTANCE.md`.
+
 ## 2026-09-09 — Permisos y diálogos con dos operadores (PR #289)
 
 Estado: Publicado mediante [PR #289](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/289), commit `55c6ae255b7abcd26068b941f0bc7c43c9f7d1d4`. Producción `dpl_4pshzRmzZGJmzntku1i5K8mz4KYG` READY.

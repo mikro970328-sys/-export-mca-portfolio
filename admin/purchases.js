@@ -62,9 +62,13 @@ function can(order,key){return capability(order,key).allowed===true;}
 
 async function load(){const d=await api('/api/purchases');orders=d.orders||[];suppliers=d.suppliers||[];warehouses=d.warehouses||[];products=d.products||[];render();fillMasters();}
 function fillMasters(){
+  // A catalogue response may finish after the user opens or changes a form.
+  // Rebuilding options must preserve its current values, not an earlier snapshot.
+  const selected=['oSupplier','oWarehouse','rWarehouse'].map(id=>[id,$(id).value]);
   $('oSupplier').innerHTML='<option value="">Seleccionar proveedor</option>'+suppliers.map(x=>`<option value="${x.id}">${esc(x.name)}${x.country?' · '+esc(x.country):''}</option>`).join('');
   const w='<option value="">Seleccionar almacén</option>'+warehouses.map(x=>`<option value="${x.id}">${esc(x.code)} · ${esc(x.name)}</option>`).join('');
   $('oWarehouse').innerHTML=w;$('rWarehouse').innerHTML='<option value="">Seleccionar almacén</option>'+warehouses.map(x=>`<option value="${x.id}">${esc(x.code)} · ${esc(x.name)}</option>`).join('');
+  selected.forEach(([id,value])=>{$(id).value=value;});
 }
 function setPurchaseDestination(mode){const direct=mode==='direct';$('oDestinationMode').value=direct?'direct':'warehouse';$('oWarehouseField').hidden=direct;$('oWarehouse').disabled=direct||editingLocks.destination===true;if(direct&&!editingLocks.destination)$('oWarehouse').value='';$('oDestinationHelp').classList.toggle('direct',direct);$('oDestinationHelp').textContent=editingLocks.destination?'El destino está protegido porque esta compra ya tiene mercancía recibida o una venta vinculada.':direct?'El proveedor envía la mercancía al cliente. Esta compra no crea WR ni entra a tu inventario; después se vincula desde Ventas → Asignar mercancía.':'La mercancía entrará físicamente a tu almacén. Al recibirla se creará un WR y entonces aparecerá en Existencias.';}
 function filtered(){

@@ -11,6 +11,7 @@ on:
       - 'admin/sales.html'
       - 'supabase/migrations/*purchase_order_safe_revision.sql'
       - 'scripts/check-purchase-safe-revision.mjs'
+      - 'scripts/check-purchase-master-refresh.mjs'
       - '.github/workflows/purchase-safe-revision.yml'
   push:
     branches: [main]
@@ -23,6 +24,7 @@ on:
       - 'admin/sales.html'
       - 'supabase/migrations/*purchase_order_safe_revision.sql'
       - 'scripts/check-purchase-safe-revision.mjs'
+      - 'scripts/check-purchase-master-refresh.mjs'
       - '.github/workflows/purchase-safe-revision.yml'
 
 permissions:
@@ -41,3 +43,5 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Validate purchase revisions
         run: node scripts/check-purchase-safe-revision.mjs
+      - name: Preserve selections during late catalogue responses
+        run: node scripts/check-purchase-master-refresh.mjs
