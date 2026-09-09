@@ -4,10 +4,12 @@
 
 ## Corte QA — compras, recepción e inventario
 
-- Base `4081f2d1120816f4179a75697af1ac14b75e8e14`, rama `test/purchase-inventory-acceptance`.
+- Base `4081f2d1120816f4179a75697af1ac14b75e8e14`; entrega publicada mediante [PR #281](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/281), commit funcional `7af4562d4d91523a6a9a655c9ae2ee289f861dc7`.
 - 27 escenarios aislados aprobados: 19 SQL y 8 de API. Matriz, método, defectos reproducidos y límites en `docs/PURCHASE_INVENTORY_ACCEPTANCE.md`.
-- Corrección preparada en `api/purchases.js`: exceso solo con booleano `true`; moneda inválida, almacén omitido y línea inexistente devuelven 400 seguro. Sin cambios de Supabase ni escrituras comerciales productivas.
-- Se añade CI que ejecuta operaciones reales en PGlite y se actualiza la fixture UX5 a la revisión protegida vigente. Publicación pendiente de la validación de esta rama.
+- Corrección publicada en `api/purchases.js`: exceso solo con booleano `true`; moneda inválida, almacén omitido y línea inexistente devuelven 400 seguro. Sin cambios de Supabase ni escrituras comerciales productivas.
+- Se añade CI que ejecuta operaciones reales en PGlite y se actualiza la fixture UX5 a la revisión protegida vigente. Pasaron los 27 escenarios y 8 contratos relacionados localmente; 9/9 workflows en el head de PR `7278a456d1ab95144c2681595fa9e8f6b2b722d2` y 3/3 workflows del commit funcional de `main`.
+- Preview `dpl_HAWC11iNozFTKtk1kC5h7Y2oSeXy` READY: Chrome alcanza login desde entrada administrativa y PWA; solicitud a Compras sin credenciales registrada como 401. Es comprobación de entrada, no QA autenticada de escrituras.
+- Vercel producción `dpl_BAwNdKzGntGJioneE5M5RKhj1DaM` READY para el commit funcional. `admin.exportmca.com/admin/pwa.html` respondió 200; Compras e Inventario sin sesión respondieron 401. Consulta pospublicación de logs 5xx sin resultados en el intervalo observado.
 - Esto cierra estos escenarios de datos, no la aceptación del ERP completo: faltan navegador con backend aislado, dos usuarios, concurrencia real y móvil/PWA, además de los bloques siguientes de ventas/logística y finanzas.
 
 ## Corte vigente — cierre funcional y sincronización
