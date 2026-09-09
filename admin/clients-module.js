@@ -32,6 +32,7 @@
   let backdrop = null;
   let activeClientId = null;
   let menuTrigger = null;
+  let createDraft = null;
 
   function canWriteClients() {
     return window.ExportMcaAccessControl?.can?.('clients.write') === true;
@@ -281,7 +282,9 @@
       });
       createdId = result.client?.id || null;
       if (createdId) await syncImporters(createdId, parseImporterNames(byId('clientImporters')?.value));
+      createDraft?.clear({ silent:true });
       byId('clientCreateForm')?.reset();
+      createDraft?.rebase({ clear:false });
       await loadAll();
       await loadImporters();
       render();
@@ -504,6 +507,13 @@
     window.ClientsModule=Object.freeze({ render,openInformation,openEditor,sendWelcome,openHistory,deleteClient,owner:'clients-module.js' });
     window.addEventListener('export-mca:data-loaded', render);
     await loadImporters();
+    if (canWriteClients()) {
+      createDraft = window.ExportMcaDrafts?.register({
+        root:byId('clientCreateForm'),
+        key:'client:new',
+        title:'nuevo cliente'
+      }) || null;
+    }
     render();
   }
 

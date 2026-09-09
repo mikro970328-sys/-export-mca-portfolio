@@ -34,6 +34,7 @@
   let importerState={importers:[],client_importers:[],shipment_importers:[]};
   let readinessByShipment=new Map();
   let manualCleanup=null;
+  let registrationDraft=null;
 
   async function request(path,options={}){
     const token=localStorage.getItem('export_mca_token')||'';
@@ -403,7 +404,9 @@
       const success=result.shipment?.client_id
         ?'Contenedor registrado correctamente.'
         :'Contenedor registrado sin cliente y disponible para venta.';
+      registrationDraft?.clear({silent:true});
       resetRegistrationForm(false);
+      registrationDraft?.rebase({clear:false});
       note(success,true);
       await window.loadAll?.();
       await loadImporterState();
@@ -883,7 +886,10 @@
       event.preventDefault();
       saveShipmentRecord();
     });
-    byId('resetShipmentForm')?.addEventListener('click',()=>resetRegistrationForm());
+    byId('resetShipmentForm')?.addEventListener('click',()=>{
+      resetRegistrationForm();
+      registrationDraft?.rebase({clear:true});
+    });
     byId('shipmentContainer')?.addEventListener('input',syncContainerGuidance);
     byId('shipmentSearch')?.addEventListener('input',render);
     byId('trackingClearFilters')?.addEventListener('click',()=>{
@@ -914,8 +920,19 @@
   async function syncData(){
     syncClientSelect();
     syncImporterInput();
+    ensureRegistrationDraft();
     await loadReadiness();
     render();
+  }
+
+  function ensureRegistrationDraft(){
+    if(registrationDraft||!shipmentWriteAccess())return registrationDraft;
+    registrationDraft=window.ExportMcaDrafts?.register({
+      root:byId('shipmentRegistrationForm'),
+      key:'container:new',
+      title:'nuevo contenedor'
+    })||null;
+    return registrationDraft;
   }
 
   async function refreshImporters(){
@@ -934,6 +951,7 @@
     syncClientSelect();
     syncImporterInput();
     syncContainerGuidance();
+    ensureRegistrationDraft();
     render();
     window.addEventListener('export-mca:data-loaded',syncData);
     window.addEventListener('export-mca:clients-changed',syncClientSelect);

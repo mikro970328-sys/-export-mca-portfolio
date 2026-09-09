@@ -173,6 +173,7 @@
         importerSelect.innerHTML = '<option value="">Sin importador definido</option>' + (data.importers || []).map(row => `<option value="${esc(row.id)}">${esc(row.name)}</option>`).join('');
       }
       syncClientButton();
+      window.SalesOrderDrafts?.touch?.();
       closeClientPicker();
     } catch (error) {
       byId('clientPickerMsg').textContent = reportOrderError('client-context',error,'No se pudo seleccionar el cliente. Intenta nuevamente.');
@@ -415,6 +416,7 @@
         lines:collectUxLines()
       };
       await uxApi('/api/sales-order-ux',{method:'POST',body:JSON.stringify(body)});
+      window.SalesOrderDrafts?.saved?.();
       try { closeModal('order'); } catch { byId('orderModal')?.classList.add('hidden'); }
       try { await load(); } catch (error) { console.error('SALES_ORDER_REFRESH_FAILED',{error}); location.reload(); }
     } catch (error) {
@@ -429,7 +431,7 @@
     ensureClientPickerModal();
     syncClientButton();
     decorateAllLines();
-    void hydrateExactPricing();
+    return hydrateExactPricing();
   }
 
   function bind() {

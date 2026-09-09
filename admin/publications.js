@@ -2,6 +2,7 @@ const $ = id => document.getElementById(id);
 let token = localStorage.getItem('export_mca_token') || '';
 const embeddedMode = new URLSearchParams(location.search).get('embedded') === '1';
 let moduleStarted = false;
+let publicationDraft = null;
 
 const state = {
   publications: [],
@@ -168,12 +169,14 @@ async function removePhoto(index) {
   if (!url) return;
   state.imageUrls.splice(index, 1);
   renderPhotos();
+  publicationDraft?.touch();
   if (!url.includes('/storage/v1/object/public/publication-images/')) return;
   try {
     await api('/api/publication-images', { method: 'DELETE', body: JSON.stringify({ url }) });
   } catch (error) {
     state.imageUrls.splice(index, 0, url);
     renderPhotos();
+    publicationDraft?.touch();
     setPhotoMessage(safePublicationMessage(error, 'No se pudo quitar la foto. Intenta nuevamente.', 'remove_photo'), true);
   }
 }
@@ -187,7 +190,37 @@ function applyWriteAccess() {
   renderPhotos();
 }
 
-function resetForm({ focus = false, clearPageMessage = false } = {}) {
+function capturePublicationDraft() {
+  const data = formData();
+  delete data.id;
+  return data;
+}
+
+function restorePublicationDraft(data = {}) {
+  ['category','title','description','price','currency','quantity','unit','assigned_worker_id','location_public','location_internal','departure_date','arrival_date','availability_status','publication_status'].forEach(key => {
+    if ($(key) && Object.prototype.hasOwnProperty.call(data, key)) $(key).value = data[key] ?? '';
+  });
+  state.imageUrls = Array.isArray(data.image_urls) ? data.image_urls.slice(0, 2) : [];
+  renderPhotos();
+  syncDateRequirement();
+}
+
+function activatePublicationDraft(id = '') {
+  publicationDraft = window.ExportMcaDrafts?.register({
+    root:$('publicationForm'),
+    key:id ? `publication:${id}` : 'publication:new',
+    title:id ? 'edición de publicación' : 'nueva publicación',
+    capture:capturePublicationDraft,
+    restore:restorePublicationDraft
+  }) || null;
+}
+
+function resetForm({ focus = false, clearPageMessage = false, preserveDraft = false } = {}) {
+  if (publicationDraft) {
+    if (!preserveDraft) publicationDraft.clear({ silent:true });
+    publicationDraft.destroy({ flush:preserveDraft });
+    publicationDraft = null;
+  }
   $('publicationForm').reset();
   $('id').value = '';
   state.imageUrls = [];
@@ -198,6 +231,7 @@ function resetForm({ focus = false, clearPageMessage = false } = {}) {
   if (clearPageMessage) setPageMessage();
   syncDateRequirement();
   applyWriteAccess();
+  if (state.writeAccess) activatePublicationDraft();
   if (focus && state.writeAccess) $('title').focus();
 }
 
@@ -274,6 +308,7 @@ async function uploadPhotos(event) {
       });
       state.imageUrls.push(result.url);
       renderPhotos();
+      publicationDraft?.touch();
     }
   } catch (error) {
     failureMessage = safePublicationMessage(error, 'No se pudieron subir las fotos. Intenta nuevamente.', 'upload_photos');
@@ -359,6 +394,8 @@ function editPublication(id) {
     return;
   }
 
+  publicationDraft?.destroy({ flush:true });
+  publicationDraft = null;
   $('id').value = publication.id;
   $('category').value = CATEGORY_INPUTS[publication.category] || publication.category;
   ['title', 'description', 'price', 'quantity', 'unit', 'location_public', 'location_internal', 'departure_date', 'arrival_date', 'availability_status', 'publication_status'].forEach(key => {
@@ -373,6 +410,7 @@ function editPublication(id) {
   setFormMessage();
   syncDateRequirement();
   applyWriteAccess();
+  if (state.writeAccess) activatePublicationDraft(publication.id);
   scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -501,7 +539,9 @@ function init() {
   bindEvents();
   syncDateRequirement();
   applyWriteAccess();
-  load();
+  load().then(() => {
+    if (state.writeAccess && !publicationDraft) activatePublicationDraft();
+  }).catch(() => {});
 }
 
 function startPublications(sessionToken = token) {
