@@ -6,7 +6,7 @@ Este archivo registra cambios técnicos y funcionales confirmados. No se debe re
 
 - Se define matriz de diez escenarios por motor para dos identidades, cobros por formulario, refresco, conservación del editor, permisos, conexión y sesiones.
 - Runner de CI con PostgreSQL/PostgREST desechables, Chromium y WebKit móvil emulado. Capturas/diagnósticos; sin credenciales productivas, cambios comerciales ni certificación de iPhone real.
-- Pendiente ejecución y publicación; detalles en `docs/BROWSER_OPERATOR_ACCEPTANCE.md`.
+- Primera ejecución reprodujo capacidades obsoletas al retirar permisos: el ámbito de cuenta ahora invalida módulos embebidos mediante el controlador existente. Runtime live7 y dos regresiones de permisos aprobadas localmente; pendiente validación final y publicación. Detalles en `docs/BROWSER_OPERATOR_ACCEPTANCE.md`.
 
 ## 2026-09-09 — Operadores y concurrencia
 

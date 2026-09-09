@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
 import { createOperatorAcceptanceDb } from '../../scripts/lib/operator-acceptance-db.mjs';
 import { operatorFixture } from '../../scripts/lib/operator-acceptance-fixture.mjs';
 import { startBrowserAcceptanceServer, root } from './server.mjs';
@@ -11,7 +12,7 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
   let api;
   const contexts = [];
   const nativeFetch = globalThis.fetch;
-  const diagnostics = { api:[], errors:[], blockedExternal:[], checkpoints:[] };
+  const diagnostics = { api:[], errors:[], blockedExternal:[], checkpoints:[], clicks:[] };
   try {
     const { f, users } = await operatorFixture(db);
     const invoice = await f.invoice(await f.sale());
@@ -41,6 +42,17 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
         isMobile:use.isMobile, hasTouch:use.hasTouch, deviceScaleFactor:use.deviceScaleFactor,
         locale:'es-US', timezoneId:'America/New_York', serviceWorkers:'allow' });
       contexts.push(context);
+      context.setDefaultTimeout(15_000);
+      context.setDefaultNavigationTimeout(20_000);
+      await context.addInitScript(() => {
+        document.addEventListener('click', event => {
+          const button = event.target?.closest?.('button');
+          if (!button || !location.pathname.endsWith('/invoices.html')) return;
+          const target = { id:button.id, close:button.dataset.close,action:button.dataset.invoiceAction };
+          setTimeout(()=>console.debug('QA_UI_CLICK '+JSON.stringify({ target,
+            modals:[...document.querySelectorAll('.modal:not(.hidden)')].map(el=>el.id) })),0);
+        },true);
+      });
       await context.route('**/*', route => {
         const url = new URL(route.request().url());
         if (url.origin===api.base || ['data:','blob:','about:'].includes(url.protocol)) return route.continue();
@@ -55,6 +67,11 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
         else if (frame.url().includes('/admin/invoices.html')) state.framesNavigated++;
       });
       page.on('pageerror', error => diagnostics.errors.push({ operator:key, message:error.message }));
+      page.on('console', message => {
+        if (message.text().startsWith('QA_UI_CLICK ')) {
+          diagnostics.clicks.push({ operator:key,...JSON.parse(message.text().slice(12)) });
+        }
+      });
       page.on('response', async response => {
         const url = new URL(response.url());
         if (url.origin!==api.base || !url.pathname.startsWith('/api/')) return;
@@ -68,9 +85,11 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
     const frame = session => session.page.frameLocator('#invoicesSection iframe');
     const row = session => frame(session).locator(`[data-invoice-row="${invoice.id}"]`);
     const balance = (session,amount) => expect(row(session).locator('.balance')).toHaveText(`USD ${amount.toFixed(2)}`);
-    const screenshot = async (session,name) => info.attach(name, {
-      body:await session.page.screenshot({ fullPage:false }), contentType:'image/png'
-    });
+    const screenshot = async (session,name) => {
+      const path = info.outputPath(`${name}.png`);
+      await session.page.screenshot({ path,fullPage:false,timeout:5000 });
+      await info.attach(name, { path,contentType:'image/png' });
+    };
     const login = async (session,key) => {
       await session.page.locator('#username').fill(users[key].username);
       await session.page.locator('#password').fill(users[key].password);
@@ -94,6 +113,7 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       await expect(frame(session).locator('#paymentModal')).toBeHidden();
       await expect(frame(session).locator('#detailModal')).toBeVisible();
       await frame(session).locator('[data-close="detail"]').click();
+      await expect(frame(session).locator('#detailModal')).toBeHidden();
     };
     const step = async (name,action) => test.step(name, async()=> {
       await action();diagnostics.checkpoints.push(name);console.log(`PASS ${info.project.name} ${name}`);
@@ -196,13 +216,20 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
     expect(diagnostics.api.filter(r=>r.status>=500)).toEqual([]);
     expect(diagnostics.checkpoints).toHaveLength(10);
   } finally {
+    const diagnosticPath = info.outputPath('diagnostics.json');
+    fs.mkdirSync(info.outputDir,{recursive:true});
+    fs.writeFileSync(diagnosticPath,JSON.stringify(diagnostics,null,2));
+    await info.attach('diagnostics', { path:diagnosticPath,contentType:'application/json' });
     for (const [index,context] of contexts.entries()) {
       for (const page of context.pages()) {
-        await info.attach(`final-operator-${index}`, { body:await page.screenshot().catch(()=>Buffer.alloc(0)),contentType:'image/png' });
+        const path = info.outputPath(`final-operator-${index}.png`);
+        try {
+          await page.screenshot({ path,timeout:5000 });
+          await info.attach(`final-operator-${index}`, { path,contentType:'image/png' });
+        } catch {}
       }
-      await context.close();
+      await context.close().catch(()=>{});
     }
-    await info.attach('diagnostics', { body:Buffer.from(JSON.stringify(diagnostics,null,2)),contentType:'application/json' });
     globalThis.fetch = nativeFetch;
     if (api) await api.close();
     await db.end();

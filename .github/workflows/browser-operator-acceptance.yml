@@ -85,7 +85,5 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: browser-operators-${{ matrix.project }}
-          path: |
-            e2e/isolated/playwright-report/
-            e2e/isolated/test-results/
+          path: e2e/isolated/test-results/
           retention-days: 14

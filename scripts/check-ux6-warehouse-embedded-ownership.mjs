@@ -38,7 +38,7 @@ for(const text of [
   '<link rel="stylesheet" href="/admin/warehouse.css?v=20260902-ux7warehouse1">',
   '<body class="erp-module-page erp-module-warehouse" data-owner="warehouse.js">',
   '<script src="/admin/warehouse.js?v=20260902-ux7warehouse1" defer></script>',
-  '<script src="/admin/embedded-auto-refresh.js?v=20260909-live6" defer></script>',
+  '<script src="/admin/embedded-auto-refresh.js?v=20260909-live7" defer></script>',
   'warehouse-copy-standalone',
   'warehouse-copy-embedded'
 ])requireText(html,text,`HTML de Almacén ${text}`);

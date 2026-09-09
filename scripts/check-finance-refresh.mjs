@@ -55,5 +55,19 @@ await test('REF-04 report modal defers refresh until closing',async()=>{
   const h=harness();h.modal(true);h.live.queueExternalScopes(['sales'],'QA');await h.advance(600);assert.equal(h.count.reports,0);
   h.modal(false);await h.advance(200);assert.equal(h.count.reports,1);
 });
+await test('REF-05 role change reloads current capabilities in other open workspaces',async()=>{
+  const h=harness();h.live.applyLiveSnapshot({versions:{account:0,invoices:0}});
+  h.live.applyLiveSnapshot({versions:{account:1,invoices:0}});await h.advance(600);
+  assert.equal(h.count.invoices,1,'invoice capabilities must refresh without an invoice mutation');
+  assert.equal(h.count.reports,1,'report access must reflect the same role change');
+  h.live.applyLiveSnapshot({versions:{account:1,invoices:0}});await h.advance(600);
+  assert.equal(h.count.invoices,1,'an unchanged role version must remain quiet');
+});
+await test('REF-06 local role updates preserve modal deferral',async()=>{
+  const h=harness();h.modal(true);
+  await h.win.fetch('/api/access-control?resource=roles',{method:'PATCH'});await h.advance(600);
+  assert.equal(h.count.invoices,1);assert.equal(h.count.reports,0);
+  h.modal(false);await h.advance(200);assert.equal(h.count.reports,1);
+});
 console.log(`Finance refresh acceptance: ${passed.length}/${passed.length+failures.length}.`);
 if(failures.length)process.exitCode=1;
