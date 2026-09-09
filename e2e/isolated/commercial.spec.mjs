@@ -32,7 +32,8 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
         add column if not exists updated_at timestamptz default now();
       grant usage on sequence purchase_order_number_seq, sales_orders_so_serial_seq,
         invoices_invoice_serial_seq to service_role;
-      grant select on load_expediente_documents, documents to service_role;
+      grant select on load_expediente_documents, documents, load_traceability_sources,
+        load_traceability_summary to service_role;
       grant select,insert on shipment_history to service_role;`);
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const { f,users } = await operatorFixture(db);
@@ -87,6 +88,9 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await page.locator('#login').click();
       expect((await response).status()).toBe(200);
       await expect(page.locator('#loginPage')).toBeHidden();
+      // The shell is revealed before its lazy navigation owner has mounted.
+      // Observe readiness only; navigation itself still uses real UI clicks.
+      await page.waitForFunction(()=>window.NavigationShell?.owner==='navigation-shell.js');
     }
     const {a,b}=sessions;
     const module = (session,name)=>session.page.frameLocator(`#${name}Section iframe`);

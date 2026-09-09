@@ -103,6 +103,14 @@ que dejaron de existir. Asset `20260909-masters1`; sin observers, wrappers ni
 cambios de SQL productivo. Se exige además el almacén seleccionado en cada
 recepción del recorrido real de navegador.
 
+Cuarta ejecución `34406522344`, head `63c9cb0`: Chromium aprobó COM-01 a COM-06,
+incluidas ambas recepciones con el almacén conservado. El detalle de Cargues
+detectó otro permiso omitido en QA, lectura de `load_traceability_sources`;
+se completan las dos vistas de trazabilidad con los privilegios contrastados
+en producción. WebKit detectó que el shell se hace visible antes de montar
+el dueño de navegación: la prueba espera esa señal de preparación antes de
+pulsar el menú, sin sustituir clics ni cambiar código de navegación productivo.
+
 ## Límites y siguiente bloque
 
 Chromium completo y WebKit móvil emulado no equivalen a Safari en hardware
