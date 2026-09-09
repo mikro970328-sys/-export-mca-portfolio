@@ -31,8 +31,8 @@ const navigationJs=read(files.navigationJs);
 const dashboardCss=read(files.dashboardCss);
 const dashboardJs=read(files.dashboardJs);
 
-const themeRef='/admin/platform-theme.css?v=20260902-ux7shell1';
-const navigationRef='/admin/navigation-shell.css?v=20260904-simple-nav1';
+const themeRef='/admin/platform-theme.css?v=20260909-viewport1';
+const navigationRef='/admin/navigation-shell.css?v=20260909-viewport1';
 for(const ref of [themeRef,navigationRef])requireText(index,ref,ref);
 requireText(index,'<meta name="theme-color" content="#09182e">','color del navegador');
 requireText(index,'/admin/manifest.webmanifest?v=4','manifest versionado');

@@ -1,0 +1,91 @@
+name: Browser Operator Acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'admin/**'
+      - 'api/**'
+      - 'sw.js'
+      - 'supabase/migrations/**'
+      - 'migrations/**'
+      - 'supabase/tests/fixtures/*acceptance*.sql'
+      - 'scripts/lib/*acceptance*.mjs'
+      - 'e2e/isolated/**'
+      - 'package*.json'
+      - '.github/workflows/browser-operator-acceptance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'admin/**'
+      - 'api/**'
+      - 'sw.js'
+      - 'supabase/migrations/**'
+      - 'migrations/**'
+      - 'supabase/tests/fixtures/*acceptance*.sql'
+      - 'scripts/lib/*acceptance*.mjs'
+      - 'e2e/isolated/**'
+      - 'package*.json'
+      - '.github/workflows/browser-operator-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop, webkit-mobile]
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-qa-only
+          POSTGRES_DB: erp_operator_qa
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      postgrest:
+        image: postgrest/postgrest:v12.2.3
+        env:
+          PGRST_DB_URI: postgres://postgres:isolated-qa-only@postgres:5432/erp_operator_qa
+          PGRST_DB_SCHEMAS: public
+          PGRST_DB_ANON_ROLE: anon
+          PGRST_JWT_SECRET: isolated-postgrest-qa-secret-never-production-2026
+        ports: ['3000:3000']
+    env:
+      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
+      ERP_TEST_POSTGREST_URL: http://127.0.0.1:3000
+      ERP_TEST_POSTGREST_SECRET: isolated-postgrest-qa-secret-never-production-2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            e2e/isolated/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
+      - name: Install isolated browser engines
+        working-directory: e2e/isolated
+        run: npx playwright install --with-deps chromium webkit
+      - name: Actual UI, two identities and disposable PostgreSQL
+        working-directory: e2e/isolated
+        env:
+          DEBUG: pw:browser
+        run: npm test -- --project=${{ matrix.project }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: browser-operators-${{ matrix.project }}
+          path: e2e/isolated/test-results/
+          retention-days: 14

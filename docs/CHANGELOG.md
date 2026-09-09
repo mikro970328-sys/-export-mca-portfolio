@@ -2,6 +2,15 @@
 
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
+## 2026-09-09 — Permisos y diálogos con dos operadores (PR #289)
+
+Estado: validado en rama; pendiente publicación tras integrar main #290/#291.
+
+- Corregidas las acciones obsoletas tras cambiar permisos y el cierre del detalle cubierto por el encabezado móvil, mediante los owners existentes de sincronización y CSS.
+- Run `34401479844`, head `26cf44003b17767381e25581546190506f589219`: 20/20 escenarios (diez en Chromium completo y diez en WebKit móvil), 52/52 workflows. Capturas revisadas; Preview `dpl_FsU26kh4ANZUpSzhXMcZgUKhsk22` READY y entrada PWA al login verificada.
+- Cobertura de cobros, auditoría, formularios, permisos, conexión, recarga, revocación y nuevo login. Cero errores JavaScript, API 404/5xx, red externa o caídas.
+- Chromium completo evita la caída nativa BadgeService del shell reducido sin modificar sesión ni SW. Sin migraciones ni operaciones comerciales QA productivas; WebKit emulado no certifica iPhone real. Matriz: `docs/BROWSER_OPERATOR_ACCEPTANCE.md`.
+
 ## 2026-09-09 — Aceptación visual aislada multioperador/PWA
 
 Estado: publicado mediante [PR #290](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/290), commit `dfe47514aeaafa6aa32d34ca960332464749c07a`. Cambio exclusivo de QA; sin reglas comerciales, migraciones ni datos productivos.

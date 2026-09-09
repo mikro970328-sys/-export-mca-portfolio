@@ -2,6 +2,14 @@
 
 Última actualización del corte vigente: 2026-09-09
 
+## Corte validado — permisos, diálogos y dos operadores (PR #289)
+
+- Run `34401479844`, head `26cf44003b17767381e25581546190506f589219`: 20/20 escenarios (diez en Chromium completo y diez en WebKit móvil), 52/52 workflows. Capturas revisadas; Preview `dpl_FsU26kh4ANZUpSzhXMcZgUKhsk22` READY y entrada PWA al login verificada.
+- Correcciones en los owners existentes: `account` invalida capacidades sin descartar editores; el iframe cabe bajo el encabezado y el cierre queda accesible. Runtime `20260909-live7`, CSS de shell `20260909-viewport1`. Sin migraciones ni datos comerciales QA productivos.
+- La revocación y el nuevo login aprueban con la sesión/SW originales; Chromium reducido caía por falta nativa de BadgeService y se usa el canal Chromium completo.
+- Se integra main `58f523b` (#290/#291) conservando su prueba y documentación. Pendientes controles de la integración y publicación.
+- Matriz: `docs/BROWSER_OPERATOR_ACCEPTANCE.md`. Faltan otros recorridos transversales e iPhone/Safari/PWA instalado. BrowserStack sigue limitado por cuota; sin reintentos manuales.
+
 ## Corte publicado — aceptación visual aislada multioperador/PWA
 
 - [PR #290](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/290) integrada, commit `dfe47514aeaafa6aa32d34ca960332464749c07a`. Añade QA automatizada; no modifica reglas comerciales, frontend productivo ni Supabase.

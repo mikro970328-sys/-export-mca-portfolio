@@ -356,6 +356,7 @@
 }
 
 @media(max-width:900px){
+  :root{--topbar-height:68px}
   .sidebar{width:min(86vw,310px);transform:translateX(-100%);will-change:transform}
   .sidebar.mobile-open{transform:translateX(0);box-shadow:18px 0 48px rgba(9,24,46,.3)}
   .main-shell,body.sidebar-collapsed .main-shell{margin-left:0}

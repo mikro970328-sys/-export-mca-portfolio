@@ -78,7 +78,16 @@ main{
 }
 
 .app-section{min-width:0}
-.embedded-workspace-frame{display:block;width:100%;height:calc(100vh - 118px);min-height:720px;border:0;border-radius:var(--radius-lg);background:var(--bg)}
+.embedded-workspace-frame{display:block;width:100%;height:100%;min-height:0;border:0;border-radius:var(--radius-lg);background:var(--bg)}
+
+/* Keep the entire embedded viewport below the sticky header. An oversized
+   iframe lets focus/scroll move its modal controls underneath the shell. */
+main:has(> .app-section:not(.hidden) > .embedded-workspace-frame){
+  height:calc(100vh - var(--topbar-height,76px) - 28px);
+  height:calc(100dvh - var(--topbar-height,76px) - 28px);
+  margin:14px auto;
+}
+main > .app-section:not(.hidden):has(> .embedded-workspace-frame){height:100%}
 
 .app-section:not(.hidden){animation:sectionEnter .18s ease both}
 

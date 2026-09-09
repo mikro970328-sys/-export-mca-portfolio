@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260909-live6';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260909-live7';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -48,6 +48,10 @@
     workers: []
   };
   const ALL_RELATED_SECTIONS = [...new Set(Object.values(RELATED).flat())];
+  // Role/account changes invalidate capabilities returned by every embedded
+  // module, even when no business row has changed. Keep the existing modal
+  // deferral so a permission update does not discard an open form.
+  RELATED.account = ALL_RELATED_SECTIONS;
   const API_SCOPE = [
     ['/api/sales-loads','loads'],
     ['/api/shipments-register','shipments'],

@@ -59,8 +59,8 @@ if(opening!==closing)failures.push(`CSS desbalanceado: ${opening} aperturas y ${
 
 if(index.split(foundationRef).length-1!==1)failures.push('index.html debe cargar una sola vez la base nativa versionada');
 requireText(index,'data-native-workspace-foundation','marcador de precedencia de la base nativa');
-const themeIndex=index.indexOf('/admin/platform-theme.css?v=20260902-ux7shell1');
-const navigationIndex=index.indexOf('/admin/navigation-shell.css?v=20260904-simple-nav1');
+const themeIndex=index.indexOf('/admin/platform-theme.css?v=20260909-viewport1');
+const navigationIndex=index.indexOf('/admin/navigation-shell.css?v=20260909-viewport1');
 const foundationIndex=index.indexOf(foundationRef);
 const headEnd=index.indexOf('</head>');
 if(themeIndex<0||navigationIndex<0||foundationIndex<0||headEnd<0||!(themeIndex<navigationIndex&&navigationIndex<foundationIndex&&foundationIndex<headEnd)){

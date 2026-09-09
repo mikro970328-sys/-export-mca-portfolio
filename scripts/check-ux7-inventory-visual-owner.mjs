@@ -41,7 +41,7 @@ for (const text of [
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/inventory.css?v=20260902-ux7inventory1',
   '/admin/inventory.js?v=20260902-ux7inventory1',
-  '/admin/embedded-auto-refresh.js?v=20260909-live6',
+  '/admin/embedded-auto-refresh.js?v=20260909-live7',
   'class="module-hero inventory-page-head"',
   'id="stats" class="stats inventory-metrics"',
   'role="tablist"',
