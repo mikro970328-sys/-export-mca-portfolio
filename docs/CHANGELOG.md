@@ -2,6 +2,16 @@
 
 Este archivo registra cambios técnicos y funcionales confirmados. No se debe registrar como desplegado un cambio que exista solamente en una rama o Preview.
 
+## 2026-09-09 — Aceptación visual aislada multioperador/PWA
+
+Estado: publicado mediante [PR #290](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/290), commit `dfe47514aeaafa6aa32d34ca960332464749c07a`. Cambio exclusivo de QA; sin reglas comerciales, migraciones ni datos productivos.
+
+- Se añade un servidor de integración que aloja el frontend y los handlers reales contra PostgreSQL/PostgREST desechables.
+- Dos operadores distintos abren Facturación en contextos Chromium separados; el segundo entra por `/admin/pwa.html` con perfil/viewport iPhone.
+- Dos cobros UI cambian el saldo 400 → 280 → 200 en B sin navegación ni recarga manual. Un detalle abierto conserva 280 y recibe 200 al cerrarse.
+- El service worker y la ruta de lanzamiento PWA quedan comprobados en Chromium. No equivale a Safari, modo standalone ni hardware iPhone real.
+- Run `34401166506`: ambos jobs aprobaron; cinco de cinco workflows de la PR correctos. Matriz y límites en `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`.
+
 ## 2026-09-09 — Operadores y concurrencia
 
 Estado: publicado mediante [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287), commit `81648443ce66eda2ce4ed2e331146ad631ae751e`, producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY.
