@@ -39,6 +39,8 @@ jobs:
       fail-fast: false
       matrix:
         project: [chromium-desktop, webkit-mobile]
+        # Each story initializes an empty database in its own service containers.
+        suite: [operators, commercial]
     services:
       postgres:
         image: postgres:17.6
@@ -78,14 +80,14 @@ jobs:
       - name: Install isolated browser engines
         working-directory: e2e/isolated
         run: npx playwright install --with-deps chromium webkit
-      - name: Actual UI, two identities and disposable PostgreSQL
+      - name: Actual UI and disposable PostgreSQL
         working-directory: e2e/isolated
         env:
           DEBUG: pw:browser
-        run: npm test -- --project=${{ matrix.project }}
+        run: npm test -- ${{ matrix.suite }}.spec.mjs --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: browser-operators-${{ matrix.project }}
+          name: browser-${{ matrix.suite }}-${{ matrix.project }}
           path: e2e/isolated/test-results/
           retention-days: 14
