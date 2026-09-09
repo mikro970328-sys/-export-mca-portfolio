@@ -96,7 +96,7 @@ for(const text of [
   'if(sourceFrame)scheduleSourceRefresh(sourceFrame,scope)',
   "if(method==='GET'&&current?.fallbackTimer)",
   "if(current.wasBusy&&!busy&&current.pending)refreshFrame(frame,'close-after-change')",
-  "scheduleShellRefresh('cross-tab-change',scope)"
+  "queueExternalScopes([scope||'erp'],'cross-tab-change')"
 ])requireText(refresh,text,`actualización después de guardar ${text}`);
 for(const forbidden of [
   "window.addEventListener('focus'",
