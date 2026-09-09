@@ -1,0 +1,39 @@
+name: Supabase Read Retry
+
+on:
+  pull_request:
+    paths:
+      - 'api/_lib.js'
+      - 'api/tracking-alerts.js'
+      - 'api/manual-tracking-alerts.js'
+      - 'api/stagnant-shipment-alerts.js'
+      - 'api/discharge-release-alerts.js'
+      - 'scripts/check-supabase-read-retry.mjs'
+      - '.github/workflows/supabase-read-retry.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'api/_lib.js'
+      - 'api/tracking-alerts.js'
+      - 'api/manual-tracking-alerts.js'
+      - 'api/stagnant-shipment-alerts.js'
+      - 'api/discharge-release-alerts.js'
+      - 'scripts/check-supabase-read-retry.mjs'
+      - '.github/workflows/supabase-read-retry.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-supabase-read-retry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate retry safety and bounds
+        run: node scripts/check-supabase-read-retry.mjs

@@ -197,24 +197,118 @@ export function normalizeContainer(value = '') {
   return cleaned;
 }
 
+const SUPABASE_READ_RETRY_STATUSES = new Set([408, 409, 502, 503, 504, 520]);
+const SUPABASE_READ_MAX_ATTEMPTS = 3;
+const SUPABASE_READ_RETRY_BASE_MS = 250;
+
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+function parseSupabaseError(text) {
+  try {
+    const parsed = text ? JSON.parse(text) : null;
+    return {
+      code: String(parsed?.code || ''),
+      message: String(parsed?.message || '')
+    };
+  } catch {
+    return { code:'', message:String(text || '') };
+  }
+}
+
+function retryableSupabaseReadFailure(method, status, errorDetails = {}) {
+  if (!['GET', 'HEAD'].includes(String(method || '').toUpperCase())) return false;
+  if (SUPABASE_READ_RETRY_STATUSES.has(Number(status))) return true;
+  return Number(status) === 401
+    && errorDetails.code === 'PGRST303'
+    && /issued at future/i.test(errorDetails.message);
+}
+
+function supabaseError(status, text, response, retryable) {
+  const details = parseSupabaseError(text);
+  const error = new Error(`SUPABASE_${status}:${text}`);
+  error.status = Number(status);
+  error.code = details.code || null;
+  error.retryable = Boolean(retryable);
+  error.request_id = response?.headers?.get?.('sb-request-id')
+    || response?.headers?.get?.('x-request-id')
+    || response?.headers?.get?.('cf-ray')
+    || null;
+  return error;
+}
+
+function retryDelay(attempt) {
+  const exponential = SUPABASE_READ_RETRY_BASE_MS * (2 ** Math.max(0, attempt - 1));
+  return Math.round(exponential + Math.random() * SUPABASE_READ_RETRY_BASE_MS);
+}
+
+export function upstreamFailureStatus(error, fallback = 400) {
+  return error?.retryable === true ? 503 : fallback;
+}
+
 export async function supabase(path, { method = 'GET', body, query = '', prefer } = {}) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('SUPABASE_CONFIG_MISSING');
-  const response = await fetch(`${url}/rest/v1/${path}${query}`, {
-    method,
+  const normalizedMethod = String(method || 'GET').toUpperCase();
+  const requestUrl = `${url}/rest/v1/${path}${query}`;
+  const request = {
+    method:normalizedMethod,
     headers: {
       apikey: key,
       Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
-      Prefer: prefer || (method === 'POST' ? 'return=representation' : 'return=minimal')
+      Prefer: prefer || (normalizedMethod === 'POST' ? 'return=representation' : 'return=minimal')
     },
     body: body === undefined ? undefined : JSON.stringify(body)
-  });
-  const text = await response.text();
-  const parsed = text ? JSON.parse(text) : null;
-  if (!response.ok) throw new Error(`SUPABASE_${response.status}:${text}`);
-  return parsed;
+  };
+
+  for (let attempt = 1; attempt <= SUPABASE_READ_MAX_ATTEMPTS; attempt += 1) {
+    let response;
+    let text;
+    try {
+      response = await fetch(requestUrl, request);
+      text = await response.text();
+    } catch (cause) {
+      const retryable = ['GET', 'HEAD'].includes(normalizedMethod);
+      if (retryable && attempt < SUPABASE_READ_MAX_ATTEMPTS) {
+        const delayMs = retryDelay(attempt);
+        console.warn('SUPABASE_READ_RETRY', { path, attempt, reason:'network', delay_ms:delayMs });
+        await wait(delayMs);
+        continue;
+      }
+      const error = new Error(`SUPABASE_NETWORK:${cause?.message || 'request failed'}`);
+      error.retryable = retryable;
+      error.cause = cause;
+      throw error;
+    }
+
+    let parsed = null;
+    if (text) {
+      try { parsed = JSON.parse(text); }
+      catch {
+        if (response.ok) throw new Error('SUPABASE_INVALID_JSON_RESPONSE');
+      }
+    }
+    if (response.ok) return parsed;
+
+    const details = parseSupabaseError(text);
+    const retryable = retryableSupabaseReadFailure(normalizedMethod, response.status, details);
+    const error = supabaseError(response.status, text, response, retryable);
+    if (!retryable || attempt >= SUPABASE_READ_MAX_ATTEMPTS) throw error;
+
+    const delayMs = retryDelay(attempt);
+    console.warn('SUPABASE_READ_RETRY', {
+      path,
+      attempt,
+      status:response.status,
+      code:error.code,
+      request_id:error.request_id,
+      delay_ms:delayMs
+    });
+    await wait(delayMs);
+  }
+
+  throw new Error('SUPABASE_REQUEST_EXHAUSTED');
 }
 
 export async function writeAudit(admin, action, entityType, entityId = null, details = {}) {
