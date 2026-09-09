@@ -95,7 +95,8 @@ export async function checkOperatorConcurrency({db,f,users,test}) {
     const race=await overlappingTransactions(db,c=>reserve(c,0),c=>reserve(c,1));
     assert.ok(race.second.error);assert.match(race.second.error.message,/INSUFFICIENT|EXCEEDS_AVAILABLE/);
     const balance=await one('select * from inventory_source_balances where receipt_item_id=$1',[item.id]);
-    assert.equal(n(balance.reserved_quantity),70);assert.equal(n(balance.available_quantity),30);
+    assert.equal(n(balance.reserved_quantity),70);
+    assert.equal(n(balance.physical_quantity)-n(balance.reserved_quantity),30);
     assert.equal((await one('select status from loads where id=$1',[loads[1].id])).status,'draft');
   });
   await test('CON-09 simultaneous draft invoices cannot duplicate sale quantity',async()=>{

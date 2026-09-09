@@ -76,7 +76,7 @@ async function startApi() {
 
 export async function checkOperatorHttp({db,f,users,test}) {
   const api=await startApi();
-  const expect=(r,status)=>assert.equal(r.status,status,`${r.body?.error||''} ${r.body?.details?.code||''}`);
+  const expect=(r,status)=>assert.equal(r.status,status,`${r.body?.error||''} ${typeof r.body?.details==='string'?r.body.details:r.body?.details?.code||''}`);
   const tokens={};
   const readKeys=['finance.read','reports.read'];
   const writeKeys=[...readKeys,'finance.write'];
@@ -149,7 +149,13 @@ export async function checkOperatorHttp({db,f,users,test}) {
         pending=Promise.all([pay(tokens.a,inv,300),pay(tokens.b,inv,300)]);
         let blocked=0;const deadline=Date.now()+7000;
         while(Date.now()<deadline) {
-          blocked=Number((await db.query('select count(*)::int as n from pg_stat_activity where $1::int=any(pg_blocking_pids(pid))',[holder.processID])).rows[0].n);
+          // A waiter may queue behind the tuple lock of the other waiter. Count
+          // the full lock chain, not only sessions directly blocked by holder.
+          blocked=Number((await db.query(`with recursive waiting(pid) as (
+            select pid from pg_stat_activity where $1::int=any(pg_blocking_pids(pid))
+            union
+            select a.pid from pg_stat_activity a join waiting w on w.pid=any(pg_blocking_pids(a.pid))
+          ) select count(*)::int as n from waiting`,[holder.processID])).rows[0].n);
           if(blocked>=2)break;await pause(20);
         }
         assert.ok(blocked>=2,'both real HTTP transactions must overlap at the invoice');
@@ -187,10 +193,13 @@ export async function checkOperatorHttp({db,f,users,test}) {
       expect(await liveState(tokens.a),200);
     });
     await test('HTTP-10 consecutive invalid passwords lock login without changing another account',async()=>{
+      const before=Number((await f.one("select count(*) as n from audit_log where action='login_failed' and entity_id=$1",[users.b.id])).n);
       for(let i=0;i<5;i++)expect(await api.request('login',{method:'POST',body:{username:users.b.username,password:'QA deliberately incorrect'}}),401);
       expect(await api.request('login',{method:'POST',body:{username:users.b.username,password:users.b.password}}),429);
       const user=await f.one('select failed_attempts,locked_until from admin_users where id=$1',[users.b.id]);
-      assert.equal(Number(user.failed_attempts),5);assert.ok(new Date(user.locked_until)>new Date());
+      assert.equal(Number(user.failed_attempts),0,'counter resets when the lock starts');
+      assert.ok(new Date(user.locked_until)>new Date());
+      assert.equal(Number((await f.one("select count(*) as n from audit_log where action='login_failed' and entity_id=$1",[users.b.id])).n),before+5);
       expect(await liveState(tokens.a),200);
     });
   }finally{await api.close();}
