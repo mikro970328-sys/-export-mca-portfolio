@@ -6,8 +6,12 @@ Rama: `test/sales-logistics-acceptance`.
 ## Resultado del corte
 
 39 escenarios aprobados localmente: 29 SQL y 10 de API. También aprobaron nueve
-contratos relacionados. La publicación y la aplicación de la migración están
-pendientes al preparar esta PR; se registrará la evidencia de entrega al finalizar.
+contratos relacionados. La PR #283 cuenta con 11 controles aprobados y Preview
+`dpl_5hMtARU3RYe82B5aLo18uVWT5teF` READY en su head inicial
+`2c6dbb76f679a947bbf4824e51b4270c08d60d58`. Chrome alcanza el login desde la
+entrada administrativa y `/admin/pwa.html`; no se efectuaron escrituras comerciales.
+La migración ya se aplicó y verificó en Supabase; la publicación de las API sigue
+pendiente hasta completar el merge y verificar producción.
 
 Este bloque continúa la aceptación de compras/inventario de la PR #281. Valida
 operaciones y respuestas con datos aislados; no declara terminado el ERP completo.
@@ -47,7 +51,12 @@ operaciones y respuestas con datos aislados; no declara terminado el ERP complet
 | Contenedor de contexto incompatible | El guard existente impedía vincularlo, pero faltaba traducción en la API. | `/api/loads` devuelve 400 explicando el cliente/importadora. CT-03 y API-10 mantienen intactos los vínculos. |
 
 Archivos funcionales: `api/sales.js`, `api/sales-loads.js`, `api/loads.js` y
-`supabase/migrations/20260909175528_load_plan_container_consistency.sql`.
+`supabase/migrations/20260909180837_load_plan_container_consistency.sql`.
+
+Supabase registró la migración como `20260909180837`; el nombre del archivo se
+alineó con esa versión manteniendo idéntico el SQL. Las tres funciones publicadas
+coinciden con las probadas. La comprobación productiva confirmó ejecución para
+`service_role` y ausencia de ejecución para `anon`/`authenticated` en las tres.
 
 La migración reemplaza tres funciones existentes. Conserva las comprobaciones
 de estado, cliente/importadora, integridad referencial y acceso exclusivo del

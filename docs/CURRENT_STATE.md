@@ -7,7 +7,7 @@
 - Base `eae1cf2439d841608e1234a11e8d5209935c6e13`; rama `test/sales-logistics-acceptance`.
 - 39 escenarios aislados aprobados (29 SQL, 10 API) y nueve contratos relacionados. Matriz y límites en `docs/SALES_LOGISTICS_ACCEPTANCE.md`.
 - Corregidos el borrado de asignaciones al editar cargues independientes, la mercancía derivada del contenedor, la precisión de la ruta de compatibilidad de ventas y las respuestas para sobreasignación/contexto. La acción de edición refleja la protección existente de cargues vinculados a ventas.
-- Migración preparada `20260909175528_load_plan_container_consistency.sql`: tres funciones existentes, sin reescritura histórica ni movimientos de stock. Publicación, Preview y aplicación a Supabase pendientes en este punto de la PR.
+- Migración `20260909180837_load_plan_container_consistency.sql` aplicada a Supabase: tres funciones existentes, sin reescritura histórica ni movimientos de stock. Definiciones y permisos contrastados con el entorno probado. PR #283: head inicial `2c6dbb76f679a947bbf4824e51b4270c08d60d58`, 11/11 controles y Preview `dpl_5hMtARU3RYe82B5aLo18uVWT5teF` READY; entrada administrativa y PWA llegan al login. Pendiente merge/verificación productiva de las API.
 - Las pruebas de datos de ventas/logística amplían el corte previo de compras; no certifican navegador autenticado, dos operadores, concurrencia real, Storage ni móvil/PWA. Siguiente bloque: facturación, cobros/pagos, anticipos, costes y reportes.
 
 ## Corte QA — compras, recepción e inventario

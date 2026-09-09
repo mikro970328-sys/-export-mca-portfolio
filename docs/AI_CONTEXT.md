@@ -8,7 +8,7 @@ Consultar primero el corte de septiembre en `docs/CURRENT_STATE.md`. La base pro
 
 Orden solicitado por el propietario: cerrar la validación funcional, después mejoras y finalmente auditoría integral. Las verificaciones de seguridad y regresión de cada cambio no se posponen hasta esa auditoría.
 
-Continuación de septiembre: `docs/SALES_LOGISTICS_ACCEPTANCE.md` registra 39 escenarios de ventas/logística/documentos (29 SQL y 10 API), nueve contratos relacionados y los defectos reproducidos. Rama `test/sales-logistics-acceptance`, base `eae1cf2439d841608e1234a11e8d5209935c6e13`. La migración de consistencia cargue/contenedor y las correcciones de API están preparadas; comprobar el estado de publicación en `CURRENT_STATE.md`. Después de publicar este corte, continuar con finanzas y conciliación, sin repetir los dos bloques de datos como si no se hubieran probado.
+Continuación de septiembre: `docs/SALES_LOGISTICS_ACCEPTANCE.md` registra 39 escenarios de ventas/logística/documentos (29 SQL y 10 API), nueve contratos relacionados y los defectos reproducidos. Rama `test/sales-logistics-acceptance`, base `eae1cf2439d841608e1234a11e8d5209935c6e13`, PR #283. La migración `20260909180837_load_plan_container_consistency.sql` ya está aplicada y verificada; comprobar el estado de publicación de las API en `CURRENT_STATE.md`. Después de publicar este corte, continuar con finanzas y conciliación, sin repetir los dos bloques de datos como si no se hubieran probado.
 
 Las descripciones de deuda y estados de julio que siguen son una referencia histórica, no prueba de que esos archivos sigan activos. Conservar las reglas de trabajo, pero contrastar cada hallazgo con el código actual y no reabrir fases ya entregadas sin evidencia.
 

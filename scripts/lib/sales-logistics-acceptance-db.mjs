@@ -45,7 +45,7 @@ const extraMigrations = [
   '20260830183500_p7_cuba_document_version_rpc_fix.sql',
   '20260831133000_ux5_sales_order_action_capabilities.sql',
   '20260831233000_ux5_load_action_capabilities.sql',
-  '20260909175528_load_plan_container_consistency.sql'
+  '20260909180837_load_plan_container_consistency.sql'
 ];
 
 // These historical migrations live outside supabase/migrations and precede P1.

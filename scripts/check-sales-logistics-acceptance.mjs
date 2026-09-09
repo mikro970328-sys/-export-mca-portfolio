@@ -335,7 +335,7 @@ try {
     assert.equal(linked.client_id,client); assert.equal(linked.importer_id,importer);
   });
   await test('DB-01 repeated migration preserves backend-only execution privileges',async()=>{
-    await db.exec(fs.readFileSync('supabase/migrations/20260909175528_load_plan_container_consistency.sql','utf8'));
+    await db.exec(fs.readFileSync('supabase/migrations/20260909180837_load_plan_container_consistency.sql','utf8'));
     for(const fn of ['replace_load_plan(uuid,jsonb,timestamptz,text)','assign_load_shipment(uuid,uuid)','load_action_state(uuid)']) {
       const privileges=await one("select has_function_privilege('anon',$1,'execute') anon,has_function_privilege('authenticated',$1,'execute') authenticated,has_function_privilege('service_role',$1,'execute') backend",[fn]);
       assert.deepEqual(privileges,{anon:false,authenticated:false,backend:true});
