@@ -2,6 +2,8 @@
 
 Fecha: 2026-09-09. Base: `4081f2d1120816f4179a75697af1ac14b75e8e14` (PR #280).
 
+Entrega publicada: [PR #281](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/281), commit funcional `7af4562d4d91523a6a9a655c9ae2ee289f861dc7`; Vercel producción `dpl_BAwNdKzGntGJioneE5M5RKhj1DaM` READY. Validación: 9/9 workflows de PR, 3/3 del commit funcional en main y 8 contratos relacionados locales, además de los 27 escenarios descritos. La entrada PWA productiva respondió 200 y las APIs de Compras/Inventario sin sesión respondieron 401. No se observaron 5xx en la consulta pospublicación.
+
 ## Resultado y alcance
 
 27 escenarios aprobados: 19 de PostgreSQL y 8 de los handlers de Compras e Inventario. Es aceptación técnica del recorrido de datos; no certifica todavía el recorrido completo en un navegador, dos operadores diferentes ni iPhone/PWA.
