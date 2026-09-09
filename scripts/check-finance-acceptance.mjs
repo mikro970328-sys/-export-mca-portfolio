@@ -211,7 +211,7 @@ try{
   });
   await test('DB-01 cash migration is repeatable and preserves backend-only access',async()=>{
     const so=await f.sale();await f.advance(so,100);const before=await snapshot(),cash=await f.report('cash');
-    await db.exec(fs.readFileSync('supabase/migrations/20260909195000_finance_cash_reconciliation.sql','utf8'));
+    await db.exec(fs.readFileSync('supabase/migrations/20260909185121_finance_cash_reconciliation.sql','utf8'));
     assert.deepEqual(await snapshot(),before);assert.deepEqual(await f.report('cash'),cash);
     for(const role of ['anon','authenticated']){
       const p=await one("select has_table_privilege($1,'public.executive_cash_movement_source','select') as allowed",[role]);assert.equal(p.allowed,false);

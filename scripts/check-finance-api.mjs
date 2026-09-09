@@ -4,7 +4,7 @@ import { financeFixture } from './lib/finance-acceptance-fixture.mjs';
 import { financeAcceptanceApi } from './lib/finance-acceptance-api.mjs';
 
 const db=await createFinanceAcceptanceDb(),f=await financeFixture(db),api=financeAcceptanceApi(db);
-const admin={admin_id:f.actor,role:'master_admin',permissions:[]},reader={admin_id:f.clientB,role:'operator',permissions:['finance.read','reports.read']};
+const admin={admin_id:f.actor,role:'master_admin',permissions:[]},reader={admin_id:f.clientB,role:'admin',permissions:['finance.read','reports.read']};
 const passed=[],failures=[],n=Number;
 const request=(name,body)=>api.request(name,{method:'POST',body,admin});
 const get=(name,query={},who=admin)=>api.request(name,{admin:who,query});

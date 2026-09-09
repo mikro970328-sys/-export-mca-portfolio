@@ -1,6 +1,6 @@
 # Aceptación financiera — Export MCA ERP
 
-Estado: validado localmente en `test/finance-acceptance`, desde `40cb5feba6dbbd4f0ff37afb14678584e4caad19`. Pendientes Preview, CI, migración y publicación.
+Estado: [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), desde `40cb5feba6dbbd4f0ff37afb14678584e4caad19`. Preview y migración verificadas; pendiente CI final y publicación del código.
 
 ## Contrato y regresión
 
@@ -19,7 +19,15 @@ Estado: validado localmente en `test/finance-acceptance`, desde `40cb5feba6dbbd4
 3. Cantidades de factura e importes/distribuciones de proveedor no finitos alcanzaban el RPC. Los handlers los rechazan antes del transporte, con error de entrada 400. No se afirma que el transporte productivo guardara un valor JavaScript Infinity: JSON lo transforma en null.
 4. Reportes exponía una función de refresco, pero ninguna dependencia lo seleccionaba al cambiar los datos. Se añade `reportsSection` al mapa existente; las cuatro regresiones fallaron antes y aprueban después. No se añaden observers ni wrappers. Runtime `20260909-live6`.
 
-La migración `20260909195000_finance_cash_reconciliation.sql` añade una vista de lectura y reemplaza únicamente los dos RPC ejecutivos. No modifica filas comerciales ni los libros de cobros/pagos, AR/AP o el cálculo de rentabilidad. Conserva el límite de 5000 filas de reportes y las monedas separadas. Las etiquetas de anticipos/reembolsos y los contadores del dashboard se muestran en español sin calcular importes en frontend.
+La migración `20260909185121_finance_cash_reconciliation.sql` añade una vista de lectura y reemplaza únicamente los dos RPC ejecutivos. No modifica filas comerciales ni los libros de cobros/pagos, AR/AP o el cálculo de rentabilidad. Conserva el límite de 5000 filas de reportes y las monedas separadas. Las etiquetas de anticipos/reembolsos y los contadores del dashboard se muestran en español sin calcular importes en frontend.
+
+## Evidencia de entrega
+
+- Head inicial `3f06d8c856770d3c8ebffa8754f5526250db5f59`, Preview `dpl_EgkoE7PfmbbAhqTsFM6jA7Bq7EV7` READY. Navegador Chrome: entrada administrativa y PWA muestran el formulario de acceso. No se declara un flujo autenticado de negocio.
+- CI inicial: 57/58 workflows aprobaron, incluido Finance Acceptance (`34391336034`). La única falla exigía literalmente la explicación anterior del dashboard; se actualiza esa expectativa a la explicación de anticipos/reembolsos y pasa localmente, sin omitir el gate. Falta revalidar el head final.
+- El workflow de iOS en PR aprueba su contrato de solo lectura; el job de dispositivo está omitido por el diseño del workflow. Eso no certifica Safari/iPhone ni consume una nueva sesión de dispositivo.
+- Supabase asignó la versión `20260909185121`: se conserva ese nombre en git con los mismos bytes SQL revisados. Ambas funciones y la vista coinciden con lo probado; `anon` y `authenticated` sin acceso, `service_role` con lectura/ejecución y vista `security_invoker=true`.
+- Conciliación productiva por consultas de lectura: cero discrepancias entre los cuatro libros y la vista; cero discrepancias del dashboard. Cuatro eventos existentes, cuatro en el reporte. Revisión de importes no finitos: cero en los cuatro libros. No hubo escrituras comerciales QA.
 
 ## Matriz ejecutada
 

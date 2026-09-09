@@ -32,7 +32,7 @@ if (/\$\{\s*(?:esc\()?error\?\.message/.test(dashboard)) fail('raw error.message
 if (!dashboard.includes("console.error('[executive dashboard]',error)")) fail('technical dashboard errors must remain in diagnostics');
 if (!dashboard.includes('No pudimos actualizar los indicadores en este momento.')) fail('dashboard needs a stable operational error message');
 if (!dashboard.includes('Datos financieros consolidados por la plataforma.')) fail('dashboard footer must use operational provenance copy');
-if (!dashboard.includes('Cobros contabilizados menos pagos contabilizados')) fail('net cash-flow explanation must be operational');
+if (!dashboard.includes('Incluye anticipos y reembolsos registrados')) fail('net cash-flow explanation must be operational');
 if (!dashboard.includes('Sin conversión de moneda')) fail('currency presentation must be understandable without FX jargon');
 if (!dashboard.includes('Cuentas por cobrar') || !dashboard.includes('Cuentas por pagar')) fail('finance labels must use operational Spanish');
 if (/\b(?:prompt|alert|confirm)\s*\(/.test(dashboard)) fail('native dialogs are not allowed in the dashboard flow');
