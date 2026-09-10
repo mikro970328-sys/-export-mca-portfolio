@@ -118,7 +118,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await purchases.locator('#oDestinationMode').selectOption('direct');
       await expect(purchases.locator('#oWarehouseField')).toBeHidden();
       await purchases.locator('.lProduct').selectOption(f.product);
-      await purchases.locator('.lQty').fill('840');await purchases.locator('.lPallets').fill('10');
+      await purchases.locator('.lQty').fill('840');
+      await purchases.locator('.lPallets').fill('10');
+      await purchases.locator('.lUpp').fill('84');
       await purchases.locator('.lPriceValue').fill('2.5');
       await mutation('purchases',()=>purchases.locator('#saveOrder').click());
       await expect(purchases.locator('#orderModal')).toBeHidden();
