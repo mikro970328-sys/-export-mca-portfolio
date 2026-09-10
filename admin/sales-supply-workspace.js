@@ -8,7 +8,6 @@
   const fmt=value=>value===null||value===undefined||value===''?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:3}).format(Number(value));
   const dateTime=value=>value?new Date(value).toLocaleString('es-US'):'—';
   const localDateTime=()=>{const now=new Date(),offset=now.getTimezoneOffset()*60000;return new Date(now.getTime()-offset).toISOString().slice(0,16);};
-  // datetime-local belongs to the operator's browser, not the API server's zone.
   function localDispatchInstant(value){
     const raw=String(value??'').trim(),date=new Date(raw);
     if(!raw||Number.isNaN(date.getTime())){
@@ -109,9 +108,35 @@
     byId('salesSupplyDecisionModal').classList.remove('hidden');
   }
 
+  function overlayDirectEffectiveRows(data,rows){
+    const byDirect=new Map((rows||[]).map(row=>[String(row.direct_shipment_allocation_id),row]));
+    for(const item of data?.items||[])for(const plan of item.supply_plans||[])for(const allocation of plan.procurement_allocations||[])for(const direct of allocation.direct_shipments||[]){
+      const effective=byDirect.get(String(direct.id));
+      if(!effective)continue;
+      Object.assign(direct,{
+        allocated_sales_quantity:effective.allocated_sales_quantity,
+        allocated_sales_pallets:effective.allocated_sales_pallets,
+        allocated_purchase_quantity:effective.allocated_purchase_quantity,
+        allocated_purchase_pallets:effective.allocated_purchase_pallets,
+        planned_sales_quantity:effective.planned_sales_quantity,
+        planned_sales_pallets:effective.planned_sales_pallets,
+        planned_purchase_quantity:effective.planned_purchase_quantity,
+        planned_purchase_pallets:effective.planned_purchase_pallets,
+        has_quantity_correction:effective.has_quantity_correction,
+        latest_correction_reason:effective.latest_correction_reason,
+        latest_correction_at:effective.latest_correction_at
+      });
+    }
+    return data;
+  }
+
   async function fetchSupply(){
     if(!state.salesOrderId)return null;
-    state.data=await request(`/api/sales-supply?sales_order_id=${encodeURIComponent(state.salesOrderId)}`);
+    const [data,direct]=await Promise.all([
+      request(`/api/sales-supply?sales_order_id=${encodeURIComponent(state.salesOrderId)}`),
+      request(`/api/direct-shipment-dispatch?sales_order_id=${encodeURIComponent(state.salesOrderId)}`)
+    ]);
+    state.data=overlayDirectEffectiveRows(data,direct.rows||[]);
     return state.data;
   }
 
@@ -164,12 +189,19 @@
 
   function renderDirect(item,allocation,row){
     const shipment=row.shipment||{},dispatch=row.dispatch||null;
-    return `<div class="sales-supply-direct"><div class="sales-supply-direct-head"><div><div class="sales-supply-proc-title">${esc(shipment.container_number||'Contenedor')}</div><div class="sales-supply-detail">Venta: ${fmt(row.allocated_sales_quantity)} ${esc(item.unit)} · Compra: ${fmt(row.allocated_purchase_quantity)} ${esc(allocation.purchase_order_item?.unit||'unidad de compra')}</div></div><span class="sales-supply-status ${dispatch?'ok':'warn'}">${dispatch?'Despachado':'Planificado'}</span></div>${dispatch?`<div class="sales-supply-detail">Despachado: ${esc(dateTime(dispatch.dispatched_at))}</div>`:''}<div class="sales-supply-actions"><button type="button" class="btn" data-supply-action="open-tracking" data-shipment-id="${esc(shipment.id||row.shipment_id)}">Abrir contenedor</button>${!dispatch?`<button type="button" class="btn orange" data-supply-action="dispatch-direct" data-shipment-id="${esc(shipment.id||row.shipment_id)}">Marcar despachado</button><button type="button" class="btn" data-supply-action="unlink-direct" data-direct-id="${esc(row.id)}">Desvincular</button>`:''}</div></div>`;
+    const plannedSales=Number(row.planned_sales_quantity??row.allocated_sales_quantity||0),actualSales=Number(row.allocated_sales_quantity||0);
+    const plannedPurchase=Number(row.planned_purchase_quantity??row.allocated_purchase_quantity||0),actualPurchase=Number(row.allocated_purchase_quantity||0);
+    const corrected=row.has_quantity_correction===true;
+    const quantities=corrected
+      ?`<div class="sales-supply-detail"><b>Enviado real:</b> ${fmt(actualSales)} ${esc(item.unit)} · <b>Proveedor:</b> ${fmt(actualPurchase)} ${esc(allocation.purchase_order_item?.unit||'unidad de compra')}</div><div class="sales-supply-detail">Plan original: ${fmt(plannedSales)} ${esc(item.unit)} · Diferencia: ${fmt(Math.max(0,plannedSales-actualSales))} ${esc(item.unit)}</div><div class="sales-supply-detail">Corrección: ${esc(row.latest_correction_reason||'Sin motivo')} · ${esc(dateTime(row.latest_correction_at))}</div>`
+      :`<div class="sales-supply-detail">Venta: ${fmt(actualSales)} ${esc(item.unit)} · Compra: ${fmt(actualPurchase)} ${esc(allocation.purchase_order_item?.unit||'unidad de compra')}</div>`;
+    return `<div class="sales-supply-direct"><div class="sales-supply-direct-head"><div><div class="sales-supply-proc-title">${esc(shipment.container_number||'Contenedor')}</div>${quantities}</div><span class="sales-supply-status ${dispatch?'ok':'warn'}">${dispatch?'Despachado':'Planificado'}</span></div>${dispatch?`<div class="sales-supply-detail">Despachado: ${esc(dateTime(dispatch.dispatched_at))}</div>`:''}<div class="sales-supply-actions"><button type="button" class="btn" data-supply-action="open-tracking" data-shipment-id="${esc(shipment.id||row.shipment_id)}">Abrir contenedor</button>${dispatch?`<button type="button" class="btn" data-supply-action="correct-direct" data-direct-id="${esc(row.id)}">Corregir cantidades</button>`:`<button type="button" class="btn orange" data-supply-action="dispatch-direct" data-shipment-id="${esc(shipment.id||row.shipment_id)}">Marcar despachado</button><button type="button" class="btn" data-supply-action="unlink-direct" data-direct-id="${esc(row.id)}">Desvincular</button>`}</div></div>`;
   }
 
   function findItem(id){return (state.data?.items||[]).find(row=>row.id===id)||null;}
   function findPlan(id){for(const item of state.data?.items||[]){const plan=(item.supply_plans||[]).find(row=>row.id===id);if(plan)return {item,plan};}return null;}
   function findProcurement(id){for(const item of state.data?.items||[])for(const plan of item.supply_plans||[]){const allocation=(plan.procurement_allocations||[]).find(row=>row.id===id);if(allocation)return {item,plan,allocation};}return null;}
+  function findDirect(id){for(const item of state.data?.items||[])for(const plan of item.supply_plans||[])for(const allocation of plan.procurement_allocations||[]){const direct=(allocation.direct_shipments||[]).find(row=>String(row.id)===String(id));if(direct)return {item,plan,allocation,direct};}return null;}
 
   function bindMainActions(){
     byId('salesSupplyBody')?.querySelectorAll('[data-supply-action]').forEach(button=>button.onclick=()=>runAction(button.dataset));
@@ -192,6 +224,7 @@
       if(action==='open-tracking')return nav()?.openTracking?.({shipmentId:data.shipmentId});
       if(action==='dispatch-direct')return dispatchDirect(data.shipmentId);
       if(action==='unlink-direct')return unlinkDirect(data.directId);
+      if(action==='correct-direct'){const found=findDirect(data.directId);return correctDirect(found?.item,found?.allocation,found?.direct);}
     }catch(error){showMessage(safeSupplyMessage(error),false);}
   }
 
@@ -257,7 +290,30 @@
   }
 
   function dispatchDirect(shipmentId){
-    openForm({title:'Marcar Direct Ship como despachado',subtitle:'Este evento cuenta como despacho físico para cumplimiento de la venta y bloquea el contenido del contenedor.',saveLabel:'Registrar despacho',html:`<div class="sales-supply-form"><div><label>Fecha y hora real *</label><input id="supplyDispatchAt" type="datetime-local" value="${esc(localDateTime())}"></div><div class="full"><label>Nota</label><textarea id="supplyDispatchNotes"></textarea><div class="sales-supply-helper">No uses esta acción para una fecha estimada. Después del despacho, las cantidades del contenedor quedan inmutables.</div></div></div>`,onSave:()=>request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({action:'dispatch',shipment_id:shipmentId,dispatched_at:localDispatchInstant(byId('supplyDispatchAt').value),notes:byId('supplyDispatchNotes').value})})});
+    openForm({title:'Marcar Direct Ship como despachado',subtitle:'Este evento cuenta como despacho físico para cumplimiento de la venta.',saveLabel:'Registrar despacho',html:`<div class="sales-supply-form"><div><label>Fecha y hora real *</label><input id="supplyDispatchAt" type="datetime-local" value="${esc(localDateTime())}"></div><div class="full"><label>Nota</label><textarea id="supplyDispatchNotes"></textarea><div class="sales-supply-helper">Después del despacho la asignación original queda protegida. Si descubres una diferencia física, usa Corregir cantidades para conservar el historial.</div></div></div>`,onSave:()=>request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({action:'dispatch',shipment_id:shipmentId,dispatched_at:localDispatchInstant(byId('supplyDispatchAt').value),notes:byId('supplyDispatchNotes').value})})});
+  }
+
+  function correctDirect(item,allocation,row){
+    if(!item||!allocation||!row?.dispatch)return;
+    const plannedSales=row.planned_sales_quantity??row.allocated_sales_quantity;
+    const plannedSalesPallets=row.planned_sales_pallets??row.allocated_sales_pallets;
+    const plannedPurchase=row.planned_purchase_quantity??row.allocated_purchase_quantity;
+    const plannedPurchasePallets=row.planned_purchase_pallets??row.allocated_purchase_pallets;
+    openForm({
+      title:'Corregir cantidades físicas',
+      subtitle:'El plan original y el despacho permanecen en el historial. Esta corrección cambia únicamente la cantidad física efectiva.',
+      saveLabel:'Guardar corrección',
+      html:`<div class="sales-supply-form"><div><label>Unidades enviadas al cliente *</label><input id="directCorrectSalesQty" type="number" min="0" max="${esc(plannedSales)}" step="any" value="${esc(row.allocated_sales_quantity)}"><div class="sales-supply-helper">Plan original: ${fmt(plannedSales)} ${esc(item.unit)}</div></div><div><label>Pallets enviados</label><input id="directCorrectSalesPallets" type="number" min="0" max="${esc(plannedSalesPallets)}" step="any" value="${esc(row.allocated_sales_pallets||0)}"></div><div><label>Unidades físicas del proveedor *</label><input id="directCorrectPurchaseQty" type="number" min="0" max="${esc(plannedPurchase)}" step="any" value="${esc(row.allocated_purchase_quantity)}"><div class="sales-supply-helper">Compra/plan vinculado: ${fmt(plannedPurchase)} ${esc(allocation.purchase_order_item?.unit||'unidades')}</div></div><div><label>Pallets físicos del proveedor</label><input id="directCorrectPurchasePallets" type="number" min="0" max="${esc(plannedPurchasePallets)}" step="any" value="${esc(row.allocated_purchase_pallets||0)}"></div><div class="full"><label>Motivo de la corrección *</label><textarea id="directCorrectReason" required placeholder="Ej.: El proveedor redujo 30 unidades por límite de peso."></textarea><div class="sales-supply-helper">La PO no se reescribe. El ERP conservará cuánto se ordenó, cuánto se había planificado y cuánto salió físicamente.</div></div></div>`,
+      onSave:()=>request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({
+        action:'correct_quantity',
+        direct_shipment_allocation_id:row.id,
+        sales_quantity:byId('directCorrectSalesQty').value,
+        sales_pallets:byId('directCorrectSalesPallets').value||0,
+        purchase_quantity:byId('directCorrectPurchaseQty').value,
+        purchase_pallets:byId('directCorrectPurchasePallets').value||0,
+        reason:byId('directCorrectReason').value
+      })})
+    });
   }
 
   function unlinkDirect(directId){askAction({title:'Desvincular contenedor',message:'Se quitará esta mercancía del contenedor Direct Ship. Esta acción solo está permitida antes del despacho real.',acceptLabel:'Desvincular',onAccept:()=>request('/api/sales-supply',{method:'POST',body:JSON.stringify({action:'unlink_direct_shipment',direct_shipment_allocation_id:directId})})});}
