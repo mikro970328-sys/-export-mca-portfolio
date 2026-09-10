@@ -189,8 +189,8 @@
 
   function renderDirect(item,allocation,row){
     const shipment=row.shipment||{},dispatch=row.dispatch||null;
-    const plannedSales=Number(row.planned_sales_quantity??row.allocated_sales_quantity||0),actualSales=Number(row.allocated_sales_quantity||0);
-    const plannedPurchase=Number(row.planned_purchase_quantity??row.allocated_purchase_quantity||0),actualPurchase=Number(row.allocated_purchase_quantity||0);
+    const plannedSales=Number(row.planned_sales_quantity ?? row.allocated_sales_quantity ?? 0),actualSales=Number(row.allocated_sales_quantity||0);
+    const plannedPurchase=Number(row.planned_purchase_quantity ?? row.allocated_purchase_quantity ?? 0),actualPurchase=Number(row.allocated_purchase_quantity||0);
     const corrected=row.has_quantity_correction===true;
     const quantities=corrected
       ?`<div class="sales-supply-detail"><b>Enviado real:</b> ${fmt(actualSales)} ${esc(item.unit)} · <b>Proveedor:</b> ${fmt(actualPurchase)} ${esc(allocation.purchase_order_item?.unit||'unidad de compra')}</div><div class="sales-supply-detail">Plan original: ${fmt(plannedSales)} ${esc(item.unit)} · Diferencia: ${fmt(Math.max(0,plannedSales-actualSales))} ${esc(item.unit)}</div><div class="sales-supply-detail">Corrección: ${esc(row.latest_correction_reason||'Sin motivo')} · ${esc(dateTime(row.latest_correction_at))}</div>`
