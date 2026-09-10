@@ -148,11 +148,10 @@ const cssIndex=loader.indexOf(cssRef);
 const jsIndex=loader.indexOf(jsRef);
 if(cssIndex<0||jsIndex<0||cssIndex>jsIndex)failures.push('erp.js debe cargar CSS antes del owner JavaScript de Trabajadores');
 requireText(loader,"accessCan('administration.workers.read')",'carga condicionada por permiso efectivo de lectura');
-requireText(loader,"/admin/section-state.js?v=20260903-ux7workers1",'restauración de secciones revisada');
+requireText(loader,"/admin/section-state.js?v=20260910-startup1",'restauración de secciones revisada');
 
 requireText(sectionState,'accessControl.sectionAllowed(id)','restauración delegada al control de acceso DB-backed');
 forbid(sectionState,/workersSection[^\n]+master_admin|adminsSection[^\n]+master_admin/,'section-state.js vuelve a bloquear por rol legacy');
-
 [
   'loadAdminAccessContext',
   'workerWriteAccess',
