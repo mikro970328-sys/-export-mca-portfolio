@@ -5,13 +5,21 @@
 ## Punto de entrada vigente
 
 Continuar desde **PR #297**, rama `test/cancellation-finance-browser-acceptance`.
-Leer `CURRENT_STATE.md` y `CANCELLATION_FINANCE_BROWSER_ACCEPTANCE.md`; después
-verificar estado de PR, head exacto, CI y deployment. La matriz de doce checkpoints
-amplía anticipos/aplicaciones/reembolsos, AP, cancelación y permisos. Reprodujo la
-falta de Cancelar venta en el workspace pese a capability permitida. La corrección
-usa el owner/controller existentes, asset `20260910-cancel1`, sin migración SQL.
-El corte documental contiene evidencia previa; las notas finales de PR #297
-registran aceptación/publicación posteriores. No inferir producción de una rama.
+Leer `CURRENT_STATE.md`, `CANCELLATION_FINANCE_BROWSER_ACCEPTANCE.md` y
+`MOBILE_NAV_STARTUP_ACCEPTANCE.md`; después verificar PR, head exacto, CI y deployment.
+La PR contiene dos correcciones: Cancelar venta en workspace con capability permitida
+(asset `20260910-cancel1`) y conservar el menú móvil durante restauración automática
+(assets navigation-shell/section-state `20260910-startup1`). Ambas usan owners existentes.
+
+La matriz financiera de doce checkpoints por motor valida anticipos/aplicaciones/
+reembolsos, AP, cancelación y permisos. La carrera de menú fue reproducida de forma
+determinista: tras un clic válido, el inicio disparaba section-changed y cerraba
+el menú. No volver a diagnosticar su causa como desconocida: está en la matriz móvil.
+La nueva historia pausa la entrega HTTP de scripts sin modificar sus bytes, conserva
+service workers y comprueba dos perfiles, navegación normal y Escape por motor.
+Head `15c7a8d`: diez de diez jobs de navegador aprobados, run `34477240736`.
+Los resultados del head FINAL y publicación se registran en las notas de PR #297;
+no inferir producción de una rama ni sustituir CI final por el de un commit anterior.
 
 La PR #296 ya está publicada en `af17d6b9bf1cb917fd437b58cbd4c82e31677a1e`,
 Vercel `dpl_4hdBSibhzVqLXaN5aza2CBbuWmZM` READY. Direct Ship preserva hora local,
@@ -81,9 +89,9 @@ y el anterior en `history/CURRENT_STATE_20260909.md`.
 
 ## Siguiente acción
 
-Cerrar aceptación/publicación de #297 si aún falta. Después ampliar recorridos
-de Tracking/documentos/tareas/notificaciones y revisión de arranque móvil.
+Comprobar aceptación/publicación final de #297 si aún falta. Después ampliar
+Tracking/documentos/tareas/notificaciones. Conservar la regresión del arranque;
+no equivale a certificar cualquier otro caso móvil ni el dispositivo real.
 No confundir reverso correctivo con devolución real de dinero. La prueba #297
 anula la factura antes de cancelar la venta; no certifica todas las combinaciones
 con facturas activas ni refresco visual de cada dataset de Reportes.
-Mantener el riesgo de menú inicial WebKit en revisión, sin saltar su matriz.
