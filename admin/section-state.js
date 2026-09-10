@@ -33,31 +33,32 @@
     }
   }
 
-  window.showSection = function (id) {
+  window.showSection = function (id, options = {}) {
     if (!canOpen(id)) return false;
     originalShowSection(id);
     refreshSectionOwner(id);
     localStorage.setItem(STORAGE_KEY, id);
-    window.dispatchEvent(new CustomEvent('export-mca:section-changed', { detail: { id } }));
+    const source = options?.source === 'startup' ? 'startup' : 'navigation';
+    window.dispatchEvent(new CustomEvent('export-mca:section-changed', { detail: { id, source } }));
     return true;
   };
 
   function restoreSection() {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved || saved === 'dashboardSection') {
-      window.showSection('dashboardSection');
+      window.showSection('dashboardSection', { source:'startup' });
       revealApp();
       return;
     }
 
     if (canOpen(saved)) {
-      window.showSection(saved);
+      window.showSection(saved, { source:'startup' });
       requestAnimationFrame(() => requestAnimationFrame(revealApp));
       return;
     }
 
     localStorage.removeItem(STORAGE_KEY);
-    window.showSection('dashboardSection');
+    window.showSection('dashboardSection', { source:'startup' });
     requestAnimationFrame(revealApp);
   }
 

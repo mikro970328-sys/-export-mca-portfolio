@@ -307,9 +307,11 @@
       initializeGroups();
       initializeDesktopState();
     });
-    window.addEventListener('export-mca:section-changed', () => {
+    window.addEventListener('export-mca:section-changed', event => {
       syncActiveGroup(true);
-      closeMobileMenu();
+      // Initial route restoration is not a user navigation. Keep an already
+      // opened menu while startup selects the permitted section behind it.
+      if (event.detail?.source !== 'startup') closeMobileMenu();
     });
     window.NavigationShell = Object.freeze({
       collapse: () => setDesktopCollapsed(true),

@@ -174,7 +174,7 @@
     for (const id of [...new Set(candidates)]) {
       const section = document.getElementById(id);
       if (!section?.classList.contains('app-section') || !buttonAvailable(id)) continue;
-      if (typeof window.showSection === 'function' && window.showSection(id) !== false) return id;
+      if (typeof window.showSection === 'function' && window.showSection(id, { source:'startup' }) !== false) return id;
     }
     return null;
   };
@@ -250,7 +250,7 @@
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
       await loadStylesheet('/admin/account-administration.css?v=20260903-ux7account1', 'data-account-administration-style');
       await loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration');
-      await loadScript('/admin/navigation-shell.js?v=20260904-simple-nav1', 'data-navigation-shell');
+      await loadScript('/admin/navigation-shell.js?v=20260910-startup1', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {
         await loadStylesheet('/admin/tasks-workspace.css?v=20260903-ux7tasks1', 'data-tasks-workspace-style');
@@ -265,7 +265,7 @@
       }
 
       window.ExportMcaAccessControl?.applyNavigation?.();
-      await loadScript('/admin/section-state.js?v=20260903-ux7workers1', 'data-section-state');
+      await loadScript('/admin/section-state.js?v=20260910-startup1', 'data-section-state');
       await loadScript('/admin/operational-navigation.js?v=20260830-ux2d', 'data-operational-navigation');
       await loadScript('/admin/ap-traceability.js?v=20260903-ux7payables1', 'data-ap-traceability');
       await loadScript('/admin/admin-data-loader.js?v=20260830-hotfix2', 'data-admin-data-loader');
