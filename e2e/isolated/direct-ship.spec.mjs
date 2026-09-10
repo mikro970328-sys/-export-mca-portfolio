@@ -30,7 +30,10 @@ test('direct ship: purchase to container dispatch without WR or stock', async ({
       grant usage on sequence purchase_order_number_seq, sales_orders_so_serial_seq to service_role;
       grant select on load_expediente_documents, documents, load_traceability_sources,
         load_traceability_summary to service_role;
-      grant select,insert on shipment_history to service_role;`);
+      grant select,insert on shipment_history to service_role;
+      grant insert on shipments to service_role;`);
+    // The legacy INSERT grant was verified in production with a read-only
+    // has_table_privilege query. This grant applies ONLY to the empty QA database.
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const {f,users}=await operatorFixture(db);
     api=await startBrowserAcceptanceServer();
@@ -86,9 +89,13 @@ test('direct ship: purchase to container dispatch without WR or stock', async ({
       }
       await button.click();await expect(page.locator(`#${name}Section`)).toBeVisible();return module(name);
     };
-    const responseFor=path=>page.waitForResponse(r=>new URL(r.url()).pathname===`/api/${path}`&&r.request().method()==='POST');
+    // Settle every listener immediately: if creation fails, an unsent linkage
+    // request must not cause an unhandled rejection that hides the first error.
+    const responseFor=path=>page.waitForResponse(r=>new URL(r.url()).pathname===`/api/${path}`&&r.request().method()==='POST')
+      .then(response=>({response}),error=>({error}));
     const checked=async(pending,path,status=200)=>{
-      const response=await pending,body=await response.json();
+      const result=await pending;if(result.error)throw result.error;
+      const response=result.response,body=await response.json();
       expect(response.status(),JSON.stringify({path,error:body.error,details:body.details})).toBe(status);return body;
     };
     const mutation=async(path,click,status=200)=>{
@@ -154,6 +161,7 @@ test('direct ship: purchase to container dispatch without WR or stock', async ({
       await sales.locator('[data-supply-action="quick-direct"]').click();
       const poItem=await f.one('select id from purchase_order_items where purchase_order_id=$1',[po.id]);
       await sales.locator('#quickDirectPo').selectOption(poItem.id);
+      await sales.locator('#quickDirectPurchasePallets').fill('10');
       await mutation('sales-supply',()=>sales.locator('#salesSupplyFormSave').click());
       await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();
       await expect(sales.locator('#salesSupplyBody')).toContainText('Paso 1 listo');
@@ -233,7 +241,10 @@ test('direct ship: purchase to container dispatch without WR or stock', async ({
     expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404||row.status>=500)).toEqual([]);
   } finally {
-    await info.attach('direct-ship-evidence',{body:Buffer.from(JSON.stringify(evidence,null,2)),contentType:'application/json'});
+    const evidencePath=info.outputPath('direct-ship-evidence.json');
+    fs.mkdirSync(info.outputDir,{recursive:true});
+    fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2));
+    await info.attach('direct-ship-evidence',{path:evidencePath,contentType:'application/json'});
     // Do not capture login fields, cookies, tokens or password entry.
     if(loggedIn&&page&&!page.isClosed()&&await page.locator('#loginPage').isHidden().catch(()=>false)){
       const path=info.outputPath('final-state.png');
