@@ -2,7 +2,7 @@
 
 Base: `af17d6b9bf1cb917fd437b58cbd4c82e31677a1e` (PR #296 publicada).
 Rama: `test/cancellation-finance-browser-acceptance`.
-Estado: MATRIZ DEFINIDA, implementación de pruebas pendiente.
+Estado: EN VALIDACIÓN.
 
 ## Objetivo
 
@@ -10,6 +10,29 @@ Cerrar variantes que la aceptación Direct Ship no cubrió: cancelaciones y
 reversos cuando una venta o compra ya tiene dinero asociado. Las mutaciones de
 negocio deben partir de la UI original y ejecutarse solo contra PostgreSQL /
 PostgREST desechables. Preview comparte producción y no se usa para escrituras.
+
+## Primera historia ejecutable
+
+`e2e/isolated/cancellation-finance.spec.mjs` ya está registrada en Playwright y
+en Browser Operator Acceptance para Chromium escritorio y WebKit móvil. Crea y
+confirma una venta desde la UI y ejecuta desde el workspace financiero:
+
+1. CF-01: registrar anticipo USD 100; disponible y caja neta = 100.
+2. CF-02: reembolsar USD 20; disponible = 80 y caja neta = 80, una sola salida.
+3. CF-03: reversar el reembolso; conserva fila `reversed`, disponible/caja = 100.
+4. CF-04: reversar el anticipo; conserva historial y saldo/caja activos = 0.
+
+Las comprobaciones consultan `customer_advance_progress`,
+`sales_order_customer_financial_progress` y `executive_cash_movement_source`.
+Errores JavaScript, crashes, tráfico externo y API 404/5xx inesperados fallan la
+historia. Las operaciones nacen de botones/formularios originales; SQL solo
+verifica el resultado posterior.
+
+El workflow ejecuta ahora ocho combinaciones: operators, commercial,
+direct-ship y cancellation-finance en ambos motores. Primer run de esta historia:
+`34468464113`, head `d7fe807557df17371ceca6e9a1ec551f80fc3739`. En este corte los jobs estaban
+inicializando dependencias/containers; no se registra todavía como aprobado ni
+fallido.
 
 ## Contratos ya existentes que deben demostrarse, no reinventarse
 
@@ -23,55 +46,38 @@ PostgREST desechables. Preview comparte producción y no se usa para escrituras.
 - La cancelación de una Purchase Order se bloquea mientras tenga AP activo o
   abastecimiento de ventas activo; no se deben borrar libros para conseguirla.
 
-## Matriz previa a cualquier corrección funcional
+## Matriz completa pendiente
 
 | Caso | Recorrido y resultado exigido |
 |---|---|
-| CF-01 | Venta confirmada + anticipo: Cancelar debe rechazarse y conservar venta/anticipo/caja |
-| CF-02 | Anticipo aplicado a factura: reverso del anticipo debe rechazarse mientras la aplicación siga activa |
-| CF-03 | Revertir aplicación desde UI: restaura saldo de anticipo y saldo de factura sin crear caja |
-| CF-04 | Reembolsar parte del anticipo: caja registra salida una sola vez y reduce saldo disponible |
-| CF-05 | Reverso del reembolso: restaura saldo y caja sin duplicar movimientos |
-| CF-06 | Con aplicaciones/reembolsos ya revertidos, revertir anticipo; después la venta puede cancelar si no tiene otro bloqueo |
-| CF-07 | PO + factura proveedor posted + pago aplicado: anular factura debe rechazarse y conservar AP/pago |
-| CF-08 | Revertir pago proveedor desde UI: factura recupera saldo, pago queda reversed y caja se reconcilia |
-| CF-09 | Anular factura después del reverso: AP activo desaparece sin borrar historial financiero |
-| CF-10 | Cancelar PO después de resolver AP; debe conservar factura/pago históricos y no afectar otra PO/venta |
-| CF-11 | Operador sin finance.write ve capacidades de lectura pero no puede ejecutar reversos/anulaciones financieras |
-| CF-12 | Refresco sin recarga: Ventas, Anticipos, Facturas/Pagos Proveedores y Reportes reflejan cada transición |
+| CF-01 | Venta confirmada + anticipo: registro y conciliación de caja |
+| CF-02 | Reembolso parcial reduce saldo disponible y caja una sola vez |
+| CF-03 | Reverso de reembolso restaura saldo/caja sin borrar historial |
+| CF-04 | Reverso de anticipo conserva historial y elimina saldo/caja activos |
+| CF-05 | Venta con anticipo activo: Cancelar debe rechazarse sin mutación |
+| CF-06 | Anticipo aplicado a factura: reverso bloqueado hasta revertir aplicación |
+| CF-07 | Revertir aplicación restaura saldo de anticipo y factura sin nueva caja |
+| CF-08 | PO + factura proveedor posted + pago: anular factura debe rechazarse |
+| CF-09 | Revertir pago proveedor: factura recupera saldo, pago queda reversed |
+| CF-10 | Anular factura y luego cancelar PO conservando historial |
+| CF-11 | Operador sin finance.write consulta pero no ejecuta reversos/anulaciones |
+| CF-12 | Otra sesión refleja cada transición sin recarga manual |
 
-## Invariantes en cada checkpoint
+## Invariantes
 
-1. Los saldos se comprueban directamente en las vistas financieras canónicas,
-   no mediante cálculos duplicados del test.
-2. Caja debe conciliar exactamente con sus libros; aplicar un anticipo no crea
-   movimiento de caja adicional.
-3. Un rechazo no puede alterar status, saldos, aplicaciones, caja ni auditoría
-   como si la operación hubiera ocurrido.
+1. Los saldos se comprueban en vistas financieras canónicas, no con fórmulas
+   duplicadas del frontend.
+2. Aplicar un anticipo no crea un nuevo movimiento de caja.
+3. Un rechazo no altera estados, saldos, aplicaciones, caja ni auditoría como si
+   la operación hubiera ocurrido.
 4. Reversos conservan filas históricas y motivo; no DELETE de libros.
-5. Venta/PO/cliente/proveedor/moneda permanecen aislados de un segundo conjunto
-   control usado para detectar contaminación cruzada.
-6. Errores JavaScript, crashes, API 404/5xx inesperados o tráfico externo hacen
-   fallar la historia. Los 400 de reglas de negocio esperadas se validan por
-   mensaje y por ausencia de mutación.
-7. Chromium escritorio y WebKit móvil ejecutan la misma matriz. WebKit emulado
-   no se presentará como Safari/iPhone real.
-
-## Seguridad y alcance
-
-No se modifican todavía RPC, tablas, UI ni migraciones. Primero se instrumenta
-esta matriz contra handlers y componentes originales. Si reproduce un defecto,
-la corrección se hará en el owner canónico y se volverá a ejecutar toda la
-matriz previa, además de las regresiones de finanzas, Direct Ship, commercial y
-multioperador afectadas.
-
-No se envían mensajes, no se crean registros QA en producción/Preview y no se
-usan credenciales reales en artefactos. Las capturas no incluyen login/tokens.
+5. Cliente/proveedor/moneda permanecen aislados de un segundo conjunto control.
+6. Las mismas expectativas se ejecutan en Chromium y WebKit móvil.
 
 ## Siguiente acción exacta
 
-Construir la fixture aislada con dos ventas, dos PO, anticipos, factura cliente,
-factura proveedor y pago; conectar handlers `customer-advances`, `payables`,
-`supplier-payments`, `sales` y los módulos UI financieros al servidor QA. Luego
-ejecutar CF-01..CF-12 sin cambiar expectativas para descubrir el comportamiento
-real antes de cualquier fix.
+Tomar el resultado real de la primera historia y corregir solo fallos
+reproducidos. Después ampliar el mismo spec con CF-05..CF-07 (cancelación con
+anticipo y aplicación a factura) y CF-08..CF-10 (factura/pago de proveedor),
+terminando con permisos y refresco entre operadores. No fusionar esta PR hasta
+que la matriz completa y las regresiones anteriores estén verdes.
