@@ -4,6 +4,7 @@ const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a
 const uuid=(value,label='ID')=>{const result=String(value||'').trim();if(!UUID_RE.test(result))throw new Error(`${label}_INVALID`);return result;};
 const note=value=>String(value??'').trim().slice(0,2000)||null;
 const text=(value,max=250)=>String(value??'').trim().slice(0,max)||null;
+const nonNegative=(value,label)=>{const result=Number(value);if(!Number.isFinite(result)||result<0)throw new Error(`${label}_INVALID`);return result;};
 const rpcRow=value=>Array.isArray(value)?value[0]||null:value||null;
 const containerReference=value=>{const result=String(value??'').trim().toUpperCase().replace(/\s+/g,' ');if(!result||result.length>40||!/^[A-Z0-9][A-Z0-9 ._/-]*$/.test(result))throw new Error('CONTAINER_REFERENCE_INVALID');return result;};
 
@@ -27,9 +28,20 @@ function friendly(error){
   const map=[
     ['SALES_ORDER_ID_INVALID','Venta inválida.'],
     ['SHIPMENT_ID_INVALID','Contenedor inválido.'],
+    ['DIRECT_SHIPMENT_ID_INVALID','Contenedor inválido.'],
+    ['DIRECT_SHIPMENT_ALLOCATION_ID_INVALID','La línea Direct Ship no es válida.'],
     ['CONTAINER_REFERENCE_INVALID','La referencia del contenedor no es válida.'],
     ['DIRECT_DEPARTURE_DATE_INVALID','La fecha de salida no es válida.'],
     ['DIRECT_DISPATCH_TIME_INVALID','La fecha y hora de despacho no son válidas.'],
+    ['DIRECT_CORRECTION_SALES_QUANTITY_INVALID','La cantidad física de venta no es válida.'],
+    ['DIRECT_CORRECTION_SALES_PALLETS_INVALID','Los pallets físicos de venta no son válidos.'],
+    ['DIRECT_CORRECTION_PURCHASE_QUANTITY_INVALID','La cantidad física recibida del proveedor no es válida.'],
+    ['DIRECT_CORRECTION_PURCHASE_PALLETS_INVALID','Los pallets físicos del proveedor no son válidos.'],
+    ['DIRECT_CORRECTION_REASON_REQUIRED','Indica el motivo de la corrección.'],
+    ['DIRECT_CORRECTION_ALLOCATION_NOT_FOUND','La línea Direct Ship no existe.'],
+    ['DIRECT_CORRECTION_REQUIRES_DISPATCH','Antes del despacho usa Cambiar cantidades. Esta corrección se usa después del despacho físico.'],
+    ['DIRECT_CORRECTION_EXCEEDS_PLANNED','La corrección no puede superar la cantidad originalmente planificada en el contenedor.'],
+    ['DIRECT_CORRECTION_NO_CHANGES','Las cantidades indicadas son iguales a las cantidades físicas actuales.'],
     ['DIRECT_SALE_NOT_FOUND','Venta no encontrada.'],
     ['DIRECT_SALE_NOT_CONFIRMED','La venta debe estar confirmada antes de crear un Direct Ship.'],
     ['DIRECT_CONTAINER_DUPLICATE','Esa referencia de contenedor ya tiene una operación activa.'],
@@ -92,6 +104,34 @@ async function listForSale(salesOrderId){
   })||[];
 }
 
+async function correctQuantity(body,admin){
+  const allocationId=uuid(body.direct_shipment_allocation_id,'DIRECT_SHIPMENT_ALLOCATION_ID');
+  const reason=note(body.reason);
+  if(!reason)throw new Error('DIRECT_CORRECTION_REASON_REQUIRED');
+  const result=rpcRow(await supabase('rpc/correct_direct_shipment_quantity',{
+    method:'POST',
+    body:{
+      p_direct_shipment_allocation_id:allocationId,
+      p_sales_quantity:nonNegative(body.sales_quantity,'DIRECT_CORRECTION_SALES_QUANTITY'),
+      p_sales_pallets:nonNegative(body.sales_pallets??0,'DIRECT_CORRECTION_SALES_PALLETS'),
+      p_purchase_quantity:nonNegative(body.purchase_quantity,'DIRECT_CORRECTION_PURCHASE_QUANTITY'),
+      p_purchase_pallets:nonNegative(body.purchase_pallets??0,'DIRECT_CORRECTION_PURCHASE_PALLETS'),
+      p_reason:reason,
+      p_actor:admin.admin_id||null
+    }
+  }));
+  if(!result?.id)throw new Error('DIRECT_CORRECTION_FAILED');
+  await writeAudit(admin,'direct_shipment_quantity_corrected','shipment',result.shipment_id,{
+    direct_shipment_allocation_id:allocationId,
+    previous_sales_quantity:result.previous_sales_quantity,
+    corrected_sales_quantity:result.corrected_sales_quantity,
+    previous_purchase_quantity:result.previous_purchase_quantity,
+    corrected_purchase_quantity:result.corrected_purchase_quantity,
+    reason
+  });
+  return result;
+}
+
 export default async function handler(req,res){
   const admin=await authorizeAdmin(req,res,req.method==='GET'?'sales.read':'sales.write');if(!admin)return;
   try{
@@ -102,6 +142,7 @@ export default async function handler(req,res){
     if(req.method!=='POST')return fail(res,405,'Método no permitido');
     const body=await readJson(req),action=String(body.action||'').trim().toLowerCase();
     if(action==='create')return ok(res,{shipment:await createDirectShipment(body,admin)});
+    if(action==='correct_quantity')return ok(res,{correction:await correctQuantity(body,admin)});
     if(action!=='dispatch')return fail(res,400,'Acción Direct Ship no válida.');
     const shipmentId=uuid(body.shipment_id,'SHIPMENT_ID');
     const result=rpcRow(await supabase('rpc/mark_direct_shipment_dispatched',{
