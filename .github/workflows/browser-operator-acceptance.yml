@@ -40,7 +40,7 @@ jobs:
       matrix:
         project: [chromium-desktop, webkit-mobile]
         # Each story initializes an empty database in its own service containers.
-        suite: [operators, commercial]
+        suite: [operators, commercial, direct-ship]
     services:
       postgres:
         image: postgres:17.6
