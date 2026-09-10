@@ -1,357 +1,81 @@
 # Current State — Export MCA ERP
 
-Última actualización del corte vigente: 2026-09-09
-
-## En validación — cadena comercial y selección de almacén (PR #295)
-
-- Rama `test/commercial-browser-acceptance`, base `5e2620bd6afe151807b3a17d6ebab394e5eee16b`. No afirmar publicado hasta verificar merge y deployment.
-- Se añade compra → WR parciales → inventario → venta/cargue/despacho → factura/cobros → coste/reportes en PostgreSQL/PostgREST aislados, Chromium y WebKit móvil. La suite anterior de operadores se conserva en jobs con bases independientes.
-- Run `34405757054`: se reprodujo en Chromium una respuesta tardía de catálogos que vacía el almacén al abrir recepción; WebKit aprobó las dos recepciones y el exceso cancelado. Se corrige el owner `fillMasters` preservando selecciones presentes, con asset `20260909-masters1`. Regresión específica 1/4 antes, 4/4 después.
-- Los otros fallos iniciales correspondían a columnas/grants legacy faltantes en QA, contrastados con producción en modo lectura. No hay migración ni operación comercial QA productiva.
-- 108 comprobaciones locales previas de compras/ventas/finanzas aprobadas; las matrices previas de operadores aprobaron en ambos motores. Pendiente el recorrido comercial final del head corregido. Matriz y límites: `docs/COMMERCIAL_BROWSER_ACCEPTANCE.md`.
-
-## Corte publicado — permisos, diálogos y dos operadores (PR #289)
-
-- Publicado mediante [PR #289](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/289), commit `55c6ae255b7abcd26068b941f0bc7c43c9f7d1d4`. Producción `dpl_4pshzRmzZGJmzntku1i5K8mz4KYG` READY.
-- Run final de PR `34402541189`, head `cb133dda4e8c2e165e4fd9f48ecd5c5b9e7927b5`: 20/20 escenarios (diez por motor), 52/52 workflows; 55 check runs aprobados y uno omitido por condición. Preview `dpl_enFr3jigPxHr9aK9hLRHyo1qb2Be` READY y entrada PWA al login verificada. Capturas revisadas del cierre móvil, editor preservado, sesión revocada y saldo final USD 195.
-- Correcciones en los owners existentes: `account` invalida capacidades sin descartar editores; el iframe cabe bajo el encabezado y el cierre queda accesible. Runtime `20260909-live7`, CSS `20260909-viewport1`. Sin migraciones ni datos comerciales QA productivos.
-- Se conservaron los avances simultáneos #290/#291 y el aislamiento de BrowserStack #292. Chromium completo supera la revocación con la sesión/SW originales; el ejecutable reducido caía por falta nativa de BadgeService.
-- Main: ocho de nueve workflows aprobados, incluidos Browser Operator Acceptance `34402916794` y Operator and Concurrency Acceptance `34402917038`. BrowserStack `34402916772` aprobó su contrato de solo lectura; ambos jobs de iPhone fallaron por `Automate testing time expired`, sin reintentos manuales.
-- Producción: PWA, shell, runtime live7 y ambos CSS viewport1 responden HTTP 200; las revisiones publicadas contienen las correcciones. API de versiones y Facturas responden HTTP 401 sin sesión. Consulta de logs 5xx para este deployment sin resultados en el intervalo observado 20:37:06–20:47:06 UTC.
-- Matriz: `docs/BROWSER_OPERATOR_ACCEPTANCE.md`. Siguiente bloque: ampliar recorridos transversales comerciales, tareas, tracking/documentos y notificaciones con datos controlados. La certificación de iPhone/Safari/PWA instalado sigue pendiente. Después: mejoras y auditoría integral.
-
-## Corte publicado — aceptación visual aislada multioperador/PWA
-
-- [PR #290](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/290) integrada, commit `dfe47514aeaafa6aa32d34ca960332464749c07a`. Añade QA automatizada; no modifica reglas comerciales, frontend productivo ni Supabase.
-- [Run 34401166506](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/34401166506) aprobado: jobs `isolated-operators` e `isolated-browser` correctos; los cinco workflows de la PR aprobaron.
-- Main volvió a aprobar la aceptación aislada en el run `34401420872`. BrowserStack main `34401420975` conservó su contrato estático aprobado y falló en ambos jobs de dispositivo por `Automate testing time expired`; no es un fallo funcional del ERP ni se reintentó.
-- Dos cuentas distintas iniciaron sesión en contextos Chromium separados contra handlers reales, PostgreSQL 17.6 y PostgREST 12.2.3 desechables. A registró dos cobros desde la UI; B vio saldo 400 → 280 → 200 sin navegación ni recarga manual.
-- B entró desde `/admin/pwa.html` con perfil/viewport iPhone. El service worker se registró y la ruta abrió el shell. Con el detalle abierto, B mantuvo el saldo anterior; al cerrar el diálogo se aplicó el cambio pendiente, protegiendo trabajo en curso.
-- No hubo cuentas ni operaciones QA en producción. Esta evidencia certifica navegador aislado y ruta PWA móvil emulada, no Safari, instalación standalone ni hardware iPhone real.
-- La prueba aislada queda excluida explícitamente de la configuración BrowserStack: solo su job con PostgreSQL/PostgREST puede ejecutarla; la certificación externa conserva exclusivamente sus casos productivos de solo lectura.
-- Siguiente bloque funcional: ampliar los recorridos transversales de navegador que siguen pendientes en la lista de cierre. Después: mejoras priorizadas y auditoría integral.
-
-## Corte publicado — operadores y concurrencia
-
-- [PR #287](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/287) integrada; base `95e352e0d466ca8392adef89e8e4897d19cf2da3`, commit publicado `81648443ce66eda2ce4ed2e331146ad631ae751e`. Producción `dpl_6bf5Vba4JxrwFsDxrSCxgqfnptUb` READY.
-- 22/22 escenarios PostgreSQL/PostgREST reales; run final de PR `34396893578`, head `e8f61d1ac288c4d5620b6ef870e208a883a5e322`. Siete workflows y ocho check runs aprobados. Matriz y ajustes de fixture: `docs/OPERATOR_CONCURRENCY_ACCEPTANCE.md`.
-- No cambia la lógica comercial. Se comprueban saldos/reservas entre conexiones, dos cuentas por HTTP, permisos vigentes, auditoría y revocación de sesiones. Seis owners de acceso/sesión coinciden con producción descontando formato. Regresión financiera local 40/40.
-- Preview final `dpl_FvZropMsHGUfGGFVKaptJ59U5szR` READY; entrada PWA llega al login en Chrome. La espera de arranque exige alcanzar el guard SQL del RPC antes de probar sesiones.
-- Los seis workflows de `main` aprobaron; Operator and Concurrency Acceptance `34397039678`. PWA productiva HTTP 200 y API de versiones HTTP 401 sin sesión. Este cambio solo añade QA/documentación y dependencias de desarrollo; no aplica migraciones ni cambia comportamiento comercial.
-- La Preview comparte producción. La aceptación visual aislada se completó después en la PR #290; iPhone/Safari real sigue pendiente. Sin escrituras comerciales QA en producción ni reintentos manuales de BrowserStack.
-
-## Corte publicado — finanzas y conciliación
-
-- [PR #285](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/285), base `40cb5feba6dbbd4f0ff37afb14678584e4caad19`, commit funcional publicado `e33cb87bf278b3886dd0acc42a9f3250c78f5285`. Producción `dpl_GP9Jw7tBYUh44h8dK5S4xyscWQeR` READY.
-- 40 escenarios locales aprobados: 25 SQL, 11 API y cuatro del runtime de refresco. Matriz: `docs/FINANCE_ACCEPTANCE.md`.
-- Corregidos anticipos/reembolsos omitidos en caja, contador de facturas vencidas con pago parcial, entradas no finitas y refresco de Reportes tras cambios. Runtime vigente `20260909-live6`.
-- Migración `20260909185121_finance_cash_reconciliation.sql` aplicada: una vista de caja y dos RPC de lectura. Definiciones/permisos coinciden con lo probado; cero diferencias en conciliación con los libros productivos, sin modificar datos comerciales.
-- Head final de PR `616126e288cf7c9d1b4946d89c9623bcbfde832c`: 58/58 workflows aprobados, Finance Acceptance run `34391915963`; Preview `dpl_54Mc37jyVvrQbk75XU7QqduLciaZ` READY y entrada PWA llega al login. La expectativa literal del texto anterior del dashboard se corrigió y su gate también aprobó.
-- Producción: PWA, shell y runtime live6 responden 200; las API de Facturas, Pagos Proveedores y Reportes responden 401 sin sesión. Consulta de logs 5xx sin resultados en el intervalo observado 18:44:02–18:59:02 UTC.
-- Main: ocho de nueve workflows únicos aprobaron, tomando la última ejecución por nombre; Finance Acceptance `34392107499`. La plataforma registró dos eventos push del mismo commit: los runs iOS `34392104514` y `34392106929` fallaron por `Automate testing time expired`, tanto core como costs; sus contratos de solo lectura aprobaron. Pages anterior fue cancelado y su sucesor `34392105402` aprobó. No se lanzaron reintentos manuales ni se alteraron controles.
-- Pendientes las pruebas transversales de navegador con backend aislado, operadores y móvil; las matrices no equivalen a la aceptación integral ni a la auditoría completa.
-
-## Corte QA — ventas, logística y documentos
-
-- Base `eae1cf2439d841608e1234a11e8d5209935c6e13`; entrega publicada mediante [PR #283](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/283), commit funcional `eaabea111ddc073f0d51129c6a204ab29068c191`.
-- 39 escenarios aislados aprobados (29 SQL, 10 API) y nueve contratos relacionados. Matriz y límites en `docs/SALES_LOGISTICS_ACCEPTANCE.md`.
-- Corregidos el borrado de asignaciones al editar cargues independientes, la mercancía derivada del contenedor, la precisión de la ruta de compatibilidad de ventas y las respuestas para sobreasignación/contexto. La acción de edición refleja la protección existente de cargues vinculados a ventas.
-- Migración `20260909180837_load_plan_container_consistency.sql` aplicada a Supabase: tres funciones existentes, sin reescritura histórica ni movimientos de stock. Definiciones y permisos contrastados con el entorno probado.
-- Head final de PR `5b6e2304724a56cb5fbc0ecf6d339ecfe30e17b8`: 11/11 controles y Preview `dpl_41o9mDtgrVs7oLm4DcZccyfEpX1r` READY; entrada administrativa y PWA llegan al login. Los 3/3 workflows del commit funcional de `main` también aprobaron.
-- Producción `dpl_5Q4TvBzV7Vh2aLuv3y5Eu9WcxAzP` READY: PWA responde 200 y las tres API modificadas responden 401 sin sesión. Consulta pospublicación de logs 5xx sin resultados en el intervalo observado.
-- Las pruebas de datos de ventas/logística amplían el corte previo de compras; no certifican navegador autenticado, dos operadores, concurrencia real, Storage ni móvil/PWA. Finanzas se completó después en el corte publicado de la PR #285.
-
-## Corte QA — compras, recepción e inventario
-
-- Base `4081f2d1120816f4179a75697af1ac14b75e8e14`; entrega publicada mediante [PR #281](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/281), commit funcional `7af4562d4d91523a6a9a655c9ae2ee289f861dc7`.
-- 27 escenarios aislados aprobados: 19 SQL y 8 de API. Matriz, método, defectos reproducidos y límites en `docs/PURCHASE_INVENTORY_ACCEPTANCE.md`.
-- Corrección publicada en `api/purchases.js`: exceso solo con booleano `true`; moneda inválida, almacén omitido y línea inexistente devuelven 400 seguro. Sin cambios de Supabase ni escrituras comerciales productivas.
-- Se añade CI que ejecuta operaciones reales en PGlite y se actualiza la fixture UX5 a la revisión protegida vigente. Pasaron los 27 escenarios y 8 contratos relacionados localmente; 9/9 workflows en el head de PR `7278a456d1ab95144c2681595fa9e8f6b2b722d2` y 3/3 workflows del commit funcional de `main`.
-- Preview `dpl_HAWC11iNozFTKtk1kC5h7Y2oSeXy` READY: Chrome alcanza login desde entrada administrativa y PWA; solicitud a Compras sin credenciales registrada como 401. Es comprobación de entrada, no QA autenticada de escrituras.
-- Vercel producción `dpl_BAwNdKzGntGJioneE5M5RKhj1DaM` READY para el commit funcional. `admin.exportmca.com/admin/pwa.html` respondió 200; Compras e Inventario sin sesión respondieron 401. Consulta pospublicación de logs 5xx sin resultados en el intervalo observado.
-- Esto cierra estos escenarios de datos, no la aceptación del ERP completo: faltan navegador con backend aislado, dos usuarios, concurrencia real y móvil/PWA, además de los bloques siguientes de ventas/logística y finanzas.
-
-## Corte vigente — cierre funcional y sincronización
-
-- Base de esta entrega: `main` en `5822d2352fb03c485c3676fba84825f2cd65864c`, PR #278 de sincronización multiusuario.
-- Corrección publicada mediante [PR #279](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/279), commit funcional `ab53b7440afd6fb6d0017db57c0969d5c33cbfc9`.
-- Vercel producción `dpl_2kdPSDZ9FoiStHTWvnsY4hyJFoth`: `READY` para ese commit. HTTP 200 verificado en la entrada administrativa, el acceso PWA y el runtime `20260909-live5` de `admin.exportmca.com`.
-- Migración `20260909143701_live_sync_recovery.sql`: aplicada y verificada en Supabase. Es compatible con el frontend anterior; no elimina registros ni cambia contratos de negocio.
-- Se mantienen Vercel, las APIs autenticadas y la autenticación administrativa personalizada; no se añade acceso directo del navegador a Supabase.
-
-### Corrección de esta entrega
-
-- Las consultas de sincronización tienen un límite de 12 segundos, incluido el cuerpo JSON. Los fallos se reintentan con espera progresiva hasta 60 segundos, sin superponer consultas.
-- Al cerrar o cambiar sesión se cancelan las consultas pendientes y se descartan respuestas de la sesión anterior, incluidos errores 401 tardíos.
-- Sin conexión se pausa la consulta; al volver la conexión o restaurar la página se retoma automáticamente, conservando las versiones de la misma sesión.
-- Se conserva el refresco selectivo y la espera mientras hay un editor modal abierto. No se fuerza una recarga completa de página.
-- La QA autenticada de la primera Preview detectó paneles `role="dialog"` dentro de overlays ocultos que bloqueaban todo refresco. El controlador existente ahora comprueba geometría y visibilidad CSS, y la regresión reproduce ese DOM antes de verificar la corrección.
-- Los triggers emiten versiones únicamente cuando las filas realmente cambian. Sentencias vacías, escrituras idénticas e inserciones deduplicadas permanecen silenciosas.
-- Se excluye del refresco visual el cursor interno `web_push_runtime_state`, cuyo timestamp cambia en cada conciliación aunque no haya novedades.
-- Cobertura productiva: 66 tablas, 198 triggers por evento y los mismos 17 ámbitos. Se preservan los triggers de negocio y auditoría.
-- Asset administrativo versionado como `20260909-live5`; las comprobaciones de carga se actualizan conjuntamente.
-
-### Evidencia de validación
-
-- 95/95 scripts `scripts/check-*.mjs` aprobados localmente; incluidos contratos estáticos, APIs y pruebas SQL aisladas.
-- 46/46 workflows aprobados para el último commit de la PR, `b4d976c2e00ea79974b6927ff8cbab2f3c11d07c`; Preview `dpl_9wTU2R7vGqHefqVZQFM2hcCakpkG` READY.
-- QA real en Chrome, dos pestañas autenticadas de la misma cuenta: señal controlada de actualización de tareas, refresco de B de 09:37 a 09:39 mientras A conserva el editor; al cerrar el formulario vacío, A aplica lo pendiente y muestra 09:40. No se crearon tareas ni se modificaron compras, ventas o saldos.
-- Tras asentarse el cambio, los logs de Preview registraron solo el sondeo de versiones durante el intervalo observado, sin cargas de datos en bucle. Las señales de prueba incrementaron exclusivamente `erp_change_state.tasks` (0 → 1 en el ensayo que detectó el defecto; 1 → 2 en la verificación corregida).
-- Consulta pospublicación de logs HTTP 5xx: sin resultados en el intervalo observado. Se observaron avisos Node `DEP0169` con respuestas HTTP 200 en Preview; no se presentan como fallos funcionales ni como auditoría de dependencias completada.
-- Dos sesiones simuladas del runtime real reciben un mismo cambio sin recarga manual. Se probaron además modales, timeout de fetch y JSON, 503, payload inválido, offline/online, segundo plano, logout y respuestas tardías.
-- PostgreSQL aislado: inserción/edición/eliminación múltiples, JSON/null, claves compuestas, UPSERT, deduplicación, rollback, reejecución de la migración y privilegios.
-- La prueba B10 ejecuta el reconciliador real de web push y confirma que una segunda conciliación sin cambios no incrementa la versión de notificaciones.
-- En Supabase se ejecutaron ambos reconciliadores con el mismo instante en transacciones revertidas, antes de publicar el frontend. La repetición pasó de 15 señales falsas en la base anterior a 0 con la corrección, tanto en el ensayo como tras aplicar la migración.
-- `anon` y `authenticated` no pueden leer el estado; `service_role` conserva solo lectura y no puede invocar directamente la función privada ni escribir versiones.
-
-### Límites de esta evidencia
-
-- Hay cobertura simulada de sesiones independientes y QA de dos pestañas reales de una cuenta; no se certifican dos operadores diferentes en producción, una operación comercial completa ni Safari/iPhone/PWA real.
-- El acceso de Vercel se resolvió con su enlace temporal oficial y el login del ERP mediante el formulario seguro autorizado. La evidencia final está registrada en la PR #279.
-- La certificación externa iOS/BrowserStack de `main` sigue fallando por cuota (`Automate testing time expired`), run `34378335000`; su contrato estático pasó. No se ha eludido ni modificado ese control. Los otros seis workflows de `main` aprobaron.
-- Los avisos preexistentes de Supabase (índices duplicados, protección de contraseñas filtradas y observaciones informativas) se revisan separadamente; esta corrección no equivale a la auditoría integral.
-
-### Qué falta para declarar el ERP funcionalmente cerrado
-
-Son criterios de aceptación pendientes de evidencia, no una afirmación de que falten esos módulos:
-
-1. Recorrer compra → recepción/almacén o envío directo → inventario/carga → venta → factura/cobro, incluyendo cancelaciones y errores.
-2. Conciliar saldos de clientes/proveedores, anticipos, costes, existencias y totales de reportes con los documentos de cada recorrido.
-3. Verificar tracking, expedientes/documentos, tareas, alertas y entregas de notificaciones con casos controlados.
-4. Ampliar permisos y sesión a otros recorridos. Facturación con dos operadores, retirada/restitución de escritura, offline/online, recarga, revocación y nuevo login ya aprobaron en Chromium y WebKit móvil emulado. Sigue pendiente iPhone/Safari real.
-5. Resolver los defectos encontrados y dejar una matriz de aceptación con evidencia. Después: mejoras priorizadas y auditoría integral de seguridad, datos, rendimiento y operación.
-
-No iniciar una migración arquitectónica ni crear operaciones comerciales reales como sustituto de un entorno/caso QA controlado.
-
-## Archivo histórico — corte del 2026-07-30
-
-Lo que sigue conserva el contexto de aquella fecha; no describe el estado actual de producción.
-
-Última actualización histórica: 2026-07-30 23:22 ET
-
-## Objetivo actual
-
-Limpiar progresivamente la deuda técnica del ERP sin perder funciones existentes y sin interrumpir producción.
-
-## Producción
-
-- Rama productiva: `main`
-- Último commit fusionado en `main`: `5afd5ba14d4eed6ba0186814a566253d206a78d9`
-- La consolidación funcional descrita aquí existe solamente en una rama y una Preview.
-- No se ha modificado Supabase ni ningún contrato de API.
-- La PR de Arquitectura 1.0 continúa separada y no debe ejecutarse en producción durante esta limpieza.
-
-## Documentación disponible en `main`
-
-- `docs/AI_CONTEXT.md`
-- `docs/CURRENT_STATE.md`
-- `docs/TECH_DEBT_INVENTORY.md`
-- `docs/CLEANUP_PLAN.md`
-- `docs/CHANGELOG.md`
-- `docs/MODULE_CLIENTS_BASELINE.md`
-- `docs/CLIENTS_TEST_MATRIX.md`
-
-Cualquier IA, desarrollador o chat nuevo debe leer estos documentos antes de proponer o ejecutar cambios.
-
-## Fase actual
-
-**Fase 1 — Consolidación funcional de Clientes: punto de control previo a QA manual**
-
-### Rama activa
-
-`refactor/clients-consolidation`
-
-### Pull request
-
-- PR: `#15 — Consolidar módulo Clientes sin parches dinámicos`
-- Estado: borrador, abierta, no fusionada
-- Base: `main`
-- Producción: no afectada
-
-## Estado funcional alcanzado en la rama
-
-### Módulo de Clientes consolidado
-
-`admin/clients-module.js` es la implementación única en la rama para:
-
-- estructura final del formulario;
-- seis campos actuales;
-- creación de clientes;
-- edición de clientes;
-- listado;
-- etiquetas de bienvenida;
-- menú de acciones de escritorio y móvil;
-- acciones Editar, Bienvenida, Historial y Eliminar.
-
-### Parches legacy inactivos
-
-Los archivos siguientes permanecen guardados para rollback, pero no se cargan:
-
-- `admin/client-extra-fields.js`
-- `admin/client-actions-menu.js`
-
-El módulo nuevo no utiliza:
-
-- `MutationObserver`;
-- `cloneNode`;
-- `replaceWith`;
-- `window.clients`;
-- peticiones GET adicionales de Clientes durante la edición.
-
-### Selectores unificados
-
-`admin/erp-core.js` ya no construye su propia lista para `erpClient`.
-
-Ahora:
-
-- utiliza `fillClientSelects()` como fuente compartida para `shipmentClient` y `erpClient`;
-- eliminó la función local `fillClients`;
-- dejó de envolver `window.loadAll`;
-- escucha el evento explícito `export-mca:clients-changed` para recargar el listado de Expedientes después de crear o editar un cliente.
-
-`admin/clients-module.js` emite ese evento después de una creación o edición exitosa.
-
-### Datos reutilizados en detalles de tracking
-
-`admin/shipment-row-details.js` ya no solicita nuevamente:
-
-- `/api/clients`
-- `/api/shipments`
-
-Ahora utiliza las colecciones `clients` y `shipments` ya cargadas por `loadAll()`.
-
-El `MutationObserver` de filas de tracking permanece temporalmente porque su retirada pertenece a la fase específica de Contenedores y Tracking.
-
-### Comportamiento conservado
-
-- Se mantienen los nombres técnicos `company`, `mipyme_name` e `importer_name`.
-- Se mantienen los contratos de `/api/clients`.
-- Se mantienen bienvenida, historial y eliminación actuales.
-- Se mantiene el listado con Nombre, Empresa, WhatsApp, Bienvenida y Acciones.
-- La creación informa correctamente que la bienvenida queda pendiente cuando el POST no la envía.
-- Los botones de guardar se deshabilitan mientras la petición está en curso.
-- Los selectores muestran la misma convención de nombre y empresa.
-
-## Archivos funcionales modificados o creados
-
-- `admin/clients-module.js`
-- `admin/erp.js`
-- `admin/erp-core.js`
-- `admin/shipment-row-details.js`
-- `scripts/check-clients-consolidation.mjs`
-- `.github/workflows/clients-consolidation-check.yml`
-
-## Commits funcionales relevantes
-
-- `9cab5ea90621172817df9a5f4cf2cd4496ba47ad` — módulo explícito inicial
-- `f8f59a8358624c1866d8f1e49f81d9582000c788` — loader usa el módulo consolidado
-- `74c0f8d0b960ef948e6cd14f712bf2593781e42a` — corrección del guardado de edición
-- `8e6b088dd5e427549325db75af16e13cd0520c52` — validación estática
-- `d36f385545413bee30897a1f531e0475d17d8cb4` — workflow de GitHub Actions
-- `99b4220883defa642a3609e7dd6275eb41f4d236` — menú de acciones integrado
-- `a77418d6e6f55e25077141d19ee687fe54d3642c` — desactivación del menú legacy
-- `20537df4d038a3b0185df4a2a2c7079e62541f22` — validación exige ambos parches inactivos
-- `3492b0d6798335cd0cc79ac68b64e1d1708b78f9` — selector compartido en Expedientes
-- `f8c8cbf49e381a7e511e2ebfacc2a809466f74c7` — evento explícito después de cambios de cliente
-- `71ef50f3d18d59b2fd45fb2ff79903bdc61f2884` — validación de selectores y ausencia de wrapper
-- `68065417c37d02e7d23b5987f8f1d39d18d0c489` — workflow ampliado para `erp-core.js`
-- `02b1b6d9e73d45818ea8cb40821d6130972fb43f` — reutilización de datos en detalles de tracking
-- `2e78a5e080676d69eb455c4ba480dfbfe8d00491` — validación de consultas duplicadas
-- `3c1ae4c3a73e075a5a82bfb3a1f86fcd295aad38` — workflow ampliado para detalles de tracking
-
-## Validaciones ejecutadas
-
-### GitHub Actions
-
-Último código validado:
-
-- Workflow: `Clients Consolidation Check`
-- Run: `30601356712`
-- Job: `validate-clients`
-- Commit: `3c1ae4c3a73e075a5a82bfb3a1f86fcd295aad38`
-- Resultado: **success**
-
-La validación comprueba:
-
-- sintaxis de Clientes, loader, Expedientes y detalles de tracking;
-- presencia de los seis campos;
-- menú integrado y acciones estables;
-- ausencia de `MutationObserver`, clonación y reemplazo de botones en el módulo nuevo de Clientes;
-- ausencia de carga de ambos parches legacy;
-- conservación de los archivos legacy para rollback;
-- uso de `fillClientSelects()` en Expedientes;
-- ausencia de la construcción local de `erpClient`;
-- ausencia del wrapper de `window.loadAll` en `erp-core.js`;
-- reutilización de `clients` y `shipments` en los detalles del tracking;
-- ausencia de consultas duplicadas de Clientes y Shipments en ese detalle.
-
-### Vercel Preview
-
-Último despliegue del código validado:
-
-- Deployment: `dpl_2AeGj7UdhDCNVsFz8ohetFJG5Lsa`
-- Commit: `3c1ae4c3a73e075a5a82bfb3a1f86fcd295aad38`
-- Estado: **READY**
-- Target: Preview, no producción
-
-La Preview está protegida mediante SSO. La herramienta de lectura recibió redirección 302 y no permitió una inspección visual autenticada. Por tanto:
-
-- el build está confirmado;
-- la estructura está validada automáticamente;
-- la interfaz todavía necesita revisión manual autenticada;
-- no se afirma que las pruebas visuales o de escritura estén aprobadas.
-
-## Riesgos y bloqueadores actuales
-
-1. No se ha confirmado que la Preview use una Supabase separada.
-2. No se han ejecutado pruebas de creación o edición contra un registro QA autorizado.
-3. No se han ejecutado pruebas visuales autenticadas en escritorio, móvil o PWA.
-4. La eliminación física de clientes continúa siendo peligrosa y no se probará con datos reales.
-5. El `MutationObserver` de `shipment-row-details.js` permanece para la futura fase de Tracking.
-6. Otros wrappers y observers ajenos al módulo Clientes permanecen fuera del alcance de esta PR.
-
-## Próxima acción exacta
-
-Ejecutar la matriz manual no destructiva en la Preview autenticada.
-
-Orden recomendado:
-
-1. Abrir la Preview desde Vercel con una sesión autorizada.
-2. Comprobar login y restauración de sesión.
-3. Verificar que el formulario muestre exactamente seis campos, sin duplicados.
-4. Verificar listado y menú en escritorio.
-5. Verificar listado y menú en iPhone/PWA.
-6. Confirmar que `shipmentClient` y `erpClient` muestran los mismos clientes y etiquetas.
-7. Abrir detalles de un contenedor existente y confirmar que no falten datos del cliente.
-8. Solo con autorización expresa, crear un registro QA único y ejecutar creación y edición.
-9. No probar eliminación física.
-10. Registrar cada resultado en `docs/CLIENTS_TEST_MATRIX.md` y actualizar este archivo.
-
-## Condiciones antes de fusionar la PR #15
-
-- pruebas manuales autenticadas en Preview;
-- formulario sin duplicados;
-- creación y edición con los seis campos usando un registro QA autorizado;
-- menús correctos en escritorio y móvil;
-- selectores de Contenedores y Expedientes sincronizados;
-- bienvenida e historial sin regresiones;
-- CSV sin cambios inesperados;
-- ninguna prueba destructiva sobre clientes reales;
-- aprobación explícita del usuario.
-
-## Regla para cerrar una sesión de trabajo
-
-Antes de terminar cualquier sesión o chat se debe actualizar este archivo con:
-
-- rama activa;
-- último commit relevante;
-- archivos modificados;
-- pruebas ejecutadas y resultados;
-- Preview de Vercel, cuando exista;
-- riesgos o bloqueadores;
-- siguiente acción exacta;
-- confirmación de si el cambio llegó o no a producción.
-
-## Estado de producción al cierre
-
-La PR funcional #15 permanece en borrador. Todos los cambios funcionales están aislados en `refactor/clients-consolidation`. Producción conserva el comportamiento anterior.
+Actualización del corte: 2026-09-10 UTC.
+
+## Punto exacto de continuidad — Direct Ship (PR #296)
+
+La aceptación de código está aprobada en el head
+`e5ad0c846ac3dbd8c5077bfed2692a34da34ba50`: 13/13 workflows y los seis jobs del
+run `34427427673`. Diez checkpoints Direct Ship en Chromium y diez en WebKit
+móvil, más las dos matrices previas operators/commercial sin modificaciones.
+
+El único cambio funcional productivo de esta entrega está en el owner
+`admin/sales-supply-workspace.js`: convierte la hora local del despacho a ISO
+con zona antes del POST y rechaza una fecha vacía/no válida. Asset
+`20260909-directtime1`. No cambia API/SQL, cantidades ni fechas históricas.
+
+El recorrido enlaza una compra de 100 cajas/10 pallets (USD 250) y una venta
+de 100 cajas/10 pallets (USD 400); crea, desvincula y reutiliza el mismo
+contenedor; despacha; rechaza la reducción a 99 cajas. Cada checkpoint exige
+cero WR, Cargues, movimientos y existencias de almacén. La venta termina
+`dispatched`. La hora 10:15 de Nueva York del 09-09 se conserva como 14:15 UTC
+en SQL y se muestra 10:15 local en la pantalla. Evidencia y límites:
+[DIRECT_SHIP_BROWSER_ACCEPTANCE.md](DIRECT_SHIP_BROWSER_ACCEPTANCE.md).
+
+La publicación no se infiere de este archivo: comprobar el estado de
+[PR #296](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/296), su
+merge SHA y el deployment productivo correspondiente. La PR registra también
+los resultados posteriores a la integración. Preview del código validado:
+`dpl_Co7TkPUwxtSuhcpSeqYjHt2gxogN` READY; su entrada HTTP redirigió a SSO (302),
+no se presenta como aceptación visual autenticada de Preview.
+
+## Último corte productivo verificado antes de #296 — PR #295
+
+Commit `f97c8744ce2e4c4d7ca9d5139cb1fdd65fe314b8`, producción
+`dpl_GZpRvCoHJ676YwcGXQ1VCEZ6Nhri` READY. Conserva proveedor/almacenes en Compras
+ante respuestas tardías (`20260909-masters1`) y añade apertura independiente
+del detalle de Cargues en tarjetas móviles (`20260909-loadcard1`).
+
+PR #295: 12/12 workflows; main: 6/6. Cadena comercial 12 checkpoints por
+motor y matriz operators 10 por motor. Publicación, assets 200 y APIs 401 sin
+sesión comprobados. La descripción completa verificada está en
+[PR #295](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/295).
+El antiguo encabezado «#295 en validación» quedó superado por esa publicación.
+
+## Siguiente bloque funcional y riesgos abiertos
+
+1. Variantes financieras de cancelación: anticipos, facturas/pagos de proveedor
+   y anulaciones vinculadas, con datos aislados y trazabilidad conservada.
+2. Recorridos de Tracking/documentos, tareas y notificaciones; comprobar
+   permisos de otro operador, documentos faltantes y actualización sin recarga.
+3. Investigación de arranque móvil: en run `34426597258` la matriz comercial
+   WebKit se detuvo al abrir el menú inicial. La matriz final aprobó sin saltar
+   ese caso, pero eso no demuestra que se haya eliminado toda intermitencia.
+
+La aceptación Direct Ship de este corte no incluye facturación/cobro de esa
+misma cadena, todas las cancelaciones ni proveedores. No repetir las matrices
+anteriores como si no existieran; ampliar las variantes que faltan.
+
+Orden del propietario: terminar funcionamiento y aceptación; después mejoras
+de claridad/compactación/feedback móvil; finalmente auditoría integral. Las
+revisiones de seguridad de cada cambio se hacen antes de publicar.
+
+## Fronteras que permanecen vigentes
+
+- QA de escrituras solo en PostgreSQL/PostgREST desechables. Preview comparte
+  producción. No cuentas, facturas, cobros, despachos ni mensajes QA reales.
+- WebKit emulado no certifica Safari/iPhone real, PWA instalada ni push.
+  BrowserStack no se reintenta manualmente con cuota agotada.
+- API autenticada personalizada en Vercel; no acceso directo del navegador a
+  Supabase. Sin nuevos owners, wrappers, observers ni dependencias productivas.
+- Runtime de sincronización `20260909-live7`; protección de editores abiertos.
+- Cambios por rama/PR, CI del head exacto, Preview READY y verificación de
+  producción. No sustituir fallos por mocks ni desactivar gates para fusionar.
+
+## Historial preservado
+
+El corte anterior completo está conservado sin cambios en
+[history/CURRENT_STATE_20260909.md](history/CURRENT_STATE_20260909.md), blob
+`1c7050f501b7d223f095ab2ac4da14780d6a5fe6`. Incluye los cortes #281, #283, #285,
+#287, #289 y #290 y el historial de fases. Sus estados antiguos no sustituyen
+el punto de continuidad anterior ni las verificaciones actuales de GitHub/Vercel.
