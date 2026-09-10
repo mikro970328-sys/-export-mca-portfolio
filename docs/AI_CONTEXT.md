@@ -4,24 +4,29 @@
 
 ## Punto de entrada vigente
 
-Continuar desde **PR #296**, rama `test/direct-ship-browser-acceptance`.
-El código `e5ad0c846ac3dbd8c5077bfed2692a34da34ba50` aprobó 13/13 workflows y
-los seis jobs de Browser Operator Acceptance `34427427673`: Direct Ship,
-operators y commercial, cada historia en Chromium y WebKit móvil aislados.
-La matriz Direct Ship contiene diez checkpoints por motor y reproduce la
-misma compra/venta/contenedor. Corrige la conversión de la hora de despacho
-en el owner existente, asset `20260909-directtime1`; sin SQL productivo.
+Continuar desde **PR #297**, rama `test/cancellation-finance-browser-acceptance`.
+Leer `CURRENT_STATE.md`, `CANCELLATION_FINANCE_BROWSER_ACCEPTANCE.md` y
+`MOBILE_NAV_STARTUP_ACCEPTANCE.md`; después verificar PR, head exacto, CI y deployment.
+La PR contiene dos correcciones: Cancelar venta en workspace con capability permitida
+(asset `20260910-cancel1`) y conservar el menú móvil durante restauración automática
+(assets navigation-shell/section-state `20260910-startup1`). Ambas usan owners existentes.
 
-Leer `CURRENT_STATE.md` y `DIRECT_SHIP_BROWSER_ACCEPTANCE.md`, después verificar
-PR/merge/deployment en GitHub y Vercel antes de afirmar publicación. Las notas
-de publicación de la PR tienen precedencia sobre un estado de rama archivado.
+La matriz financiera de doce checkpoints por motor valida anticipos/aplicaciones/
+reembolsos, AP, cancelación y permisos. La carrera de menú fue reproducida de forma
+determinista: tras un clic válido, el inicio disparaba section-changed y cerraba
+el menú. No volver a diagnosticar su causa como desconocida: está en la matriz móvil.
+La nueva historia pausa la entrega HTTP de scripts sin modificar sus bytes, conserva
+service workers y comprueba dos perfiles, navegación normal y Escape por motor.
+Head `15c7a8d`: diez de diez jobs de navegador aprobados, run `34477240736`.
+Los resultados del head FINAL y publicación se registran en las notas de PR #297;
+no inferir producción de una rama ni sustituir CI final por el de un commit anterior.
 
-La PR #295 ya se publicó: commit `f97c8744ce2e4c4d7ca9d5139cb1fdd65fe314b8`,
-producción `dpl_GZpRvCoHJ676YwcGXQ1VCEZ6Nhri` READY. Sus selecciones de Compras,
-detalle móvil de Cargues y aceptación compra-a-cobro están entregados; no
-repetirlos como trabajo pendiente. Se conservan los bloques previos de
-compras/inventario #281, ventas/logística #283, finanzas #285, operadores #287
-y navegador/permisos #289/#290. Runtime de sincronización `20260909-live7`.
+La PR #296 ya está publicada en `af17d6b9bf1cb917fd437b58cbd4c82e31677a1e`,
+Vercel `dpl_4hdBSibhzVqLXaN5aza2CBbuWmZM` READY. Direct Ship preserva hora local,
+con diez checkpoints por motor; 13 workflows de PR y seis de main aprobados.
+La PR #295 también está publicada en `f97c8744ce2e4c4d7ca9d5139cb1fdd65fe314b8`,
+producción `dpl_GZpRvCoHJ676YwcGXQ1VCEZ6Nhri`. Compras/Cargues y compra-a-cobro
+no son trabajo pendiente. Se conservan #281/#283/#285/#287/#289/#290 y live7.
 
 **Orden solicitado:** cierre funcional y pruebas, luego mejoras de interfaz,
 finalmente auditoría integral. Seguridad/regresión de cada entrega no esperan
@@ -31,9 +36,9 @@ hasta la auditoría final. No empezar de cero ni reabrir fases sin evidencia.
 
 Leer al menos: este archivo, `CURRENT_STATE.md`, `TECH_DEBT_INVENTORY.md`,
 `CLEANUP_PLAN.md`, `CHANGELOG.md` y la documentación del módulo afectado.
-Los diagnósticos de julio/agosto en esos archivos son históricos: contrastar
-con código/CI actuales, no asumir que los archivos legacy sigan activos.
-El estado anterior completo se conserva en `history/CURRENT_STATE_20260909.md`.
+Los diagnósticos de julio/agosto son históricos: contrastar con código/CI.
+El corte previo completo se conserva en `history/CURRENT_STATE_20260910_DIRECT_SHIP.md`
+y el anterior en `history/CURRENT_STATE_20260909.md`.
 
 - Empresa Export MCA LLC; repo `mikro970328-sys/-export-mca-portfolio`.
 - Producción `main`; Vercel Serverless Functions y Supabase PostgreSQL.
@@ -58,8 +63,8 @@ El estado anterior completo se conserva en `history/CURRENT_STATE_20260909.md`.
 6. Actualizar estado, changelog y matriz; fusionar con autorización del
    propietario y expected head. La autorización de pruebas, correcciones e
    integración ya fue concedida en la sesión que origina este corte.
-7. Verificar merge/deployment/assets/APIs y registrar las limitaciones; una
-   Preview READY no demuestra funcionamiento autenticado ni publicación.
+7. Verificar merge/deployment/assets/APIs y registrar limitaciones; una Preview
+   READY no demuestra funcionamiento autenticado ni publicación.
 
 ## Seguridad operacional
 
@@ -76,16 +81,17 @@ El estado anterior completo se conserva en `history/CURRENT_STATE_20260909.md`.
   canónicos y atributos estables. No borrar aparente duplicación sin rastreo.
 - No quitar capas legacy hasta integrar su conducta necesaria y probarla.
 - No desplegar manualmente cuando GitHub ya está generando el deployment.
-- No ejecutar la antigua PR abierta de Arquitectura 1.0 en producción durante
-  la limpieza. No modificar gates ni controles de cuota para forzar aprobación.
-- BrowserStack agotó tiempo de Automate; no reintentos manuales. WebKit emulado
-  no equivale a Safari/iPhone real, PWA instalada ni push certificado.
+- No ejecutar la antigua PR de Arquitectura 1.0 en producción durante limpieza.
+- No modificar gates ni controles de cuota para forzar aprobación. Versionar
+  assets y alinear referencias literales no autoriza eliminar comprobaciones.
+- BrowserStack agotó Automate; no reintentos manuales. WebKit emulado no equivale
+  a Safari/iPhone real, PWA instalada ni push certificado.
 
 ## Siguiente acción
 
-Comprobar publicación de #296 y continuar variantes financieras de cancelación,
-anticipos/proveedores y recorridos de Tracking/documentos/tareas/notificaciones.
-La matriz de Direct Ship de compra a despacho está aprobada, no todas sus
-variantes financieras. El fallo intermitente de menú inicial WebKit observado
-en `34426597258` sigue documentado: un run posterior verde no prueba su eliminación.
-Mantenerlo en revisión de arranque/permisos, sin saltarse la matriz existente.
+Comprobar aceptación/publicación final de #297 si aún falta. Después ampliar
+Tracking/documentos/tareas/notificaciones. Conservar la regresión del arranque;
+no equivale a certificar cualquier otro caso móvil ni el dispositivo real.
+No confundir reverso correctivo con devolución real de dinero. La prueba #297
+anula la factura antes de cancelar la venta; no certifica todas las combinaciones
+con facturas activas ni refresco visual de cada dataset de Reportes.

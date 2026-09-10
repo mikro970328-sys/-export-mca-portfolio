@@ -13,7 +13,9 @@ const mime = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
   '.json':'application/json', '.webmanifest':'application/manifest+json',
   '.png':'image/png', '.svg':'image/svg+xml', '.ico':'image/x-icon' };
 
-export async function startBrowserAcceptanceServer() {
+// Optional asset gate controls delivery order in startup acceptance. HTTP status,
+// asset bytes, handlers and the service worker remain unchanged in every engine.
+export async function startBrowserAcceptanceServer({ beforeAsset } = {}) {
   const handlers = new Map(await Promise.all(routeNames.map(async name =>
     [`/api/${name}`, (await import(new URL(`../../api/${name}.js`, import.meta.url))).default])));
   return startOperatorApi({ fallbackHandler: async (req,res,url) => {
@@ -39,6 +41,7 @@ export async function startBrowserAcceptanceServer() {
       || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
       res.writeHead(404);res.end();return;
     }
+    if(beforeAsset)await beforeAsset(url.pathname);
     res.writeHead(200, {
       'Content-Type':mime[path.extname(file)],
       'Cache-Control':'no-store',

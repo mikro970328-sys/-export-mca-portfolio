@@ -4,6 +4,42 @@ No se registra como publicado un cambio solo por estar en una rama o Preview.
 El historial previo íntegro se conserva, sin cambios, en
 [history/CHANGELOG_20260909.md](history/CHANGELOG_20260909.md).
 
+## 2026-09-10 UTC — Carrera de primer clic del menú móvil (PR #297)
+
+Causa reproducida en `3e9b49a`: apertura válida seguida de restauración automática
+que cerraba el menú al emitir section-changed. Corrección canónica `6c398fe`:
+erp/section-state identifican startup y navigation-shell conserva apertura solo
+para ese origen. Navegación normal y Escape siguen cerrando. Sin retrasar arranque,
+sin nuevas dependencias, SQL, APIs, cambios de permisos ni observadores productivos.
+
+Assets navigation-shell/section-state `20260910-startup1`. El probe temporal de QA
+se retiró; la regresión conserva bytes de scripts y service workers. La retención
+HTTP en servidor QA corrige la precondición que la interceptación WebKit no cubría.
+Head `15c7a8d`, run `34477240736`: diez jobs de navegador aprobados, incluyendo los
+dos perfiles de arranque por motor y todos los escenarios financieros/comerciales
+anteriores. Se alinean revisiones literales en tres gates sin quitar comprobaciones.
+
+Método, evidencia y límites en `MOBILE_NAV_STARTUP_ACCEPTANCE.md`. Verificar head
+final, integración y deployment en PR #297 antes de afirmar publicación.
+
+## 2026-09-10 UTC — Cancelación de ventas y reversos financieros (PR #297)
+
+Corrección funcional `43a1a1338340f2f3f4258f0f4a0c5df026a93df7`.
+Verificar resultados finales y publicación en PR #297, no inferirlos de este corte.
+
+- Se reproduce falta de Cancelar venta en workspace pese a capability permitida.
+  Se restituye en owner canónico con confirmación, controller existente y errores
+  seguros. Asset `20260910-cancel1`; sin cambios SQL/API/reglas financieras.
+- Doce checkpoints de navegador, dos operadores, documentos de control EUR.
+  Pasaron en Chromium y WebKit en `34470426976` y `34470898790`; este último
+  quedó bloqueado por el menú comercial, diagnosticado y corregido arriba.
+- Anticipos/aplicaciones/reembolsos, motivos e historial; AP y pago/anulación;
+  permisos y saldo de factura actualizado entre sesiones sin recargar.
+- Se corrige preparación QA (grant legacy) y consulta de caja: columnas reales,
+  montos positivos con dirección in/out. No se modificó el cálculo productivo.
+- El gate añade casos de confirmación, permisos y errores sobre funciones reales;
+  se conservan controles previos y se alinean referencias a la revisión del asset.
+
 ## 2026-09-10 UTC — Direct Ship: hora local y aceptación (PR #296)
 
 Aceptación del código `e5ad0c846ac3dbd8c5077bfed2692a34da34ba50` aprobada:

@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
 
 const read=file=>fs.readFileSync(file,'utf8');
 const api=read('api/sales-workspace.js');
@@ -49,6 +51,7 @@ for(const text of [
   "saleAllowed('edit')",
   "saleAllowed('confirm')",
   "saleAllowed('close')",
+  "saleAllowed('cancel')",
   "saleAllowed('allocate_load')",
   "invoiceAllowed(invoice,'issue')",
   "invoiceAllowed(invoice,'record_payment')",
@@ -91,7 +94,7 @@ requireText(foundation,'.erp-module-page button:focus-visible','foco accesible d
 
 for(const asset of [
   '/admin/sales-workspace.css?v=20260902-ux7sales1',
-  '/admin/sales-workspace.js?v=20260902-ux7sales1',
+  '/admin/sales-workspace.js?v=20260910-cancel1',
   '/admin/sales-controller.js?v=20260901-ux6owner1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 
@@ -111,6 +114,47 @@ for(const contract of [
   'Documentos Cuba'
 ]) requireText(workspace,contract,`contrato preservado ${contract}`);
 forbid(workspace,/\bexpediente(?:s)?\b/i,'Workspace de Ventas no puede reintroducir Expedientes');
+
+// Exercise functions from the real owner in a disposable VM. Test-only closure
+// access is never written to the production file or exported by the real app.
+try {
+  const messages={textContent:'',className:''},calls=[],decisions=[];
+  let accepted=false,reloads=0;
+  const window={SalesOrderController:{transition:async(id,action)=>calls.push({id,action})}};
+  const exposed=workspace.replace(/\n\}\)\(\);\s*$/,`\n  window.__qa={
+    fixture(data){state.data=data;state.salesOrderId='qa-sale';},
+    renderSummary,runAction,transitionSale,
+    decision(fn){workspaceDecision=fn;},refresh(fn){reload=fn;}
+  };\n})();`);
+  assert.notEqual(exposed,workspace,'test harness must access the canonical closure');
+  vm.runInNewContext(exposed,{window,document:{getElementById:()=>messages},localStorage:{getItem:()=>''},console:{error(){}},Intl},{timeout:1000});
+  const qa=window.__qa;
+  const fixture=(status,allowed)=>({summary:{commercial_status:status,sales_currency:'USD'},items:[],
+    financial_access:{read:false,write:false},capabilities:{actions:{cancel:{allowed}}}});
+  for(const [status,allowed] of [['draft',true],['confirmed',true],['confirmed',false],['closed',false],['cancelled',false],['confirmed',undefined]]){
+    qa.fixture(fixture(status,allowed));
+    assert.equal(qa.renderSummary().includes('data-ws-action="cancel_sale"'),allowed===true,`${status}/${allowed}: honor permission-aware capability`);
+  }
+  qa.fixture(fixture('confirmed',true));
+  qa.decision(async config=>{decisions.push(config);return accepted;});
+  qa.refresh(async()=>{reloads++;});
+  await qa.runAction('cancel_sale');
+  assert.equal(calls.length,0,'declining the dialog cannot cancel');assert.equal(reloads,0);
+  accepted=true;await qa.runAction('cancel_sale');
+  assert.deepEqual(calls,[{id:'qa-sale',action:'cancel'}]);assert.equal(reloads,1);
+  assert.equal(decisions[0].danger,true);assert.equal(decisions[0].capability,'cancel');
+  assert.match(messages.textContent,/Venta cancelada/);
+  qa.fixture(fixture('confirmed',false));
+  await assert.rejects(()=>qa.transitionSale('cancel'),/ya no está disponible/);
+  assert.equal(calls.length,1,'denied capability cannot reach the controller');
+  qa.fixture(fixture('confirmed',true));
+  window.SalesOrderController.transition=async()=>{throw Error('No se puede cancelar una Sales Order con un anticipo de cliente activo.');};
+  await qa.runAction('cancel_sale');
+  assert.match(messages.textContent,/anticipo de cliente activo/);assert.equal(reloads,1,'rejection must not present a successful refresh');
+  window.SalesOrderController.transition=async()=>{throw Error('PRIVATE_SQL_DIAGNOSTIC');};
+  await qa.runAction('cancel_sale');assert.equal(messages.textContent,'No se pudo completar la acción. Intenta nuevamente.');
+  console.log('Sales cancellation owner: six capability presentations; decline/accept/denial/public and internal errors passed.');
+} catch(error) { failures.push(`regresión de cancelación: ${error.message}`); }
 
 if(failures.length){
   console.error('UX6 Sales workspace presentation gate failed:\n'+failures.map(item=>`- ${item}`).join('\n'));
