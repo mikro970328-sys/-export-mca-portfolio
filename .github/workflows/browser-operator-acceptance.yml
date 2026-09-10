@@ -77,6 +77,8 @@ jobs:
             e2e/isolated/package-lock.json
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
+      - name: Preserve operator-local dispatch instants
+        run: node e2e/isolated/dispatch-time-check.mjs
       - name: Install isolated browser engines
         working-directory: e2e/isolated
         run: npx playwright install --with-deps chromium webkit

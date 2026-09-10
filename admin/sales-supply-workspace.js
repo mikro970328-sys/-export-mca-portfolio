@@ -8,6 +8,16 @@
   const fmt=value=>value===null||value===undefined||value===''?'—':new Intl.NumberFormat('en-US',{maximumFractionDigits:3}).format(Number(value));
   const dateTime=value=>value?new Date(value).toLocaleString('es-US'):'—';
   const localDateTime=()=>{const now=new Date(),offset=now.getTimezoneOffset()*60000;return new Date(now.getTime()-offset).toISOString().slice(0,16);};
+  // datetime-local belongs to the operator's browser, not the API server's zone.
+  function localDispatchInstant(value){
+    const raw=String(value??'').trim(),date=new Date(raw);
+    if(!raw||Number.isNaN(date.getTime())){
+      const error=new Error('Indica una fecha y hora válida de despacho.');
+      error.code='DIRECT_DISPATCH_LOCAL_TIME_INVALID';
+      throw error;
+    }
+    return date.toISOString();
+  }
   const state={salesOrderId:null,data:null,busy:false};
   const nativeWorkspace=window.SalesWorkspace||null;
   const publicErrorEndpoints=new Set(['/api/sales-supply','/api/direct-shipment-dispatch']);
@@ -23,6 +33,7 @@
   function safeSupplyMessage(error,fallback='No se pudo completar la operación. Intenta nuevamente.'){
     const message=String(error?.message||'').trim();
     const status=Number(error?.status||0);
+    if(error?.code==='DIRECT_DISPATCH_LOCAL_TIME_INVALID')return 'Indica una fecha y hora válida de despacho.';
     if(message==='Sesión vencida'||status===401)return 'Tu sesión terminó. Inicia sesión nuevamente para continuar.';
     if(status===403)return 'No tienes permiso para completar esta acción.';
     if(publicErrorEndpoints.has(error?.endpoint)&&[400,404,409,422].includes(status)&&message)return message;
@@ -246,7 +257,7 @@
   }
 
   function dispatchDirect(shipmentId){
-    openForm({title:'Marcar Direct Ship como despachado',subtitle:'Este evento cuenta como despacho físico para cumplimiento de la venta y bloquea el contenido del contenedor.',saveLabel:'Registrar despacho',html:`<div class="sales-supply-form"><div><label>Fecha y hora real *</label><input id="supplyDispatchAt" type="datetime-local" value="${esc(localDateTime())}"></div><div class="full"><label>Nota</label><textarea id="supplyDispatchNotes"></textarea><div class="sales-supply-helper">No uses esta acción para una fecha estimada. Después del despacho, las cantidades del contenedor quedan inmutables.</div></div></div>`,onSave:()=>request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({action:'dispatch',shipment_id:shipmentId,dispatched_at:byId('supplyDispatchAt').value,notes:byId('supplyDispatchNotes').value})})});
+    openForm({title:'Marcar Direct Ship como despachado',subtitle:'Este evento cuenta como despacho físico para cumplimiento de la venta y bloquea el contenido del contenedor.',saveLabel:'Registrar despacho',html:`<div class="sales-supply-form"><div><label>Fecha y hora real *</label><input id="supplyDispatchAt" type="datetime-local" value="${esc(localDateTime())}"></div><div class="full"><label>Nota</label><textarea id="supplyDispatchNotes"></textarea><div class="sales-supply-helper">No uses esta acción para una fecha estimada. Después del despacho, las cantidades del contenedor quedan inmutables.</div></div></div>`,onSave:()=>request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({action:'dispatch',shipment_id:shipmentId,dispatched_at:localDispatchInstant(byId('supplyDispatchAt').value),notes:byId('supplyDispatchNotes').value})})});
   }
 
   function unlinkDirect(directId){askAction({title:'Desvincular contenedor',message:'Se quitará esta mercancía del contenedor Direct Ship. Esta acción solo está permitida antes del despacho real.',acceptLabel:'Desvincular',onAccept:()=>request('/api/sales-supply',{method:'POST',body:JSON.stringify({action:'unlink_direct_shipment',direct_shipment_allocation_id:directId})})});}
