@@ -146,7 +146,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await sales.locator('#oClientPickerButton').click();await sales.locator(`[data-client-id="${f.client}"]`).click();
       await sales.locator('#oImporter').selectOption(f.importer);
       await sales.locator('.lProduct').selectOption(f.product);await sales.locator('.lQty').fill('840');
-      await sales.locator('.lPallets').fill('10');await sales.locator('.lTotal').fill('3360');
+      await sales.locator('.lPallets').fill('10');await sales.locator('.lUpp').fill('84');await sales.locator('.lTotal').fill('3360');
       await mutation('sales-order-ux',()=>sales.locator('#saveOrder').click());
       await expect(sales.locator('#orderModal')).toBeHidden();
       so=await f.one('select * from sales_orders');evidence.documents.sale=so.so_number;
