@@ -145,10 +145,14 @@ test('direct ship: purchase to container dispatch without WR or stock', async ({
       await sales.locator('[data-view="all"]').click();await sales.locator('#newOrder').click();
       await sales.locator('#oClientPickerButton').click();await sales.locator(`[data-client-id="${f.client}"]`).click();
       await sales.locator('#oImporter').selectOption(f.importer);
-      await sales.locator('.lProduct').selectOption(f.product);await sales.locator('.lQty').fill('100');await sales.locator('.lTotal').fill('400');
+      await sales.locator('.lProduct').selectOption(f.product);await sales.locator('.lQty').fill('100');
+      await sales.locator('.lPallets').fill('10');await sales.locator('.lTotal').fill('400');
       await mutation('sales-order-ux',()=>sales.locator('#saveOrder').click());
       await expect(sales.locator('#orderModal')).toBeHidden();
       so=await f.one('select * from sales_orders');evidence.documents.sale=so.so_number;
+      const item=await f.one('select ordered_quantity,ordered_pallets from sales_order_items');
+      expect(Number(item.ordered_quantity)).toBe(100);expect(Number(item.ordered_pallets)).toBe(10);
+      evidence.saleQuantities=item;
       await sales.locator(`[data-view-order="${so.id}"]`).click();
       await sales.locator('[data-ws-action="confirm"]').first().click();
       await mutation('sales',()=>sales.locator('[data-sales-workspace-accept]').click());
@@ -161,6 +165,7 @@ test('direct ship: purchase to container dispatch without WR or stock', async ({
       await sales.locator('[data-supply-action="quick-direct"]').click();
       const poItem=await f.one('select id from purchase_order_items where purchase_order_id=$1',[po.id]);
       await sales.locator('#quickDirectPo').selectOption(poItem.id);
+      await sales.locator('#quickDirectSalesPallets').fill('10');
       await sales.locator('#quickDirectPurchasePallets').fill('10');
       await mutation('sales-supply',()=>sales.locator('#salesSupplyFormSave').click());
       await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();
@@ -182,7 +187,8 @@ test('direct ship: purchase to container dispatch without WR or stock', async ({
       shipment=await f.one("select * from shipments where container_number='QA-DIRECT-001'");
       evidence.documents.container=shipment.container_number;
       direct=await f.one('select * from direct_shipment_allocations where shipment_id=$1',[shipment.id]);
-      expect(Number(direct.allocated_sales_quantity)).toBe(100);await shot('05-direct-linked');
+      expect(Number(direct.allocated_sales_quantity)).toBe(100);expect(Number(direct.allocated_sales_pallets)).toBe(10);
+      await shot('05-direct-linked');
     });
     await step('DS-06 declining unlink preserves the container allocation',async()=>{
       await sales.locator(`[data-supply-action="unlink-direct"][data-direct-id="${direct.id}"]`).click();
@@ -201,17 +207,27 @@ test('direct ship: purchase to container dispatch without WR or stock', async ({
       await sales.locator('[data-supply-action="link-direct"]').click();
       await sales.locator('#supplyDirectShipment').selectOption(shipment.id);
       await sales.locator('#supplyDirectSalesQty').fill('100');await sales.locator('#supplyDirectPurchaseQty').fill('100');
-      await sales.locator('#supplyDirectSalesPallets').fill('0');await sales.locator('#supplyDirectPurchasePallets').fill('10');
+      await sales.locator('#supplyDirectSalesPallets').fill(String(procurement.allocated_sales_pallets));
+      await sales.locator('#supplyDirectPurchasePallets').fill(String(procurement.allocated_purchase_pallets));
       await mutation('sales-supply',()=>sales.locator('#salesSupplyFormSave').click());
       await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();
       direct=await f.one('select * from direct_shipment_allocations');
       expect(direct.shipment_id).toBe(shipment.id);
+      expect(Number(direct.allocated_sales_pallets)).toBe(10);expect(Number(direct.allocated_purchase_pallets)).toBe(10);
     });
-    await step('DS-08 dismissing dispatch form does not record a departure',async()=>{
+    await step('DS-08 cancelled or empty dispatch form does not record a departure',async()=>{
       await sales.locator(`[data-supply-action="dispatch-direct"][data-shipment-id="${shipment.id}"]`).click();
       await sales.locator('[data-supply-form-close]').last().click();
       await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();
       expect((await f.rows('select * from direct_shipment_dispatches')).length).toBe(0);
+      await sales.locator(`[data-supply-action="dispatch-direct"][data-shipment-id="${shipment.id}"]`).click();
+      await sales.locator('#supplyDispatchAt').fill('');
+      const writes=evidence.api.filter(row=>row.method==='POST'&&row.path==='/api/direct-shipment-dispatch').length;
+      await sales.locator('#salesSupplyFormSave').click();
+      await expect(sales.locator('#salesSupplyFormMsg')).toContainText('Indica una fecha y hora válida');
+      expect(evidence.api.filter(row=>row.method==='POST'&&row.path==='/api/direct-shipment-dispatch').length).toBe(writes);
+      expect((await f.rows('select * from direct_shipment_dispatches')).length).toBe(0);
+      await sales.locator('[data-supply-form-close]').last().click();
     });
     await step('DS-09 dispatch fulfills sale and preserves the entered local instant',async()=>{
       await sales.locator(`[data-supply-action="dispatch-direct"][data-shipment-id="${shipment.id}"]`).click();
@@ -223,6 +239,7 @@ test('direct ship: purchase to container dispatch without WR or stock', async ({
       expect(new Date(dispatch.dispatched_at).toISOString()).toBe('2026-09-09T14:15:00.000Z');
       evidence.documents.dispatchedAt=new Date(dispatch.dispatched_at).toISOString();
       const progress=await f.one('select fulfillment_status from sales_order_progress where sales_order_id=$1',[so.id]);
+      evidence.fulfillment=progress;
       expect(progress.fulfillment_status).toBe('dispatched');
       await expect(sales.locator('#salesSupplyBody')).toContainText('Despachado');await shot('09-direct-dispatched');
     });
