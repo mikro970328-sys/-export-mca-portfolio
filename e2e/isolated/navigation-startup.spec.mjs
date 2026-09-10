@@ -4,15 +4,16 @@ import { createOperatorAcceptanceDb } from '../../scripts/lib/operator-acceptanc
 import { operatorFixture } from '../../scripts/lib/operator-acceptance-fixture.mjs';
 import { startBrowserAcceptanceServer, root } from './server.mjs';
 
-// Reproduce startup ordering, not timing luck. Pause an actual script request,
-// click once while it is pending, then deliver its ORIGINAL bytes. No response
-// fulfillment, forced clicks, fixed sleeps, retries, auth injection or UI mocks.
+// Reproduce startup ordering, not timing luck. Pause an actual script response
+// on the QA server, click once, then deliver its ORIGINAL bytes. A server gate
+// also covers requests forwarded by WebKit's service worker. No response mocks,
+// forced clicks, fixed sleeps, retries, auth injection or worker disabling.
 test('startup completion cannot discard an already opened mobile menu', async ({ browser }, info) => {
   test.setTimeout(180_000);
   process.chdir(root);
   const db=await createOperatorAcceptanceDb(),nativeFetch=globalThis.fetch;
   const contexts=[],releases=[],evidence={scenarios:[],errors:[],external:[],apiErrors:[]};
-  let api;
+  let api,assetGate=null;
   try{
     await db.exec(`alter table clients add column phone text, add column email text,
       add column welcome_status text default 'pending';
@@ -30,7 +31,10 @@ test('startup completion cannot discard an already opened mobile menu', async ({
         load_traceability_summary to service_role;`);
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const {f,users}=await operatorFixture(db);
-    api=await startBrowserAcceptanceServer();
+    api=await startBrowserAcceptanceServer({beforeAsset:async pathname=>{
+      const gate=assetGate;
+      if(gate&&pathname===gate.pathname){gate.observed=true;await gate.promise;}
+    }});
     const origins=new Set([api.base,new URL(process.env.ERP_TEST_POSTGREST_URL).origin]);
     globalThis.fetch=(input,options)=>{
       const url=new URL(typeof input==='string'||input instanceof URL?input:input.url);
@@ -47,8 +51,6 @@ test('startup completion cannot discard an already opened mobile menu', async ({
     }
     for(const [key,script] of [['b','admin-data-loader.js'],['a','section-state.js']]){
       await test.step(`NAV-${key}: preserve a single menu click across delayed ${script}`,async()=>{
-        // Both engines exercise a narrow touch viewport; other suites retain
-        // their normal desktop/mobile project settings.
         const use=info.project.use;
         const context=await browser.newContext({viewport:{width:390,height:664},isMobile:true,hasTouch:true,
           userAgent:use.userAgent,deviceScaleFactor:use.deviceScaleFactor,locale:'es-US',timezoneId:'America/New_York',serviceWorkers:'allow'});
@@ -57,15 +59,15 @@ test('startup completion cannot discard an already opened mobile menu', async ({
           window.__qaModulesReady=false;
           window.addEventListener('export-mca:modules-ready',()=>{window.__qaModulesReady=true;},{once:true});
         });
-        let release,blocked=false;
-        const gate=new Promise(resolve=>{release=resolve;});releases.push(release);
-        await context.route('**/*',async route=>{
+        let release;
+        assetGate={pathname:`/admin/${script}`,observed:false,promise:new Promise(resolve=>{release=resolve;})};
+        releases.push(release);
+        await context.route('**/*',route=>{
           const url=new URL(route.request().url());
           if(url.origin!==api.base&&!['data:','blob:','about:'].includes(url.protocol)){
             evidence.external.push(url.origin+url.pathname);return route.abort('blockedbyclient');
           }
-          if(url.origin===api.base&&url.pathname===`/admin/${script}`){blocked=true;await gate;}
-          await route.continue().catch(()=>{});
+          return route.continue();
         });
         const page=await context.newPage();page.setDefaultTimeout(15_000);
         page.on('pageerror',error=>evidence.errors.push(error.message));
@@ -79,7 +81,7 @@ test('startup completion cannot discard an already opened mobile menu', async ({
         const login=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/login'&&r.request().method()==='POST');
         await page.locator('#login').click();expect((await login).status()).toBe(200);
         await page.waitForFunction(()=>window.NavigationShell?.owner==='navigation-shell.js');
-        await expect.poll(()=>blocked).toBe(true);
+        await expect.poll(()=>assetGate.observed).toBe(true);
         await page.locator('#mobileMenuBtn').click();
         await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);
         await expect(page.locator('#mobileMenuBtn')).toHaveAttribute('aria-expanded','true');
@@ -104,7 +106,7 @@ test('startup completion cannot discard an already opened mobile menu', async ({
         await expect(page.locator('#mobileMenuBtn')).toHaveAttribute('aria-expanded','false');
         await page.locator('#mobileMenuBtn').click();await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);
         await page.keyboard.press('Escape');await expect(page.locator('#sidebar')).not.toHaveClass(/mobile-open/);
-        await context.close();
+        await context.close();assetGate=null;
       });
     }
     for(const table of ['sales_orders','purchase_orders','customer_advances','payments','supplier_payments','inventory_movements']){
