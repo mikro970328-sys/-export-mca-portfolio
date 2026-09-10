@@ -4,6 +4,23 @@ No se registra como publicado un cambio solo por estar en una rama o Preview.
 El historial previo íntegro se conserva, sin cambios, en
 [history/CHANGELOG_20260909.md](history/CHANGELOG_20260909.md).
 
+## 2026-09-10 UTC — Cancelación de ventas y reversos financieros (PR #297)
+
+Corrección funcional `43a1a1338340f2f3f4258f0f4a0c5df026a93df7`, EN VALIDACIÓN.
+Verificar resultados finales y publicación en PR #297, no inferirlos de este corte.
+
+- Se reproduce falta de Cancelar venta en workspace pese a capability permitida.
+  Se restituye en owner canónico con confirmación, controller existente y errores
+  seguros. Asset `20260910-cancel1`; sin cambios SQL/API/reglas financieras.
+- Doce checkpoints de navegador, dos operadores, documentos de control EUR y
+  cuatro historias por dos motores en CI. Chromium 12/12 en run `34470426976`.
+- Anticipos/aplicaciones/reembolsos, motivos e historial; AP y pago/anulación;
+  permisos y saldo de factura actualizado entre sesiones sin recargar.
+- Se corrige preparación QA (grant legacy) y consulta de caja: columnas reales,
+  montos positivos con dirección in/out. No se modificó el cálculo productivo.
+- El gate añade casos de confirmación, permisos y errores sobre funciones reales;
+  se conservan controles previos y se alinean referencias a la revisión del asset.
+
 ## 2026-09-10 UTC — Direct Ship: hora local y aceptación (PR #296)
 
 Aceptación del código `e5ad0c846ac3dbd8c5077bfed2692a34da34ba50` aprobada:

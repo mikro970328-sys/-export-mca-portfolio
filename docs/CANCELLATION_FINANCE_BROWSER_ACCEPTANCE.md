@@ -1,83 +1,99 @@
-# Aceptación de cancelaciones financieras en navegador
+# Aceptación de cancelaciones financieras en navegador — PR #297
 
-Base: `af17d6b9bf1cb917fd437b58cbd4c82e31677a1e` (PR #296 publicada).
-Rama: `test/cancellation-finance-browser-acceptance`.
-Estado: EN VALIDACIÓN.
+Base publicada: `af17d6b9bf1cb917fd437b58cbd4c82e31677a1e` (PR #296).
+Rama `test/cancellation-finance-browser-acceptance`. Implementación completa de
+los doce checkpoints siguientes; aceptación final/merge/deployment se verifican
+en PR #297. Este corte conserva evidencia previa, no declara publicación.
 
-## Objetivo
+## Frontera y métodos
 
-Cerrar variantes que la aceptación Direct Ship no cubrió: cancelaciones y
-reversos cuando una venta o compra ya tiene dinero asociado. Las mutaciones de
-negocio deben partir de la UI original y ejecutarse solo contra PostgreSQL /
-PostgREST desechables. Preview comparte producción y no se usa para escrituras.
+Dos operadores con login real; uno escribe y otro solo lee. Dos ventas y dos PO,
+con cliente/proveedor distinto y EUR como documentos de control, creados mediante
+UI original. SQL solo prepara identidades/catálogos y verifica filas. Cada historia
+usa PostgreSQL/PostgREST desechables. Preview comparte producción: no escrituras.
 
-## Primera historia ejecutable
+Todas las mutaciones comerciales exitosas nacen de formularios/clics reales.
+Los intentos negativos adicionales de API usan un login QA legítimo y comprueban
+que ocultar un botón no sea la única protección. No se inyectan tokens en el
+navegador, no se fabrican botones ni se sustituyen respuestas.
 
-`e2e/isolated/cancellation-finance.spec.mjs` ya está registrada en Playwright y
-en Browser Operator Acceptance para Chromium escritorio y WebKit móvil. Crea y
-confirma una venta desde la UI y ejecuta desde el workspace financiero:
+## Matriz instrumentada
 
-1. CF-01: registrar anticipo USD 100; disponible y caja neta = 100.
-2. CF-02: reembolsar USD 20; disponible = 80 y caja neta = 80, una sola salida.
-3. CF-03: reversar el reembolso; conserva fila `reversed`, disponible/caja = 100.
-4. CF-04: reversar el anticipo; conserva historial y saldo/caja activos = 0.
-
-Las comprobaciones consultan `customer_advance_progress`,
-`sales_order_customer_financial_progress` y `executive_cash_movement_source`.
-Errores JavaScript, crashes, tráfico externo y API 404/5xx inesperados fallan la
-historia. Las operaciones nacen de botones/formularios originales; SQL solo
-verifica el resultado posterior.
-
-El workflow ejecuta ahora ocho combinaciones: operators, commercial,
-direct-ship y cancellation-finance en ambos motores. Primer run de esta historia:
-`34468464113`, head `d7fe807557df17371ceca6e9a1ec551f80fc3739`. En este corte los jobs estaban
-inicializando dependencias/containers; no se registra todavía como aprobado ni
-fallido.
-
-## Contratos ya existentes que deben demostrarse, no reinventarse
-
-- Una Sales Order con anticipo activo no se puede cancelar
-  (`SO_HAS_ACTIVE_CUSTOMER_ADVANCE`).
-- Un anticipo con aplicaciones o reembolsos activos no se puede revertir hasta
-  revertir primero esas operaciones.
-- Una factura de proveedor contabilizada con pagos aplicados no se puede anular
-  hasta revertir/desasignar esos pagos (`SUPPLIER_BILL_HAS_ACTIVE_PAYMENTS`).
-- Un pago de proveedor puede revertirse con motivo y sus capacidades cambian.
-- La cancelación de una Purchase Order se bloquea mientras tenga AP activo o
-  abastecimiento de ventas activo; no se deben borrar libros para conseguirla.
-
-## Matriz completa pendiente
-
-| Caso | Recorrido y resultado exigido |
+| Caso | Resultado exigido |
 |---|---|
-| CF-01 | Venta confirmada + anticipo: registro y conciliación de caja |
-| CF-02 | Reembolso parcial reduce saldo disponible y caja una sola vez |
-| CF-03 | Reverso de reembolso restaura saldo/caja sin borrar historial |
-| CF-04 | Reverso de anticipo conserva historial y elimina saldo/caja activos |
-| CF-05 | Venta con anticipo activo: Cancelar debe rechazarse sin mutación |
-| CF-06 | Anticipo aplicado a factura: reverso bloqueado hasta revertir aplicación |
-| CF-07 | Revertir aplicación restaura saldo de anticipo y factura sin nueva caja |
-| CF-08 | PO + factura proveedor posted + pago: anular factura debe rechazarse |
-| CF-09 | Revertir pago proveedor: factura recupera saldo, pago queda reversed |
-| CF-10 | Anular factura y luego cancelar PO conservando historial |
-| CF-11 | Operador sin finance.write consulta pero no ejecuta reversos/anulaciones |
-| CF-12 | Otra sesión refleja cada transición sin recarga manual |
+| CF-01 | Anticipo 100; cancelación denegada por capability/API y cero mutación |
+| CF-02 | Factura 400; aplicar 50 deja disponible 50/saldo 350 sin caja nueva; reverso padre bloqueado |
+| CF-03 | Motivo obligatorio; reversar aplicación restaura disponible 100/saldo 400 y conserva historial |
+| CF-04 | Reembolso 20: disponible/caja 80 y una salida; reverso padre bloqueado |
+| CF-05 | Reversar reembolso restaura disponible/caja 100, conserva fila y motivo |
+| CF-07 | Factura proveedor 250/pago 60: saldo 190; anular rechaza y no altera libros |
+| CF-08 | Reversar pago con motivo devuelve saldo AP 250; pago histórico reversed |
+| CF-09 | Anular factura sin pago activo mantiene encabezado/líneas históricas |
+| CF-10 | Cancelar PO una vez resuelto AP, sin alterar documentos EUR de control |
+| CF-11 | Operador lector no ve acciones de anticipos y recibe 403 al intentar reversos |
+| CF-12 | Aplicación 25 y reverso: otro operador ve saldo 400→375→400 sin recarga |
+| CF-06 | Reversar anticipo y anular factura; Volver no cancela; confirmar cancela venta conservando historial |
+
+CF-06 se ejecuta al final, después de proveedores y sincronización. No se omite.
+CF-12 certifica la actualización local de las operaciones anteriores y Facturas
+entre sesiones; no se presenta como una nueva certificación visual de todos los
+datasets de Reportes. El alcance original más amplio queda como ampliación.
 
 ## Invariantes
 
-1. Los saldos se comprueban en vistas financieras canónicas, no con fórmulas
-   duplicadas del frontend.
-2. Aplicar un anticipo no crea un nuevo movimiento de caja.
-3. Un rechazo no altera estados, saldos, aplicaciones, caja ni auditoría como si
-   la operación hubiera ocurrido.
-4. Reversos conservan filas históricas y motivo; no DELETE de libros.
-5. Cliente/proveedor/moneda permanecen aislados de un segundo conjunto control.
-6. Las mismas expectativas se ejecutan en Chromium y WebKit móvil.
+Después de cada checkpoint, documentos de control iguales al snapshot previo,
+cero WR/Cargues/movimientos de almacén. Los rechazos API comparan snapshots de
+ventas, PO, facturas, pagos, anticipos, aplicaciones/reembolsos y audit_log antes
+y después. No deben escribir ni siquiera una auditoría de éxito.
 
-## Siguiente acción exacta
+Los importes salen de las vistas canónicas. `executive_cash_movement_source`
+usa event_type/event_id/payment_date/direction; amount es positivo en entradas y
+salidas. La prueba agrega con signo según direction, sin cambiar la vista ni
+simular cálculos comerciales. Aplicar anticipos no añade eventos; reversar un
+registro erróneo lo excluye de caja activa sin borrar su historia.
 
-Tomar el resultado real de la primera historia y corregir solo fallos
-reproducidos. Después ampliar el mismo spec con CF-05..CF-07 (cancelación con
-anticipo y aplicación a factura) y CF-08..CF-10 (factura/pago de proveedor),
-terminando con permisos y refresco entre operadores. No fusionar esta PR hasta
-que la matriz completa y las regresiones anteriores estén verdes.
+Ruta neta USD comprobada: 100 → 80 → 100 → 40 (pago proveedor 60) → 100 → 0.
+Los reversos son correcciones de registros erróneos, no transferencias bancarias
+ni reembolsos reales. La cancelación comercial no mueve dinero automáticamente.
+
+## Defecto reproducido y corrección
+
+Run `34468562737`, head `42caa05`: fallo antes del primer caso porque la base QA
+no tenía SELECT de load_expediente_documents usado por el workspace. Se aplican
+solo a QA los mismos grants/shape de la suite comercial aprobada. La prueba
+anterior también consultaba columnas inexistentes de caja y sumaba salidas como
+entradas: se corrige el test, no los modelos productivos.
+
+Head `f1513aa`, run `34469576506`: Chromium completó once checkpoints y llegó al
+último paso con cancel capability true. Faltaba en la UI `[data-ws-action="cancel_sale"]`.
+Artefacto `10149004195` inspeccionado, SHA256
+`21e119daaee8ff85cdc11bfb8dcc585438e718279e911093019db4c7c0772bb7`.
+Cero errores JavaScript/crashes/tráfico externo; no se sustituyó el clic por RPC.
+
+Head `43a1a13`: se añade únicamente la ruta de cancelación en sales-workspace.js,
+gobernada por la capability existente. Reutiliza diálogo y controller, maneja
+rechazos async y mensajes públicos, conserva historial y muestra confirmación.
+Asset `20260910-cancel1`. Sin migraciones ni cambios de API/reglas financieras.
+
+Chromium completó los doce checkpoints en `34470426976`; artefacto inspeccionado
+`10149320361`, SHA256 `08b3c28b9f070832ef697ffcce2360dc0df0a602bb8fde6eaae7329b62e61cf9`.
+Caja final 0, sin errores JS/crashes/tráfico externo ni API 404/5xx. El gate del
+owner ejercita seis combinaciones de capabilities y confirmación/declinación/
+denegación/rechazos públicos e internos sobre las funciones reales. Se alinean
+los gates que fijaban la revisión antigua del asset sin eliminar sus contratos.
+
+## Límites y cierre
+
+Verificar CI del head FINAL y ambos motores, no solo evidencia intermedia.
+Mantener operators/commercial/Direct Ship; ocho jobs por matriz de navegador.
+Antes de fusionar: Preview READY, revisión de diff y autorización vigente. Después:
+merge/deployment/aliases/assets y protección sin sesión, registrados en PR #297.
+
+CF-06 anula la factura antes de cancelar; no certifica todas las combinaciones de
+cancelación con facturas activas, todo el refresco visual de Reportes ni finanzas
+de cada variante Direct Ship. No cambios en datos o permisos reales. Sin mensajes
+externos ni nuevos paquetes productivos. WebKit es emulado, no Safari/iPhone real,
+PWA instalada ni push. BrowserStack no se reintenta manualmente por cuota.
+
+Mantener riesgo de menú inicial móvil intermitente en revisión. Tras este bloque,
+Tracking/documentos/tareas/notificaciones; después mejoras y auditoría integral.
