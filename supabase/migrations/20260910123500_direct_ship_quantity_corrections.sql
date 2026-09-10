@@ -52,6 +52,7 @@ declare
   v_previous record;
   v_result public.direct_shipment_quantity_corrections;
   v_reason text := nullif(btrim(coalesce(p_reason,'')),'');
+  v_client_id uuid;
 begin
   if p_direct_shipment_allocation_id is null then raise exception 'DIRECT_CORRECTION_ALLOCATION_REQUIRED'; end if;
   if p_sales_quantity is null or p_sales_quantity < 0 then raise exception 'DIRECT_CORRECTION_SALES_QUANTITY_INVALID'; end if;
@@ -115,9 +116,11 @@ begin
     v_reason,p_actor
   ) returning * into v_result;
 
-  insert into public.shipment_history(shipment_id,event_type,title,details,source)
+  select client_id into v_client_id from public.shipments where id=v_allocation.shipment_id;
+  insert into public.shipment_history(shipment_id,client_id,event_type,title,details,source)
   values(
     v_allocation.shipment_id,
+    v_client_id,
     'direct_shipment_quantity_corrected',
     'Cantidad física Direct Ship corregida',
     format('Venta %s→%s; compra %s→%s. Motivo: %s',v_previous.sales_quantity,p_sales_quantity,v_previous.purchase_quantity,p_purchase_quantity,v_reason),
@@ -142,14 +145,14 @@ select
   coalesce(c.corrected_sales_pallets,dsa.allocated_sales_pallets) as allocated_sales_pallets,
   coalesce(c.corrected_purchase_quantity,dsa.allocated_purchase_quantity) as allocated_purchase_quantity,
   coalesce(c.corrected_purchase_pallets,dsa.allocated_purchase_pallets) as allocated_purchase_pallets,
-  dsa.allocated_sales_quantity as planned_sales_quantity,
-  dsa.allocated_sales_pallets as planned_sales_pallets,
-  dsa.allocated_purchase_quantity as planned_purchase_quantity,
-  dsa.allocated_purchase_pallets as planned_purchase_pallets,
   dsa.notes,
   dsa.created_by,
   dsa.created_at,
   dsa.updated_at,
+  dsa.allocated_sales_quantity as planned_sales_quantity,
+  dsa.allocated_sales_pallets as planned_sales_pallets,
+  dsa.allocated_purchase_quantity as planned_purchase_quantity,
+  dsa.allocated_purchase_pallets as planned_purchase_pallets,
   (c.id is not null) as has_quantity_correction,
   c.id as latest_correction_id,
   c.reason as latest_correction_reason,
@@ -185,8 +188,7 @@ with load_totals as (
   group by sfa.sales_order_item_id
 ),
 direct_plan_totals as (
-  select
-    sales_order_item_id,
+  select sales_order_item_id,
     coalesce(sum(planned_quantity),0::numeric) as planned_quantity,
     coalesce(sum(planned_pallets),0::numeric) as planned_pallets
   from public.sales_supply_plan_lines
@@ -194,8 +196,7 @@ direct_plan_totals as (
   group by sales_order_item_id
 ),
 direct_dispatch_totals as (
-  select
-    spl.sales_order_item_id,
+  select spl.sales_order_item_id,
     coalesce(sum(dsa.allocated_sales_quantity),0::numeric) as dispatched_quantity,
     coalesce(sum(dsa.allocated_sales_pallets),0::numeric) as dispatched_pallets
   from public.direct_shipment_effective_allocations dsa
@@ -269,18 +270,18 @@ select
   dsa.allocated_sales_pallets,
   dsa.allocated_purchase_quantity,
   dsa.allocated_purchase_pallets,
+  so.client_id,
+  so.importer_id,
+  dsd.dispatched_at as direct_dispatched_at,
+  dsd.dispatched_by as direct_dispatched_by,
+  dsd.notes as direct_dispatch_notes,
   dsa.planned_sales_quantity,
   dsa.planned_sales_pallets,
   dsa.planned_purchase_quantity,
   dsa.planned_purchase_pallets,
   dsa.has_quantity_correction,
   dsa.latest_correction_reason,
-  dsa.latest_correction_at,
-  so.client_id,
-  so.importer_id,
-  dsd.dispatched_at as direct_dispatched_at,
-  dsd.dispatched_by as direct_dispatched_by,
-  dsd.notes as direct_dispatch_notes
+  dsa.latest_correction_at
 from public.direct_shipment_effective_allocations dsa
 join public.sales_procurement_allocations spa on spa.id=dsa.sales_procurement_allocation_id
 join public.sales_supply_plan_lines spl on spl.id=spa.supply_plan_line_id
