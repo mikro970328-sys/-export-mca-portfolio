@@ -96,13 +96,16 @@ if(requiredFiles.every(file=>fs.existsSync(path.join(root,file)))){
   for(const required of [
     'authenticateAdmin',
     'loadAdminAccessContext',
+    'upstreamFailureStatus',
     "can('finance.read')",
     'loadFinanceLinks',
     'shipment_direct_supply_contents',
     'supplier_bills',
-    'invoices:financeData.invoices'
+    'invoices:financeData.invoices',
+    "return fail(res,upstreamFailureStatus(error,500),'No se pudieron resolver los enlaces operativos')"
   ]) if(!api.includes(required))failures.push(`api/operational-links.js: falta ${required}`);
   if(api.includes("authorizeAdmin(req, res, 'logistics.read')"))failures.push('api/operational-links.js: no debe exigir logistics.read globalmente');
+  if(/fail\s*\([^\n]*error\.message/.test(api))failures.push('api/operational-links.js: no debe exponer error.message al cliente');
 }
 
 if(failures.length){
