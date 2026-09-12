@@ -139,7 +139,8 @@ forbid(styles,/@import|font-family\s*:\s*Arial|(?:linear|radial)-gradient/i,'tas
   "bodyAction === 'transition'",
   "bodyAction === 'set_dependencies'",
   "console.error('TASK_API_ERROR',message)",
-  "return fail(res,500,'No se pudo completar la operación de tareas')"
+  'upstreamFailureStatus',
+  "return fail(res,upstreamFailureStatus(error),'No se pudo completar la operación de tareas')"
 ].forEach(value=>requireText(api,value,`API de tareas ${value}`));
 forbid(api,/return fail\(res,\s*(?:400|500),[^\n]*error\.message|String\(error\.message\)/,'api/tasks.js filtra detalles inesperados al cliente');
 
