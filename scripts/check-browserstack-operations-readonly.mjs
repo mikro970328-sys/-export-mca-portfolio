@@ -17,7 +17,7 @@ if(!failures.length){
 
   for(const required of [
     "const ALLOWED_API_WRITES = new Set(['POST /api/login'])",
-    "sectionId:'clientsSection'",
+    "openSection(page, 'clientsSection')",
     "sectionId:'salesSection'",
     "sectionId:'purchasesSection'",
     "sectionId:'warehouseSection'",
