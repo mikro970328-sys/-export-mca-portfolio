@@ -1,0 +1,184 @@
+name: BrowserStack iOS UX-7 Operations Certification
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'e2e/browserstack/ux7-operations-readonly.spec.cjs'
+      - 'e2e/browserstack/package.json'
+      - 'e2e/browserstack/package-lock.json'
+      - 'e2e/browserstack/playwright.config.cjs'
+      - 'scripts/check-browserstack-operations-readonly.mjs'
+      - 'admin/index.html'
+      - 'admin/erp.js'
+      - 'admin/navigation-shell.js'
+      - 'admin/navigation-shell.css'
+      - 'admin/embedded-foundation.css'
+      - 'admin/clients-module.js'
+      - 'admin/clients-module.css'
+      - 'admin/sales.html'
+      - 'admin/sales.js'
+      - 'admin/sales.css'
+      - 'admin/sales-order-ux.css'
+      - 'admin/sales-workspace.css'
+      - 'admin/purchases.html'
+      - 'admin/purchases.js'
+      - 'admin/purchases.css'
+      - 'admin/warehouse.html'
+      - 'admin/warehouse.js'
+      - 'admin/warehouse.css'
+      - 'admin/inventory.html'
+      - 'admin/inventory.js'
+      - 'admin/inventory.css'
+      - 'admin/loads.html'
+      - 'admin/loads.js'
+      - 'admin/loads.css'
+      - 'api/clients.js'
+      - 'api/importers.js'
+      - 'api/sales-orders.js'
+      - 'api/purchase-orders.js'
+      - 'api/warehouse.js'
+      - 'api/inventory.js'
+      - 'api/loads.js'
+      - '.github/workflows/browserstack-ios-operations-certification.yml'
+  pull_request:
+    paths:
+      - 'e2e/browserstack/ux7-operations-readonly.spec.cjs'
+      - 'e2e/browserstack/package.json'
+      - 'e2e/browserstack/package-lock.json'
+      - 'e2e/browserstack/playwright.config.cjs'
+      - 'scripts/check-browserstack-operations-readonly.mjs'
+      - 'admin/index.html'
+      - 'admin/erp.js'
+      - 'admin/navigation-shell.js'
+      - 'admin/navigation-shell.css'
+      - 'admin/embedded-foundation.css'
+      - 'admin/clients-module.js'
+      - 'admin/clients-module.css'
+      - 'admin/sales.html'
+      - 'admin/sales.js'
+      - 'admin/sales.css'
+      - 'admin/sales-order-ux.css'
+      - 'admin/sales-workspace.css'
+      - 'admin/purchases.html'
+      - 'admin/purchases.js'
+      - 'admin/purchases.css'
+      - 'admin/warehouse.html'
+      - 'admin/warehouse.js'
+      - 'admin/warehouse.css'
+      - 'admin/inventory.html'
+      - 'admin/inventory.js'
+      - 'admin/inventory.css'
+      - 'admin/loads.html'
+      - 'admin/loads.js'
+      - 'admin/loads.css'
+      - 'api/clients.js'
+      - 'api/importers.js'
+      - 'api/sales-orders.js'
+      - 'api/purchase-orders.js'
+      - 'api/warehouse.js'
+      - 'api/inventory.js'
+      - 'api/loads.js'
+      - '.github/workflows/browserstack-ios-operations-certification.yml'
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: Public ERP URL to certify
+        required: true
+        default: https://admin.exportmca.com
+        type: string
+
+permissions:
+  contents: read
+  deployments: read
+
+concurrency:
+  group: browserstack-ios-ux7-operations-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  readonly-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: e2e/browserstack/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: e2e/browserstack
+      - name: Verify operations no-write contract
+        run: node scripts/check-browserstack-operations-readonly.mjs
+      - name: Validate operations Playwright discovery
+        run: npx playwright test ux7-operations-readonly.spec.cjs --config=playwright.config.cjs --list
+        working-directory: e2e/browserstack
+
+  iphone-safari-operations:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
+    needs: readonly-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+      BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+      ERP_E2E_USERNAME: ${{ secrets.ERP_E2E_USERNAME }}
+      ERP_E2E_PASSWORD: ${{ secrets.ERP_E2E_PASSWORD }}
+      ERP_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.target_url || 'https://admin.exportmca.com' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: e2e/browserstack/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: e2e/browserstack
+      - name: Confirm required secrets without printing them
+        shell: bash
+        run: |
+          missing=0
+          for name in BROWSERSTACK_USERNAME BROWSERSTACK_ACCESS_KEY ERP_E2E_USERNAME ERP_E2E_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "Missing repository secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+      - name: Wait for the matching production deployment
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const { data: deployments } = await github.rest.repos.listDeployments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: context.sha,
+                per_page: 30
+              });
+              for (const deployment of deployments) {
+                if (!String(deployment.environment || '').toLowerCase().includes('production')) continue;
+                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  deployment_id: deployment.id,
+                  per_page: 30
+                });
+                const current = statuses[0];
+                if (current?.state === 'success') {
+                  core.info(`Production deployment ${deployment.id} is ready for ${context.sha}`);
+                  return;
+                }
+                if (['error', 'failure', 'inactive'].includes(current?.state)) {
+                  throw new Error(`Production deployment ${deployment.id} ended as ${current.state}`);
+                }
+              }
+              await new Promise(resolve => setTimeout(resolve, 15_000));
+            }
+            throw new Error(`Timed out waiting for the production deployment of ${context.sha}`);
+      - name: Run operational read-only certification on real iPhone Safari
+        run: npm run test:ios:operations
+        working-directory: e2e/browserstack
