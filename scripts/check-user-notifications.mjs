@@ -46,6 +46,10 @@ assert(inboxApi.includes("rpc('act_on_notification_inbox'"), 'P10: lectura perso
 assert(reconcileApi.includes("authorizeAdmin(req,res,'notifications.manage')"), 'P10: reconciliación manual requiere notifications.manage');
 assert(reconcileApi.includes('CRON_SECRET'), 'P10: reconciliación cron debe autenticar CRON_SECRET');
 assert(reconcileApi.includes('reconcileAllNotifications'), 'P10: API reconcile debe delegar al owner DB');
+assert(inboxApi.includes('upstreamFailureStatus'), 'P10: inbox debe preservar fallos transitorios upstream');
+assert(inboxApi.includes("fail(res,upstreamFailureStatus(error),'No se pudo procesar el inbox de notificaciones')"), 'P10: inbox debe responder 503 a fallos transitorios agotados');
+assert(reconcileApi.includes('upstreamFailureStatus'), 'P10: reconcile debe preservar fallos transitorios upstream');
+assert(reconcileApi.includes("fail(res,upstreamFailureStatus(error),'No se pudieron reconciliar las notificaciones')"), 'P10: reconcile debe responder 503 a fallos transitorios agotados');
 
 assert(!inboxUi.includes('setInterval('), 'P10: el inbox no puede crear otro scheduler periódico del navegador');
 assert(!inboxUi.includes('MutationObserver'), 'P10: el inbox no puede usar MutationObserver');
