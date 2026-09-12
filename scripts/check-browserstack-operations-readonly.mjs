@@ -45,9 +45,13 @@ if(!failures.length){
     /getElementById\([^\n]*(?:save|delete|cancel|dispatch|receive)[^\n]*\)\?*\.click\(/i
   ]) if(forbidden.test(spec))failures.push(`spec operaciones: interacción de escritura prohibida ${forbidden}`);
 
-  if(!pkg.includes('"test:ios:operations": "npx browserstack-node-sdk playwright test ux7-operations-readonly.spec.cjs --config=playwright.config.cjs"')) {
-    failures.push('package BrowserStack: falta test:ios:operations aislado');
-  }
+  const packageContracts = [
+    '"test:ios": "npm run test:ios:core && npm run test:ios:costs"',
+    '"test:ios:core": "ERP_CERT_SCOPE=core npx browserstack-node-sdk playwright test ux7-production-readonly.spec.cjs --config=playwright.config.cjs"',
+    '"test:ios:costs": "ERP_CERT_SCOPE=costs npx browserstack-node-sdk playwright test ux7-production-readonly.spec.cjs --config=playwright.config.cjs"',
+    '"test:ios:operations": "npx browserstack-node-sdk playwright test ux7-operations-readonly.spec.cjs --config=playwright.config.cjs"'
+  ];
+  for(const required of packageContracts) if(!pkg.includes(required))failures.push(`package BrowserStack: falta aislamiento ${required}`);
 
   for(const required of [
     'name: BrowserStack iOS UX-7 Operations Certification',
