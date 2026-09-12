@@ -1,4 +1,4 @@
-import { authenticateAdmin, fail, loadAdminAccessContext, ok, supabase } from './_lib.js';
+import { authenticateAdmin, fail, loadAdminAccessContext, ok, supabase, upstreamFailureStatus } from './_lib.js';
 
 function unique(values) {
   return [...new Set((values || []).map(value => String(value || '').trim()).filter(Boolean))];
@@ -289,6 +289,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('[operational-links]',error);
-    return fail(res,400,error.message || 'No se pudieron resolver los enlaces operativos');
+    return fail(res,upstreamFailureStatus(error,500),'No se pudieron resolver los enlaces operativos');
   }
 }
