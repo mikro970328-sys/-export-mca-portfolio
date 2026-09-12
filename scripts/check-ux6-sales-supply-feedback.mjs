@@ -35,7 +35,10 @@ for(const text of [
   'sales-supply-form-dialog',
   'sales-supply-decision-dialog',
   'sales-supply-proc-list',
-  "classList.toggle('sales-supply-field-hidden'"
+  "classList.toggle('sales-supply-field-hidden'",
+  'Corregir cantidades',
+  "action:'correct_quantity'",
+  'directCorrectReason'
 ])requireText(owner,text,`contrato del owner ${text}`);
 
 if((owner.match(/error\?\.message/g)||[]).length!==1)failures.push('error?.message solo puede leerse dentro del traductor seguro');
@@ -56,7 +59,7 @@ for(const text of [
 ])requireText(css,text,`presentación dedicada ${text}`);
 
 requireText(html,'/admin/sales-supply-workspace.css?v=20260902-ux7sales1','revisión del CSS de Abastecimiento');
-requireText(html,'/admin/sales-supply-workspace.js?v=20260909-directtime1','revisión del JS de Asignar mercancía');
+requireText(html,'/admin/sales-supply-workspace.js?v=20260910-directcorrect1','revisión del JS de Asignar mercancía');
 
 for(const text of [
   "const errors={",
@@ -66,7 +69,9 @@ for(const text of [
 for(const text of [
   'function friendly(error)',
   "||'No se pudo actualizar el Direct Ship.'",
-  "return fail(res,400,friendly(error))"
+  "return fail(res,400,friendly(error))",
+  'correctQuantity(body,admin)',
+  'DIRECT_CORRECTION_REASON_REQUIRED'
 ])requireText(directApi,text,`boundary seguro de Direct Ship ${text}`);
 
 for(const text of [
@@ -100,4 +105,4 @@ if(failures.length){
 console.log('UX-6 Sales supply feedback gate passed.');
 console.log('- Abastecimiento conserva un único owner sin observers ni presentación generada por JavaScript.');
 console.log('- Los errores inesperados quedan en diagnóstico y la interfaz usa mensajes operativos seguros.');
-console.log('- Cantidades, reservas, Purchase Orders, Direct Ship y APIs canónicas permanecen intactos.');
+console.log('- Cantidades, correcciones, Purchase Orders y Direct Ship permanecen en contratos canónicos.');
