@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase, upstreamFailureStatus } from './_lib.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -17,6 +17,6 @@ export default async function handler(req,res) {
     return ok(res,{readiness:shipmentId ? rows[0] : rows});
   } catch (error) {
     console.error('[shipment-document-readiness]',error);
-    return fail(res,400,error.message || 'No se pudo cargar el estado documental');
+    return fail(res,upstreamFailureStatus(error),'No se pudo cargar el estado documental',error.message);
   }
 }

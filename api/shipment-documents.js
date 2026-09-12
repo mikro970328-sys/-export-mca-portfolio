@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, upstreamFailureStatus, writeAudit } from './_lib.js';
 
 const BUCKET = 'erp-documents';
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -104,6 +104,6 @@ export default async function handler(req,res) {
     console.error('[shipment-documents]',error);
     const raw=String(error.message||'');
     const friendly=raw.includes('CUBA_DOCUMENT_HISTORICAL_DELETE_FORBIDDEN')?'Una versión histórica no puede eliminarse desde este flujo.':raw.includes('CUBA_DOCUMENT_ALREADY_DELETED')?'Este documento ya fue eliminado.':raw.includes('CUBA_DOCUMENT_NOT_FOUND')?'Documento no encontrado.':raw;
-    return fail(res,400,friendly||'No se pudieron procesar los documentos del contenedor');
+    return fail(res,upstreamFailureStatus(error),friendly||'No se pudieron procesar los documentos del contenedor',error.message);
   }
 }

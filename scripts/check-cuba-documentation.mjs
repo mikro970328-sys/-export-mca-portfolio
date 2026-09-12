@@ -58,11 +58,15 @@ if(Object.values(files).every(file=>fs.existsSync(path.join(root,file)))){
     "rpc/create_shipment_customs_document",
     "rpc/soft_delete_shipment_customs_document",
     'superseded_at,superseded_by_document_id,deleted_at',
-    "state:row.deleted_at?'deleted':row.superseded_at?'superseded':'current'"
+    "state:row.deleted_at?'deleted':row.superseded_at?'superseded':'current'",
+    'upstreamFailureStatus'
   ]) if(!api.includes(required))failures.push(`api/shipment-documents.js: falta ${required}`);
+  if(!api.includes("fail(res,upstreamFailureStatus(error),friendly||'No se pudieron procesar los documentos del contenedor',error.message)"))failures.push('api/shipment-documents.js: debe responder 503 a fallos transitorios agotados');
   if(api.includes("supabase('documents', {method:'DELETE'" )||api.includes("supabase('documents',{method:'DELETE'")) failures.push('api/shipment-documents.js: no debe hard-delete documentos Cuba');
 
   if(!readinessApi.includes("authorizeAdmin(req,res,'documents.read')"))failures.push('readiness API: debe exigir documents.read');
+  if(!readinessApi.includes('upstreamFailureStatus'))failures.push('readiness API: debe preservar fallos transitorios upstream');
+  if(!readinessApi.includes("fail(res,upstreamFailureStatus(error),'No se pudo cargar el estado documental',error.message)"))failures.push('readiness API: debe responder 503 a fallos transitorios agotados');
   for(const required of [
     'loadAdminAccessContext',
     "permissions.has('documents.read')",
