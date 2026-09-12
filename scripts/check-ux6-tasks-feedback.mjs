@@ -58,7 +58,8 @@ for(const text of [
   "authorizeAdmin(req,res,'tasks.write')",
   "authorizeAdmin(req,res,'tasks.manage')",
   "TASK_OPEN_DEPENDENCIES",
-  "return fail(res,500,'No se pudo completar la operación de tareas')"
+  'upstreamFailureStatus',
+  "return fail(res,upstreamFailureStatus(error),'No se pudo completar la operación de tareas')"
 ])requireText(api,text,`boundary canónico de Tareas ${text}`);
 
 if(failures.length){
