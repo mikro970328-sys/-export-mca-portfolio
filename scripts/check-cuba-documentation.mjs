@@ -63,6 +63,8 @@ if(Object.values(files).every(file=>fs.existsSync(path.join(root,file)))){
   if(api.includes("supabase('documents', {method:'DELETE'" )||api.includes("supabase('documents',{method:'DELETE'")) failures.push('api/shipment-documents.js: no debe hard-delete documentos Cuba');
 
   if(!readinessApi.includes("authorizeAdmin(req,res,'documents.read')"))failures.push('readiness API: debe exigir documents.read');
+  if(!readinessApi.includes('upstreamFailureStatus'))failures.push('readiness API: debe preservar fallos transitorios upstream');
+  if(!readinessApi.includes("fail(res,upstreamFailureStatus(error),'No se pudo cargar el estado documental',error.message)"))failures.push('readiness API: debe responder 503 a fallos transitorios agotados');
   for(const required of [
     'loadAdminAccessContext',
     "permissions.has('documents.read')",
