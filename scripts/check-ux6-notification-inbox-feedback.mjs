@@ -78,7 +78,8 @@ requireText(index,'/admin/erp.js?v=20260905-accessflow1','revisión del loader E
 for(const text of [
   "authorizeAdmin(req,res,'notifications.read')",
   "rpc('act_on_notification_inbox'",
-  "return fail(res,500,'No se pudo procesar el inbox de notificaciones')"
+  'upstreamFailureStatus',
+  "return fail(res,upstreamFailureStatus(error),'No se pudo procesar el inbox de notificaciones')"
 ])requireText(inboxApi,text,`boundary canónico del Inbox ${text}`);
 requireText(inboxApi,'reconcileAllNotifications','boundary canónico del reconciliador compuesto');
 requireText(reconcileOwner,"call('reconcile_user_notifications'",'preservación del RPC P10');

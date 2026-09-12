@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, upstreamFailureStatus, writeAudit } from './_lib.js';
 import { reconcileAllNotifications } from './_notification-reconcile.js';
 
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -166,6 +166,6 @@ export default async function handler(req,res){
     const mapped=mapError(error);
     if(mapped)return fail(res,mapped.status,mapped.message);
     console.error('NOTIFICATION_INBOX_ERROR',error);
-    return fail(res,500,'No se pudo procesar el inbox de notificaciones');
+    return fail(res,upstreamFailureStatus(error),'No se pudo procesar el inbox de notificaciones');
   }
 }

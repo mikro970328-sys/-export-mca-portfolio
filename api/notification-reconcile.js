@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, upstreamFailureStatus, writeAudit } from './_lib.js';
 import { reconcileAllNotifications } from './_notification-reconcile.js';
 
 function cronAuthorized(req){
@@ -25,6 +25,6 @@ export default async function handler(req,res){
     return ok(res,{reconciliation:result});
   }catch(error){
     console.error('NOTIFICATION_RECONCILE_ERROR',error);
-    return fail(res,500,'No se pudieron reconciliar las notificaciones');
+    return fail(res,upstreamFailureStatus(error),'No se pudieron reconciliar las notificaciones');
   }
 }

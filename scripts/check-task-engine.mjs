@@ -75,7 +75,9 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))) {
     'TASK_OPEN_DEPENDENCIES',
     'Completa primero las dependencias pendientes de esta tarea',
     "bodyAction === 'set_dependencies'",
-    "bodyAction === 'transition'"
+    "bodyAction === 'transition'",
+    'upstreamFailureStatus',
+    "fail(res,upstreamFailureStatus(error),'No se pudo completar la operación de tareas')"
   ]) if(!api.includes(required))failures.push(`api/tasks.js: falta ${required}`);
   if(/req\.method\s*===\s*['"]DELETE['"]/.test(api))failures.push('api/tasks.js: no debe exponer hard-delete');
 
