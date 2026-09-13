@@ -5,6 +5,7 @@ on:
     paths:
       - 'api/**'
       - 'scripts/audit-b9-api-boundaries.mjs'
+      - 'scripts/audit-api-public-error-boundaries.mjs'
       - 'docs/security/B9_SECURITY_AUDIT.md'
       - '.github/workflows/p14-b9-security-audit.yml'
   workflow_dispatch:
@@ -19,3 +20,5 @@ jobs:
           node-version: '24'
       - name: Inventory API authorization boundaries
         run: node scripts/audit-b9-api-boundaries.mjs
+      - name: Reject raw exception details in public API responses
+        run: node scripts/audit-api-public-error-boundaries.mjs
