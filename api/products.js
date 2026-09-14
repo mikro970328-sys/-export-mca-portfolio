@@ -1,4 +1,17 @@
-import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit, upstreamFailureStatus } from './_lib.js';
+
+// Public validation text is selected only by an exact match against owned literals.
+const PUBLIC_ERRORS = new Map([
+  ["La unidad base debe ser texto, por ejemplo: unidades, cajas o paneles", "La unidad base debe ser texto, por ejemplo: unidades, cajas o paneles"],
+  ["Ya existe un producto con ese SKU", "Ya existe un producto con ese SKU"],
+  ["El nombre del producto es obligatorio", "El nombre del producto es obligatorio"],
+  ["Unidades por pallet inválidas", "Unidades por pallet inválidas"],
+  ["Peso unitario inválido", "Peso unitario inválido"],
+  ["Volumen unitario inválido", "Volumen unitario inválido"],
+  ["Falta el producto", "Falta el producto"],
+  ["Producto no encontrado", "Producto no encontrado"],
+  ["JSON_INVALID", "Solicitud inválida"]
+]);
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const numberOrNull = value => value === '' || value === null || value === undefined ? null : Number(value);
@@ -118,6 +131,7 @@ export default async function handler(req, res) {
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
     console.error('[products]', error);
-    return fail(res, 400, error.message || 'No se pudo procesar el producto');
+    const friendly = PUBLIC_ERRORS.get(error?.message);
+    return fail(res, upstreamFailureStatus(error, friendly ? 400 : 500), friendly || "No se pudo procesar el producto");
   }
 }

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { ok, fail, readJson } from '../../api/_lib.js';
+import { ok, fail, readJson, upstreamFailureStatus } from '../../api/_lib.js';
 
 // Real handlers and action/availability helpers, with only _lib auth, audit and
 // transport substituted. No JWT, network, Storage or audit-delivery certification.
@@ -31,7 +31,7 @@ export function salesLogisticsAcceptanceApi(db) {
       await db.exec('release savepoint api_rpc'); return result.rows;
     } catch(error) { await db.exec('rollback to savepoint api_rpc; release savepoint api_rpc'); throw error; }
   }
-  const lib={ok,fail,readJson,
+  const lib={ok,fail,readJson,upstreamFailureStatus,
     async authorizeAdmin(req,res,permission) {
       if(!req.testAdmin){fail(res,401,'No autorizado');return null;}
       if(req.testAdmin.role!=='master_admin'&&!req.testAdmin.permissions.includes(permission)){fail(res,403,'No tienes permiso');return null;}

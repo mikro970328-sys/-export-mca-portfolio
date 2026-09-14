@@ -1,6 +1,25 @@
 import crypto from 'node:crypto';
 import { authorizeAdmin, fail, ok, readJson, supabase, upstreamFailureStatus, writeAudit } from './_lib.js';
 
+// Public validation text is selected only by an exact match against owned literals.
+const PUBLIC_ERRORS = new Map([
+  ["Nombre de archivo inválido", "Nombre de archivo inválido"],
+  ["Tipo de archivo no permitido. Usa PDF, Word, Excel, JPG, PNG o WEBP.", "Tipo de archivo no permitido. Usa PDF, Word, Excel, JPG, PNG o WEBP."],
+  ["El archivo está vacío", "El archivo está vacío"],
+  ["El archivo supera el límite de 25 MB", "El archivo supera el límite de 25 MB"],
+  ["Selecciona Packing List Cuba o Commercial Invoice Cuba", "Selecciona Packing List Cuba o Commercial Invoice Cuba"],
+  ["Contenedor no encontrado", "Contenedor no encontrado"],
+  ["Ruta de documento inválida", "Ruta de documento inválida"],
+  ["Documento de contenedor no encontrado", "Documento de contenedor no encontrado"],
+  ["Un documento generado no puede eliminarse desde este flujo", "Un documento generado no puede eliminarse desde este flujo"],
+  ["Este documento ya fue eliminado", "Este documento ya fue eliminado"],
+  ["Una versión histórica no se elimina desde este flujo", "Una versión histórica no se elimina desde este flujo"],
+  ["Almacenamiento de documento inválido", "Almacenamiento de documento inválido"],
+  ["JSON_INVALID", "Solicitud inválida"],
+  ["Contenedor inválido", "Contenedor inválido"],
+  ["Documento inválido", "Documento inválido"]
+]);
+
 const BUCKET = 'erp-documents';
 const MAX_BYTES = 25 * 1024 * 1024;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -103,7 +122,7 @@ export default async function handler(req,res) {
   } catch(error) {
     console.error('[shipment-documents]',error);
     const raw=String(error.message||'');
-    const friendly=raw.includes('CUBA_DOCUMENT_HISTORICAL_DELETE_FORBIDDEN')?'Una versión histórica no puede eliminarse desde este flujo.':raw.includes('CUBA_DOCUMENT_ALREADY_DELETED')?'Este documento ya fue eliminado.':raw.includes('CUBA_DOCUMENT_NOT_FOUND')?'Documento no encontrado.':raw;
-    return fail(res,upstreamFailureStatus(error),friendly||'No se pudieron procesar los documentos del contenedor',error.message);
+    const friendly=raw.includes('CUBA_DOCUMENT_HISTORICAL_DELETE_FORBIDDEN')?'Una versión histórica no puede eliminarse desde este flujo.':raw.includes('CUBA_DOCUMENT_ALREADY_DELETED')?'Este documento ya fue eliminado.':raw.includes('CUBA_DOCUMENT_NOT_FOUND')?'Documento no encontrado.':PUBLIC_ERRORS.get(error?.message);
+    return fail(res,upstreamFailureStatus(error,friendly?400:500),friendly||'No se pudieron procesar los documentos del contenedor');
   }
 }

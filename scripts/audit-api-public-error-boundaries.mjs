@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
 const apiRoot = path.join(root, 'api');
@@ -8,7 +9,6 @@ const walk = dir => fs.readdirSync(dir, { withFileTypes:true }).flatMap(entry =>
   return entry.isDirectory() ? walk(full) : [full];
 });
 const rel = file => path.relative(root, file).replaceAll('\\', '/');
-const endpointFiles = walk(apiRoot).filter(file => file.endsWith('.js') && !path.basename(file).startsWith('_'));
 
 function findMatchingParen(source, openIndex) {
   let depth = 0;
@@ -47,45 +47,41 @@ function findMatchingParen(source, openIndex) {
 
 function callsOf(source, name) {
   const calls = [];
-  const token = `${name}(`;
-  let offset = 0;
-  while (offset < source.length) {
-    const start = source.indexOf(token, offset);
-    if (start < 0) break;
-    const open = start + name.length;
+  const token = new RegExp(`\\b${name.replaceAll('.', '\\s*\\.\\s*')}\\s*\\(`, 'g');
+  let match;
+  while ((match = token.exec(source))) {
+    const start = match.index;
+    const open = start + match[0].lastIndexOf('(');
     const end = findMatchingParen(source, open);
     if (end < 0) break;
     calls.push(source.slice(start, end + 1));
-    offset = end + 1;
+    token.lastIndex = end + 1;
   }
   return calls;
 }
 
-const rawException = /\b(?:error|err|exception|cause)\s*(?:\?\.)?\.\s*message\b|\bString\s*\(\s*(?:error|err|exception|cause)\s*(?:\?\.)?\.\s*message/;
-const directResponsePatterns = [
-  /res\.end\s*\([\s\S]{0,500}\b(?:error|err|exception|cause)\s*(?:\?\.)?\.\s*message\b/,
-  /res\.json\s*\([\s\S]{0,500}\b(?:error|err|exception|cause)\s*(?:\?\.)?\.\s*message\b/,
-  /json\s*\(\s*res\s*,[\s\S]{0,500}\b(?:error|err|exception|cause)\s*(?:\?\.)?\.\s*message\b/
-];
-
-const findings = [];
-for (const file of endpointFiles) {
-  const name = rel(file);
-  const src = fs.readFileSync(file, 'utf8');
-  for (const helper of ['fail', 'ok']) {
-    callsOf(src, helper).forEach(call => {
-      if (rawException.test(call)) findings.push({ file:name, code:`RAW_EXCEPTION_IN_${helper.toUpperCase()}` });
+// This is a direct-expression guard, not whole-program data-flow analysis.
+// Behavioral tests cover the error mappings used by the affected handlers.
+export function auditPublicErrorSource(source) {
+  const names = new Set(['error','err','exception','cause','e']);
+  for (const match of source.matchAll(/\bcatch\s*\(\s*([\w$]+)\s*\)/g)) names.add(match[1]);
+  const variables = [...names].map(name=>name.replaceAll('$','\\$')).join('|');
+  const rawException = new RegExp(`\\b(?:${variables})\\s*(?:(?:\\?\\.|\\.)\\s*(?:message|stack|cause)\\b|(?:\\?\\.)?\\s*\\[\\s*['\"](?:message|stack|cause)['\"]\\s*\\])`);
+  const findings = [];
+  for (const helper of ['fail', 'ok', 'res.end', 'res.json', 'json']) {
+    callsOf(source, helper).forEach(call => {
+      if (rawException.test(call)) findings.push(`RAW_EXCEPTION_IN_${helper.toUpperCase().replace('.','_')}`);
     });
   }
-  directResponsePatterns.forEach((pattern, index) => {
-    if (pattern.test(src)) findings.push({ file:name, code:`RAW_EXCEPTION_DIRECT_RESPONSE_${index + 1}` });
-  });
+  return [...new Set(findings)];
 }
 
-const unique = [...new Map(findings.map(item => [`${item.file}:${item.code}`, item])).values()];
-console.log(JSON.stringify({ endpoint_count:endpointFiles.length, findings:unique }, null, 2));
-if (unique.length) {
-  console.error(`API public error boundary audit failed: ${unique.length} raw exception exposure(s).`);
-  process.exit(1);
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const endpointFiles = walk(apiRoot).filter(file => file.endsWith('.js') && !path.basename(file).startsWith('_'));
+  const findings = endpointFiles.flatMap(file=>auditPublicErrorSource(fs.readFileSync(file,'utf8')).map(code=>({file:rel(file),code})));
+  console.log(JSON.stringify({ endpoint_count:endpointFiles.length, findings }, null, 2));
+  if (findings.length) {
+    console.error(`API public error boundary audit failed: ${findings.length} raw exception exposure(s).`);
+    process.exitCode = 1;
+  } else console.log(`API public error boundary audit passed for ${endpointFiles.length} endpoints.`);
 }
-console.log(`API public error boundary audit passed for ${endpointFiles.length} endpoints.`);

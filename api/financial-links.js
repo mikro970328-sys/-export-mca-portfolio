@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase, upstreamFailureStatus } from './_lib.js';
 
 async function loadInvoices() {
   const [invoices, financial, payments] = await Promise.all([
@@ -45,6 +45,6 @@ export default async function handler(req, res) {
     return ok(res, { invoices });
   } catch (error) {
     console.error('[financial-links]', error);
-    return fail(res, 400, error.message || 'No se pudo cargar la trazabilidad financiera');
+    return fail(res, upstreamFailureStatus(error, 500), "No se pudo cargar la trazabilidad financiera");
   }
 }

@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase, upstreamFailureStatus } from './_lib.js';
 import { loadExecutiveDashboard, parseExecutiveFilters } from './_executive-dashboard.js';
 
 const DATASETS = Object.freeze({
@@ -53,6 +53,30 @@ const DATASETS = Object.freeze({
     ]
   }
 });
+
+// Public validation text is selected only by an exact match against owned literals.
+const PUBLIC_ERRORS = new Map([
+  ["Reporte inválido.", "Reporte inválido."],
+  ["Límite inválido. Usa un valor entre 1 y 5000.", "Límite inválido. Usa un valor entre 1 y 5000."],
+  ["JSON_INVALID", "Solicitud inválida"],
+  ["Moneda inválida.", "Moneda inválida."],
+  ["Fecha inicial inválida.", "Fecha inicial inválida."],
+  ["Fecha final inválida.", "Fecha final inválida."],
+  ["Fecha inicial inválida. Usa YYYY-MM-DD.", "Fecha inicial inválida. Usa YYYY-MM-DD."],
+  ["Fecha final inválida. Usa YYYY-MM-DD.", "Fecha final inválida. Usa YYYY-MM-DD."],
+  ["Cliente inválido.", "Cliente inválido."],
+  ["Proveedor inválido.", "Proveedor inválido."],
+  ["Producto inválido.", "Producto inválido."],
+  ["La fecha inicial no puede ser posterior a la fecha final.", "La fecha inicial no puede ser posterior a la fecha final."]
+]);
+for (const config of Object.values(DATASETS)) {
+  for (const dimension of ['period','currency','client','supplier','product']) {
+    if (!config.dimensions.includes(dimension)) {
+      const message = `El filtro ${dimension} no aplica al reporte ${config.label}.`;
+      PUBLIC_ERRORS.set(message,message);
+    }
+  }
+}
 
 const csvCell = value => `"${String(value ?? '').replaceAll('"','""')}"`;
 const dateStamp = () => new Date().toISOString().slice(0,10);
@@ -151,6 +175,7 @@ export default async function handler(req,res) {
     });
   }catch(error){
     console.error('[reports]',error);
-    return fail(res,400,error.message || 'No se pudo generar el reporte');
+    const friendly = PUBLIC_ERRORS.get(error?.message);
+    return fail(res, upstreamFailureStatus(error, friendly ? 400 : 500), friendly || "No se pudo generar el reporte");
   }
 }

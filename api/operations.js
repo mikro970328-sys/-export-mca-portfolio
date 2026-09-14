@@ -1,5 +1,26 @@
-import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit, upstreamFailureStatus } from './_lib.js';
 import { operationIsFinalized, reconcileOperationLifecycle } from './_operation-lifecycle.js';
+
+// Public validation text is selected only by an exact match against owned literals.
+const PUBLIC_ERRORS = new Map([
+  ["Cliente no encontrado", "Cliente no encontrado"],
+  ["Expediente no encontrado", "Expediente no encontrado"],
+  ["Contenedor no encontrado", "Contenedor no encontrado"],
+  ["El contenedor pertenece a otro cliente", "El contenedor pertenece a otro cliente"],
+  ["El contenedor ya pertenece a otro expediente", "El contenedor ya pertenece a otro expediente"],
+  ["Ese contenedor no pertenece a este expediente", "Ese contenedor no pertenece a este expediente"],
+  ["Este contenedor tiene documentos propios en el expediente. Borra o reclasifica esos documentos antes de quitarlo.", "Este contenedor tiene documentos propios en el expediente. Borra o reclasifica esos documentos antes de quitarlo."],
+  ["Estado de expediente inválido", "Estado de expediente inválido"],
+  ["El expediente solo puede finalizar cuando todos sus contenedores estén entregados", "El expediente solo puede finalizar cuando todos sus contenedores estén entregados"],
+  ["Reactiva primero al menos un contenedor antes de reabrir este expediente", "Reactiva primero al menos un contenedor antes de reabrir este expediente"],
+  ["Asigna un cliente al contenedor antes de crear su expediente", "Asigna un cliente al contenedor antes de crear su expediente"],
+  ["JSON_INVALID", "Solicitud inválida"],
+  ["CLIENT_REQUIRED", "Falta el cliente"],
+  ["STATUS_REQUIRED", "Falta el estado"],
+  ["ACTION_REQUIRED", "Falta la acción"],
+  ["OPERATION_REQUIRED", "Falta el expediente"],
+  ["SHIPMENT_REQUIRED", "Falta el contenedor"]
+]);
 
 const OPERATION_SELECT = [
   'id',
@@ -276,6 +297,7 @@ export default async function handler(req, res) {
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
     console.error('[operations]', error);
-    return fail(res, 400, error.message || 'No se pudo procesar el expediente');
+    const friendly = PUBLIC_ERRORS.get(error?.message);
+    return fail(res, upstreamFailureStatus(error, friendly ? 400 : 500), friendly || "No se pudo procesar el expediente");
   }
 }
