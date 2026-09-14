@@ -4,6 +4,21 @@ No se registra como publicado un cambio solo por estar en una rama o Preview.
 El historial previo íntegro se conserva, sin cambios, en
 [history/CHANGELOG_20260909.md](history/CHANGELOG_20260909.md).
 
+## 2026-09-14 — Repetir compra
+
+Rama `feat/repeat-purchase`. Evidencia final de CI, Preview y publicación en la PR
+asociada; esta nota por sí sola no certifica producción.
+
+- Acción «Repetir compra» en lista y detalle, autorizada por `procurement.write`,
+  incluso si la original está cancelada o cerrada. Guarda por `create_plan`.
+- Copia proveedor, destino, moneda, productos, cantidades/pallets, precio por
+  unidad o total y notas. Fecha nueva; llegada estimada y referencia vacías.
+- Identidades, recepciones, facturas y pagos independientes. Borradores locales
+  separados por origen y del formulario normal; tras guardar muestra Borradores.
+- Refresca catálogos/permisos y señala maestros inactivos para su sustitución.
+- Matriz: [REPEAT_PURCHASE_ACCEPTANCE.md](REPEAT_PURCHASE_ACCEPTANCE.md).
+  Sin nuevas dependencias, SQL, migraciones, permisos o refactors de otros módulos.
+
 ## 2026-09-14 — Respuestas de error seguras (PR #305)
 
 Rama audit/api-public-error-boundaries. CI final y publicación registrados en

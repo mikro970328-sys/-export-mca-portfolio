@@ -45,6 +45,7 @@
       </div>
       <button id="refresh" class="btn purchases-refresh" type="button" aria-label="Actualizar compras" title="Actualizar compras"><span aria-hidden="true">↻</span></button>
     </div>
+    <div id="purchaseActionMsg" class="msg" role="status" aria-live="polite"></div>
     <div id="orderList" class="orders has-explicit-count purchases-order-list" aria-live="polite"></div>
   </section>
 </main>
@@ -55,6 +56,7 @@
       <div><span class="purchases-dialog-kicker">Plan de abastecimiento</span><h2 id="orderTitle">Nueva Purchase Order</h2><div class="muted">Elige primero el destino: almacén crea WR al recibir; Direct Ship va al cliente sin entrar a tus existencias.</div></div>
       <button class="btn purchases-close-button" type="button" data-close="order" aria-label="Cerrar formulario de compra">✕</button>
     </div>
+    <div id="orderRepeatHelp" class="purchase-destination-help" role="note" hidden></div>
     <div class="grid3"><div><label>Proveedor *</label><select id="oSupplier"></select></div><div><label>Destino de la mercancía *</label><select id="oDestinationMode"><option value="warehouse">Recibir en mi almacén</option><option value="direct">Direct Ship al cliente (sin WR)</option></select></div><div id="oWarehouseField"><label>Almacén receptor *</label><select id="oWarehouse"></select></div></div>
     <div id="oDestinationHelp" class="purchase-destination-help" role="note"></div>
     <div class="grid3"><div><label>Moneda *</label><input id="oCurrency" value="USD" maxlength="3"></div><div><label>Fecha de orden</label><input id="oDate" type="date"></div><div><label>Llegada estimada</label><input id="oExpected" type="datetime-local"></div></div>
@@ -110,7 +112,7 @@
 </div>
 
 <script src="/admin/form-drafts.js?v=20260909-drafts1"></script>
-<script src="/admin/purchases.js?v=20260909-masters1"></script>
+<script src="/admin/purchases.js?v=20260914-repeat1"></script>
 <script src="/admin/embedded-auto-refresh.js?v=20260909-live7"></script>
 </body>
 </html>

@@ -1,6 +1,20 @@
 # Current State — Export MCA ERP
 
-Actualización: 2026-09-14 UTC. Continuidad: **PR #305**.
+Actualización: 2026-09-14 UTC. Continuidad: **Repetir compra sobre PR #305**.
+
+## Trabajo solicitado después de #305
+
+Daniel autorizó agregar **Repetir compra**. Rama `feat/repeat-purchase`, sobre
+main `8e03848a0033c446b9bcec680ab8851f7e99cf49` (#305 publicado). La función
+prepara una PO nueva con proveedor/productos/cantidades/precios/destino, guarda
+como borrador y mantiene pagos/recepciones independientes. Owners existentes,
+capacidad con procurement.write, sin SQL ni dependencias nuevas. Leer
+[REPEAT_PURCHASE_ACCEPTANCE.md](REPEAT_PURCHASE_ACCEPTANCE.md) y la PR de la rama
+para CI exacto, Preview y evidencia final de publicación.
+
+El usuario indicó que pagará BrowserStack; activación aún no confirmada. Mantener
+la certificación física pendiente hasta obtener resultados reales. Después de
+este bloque se retoma la auditoría descrita abajo.
 
 ## Punto recuperado
 
