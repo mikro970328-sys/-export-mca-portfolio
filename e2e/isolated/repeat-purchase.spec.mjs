@@ -10,7 +10,7 @@ test('repeat purchase creates an independent draft with current permissions', as
   test.setTimeout(240_000);
   process.chdir(root);
   const db=await createOperatorAcceptanceDb(),nativeFetch=globalThis.fetch,contexts=[];
-  const evidence={checkpoints:[],errors:[],external:[],requests:[]};
+  const evidence={checkpoints:[],errors:[],external:[],requests:[],serverErrors:[]};
   let api;
   try {
     await db.exec(`alter table clients add column phone text, add column email text,
@@ -19,6 +19,12 @@ test('repeat purchase creates an independent draft with current permissions', as
         add column address text, add column tax_id text, add column notes text;
       alter table importers add column address text, add column country text default 'Cuba',
         add column email text, add column phone text;
+      alter table products add column if not exists description text,
+        add column if not exists hs_code text, add column if not exists country_of_origin text,
+        add column if not exists unit_weight_kg numeric, add column if not exists unit_volume_m3 numeric,
+        add column if not exists currency text default 'USD',
+        add column if not exists created_at timestamptz default now(),
+        add column if not exists updated_at timestamptz default now();
       grant usage on sequence purchase_order_number_seq to service_role;`);
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const {f,users}=await operatorFixture(db);
@@ -76,6 +82,11 @@ test('repeat purchase creates an independent draft with current permissions', as
       });
       const page=await context.newPage();
       page.on('pageerror',error=>evidence.errors.push(error.message));
+      page.on('response',response=>{
+        const url=new URL(response.url());
+        if(url.origin===api.base&&url.pathname.startsWith('/api/')&&response.status()>=500)
+          evidence.serverErrors.push({path:url.pathname,status:response.status()});
+      });
       page.on('request',request=>{
         if(new URL(request.url()).pathname==='/api/purchases'&&request.method()==='POST')evidence.requests.push(request.postDataJSON());
       });
@@ -85,10 +96,17 @@ test('repeat purchase creates an independent draft with current permissions', as
       await page.locator('#login').click();expect((await logged).status()).toBe(200);
       await expect(page.locator('#loginPage')).toBeHidden();
       await page.waitForFunction(()=>window.NavigationShell?.owner==='navigation-shell.js');
-      if(use.isMobile){await page.locator('#mobileMenuBtn').click();await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);}
-      const button=page.locator('[data-section="purchasesSection"]').first();
-      if(!await button.isVisible())await button.locator('xpath=ancestor::*[contains(concat(" ",normalize-space(@class)," ")," nav-group ")]').locator('.nav-group-btn').click();
-      await button.click();
+      if(key==='b'){
+        // This identity has only procurement.read: the native shell selects
+        // Compras as its first permitted section. Observe that real startup;
+        // toggling its already-opening submenu races the automatic selection.
+        await expect(page.locator('#purchasesSection')).toBeVisible();
+      }else{
+        if(use.isMobile){await page.locator('#mobileMenuBtn').click();await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);}
+        const button=page.locator('[data-section="purchasesSection"]').first();
+        if(!await button.isVisible())await button.locator('xpath=ancestor::*[contains(concat(" ",normalize-space(@class)," ")," nav-group ")]').locator('.nav-group-btn').click();
+        await button.click();
+      }
       const ui=page.frameLocator('#purchasesSection iframe');
       await expect(ui.locator('#newOrder')).toBeVisible();await ui.locator('[data-view="all"]').click();
       await expect(ui.locator(`[data-view-order="${source.id}"]`)).toBeVisible();
@@ -185,7 +203,7 @@ test('repeat purchase creates an independent draft with current permissions', as
       await expect(ui.locator('#orderModal')).toBeVisible();await expect(ui.locator('#oNotes')).toHaveValue('Retain on denied save');
       await expect(ui.locator('#orderMsg')).toContainText('No tienes permiso');expect(await count()).toBe(4);expect(await snapshot()).toEqual(before);
     });
-    expect(evidence.errors).toEqual([]);expect(evidence.external).toEqual([]);
+    expect(evidence.errors).toEqual([]);expect(evidence.external).toEqual([]);expect(evidence.serverErrors).toEqual([]);
   } finally {
     fs.mkdirSync(info.outputDir,{recursive:true});const path=info.outputPath('repeat-purchase-evidence.json');
     fs.writeFileSync(path,JSON.stringify(evidence,null,2));await info.attach('repeat-purchase-evidence',{path,contentType:'application/json'});

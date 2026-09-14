@@ -39,6 +39,15 @@ Regresión previa: API-09 falló en main porque repeat no existía; 8 casos ante
 aprobaron. Después: 9/9 API y 19/19 SQL sobre 31 migraciones reales, en PGlite
 local desechable (autorización/transporte del adaptador simulados explícitamente).
 
+CI inicial 34839132877: escritorio aprobó los siete pasos. WebKit completó RP-01
+a RP-05 y se detuvo al navegar el usuario de lectura: Compras era ya su sección
+inicial permitida y el ensayo volvía a alternar el submenú durante el arranque.
+Se verifica esa selección inicial real sin volver a pulsar el grupo. Se completa
+la fixture legacy de productos como en la historia comercial y se exige además
+ausencia de 5xx. El contrato antiguo de autoguardado se amplía para exigir las
+tres claves (nueva, edición, repetición por origen), sin quitar comprobaciones.
+Resultados finales: [PR #306](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/306).
+
 La historia repeat-purchase amplía Browser Operator Acceptance a seis historias
 por Chromium escritorio/WebKit móvil. Usa usuarios y datos ficticios, login real,
 handlers, HTTP, PostgREST y PostgreSQL locales. Los originales se preparan con RPC
