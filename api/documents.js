@@ -1,5 +1,29 @@
 import crypto from 'node:crypto';
-import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit, upstreamFailureStatus } from './_lib.js';
+
+// Public validation text is selected only by an exact match against owned literals.
+const PUBLIC_ERRORS = new Map([
+  ["Nombre de archivo inválido", "Nombre de archivo inválido"],
+  ["Selecciona o escribe el tipo de documento", "Selecciona o escribe el tipo de documento"],
+  ["Tipo de archivo no permitido. Usa PDF, Word, Excel, JPG, PNG, WEBP o TXT.", "Tipo de archivo no permitido. Usa PDF, Word, Excel, JPG, PNG, WEBP o TXT."],
+  ["El archivo está vacío", "El archivo está vacío"],
+  ["El archivo supera el límite de 25 MB", "El archivo supera el límite de 25 MB"],
+  ["Expediente inválido", "Expediente inválido"],
+  ["Expediente no encontrado", "Expediente no encontrado"],
+  ["Ese B/L no pertenece al expediente", "Ese B/L no pertenece al expediente"],
+  ["Ese contenedor no pertenece al expediente", "Ese contenedor no pertenece al expediente"],
+  ["El contenedor no pertenece al cliente del expediente", "El contenedor no pertenece al cliente del expediente"],
+  ["Selecciona un B/L o un contenedor específico, no ambos", "Selecciona un B/L o un contenedor específico, no ambos"],
+  ["Solo se puede compartir un documento asociado a un B/L", "Solo se puede compartir un documento asociado a un B/L"],
+  ["Ese B/L no está compartido entre clientes", "Ese B/L no está compartido entre clientes"],
+  ["Documento inválido", "Documento inválido"],
+  ["Documento no encontrado", "Documento no encontrado"],
+  ["Ruta de documento inválida", "Ruta de documento inválida"],
+  ["Las versiones generadas son inmutables. Genera una nueva versión en lugar de eliminarla.", "Las versiones generadas son inmutables. Genera una nueva versión en lugar de eliminarla."],
+  ["Almacenamiento de documento inválido", "Almacenamiento de documento inválido"],
+  ["JSON_INVALID", "Solicitud inválida"],
+  ["Contenedor inválido", "Contenedor inválido"]
+]);
 
 const BUCKET = 'erp-documents';
 const MAX_BYTES = 25 * 1024 * 1024;
@@ -489,6 +513,7 @@ export default async function handler(req, res) {
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
     console.error('[documents]', error);
-    return fail(res, 400, error.message || 'No se pudo procesar el documento');
+    const friendly = PUBLIC_ERRORS.get(error?.message);
+    return fail(res, upstreamFailureStatus(error, friendly ? 400 : 500), friendly || "No se pudo procesar el documento");
   }
 }

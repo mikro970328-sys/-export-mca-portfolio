@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, supabase } from './_lib.js';
+import { authorizeAdmin, fail, supabase, upstreamFailureStatus } from './_lib.js';
 
 const csv = value => `"${String(value ?? '').replaceAll('"','""')}"`;
 const dateStamp = () => new Date().toISOString().slice(0,10);
@@ -70,6 +70,7 @@ export default async function handler(req, res) {
       ])
     );
   } catch (error) {
-    return fail(res, 400, error.message);
+    console.error('[export]', error);
+    return fail(res, upstreamFailureStatus(error, 500), "No se pudo exportar la información");
   }
 }

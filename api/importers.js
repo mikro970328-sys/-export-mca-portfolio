@@ -1,4 +1,12 @@
-import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit, upstreamFailureStatus } from './_lib.js';
+
+// Public validation text is selected only by an exact match against owned literals.
+const PUBLIC_ERRORS = new Map([
+  ["Cliente no encontrado", "Cliente no encontrado"],
+  ["Contenedor no encontrado", "Contenedor no encontrado"],
+  ["Importadora no disponible", "Importadora no disponible"],
+  ["JSON_INVALID", "Solicitud inválida"]
+]);
 
 const cleanName = value => String(value || '').trim().replace(/\s+/g, ' ').slice(0, 160);
 const normalizedName = value => cleanName(value).toUpperCase();
@@ -180,6 +188,7 @@ export default async function handler(req, res) {
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
     console.error('[importers]', error);
-    return fail(res, 400, error.message || 'No se pudo procesar la importadora');
+    const friendly = PUBLIC_ERRORS.get(error?.message);
+    return fail(res, upstreamFailureStatus(error, friendly ? 400 : 500), friendly || "No se pudo procesar la importadora");
   }
 }

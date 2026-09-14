@@ -1,4 +1,14 @@
-import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase, upstreamFailureStatus } from './_lib.js';
+
+// Public validation text is selected only by an exact match against owned literals.
+const PUBLIC_ERRORS = new Map([
+  ["JSON_INVALID", "Solicitud inválida"],
+  ["Factura inválido", "Factura inválido"],
+  ["Sales Order inválido", "Sales Order inválido"],
+  ["Factura no encontrada", "Factura no encontrada"],
+  ["Sales Order de la factura no encontrada", "Sales Order de la factura no encontrada"],
+  ["Sales Order no encontrada", "Sales Order no encontrada"]
+]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const cleanId = (value, label) => {
@@ -56,6 +66,7 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('[invoice-expediente-context]', error);
-    return fail(res, 400, error.message || 'No se pudo cargar los Expedientes de la factura');
+    const friendly = PUBLIC_ERRORS.get(error?.message);
+    return fail(res, upstreamFailureStatus(error, friendly ? 400 : 500), friendly || "No se pudo cargar los Expedientes de la factura");
   }
 }

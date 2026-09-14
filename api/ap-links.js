@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase, upstreamFailureStatus } from './_lib.js';
 
 async function paged(path, baseQuery, pageSize = 1000) {
   const rows = [];
@@ -121,6 +121,6 @@ export default async function handler(req, res) {
     return ok(res, { owner:'api/ap-links.js', bills:billRows, payments:paymentRows, purchases:purchaseRows });
   } catch (error) {
     console.error('[ap-links]', error);
-    return fail(res, 400, error.message || 'No se pudo resolver la trazabilidad de Cuentas por pagar');
+    return fail(res, upstreamFailureStatus(error, 500), "No se pudo resolver la trazabilidad de Cuentas por pagar");
   }
 }

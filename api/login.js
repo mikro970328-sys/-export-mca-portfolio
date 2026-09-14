@@ -1,4 +1,4 @@
-import { createToken, fail, normalizeUsername, ok, readJson, supabase, verifyPassword } from './_lib.js';
+import { createToken, fail, normalizeUsername, ok, readJson, supabase, verifyPassword, upstreamFailureStatus } from './_lib.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');
@@ -46,9 +46,12 @@ export default async function handler(req, res) {
       user: { id: user.id, full_name: user.full_name, username: user.username, role: user.role }
     });
   } catch (error) {
-    if (error.message === 'USERNAME_INVALID') return fail(res, 400, 'Nombre de usuario inválido');
-    if (error.message.includes('ACCOUNT_LOCKED')) return fail(res, 429, 'Cuenta bloqueada temporalmente. Intenta más tarde');
-    if (error.message.includes('ADMIN_USER_UNAVAILABLE')) return fail(res, 403, 'Esta cuenta no está disponible');
-    return fail(res, 400, error.message === 'JSON_INVALID' ? 'Solicitud inválida' : 'No se pudo iniciar sesión', error.message);
+    const raw = String(error?.message || '');
+    if (raw === 'USERNAME_INVALID') return fail(res, 400, 'Nombre de usuario inválido');
+    if (raw.includes('ACCOUNT_LOCKED')) return fail(res, 429, 'Cuenta bloqueada temporalmente. Intenta más tarde');
+    if (raw.includes('ADMIN_USER_UNAVAILABLE')) return fail(res, 403, 'Esta cuenta no está disponible');
+    if (raw === 'JSON_INVALID') return fail(res, 400, 'Solicitud inválida');
+    console.error('[login]', error);
+    return fail(res, upstreamFailureStatus(error, 500), 'No se pudo iniciar sesión');
   }
 }

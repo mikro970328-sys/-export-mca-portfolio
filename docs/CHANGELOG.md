@@ -4,6 +4,21 @@ No se registra como publicado un cambio solo por estar en una rama o Preview.
 El historial previo íntegro se conserva, sin cambios, en
 [history/CHANGELOG_20260909.md](history/CHANGELOG_20260909.md).
 
+## 2026-09-14 — Respuestas de error seguras (PR #305)
+
+Rama audit/api-public-error-boundaries. CI final y publicación registrados en
+[PR #305](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/305).
+
+- Corregidas 20 exposiciones directas en 19 endpoints con mensajes controlados;
+  validaciones conocidas 400, fallos internos 500, transitorios agotados 503.
+- WhatsApp fallido conserva el éxito parcial del tracking guardado.
+- Detector sobre 61 endpoints, 17 regresiones del detector y 97 comprobaciones
+  aisladas de handlers integradas en B9. Matriz: security/API_PUBLIC_ERROR_AUDIT.md.
+- Gates locales 13/13, API financiera 11/11 y SQL ventas/logística 29/29.
+  Sin dependencias nuevas, migraciones o QA comercial en producción.
+- Continuidad actualizada desde #305; documentos del corte #297 íntegros en
+  history. #298–#304 integradas. Límite BrowserStack y PWA/push real conservado.
+
 ## 2026-09-10 UTC — Carrera de primer clic del menú móvil (PR #297)
 
 Causa reproducida en `3e9b49a`: apertura válida seguida de restauración automática

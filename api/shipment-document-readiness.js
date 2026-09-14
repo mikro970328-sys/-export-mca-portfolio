@@ -17,6 +17,6 @@ export default async function handler(req,res) {
     return ok(res,{readiness:shipmentId ? rows[0] : rows});
   } catch (error) {
     console.error('[shipment-document-readiness]',error);
-    return fail(res,upstreamFailureStatus(error),'No se pudo cargar el estado documental',error.message);
+    return fail(res,upstreamFailureStatus(error,500),'No se pudo cargar el estado documental');
   }
 }

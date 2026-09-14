@@ -1,5 +1,16 @@
-import { authorizeAdmin, fail } from './_lib.js';
+import { authorizeAdmin, fail, upstreamFailureStatus } from './_lib.js';
 import { streamContainerDocumentBundle } from './_document-bundle.js';
+
+// Public validation text is selected only by an exact match against owned literals.
+const PUBLIC_ERRORS = new Map([
+  ["Contenedor no encontrado", "Contenedor no encontrado"],
+  ["Este contenedor todavía no pertenece a un expediente", "Este contenedor todavía no pertenece a un expediente"],
+  ["Expediente no encontrado", "Expediente no encontrado"],
+  ["El contenedor no pertenece al cliente del expediente", "El contenedor no pertenece al cliente del expediente"],
+  ["Este contenedor todavía no tiene documentación para descargar", "Este contenedor todavía no tiene documentación para descargar"],
+  ["JSON_INVALID", "Solicitud inválida"],
+  ["Contenedor inválido", "Contenedor inválido"]
+]);
 
 export default async function handler(req, res) {
   const admin = await authorizeAdmin(req, res, 'documents.read');
@@ -17,6 +28,7 @@ export default async function handler(req, res) {
       if (!res.destroyed) res.destroy(error);
       return;
     }
-    return fail(res, 400, error.message || 'No se pudo preparar la documentación del contenedor');
+    const friendly = PUBLIC_ERRORS.get(error?.message);
+    return fail(res, upstreamFailureStatus(error, friendly ? 400 : 500), friendly || "No se pudo preparar la documentación del contenedor");
   }
 }

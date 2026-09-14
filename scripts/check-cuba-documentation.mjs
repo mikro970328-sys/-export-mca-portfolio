@@ -61,12 +61,14 @@ if(Object.values(files).every(file=>fs.existsSync(path.join(root,file)))){
     "state:row.deleted_at?'deleted':row.superseded_at?'superseded':'current'",
     'upstreamFailureStatus'
   ]) if(!api.includes(required))failures.push(`api/shipment-documents.js: falta ${required}`);
-  if(!api.includes("fail(res,upstreamFailureStatus(error),friendly||'No se pudieron procesar los documentos del contenedor',error.message)"))failures.push('api/shipment-documents.js: debe responder 503 a fallos transitorios agotados');
+  if(!api.includes("fail(res,upstreamFailureStatus(error,friendly?400:500),friendly||'No se pudieron procesar los documentos del contenedor')"))failures.push('api/shipment-documents.js: debe responder 503 a fallos transitorios agotados sin exponer detalles internos');
+  if(!api.includes('PUBLIC_ERRORS.get(error?.message)'))failures.push('api/shipment-documents.js: validaciones públicas deben usar correspondencia exacta');
+  if(/fail\([^;]*error\.message/.test(api))failures.push('api/shipment-documents.js: no debe exponer error.message en la respuesta');
   if(api.includes("supabase('documents', {method:'DELETE'" )||api.includes("supabase('documents',{method:'DELETE'")) failures.push('api/shipment-documents.js: no debe hard-delete documentos Cuba');
 
   if(!readinessApi.includes("authorizeAdmin(req,res,'documents.read')"))failures.push('readiness API: debe exigir documents.read');
   if(!readinessApi.includes('upstreamFailureStatus'))failures.push('readiness API: debe preservar fallos transitorios upstream');
-  if(!readinessApi.includes("fail(res,upstreamFailureStatus(error),'No se pudo cargar el estado documental',error.message)"))failures.push('readiness API: debe responder 503 a fallos transitorios agotados');
+  if(!readinessApi.includes("fail(res,upstreamFailureStatus(error,500),'No se pudo cargar el estado documental')"))failures.push('readiness API: debe responder 503 a fallos transitorios agotados sin exponer detalles internos');
   for(const required of [
     'loadAdminAccessContext',
     "permissions.has('documents.read')",

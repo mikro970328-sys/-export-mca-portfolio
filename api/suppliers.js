@@ -1,4 +1,13 @@
-import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit, upstreamFailureStatus } from './_lib.js';
+
+// Public validation text is selected only by an exact match against owned literals.
+const PUBLIC_ERRORS = new Map([
+  ["Ya existe un proveedor con ese nombre", "Ya existe un proveedor con ese nombre"],
+  ["El nombre del proveedor es obligatorio", "El nombre del proveedor es obligatorio"],
+  ["Falta el proveedor", "Falta el proveedor"],
+  ["Proveedor no encontrado", "Proveedor no encontrado"],
+  ["JSON_INVALID", "Solicitud inválida"]
+]);
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const normalizedName = value => text(value, 200).toLocaleLowerCase('en-US').replace(/\s+/g, ' ');
@@ -100,6 +109,7 @@ export default async function handler(req, res) {
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
     console.error('[suppliers]', error);
-    return fail(res, 400, error.message || 'No se pudo procesar el proveedor');
+    const friendly = PUBLIC_ERRORS.get(error?.message);
+    return fail(res, upstreamFailureStatus(error, friendly ? 400 : 500), friendly || "No se pudo procesar el proveedor");
   }
 }
