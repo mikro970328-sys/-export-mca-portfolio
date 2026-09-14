@@ -90,7 +90,7 @@ const integrations = [
   [source.products, "`product:${item.id}` : 'product:new'", "root:$('productForm')", 'productos'],
   [source.suppliers, "`supplier:${item.id}` : 'supplier:new'", "root:$('supplierForm')", 'proveedores'],
   [source.publications, "`publication:${id}` : 'publication:new'", "root:$('publicationForm')", 'publicaciones'],
-  [source.purchases, "`purchase-order:${order.id}`:'purchase-order:new'", "root:document.querySelector('#orderModal .purchase-order-dialog')", 'compras'],
+  [source.purchases, "'purchase-order:new'", "root:document.querySelector('#orderModal .purchase-order-dialog')", 'compras'],
   [source.sales, "`sales-order:${order.id}`:'sales-order:new'", "root:document.querySelector('#orderModal .sales-order-dialog')", 'ventas'],
   [source.invoices, "key:`invoice:${invoice ? 'edit' : 'new'}:${suffix}`", "root:document.querySelector('#invoiceModal .invoice-form-dialog')", 'facturas por cobrar'],
   [source.payables, "`supplier-bill:${bill.id}` : 'supplier-bill:new'", "root:document.querySelector('#billModal .payable-form-dialog')", 'facturas por pagar']
@@ -125,6 +125,8 @@ requireText(source.invoices, 'sales_order_item_id', 'identidad estable de línea
 requireText(source.payables, 'purchase_order_item_id', 'identidad estable de líneas de factura por pagar');
 requireText(source.salesUx, 'window.SalesOrderDrafts?.saved?.()', 'limpieza después de guardar una venta');
 
+requireText(source.purchases, '`purchase-order:${order.id}`', 'clave de edición de compra');
+requireText(source.purchases, '`purchase-order:repeat:${repeatedOrder.id}`', 'clave de repetición separada por origen');
 const allIntegrationSource = [source.clients, source.containers, source.products, source.suppliers, source.publications, source.purchases, source.sales, source.invoices, source.payables].join('\n');
 forbid(allIntegrationSource, /key\s*:\s*[`'"][^\n`'"]*(?:payment|collection|allocation|reverse|reversal)/i, 'pagos, cobros, asignaciones o reversiones no pueden tener borrador');
 forbid(allIntegrationSource, /root\s*:[^\n]*(?:payment|collection|allocation|reverse|reversal).*ExportMcaDrafts/i, 'un formulario financiero irreversible quedó conectado al autoguardado');

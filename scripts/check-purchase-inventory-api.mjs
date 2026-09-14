@@ -51,6 +51,20 @@ try {
     assert.equal(recv.capabilities.actions.edit.allowed,false);
     assert.equal(recv.capabilities.actions.receive_remaining.allowed,true);
   });
+  await test('API-09 repeat remains available for terminal purchases only with procurement write',async()=>{
+    const po=await purchase();
+    await post({action:'cancel',purchase_order_id:po.id});
+    const writer={...reader,admin_id:'00000000-0000-4000-8000-000000000004',permissions:['procurement.read','procurement.write']};
+    for(const admin of [master,writer,reader,receiver]){
+      const result=await api.request('purchases',{admin,query:{id:po.id}});
+      assert.equal(result.status,200);
+      const actions=result.body.order.capabilities.actions;
+      assert.equal(actions.edit.allowed,false);
+      assert.equal(actions.repeat?.allowed,admin===master||admin===writer);
+      assert.equal(actions.repeat.required_permission,'procurement.write');
+      assert.equal(actions.repeat.business_allowed,true);
+    }
+  });
   await test('API-04 ordinary excess is rejected and explicit boolean approval succeeds',async()=>{
     const po=await confirmed();
     const refused=await post(receiveBody(po));

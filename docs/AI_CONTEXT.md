@@ -4,6 +4,15 @@
 
 ## Continuación vigente
 
+Prioridad solicitada después de #305: agregar **Repetir compra**, rama
+`feat/repeat-purchase`, base main `8e03848a0033c446b9bcec680ab8851f7e99cf49`.
+Leer REPEAT_PURCHASE_ACCEPTANCE.md y la PR asociada antes de seguir; sus resultados
+finales determinan integración/publicación. La función reutiliza el formulario y
+create_plan; copia datos comerciales sin identidades ni vínculos operativos.
+El usuario indicó que pagará BrowserStack, sin confirmar todavía activación.
+
+Contexto previo de auditoría (retomar tras la función):
+
 Retomar desde **PR #305**, rama `audit/api-public-error-boundaries`. Leer
 CURRENT_STATE.md, security/API_PUBLIC_ERROR_AUDIT.md y la PR/CI final. Las PR
 #297–#304 ya están integradas; no repetir cancelaciones, arranque móvil ni Direct

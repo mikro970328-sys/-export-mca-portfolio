@@ -19,6 +19,9 @@ function permissionAwareCapabilities(raw,access){
     if(entry.allowed===true&&!permissionAllowed){entry.allowed=false;entry.reason='PERMISSION_REQUIRED';}
     entry.required_permission=required;
   }
+  // Repeating opens a new plan; it never changes the source purchase's state.
+  actions.repeat={allowed:procurementWritable,business_allowed:true,
+    required_permission:'procurement.write',reason:procurementWritable?null:'PERMISSION_REQUIRED'};
   state.actions=actions;
   return state;
 }
