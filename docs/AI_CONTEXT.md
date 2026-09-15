@@ -1,3 +1,11 @@
+## Continuación — conservación de archivos (2026-09-15)
+
+PR #308 publicada: main 2072fb563d04e9c2af48d14e5255869aff63908e.
+Rama `fix/preserve-customs-upload`: un fallo posterior al commit podía borrar el
+archivo del documento. Se elimina esa compensación destructiva en documentos
+Cuba y API documental anterior. Ver DOCUMENT_UPLOAD_PRESERVATION.md y PR para
+CI/publicación final. Tracking/documentos sigue como bloque de cierre funcional.
+
 ## Continuación — visibilidad de tareas relacionadas (2026-09-15)
 
 PR #307 publicada, main 3b47f549074ef37cf35f48bb34122c84bd1c25de.

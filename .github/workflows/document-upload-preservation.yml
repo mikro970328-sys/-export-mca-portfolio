@@ -1,0 +1,24 @@
+name: Document Upload Preservation
+
+on:
+  pull_request:
+    paths:
+      - 'api/documents.js'
+      - 'api/shipment-documents.js'
+      - 'scripts/check-document-upload-preservation.mjs'
+      - '.github/workflows/document-upload-preservation.yml'
+  workflow_dispatch:
+
+jobs:
+  preserve-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node scripts/check-document-upload-preservation.mjs
+      - run: node scripts/check-cuba-documentation.mjs
+      - run: node scripts/check-api-public-error-responses.mjs
+      - run: node --check api/documents.js && node --check api/shipment-documents.js

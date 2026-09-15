@@ -72,22 +72,20 @@ async function prepare(body) {
 async function finalize(admin,body) {
   const shipment=await getShipment(body.shipment_id),documentType=canonicalType(body.document_type),fileName=cleanFileName(body.file_name),mimeType=normalizedMime(fileName,body.mime_type),fileSizeBytes=validSize(body.file_size_bytes),storagePath=String(body.storage_path||'').trim(),expectedPrefix=`shipments/${shipment.id}/cuba-customs/`;
   if(!storagePath.startsWith(expectedPrefix)||storagePath.includes('..'))throw new Error('Ruta de documento inválida');
-  try {
-    const result=rpcRow(await supabase('rpc/create_shipment_customs_document',{method:'POST',body:{
-      p_shipment_id:shipment.id,p_client_id:shipment.client_id||null,p_document_type:documentType,p_file_name:fileName,
-      p_storage_bucket:BUCKET,p_storage_path:storagePath,p_mime_type:mimeType,p_file_size_bytes:fileSizeBytes,
-      p_notes:cleanText(body.notes,1000)||null,p_uploaded_by_admin_id:admin.admin_id||null,p_uploaded_by_username:admin.username||null
-    }}));
-    if(!result?.document_id)throw new Error('No se pudo registrar el documento');
-    const document=await getDocument(result.document_id);
-    if(!document)throw new Error('No se pudo recuperar el documento registrado');
-    await writeAudit(admin,'shipment_customs_document_uploaded','document',document.id,{shipment_id:shipment.id,container_number:shipment.container_number,document_type:documentType,file_name:fileName,version:result.document_version});
-    return {...document,is_current:true,state:'current',signed_url:await signedPreview(storagePath)};
-  } catch(error) {
-    try { await deleteObject(storagePath); } catch {}
-    throw error;
-  }
+  // A failed response does not prove the write rolled back. Never delete the
+  // uploaded object here: it may already belong to a committed document.
+  const result=rpcRow(await supabase('rpc/create_shipment_customs_document',{method:'POST',body:{
+    p_shipment_id:shipment.id,p_client_id:shipment.client_id||null,p_document_type:documentType,p_file_name:fileName,
+    p_storage_bucket:BUCKET,p_storage_path:storagePath,p_mime_type:mimeType,p_file_size_bytes:fileSizeBytes,
+    p_notes:cleanText(body.notes,1000)||null,p_uploaded_by_admin_id:admin.admin_id||null,p_uploaded_by_username:admin.username||null
+  }}));
+  if(!result?.document_id)throw new Error('No se pudo registrar el documento');
+  const document=await getDocument(result.document_id);
+  if(!document)throw new Error('No se pudo recuperar el documento registrado');
+  await writeAudit(admin,'shipment_customs_document_uploaded','document',document.id,{shipment_id:shipment.id,container_number:shipment.container_number,document_type:documentType,file_name:fileName,version:result.document_version});
+  return {...document,is_current:true,state:'current',signed_url:await signedPreview(storagePath)};
 }
+
 async function discard(body) { const shipment=await getShipment(body.shipment_id),path=String(body.storage_path||'').trim(),expectedPrefix=`shipments/${shipment.id}/cuba-customs/`;if(!path.startsWith(expectedPrefix)||path.includes('..'))throw new Error('Ruta de documento inválida');await deleteObject(path); }
 async function remove(admin,id) {
   const documentId=cleanUuid(id,'Documento'),document=await getDocument(documentId);
