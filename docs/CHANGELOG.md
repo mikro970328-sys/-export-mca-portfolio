@@ -1,3 +1,12 @@
+## 2026-09-15 — Facturación coherente tras cancelar venta
+
+- Capability del workspace impide ofrecer nueva factura cuando el RPC no admite
+  la venta; ambos botones y acción usan el mismo permiso del servidor.
+- Confirmación explica que facturas, cobros y saldos se conservan por separado.
+- CF-13 amplía pruebas de navegador a factura borrador, impagada y cobro parcial.
+- Prioridad de Daniel: escritorio; certificación física aplazada. Integración y
+  publicación final en la PR de fix/cancelled-sale-billing.
+
 # Changelog — Export MCA ERP
 
 No se registra como publicado un cambio solo por estar en una rama o Preview.

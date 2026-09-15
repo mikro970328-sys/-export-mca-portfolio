@@ -17,6 +17,10 @@ function normalizeSummary(row){if(!row)return null;if(!row.billing_currency_comp
 function financialSummary(summary,financeReadable){if(!summary||financeReadable)return summary;const restricted={...summary};for(const field of FINANCIAL_SUMMARY_FIELDS)delete restricted[field];return restricted;}
 function mergeItems(items,fulfillmentProgress,invoiceProgress){const fulfillmentById=new Map(fulfillmentProgress.map(row=>[String(row.sales_order_item_id),row])),invoiceById=new Map(invoiceProgress.map(row=>[String(row.sales_order_item_id),row]));return items.map(item=>({...item,fulfillment:fulfillmentById.get(String(item.id))||null,invoicing:invoiceById.get(String(item.id))||null}));}
 function mergeInvoices(invoices,financialProgress,invoiceItems,capabilityMap=new Map()){const financialById=new Map(financialProgress.map(row=>[String(row.invoice_id),row])),itemsByInvoice=new Map();for(const item of invoiceItems){const key=String(item.invoice_id);if(!itemsByInvoice.has(key))itemsByInvoice.set(key,[]);itemsByInvoice.get(key).push(item);}return invoices.map(invoice=>({...invoice,financial:financialById.get(String(invoice.id))||null,items:itemsByInvoice.get(String(invoice.id))||[],capabilities:capabilityMap.get(invoice.id)||{actions:{}}}));}
+function invoiceCreationCapability(summary,financeWritable){
+  const reason=!financeWritable?'FINANCE_WRITE_REQUIRED':!['confirmed','closed'].includes(summary?.commercial_status)?'INVOICE_SO_NOT_BILLABLE':!(Number(summary?.available_to_invoice_value)>0)?'INVOICE_NO_AVAILABLE_VALUE':null;
+  return {allowed:reason===null,reason};
+}
 async function workspaceAccess(admin){if(admin.role==='master_admin')return{documentsReadable:true,financeReadable:true,financeWritable:true,salesWritable:true};const context=await loadAdminAccessContext(admin.admin_id),permissions=new Set(context.permissions||[]);return{documentsReadable:permissions.has('documents.read'),financeReadable:permissions.has('finance.read'),financeWritable:permissions.has('finance.write'),salesWritable:permissions.has('sales.write')};}
 
 async function workspace(salesOrderId,{documentsReadable=false,financeReadable=false,financeWritable=false,salesCapabilities={actions:{}},invoiceCapabilityMap=new Map()}={}){
@@ -47,7 +51,7 @@ async function workspace(salesOrderId,{documentsReadable=false,financeReadable=f
     items:mergeItems(itemRows,itemProgress,itemInvoiceProgress),
     logistics,
     capabilities:salesCapabilities,
-    billing:{invoices:mergeInvoices(invoices,invoiceFinancial,invoiceItems,invoiceCapabilityMap),invoice_payments:invoicePayments,contextual_operation_payments:contextualOperationPayments},
+    billing:{capabilities:{create_invoice:invoiceCreationCapability(authoritativeSummary,financeWritable)},invoices:mergeInvoices(invoices,invoiceFinancial,invoiceItems,invoiceCapabilityMap),invoice_payments:invoicePayments,contextual_operation_payments:contextualOperationPayments},
     costs:{allocations:financeReadable?directCosts:[]},
     document_access:{read:documentsReadable},
     document_readiness:documentReadiness,

@@ -1,15 +1,20 @@
 # AI Context — Export MCA ERP
 
-Última actualización: 2026-09-14 UTC.
+Última actualización: 2026-09-15 UTC.
 
 ## Continuación vigente
 
-Prioridad solicitada después de #305: agregar **Repetir compra**, rama
-`feat/repeat-purchase`, base main `8e03848a0033c446b9bcec680ab8851f7e99cf49`.
-Leer REPEAT_PURCHASE_ACCEPTANCE.md y la PR asociada antes de seguir; sus resultados
-finales determinan integración/publicación. La función reutiliza el formulario y
-create_plan; copia datos comerciales sin identidades ni vínculos operativos.
-El usuario indicó que pagará BrowserStack, sin confirmar todavía activación.
+Daniel prioriza navegador de computadora; BrowserStack/iPhone/PWA física/push
+quedan diferidos por su decisión. No solicitar compra para continuar escritorio.
+Repetir compra está publicado: PR #306, merge 58fbf289e47f8132f98fc4a084deb9de4f188cb1.
+Base main consultada: f83a2f122257db3ab98f247149ae0ddfc202b337 (cambio posterior
+ajeno al ERP, preservado). Rama actual fix/cancelled-sale-billing.
+
+Cierre funcional actual: corregir oferta de nueva factura en ventas no facturables
+mediante capability del workspace; conservar facturas/cobros/saldos al cancelar y
+explicarlo en la confirmación. CF-13 prueba borrador, emitida impagada y cobro
+parcial, sin modificar la semántica de cancelación ni migrar datos.
+Leer CANCELLED_SALE_BILLING_ACCEPTANCE.md y la PR para CI/publicación final.
 
 Contexto previo de auditoría (retomar tras la función):
 

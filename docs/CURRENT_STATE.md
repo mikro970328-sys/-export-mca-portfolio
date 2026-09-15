@@ -1,20 +1,25 @@
 # Current State — Export MCA ERP
 
-Actualización: 2026-09-14 UTC. Continuidad: **Repetir compra sobre PR #305**.
+Actualización: 2026-09-15 UTC. Prioridad: cierre funcional en navegador de escritorio.
 
-## Trabajo solicitado después de #305
+## Entrega vigente
 
-Daniel autorizó agregar **Repetir compra**. Rama `feat/repeat-purchase`, sobre
-main `8e03848a0033c446b9bcec680ab8851f7e99cf49` (#305 publicado). La función
-prepara una PO nueva con proveedor/productos/cantidades/precios/destino, guarda
-como borrador y mantiene pagos/recepciones independientes. Owners existentes,
-capacidad con procurement.write, sin SQL ni dependencias nuevas. Leer
-[REPEAT_PURCHASE_ACCEPTANCE.md](REPEAT_PURCHASE_ACCEPTANCE.md) y la PR de la rama
-para CI exacto, Preview y evidencia final de publicación.
+PR #306 (Repetir compra) está integrada/publicada, merge
+58fbf289e47f8132f98fc4a084deb9de4f188cb1. Base actual consultada main:
+f83a2f122257db3ab98f247149ae0ddfc202b337. Se preserva su cambio ajeno al ERP.
 
-El usuario indicó que pagará BrowserStack; activación aún no confirmada. Mantener
-la certificación física pendiente hasta obtener resultados reales. Después de
-este bloque se retoma la auditoría descrita abajo.
+Rama fix/cancelled-sale-billing: el workspace ofrecía Crear factura después de
+cancelar, aunque create_invoice_plan rechaza ventas no confirmadas/cerradas.
+Se añade capability de creación al payload y se consume en ambos botones y su
+handler. La confirmación aclara que cancelar conserva facturas, cobros y saldos.
+No se cambia la regla comercial de cancelación ni se anulan documentos en cascada.
+CF-13 amplía la aceptación aislada a facturas borrador, impagadas y con cobro parcial.
+Consultar CANCELLED_SALE_BILLING_ACCEPTANCE.md y la PR para resultado final,
+Preview y publicación; este corte no anticipa el merge.
+
+Daniel difiere explícitamente iPhone/BrowserStack/PWA física/push. Se continúa
+escritorio sin compra ni reintento manual de BrowserStack. WebKit emulado puede
+seguir como regresión gratuita del CI existente; no es certificación física.
 
 ## Punto recuperado
 

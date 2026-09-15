@@ -94,7 +94,7 @@ requireText(foundation,'.erp-module-page button:focus-visible','foco accesible d
 
 for(const asset of [
   '/admin/sales-workspace.css?v=20260902-ux7sales1',
-  '/admin/sales-workspace.js?v=20260910-cancel1',
+  '/admin/sales-workspace.js?v=20260915-billing1',
   '/admin/sales-controller.js?v=20260901-ux6owner1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 
@@ -123,17 +123,39 @@ try {
   const window={SalesOrderController:{transition:async(id,action)=>calls.push({id,action})}};
   const exposed=workspace.replace(/\n\}\)\(\);\s*$/,`\n  window.__qa={
     fixture(data){state.data=data;state.salesOrderId='qa-sale';},
-    renderSummary,runAction,transitionSale,
+    renderSummary,renderBilling,nextAction,runAction,transitionSale,
     decision(fn){workspaceDecision=fn;},refresh(fn){reload=fn;}
   };\n})();`);
   assert.notEqual(exposed,workspace,'test harness must access the canonical closure');
   vm.runInNewContext(exposed,{window,document:{getElementById:()=>messages},localStorage:{getItem:()=>''},console:{error(){}},Intl},{timeout:1000});
+  const backend={};
+  vm.runInNewContext(api.replace(/^import .*;\n/gm,'').replace('export default async function handler','async function handler')+'\nglobalThis.capability=invoiceCreationCapability;',backend,{timeout:1000});
+  for(const status of ['draft','confirmed','closed','cancelled'])for(const allowed of [true,false])for(const value of [0,400]){
+    const result=backend.capability({commercial_status:status,available_to_invoice_value:value},allowed);
+    assert.equal(result.allowed,allowed&&['confirmed','closed'].includes(status)&&value>0,`${status}/${allowed}/${value}: authoritative invoice creation`);
+  }
   const qa=window.__qa;
   const fixture=(status,allowed)=>({summary:{commercial_status:status,sales_currency:'USD'},items:[],
     financial_access:{read:false,write:false},capabilities:{actions:{cancel:{allowed}}}});
   for(const [status,allowed] of [['draft',true],['confirmed',true],['confirmed',false],['closed',false],['cancelled',false],['confirmed',undefined]]){
     qa.fixture(fixture(status,allowed));
     assert.equal(qa.renderSummary().includes('data-ws-action="cancel_sale"'),allowed===true,`${status}/${allowed}: honor permission-aware capability`);
+  }
+  for (const status of ['draft','cancelled']) {
+    const data=fixture(status,false);
+    data.summary.available_to_invoice_value=400;
+    data.financial_access={read:true,write:true};
+    data.billing={invoices:[],capabilities:{create_invoice:{allowed:false}}};
+    qa.fixture(data);
+    assert.equal(qa.nextAction().actions.some(action=>action[1]==='new_invoice'),false,`${status}: next step must not offer a rejected invoice`);
+    assert.equal(qa.renderBilling().includes('data-ws-action="new_invoice"'),false,`${status}: billing must not offer a rejected invoice`);
+  }
+  for(const allowed of [true,false,undefined]){
+    const data=fixture('confirmed',true);data.financial_access={read:true,write:true};
+    data.summary.available_to_invoice_value=400;data.billing={invoices:[],capabilities:{create_invoice:{allowed}}};
+    qa.fixture(data);
+    assert.equal(qa.renderBilling().includes('data-ws-action="new_invoice"'),allowed===true,'UI must honor capability, including missing permissions');
+    if(allowed!==true){await qa.runAction('new_invoice');assert.match(messages.textContent,/ya no está disponible/);}
   }
   qa.fixture(fixture('confirmed',true));
   qa.decision(async config=>{decisions.push(config);return accepted;});
@@ -142,7 +164,7 @@ try {
   assert.equal(calls.length,0,'declining the dialog cannot cancel');assert.equal(reloads,0);
   accepted=true;await qa.runAction('cancel_sale');
   assert.deepEqual(calls,[{id:'qa-sale',action:'cancel'}]);assert.equal(reloads,1);
-  assert.equal(decisions[0].danger,true);assert.equal(decisions[0].capability,'cancel');
+  assert.match(decisions[0].copy,/facturas, cobros y saldos se conservarán/);assert.equal(decisions[0].danger,true);assert.equal(decisions[0].capability,'cancel');
   assert.match(messages.textContent,/Venta cancelada/);
   qa.fixture(fixture('confirmed',false));
   await assert.rejects(()=>qa.transitionSale('cancel'),/ya no está disponible/);

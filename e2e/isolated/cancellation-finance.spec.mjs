@@ -307,7 +307,65 @@ test('financial cancellations preserve balances, permissions and history', async
       expect((await f.one('select status from invoices where id=$1',[invoice.id])).status).toBe('void');
       await cash(0,'sale cancelled');await shot('06-cancelled-sale');
     });
-    expect(evidence.checkpoints).toHaveLength(12);expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
+    await step('CF-13 cancellation retains draft, unpaid and partially paid invoices without offering new billing',async()=>{
+      await sales.locator('[data-ws-tab="billing"]').click();
+      await expect(sales.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
+      await sales.locator('[data-close="detail"]').click();
+      for(const kind of ['draft','unpaid','partial']){
+        const sale=await createSale(f.client,`QA-CF-ACTIVE-${kind}`);
+        await sales.locator(`[data-view-order="${sale.id}"]`).click();
+        await sales.locator('[data-ws-tab="billing"]').click();
+        await sales.locator('[data-ws-action="new_invoice"]').first().click();
+        // Only bill half the sale: cancellation must hide the remaining 200.
+        await sales.locator('[data-ws-invoice-qty]').fill('50');
+        await mutation('invoices',()=>sales.locator('#wsSaveInvoice').click());
+        await expect(sales.locator('#salesWorkspaceInvoiceModal')).toBeHidden();
+        const inv=await f.one('select * from invoices where sales_order_id=$1',[sale.id]);
+        if(kind!=='draft'){
+          await sales.locator('[data-ws-action="issue_invoice"]').first().click();
+          await mutation('invoices',()=>sales.locator('[data-sales-workspace-accept]').click());
+        }
+        if(kind==='partial'){
+          await sales.locator('[data-ws-action="payment"]').first().click();
+          await sales.locator('#wsPaymentAmount').fill('60');
+          await mutation('invoice-payments',()=>sales.locator('#wsSavePayment').click());
+          await expect(sales.locator('#salesWorkspacePaymentModal')).toBeHidden();
+        }
+        const before=JSON.stringify({invoice:await f.one('select * from invoices where id=$1',[inv.id]),
+          items:await f.rows('select * from invoice_items where invoice_id=$1 order by id',[inv.id]),
+          payments:await f.rows('select * from payments where invoice_id=$1 order by id',[inv.id]),
+          financial:await f.financial(inv)});
+        await sales.locator('[data-ws-tab="summary"]').click();
+        await sales.locator('[data-ws-action="cancel_sale"]').click();
+        await expect(sales.locator('.sales-ws-decision-panel')).toContainText('facturas, cobros y saldos se conservarán');
+        await sales.locator('[data-sales-workspace-cancel]').click();
+        expect((await f.one('select status from sales_orders where id=$1',[sale.id])).status).toBe('confirmed');
+        await sales.locator('[data-ws-action="cancel_sale"]').click();
+        await mutation('sales',()=>sales.locator('[data-sales-workspace-accept]').click());
+        await expect(sales.locator('#detailSubtitle')).toContainText('Cancelada');
+        await expect(sales.locator('.sales-workspace-next-text')).toContainText('Venta cancelada');
+        await expect(sales.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
+        await sales.locator('[data-ws-tab="billing"]').click();
+        await expect(sales.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
+        await expect(sales.locator('#salesWorkspacePanel')).toContainText(inv.invoice_number);
+        expect(JSON.stringify({invoice:await f.one('select * from invoices where id=$1',[inv.id]),
+          items:await f.rows('select * from invoice_items where invoice_id=$1 order by id',[inv.id]),
+          payments:await f.rows('select * from payments where invoice_id=$1 order by id',[inv.id]),
+          financial:await f.financial(inv)})).toBe(before);
+        const workspace=await api.request(`sales-workspace?sales_order_id=${sale.id}`,{token:writeToken});
+        expect(workspace.status).toBe(200);
+        expect(workspace.body.workspace.billing.capabilities.create_invoice).toEqual({allowed:false,reason:'INVOICE_SO_NOT_BILLABLE'});
+        const item=await f.one('select id from sales_order_items where sales_order_id=$1',[sale.id]);
+        await denied('invoices',{action:'create_plan',sales_order_id:sale.id,lines:[{sales_order_item_id:item.id,quantity:1}]},/facturar|facturable|confirmada|cerrada/i);
+        const view=await navigate(b,'invoices');await view.locator('[data-view="all"]').click();
+        const row=view.locator(`[data-invoice-row="${inv.id}"]`);await expect(row).toBeVisible();
+        await expect(row.locator('.invoice-money.balance')).toHaveText(kind==='partial'?'USD 140.00':'USD 200.00');
+        await cash(kind==='partial'?60:0,`cancelled sale with ${kind} invoice`);
+        await shot(`13-cancelled-${kind}`);
+        await sales.locator('[data-close="detail"]').click();
+      }
+    });
+    expect(evidence.checkpoints).toHaveLength(13);expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404||row.status>=500)).toEqual([]);
   } finally {
     const path=info.outputPath('cancellation-finance-evidence.json');fs.mkdirSync(info.outputDir,{recursive:true});fs.writeFileSync(path,JSON.stringify(evidence,null,2));
