@@ -176,9 +176,14 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
     });
     const receive=async (quantity,pallets,lot,status=200)=>{
       await purchase.locator(`[data-receive-order="${po.id}"]`).click();
+      // The native modal schedules its initial focus on the next animation frame.
+      // Wait for that focus before typing so WebKit cannot send the first fill to it.
+      await expect(purchase.locator('#rWarehouse')).toBeFocused();
       await purchase.locator('.rrQty').fill(String(quantity));
       await purchase.locator('.rrPallets').fill(String(pallets));
       await purchase.locator('.rrLot').fill(lot);
+      await expect(purchase.locator('.rrQty')).toHaveValue(String(quantity));
+      await expect(purchase.locator('.rrPallets')).toHaveValue(String(pallets));
       await expect(purchase.locator('#rWarehouse')).toHaveValue(f.warehouse);
       const result=await mutation(a,'purchases',()=>purchase.locator('#saveReceipt').click(),status);
       if (status===200) await expect(purchase.locator('#receiveModal')).toBeHidden();

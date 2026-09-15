@@ -320,16 +320,19 @@ test('financial cancellations preserve balances, permissions and history', async
         await sales.locator('[data-ws-invoice-qty]').fill('50');
         await mutation('invoices',()=>sales.locator('#wsSaveInvoice').click());
         await expect(sales.locator('#salesWorkspaceInvoiceModal')).toBeHidden();
+        await expect(sales.locator('[data-ws-action="issue_invoice"]').first()).toBeVisible();
         const inv=await f.one('select * from invoices where sales_order_id=$1',[sale.id]);
         if(kind!=='draft'){
           await sales.locator('[data-ws-action="issue_invoice"]').first().click();
           await mutation('invoices',()=>sales.locator('[data-sales-workspace-accept]').click());
+          await expect(sales.locator('#detailMsg')).toHaveText('Factura emitida.');
         }
         if(kind==='partial'){
           await sales.locator('[data-ws-action="payment"]').first().click();
           await sales.locator('#wsPaymentAmount').fill('60');
           await mutation('invoice-payments',()=>sales.locator('#wsSavePayment').click());
           await expect(sales.locator('#salesWorkspacePaymentModal')).toBeHidden();
+          await expect(sales.locator('#detailMsg')).toContainText('Cobro registrado');
         }
         const before=JSON.stringify({invoice:await f.one('select * from invoices where id=$1',[inv.id]),
           items:await f.rows('select * from invoice_items where invoice_id=$1 order by id',[inv.id]),

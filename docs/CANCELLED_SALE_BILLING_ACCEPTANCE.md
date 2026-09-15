@@ -40,3 +40,14 @@ por Daniel para priorizar escritorio; no se requiere pago BrowserStack.
 Esta entrega no cierra variantes financieras Direct Ship, toda sincronización de
 Reportes, tracking/documentos/tareas/notificaciones ni la auditoría integral.
 Rollback: revertir la PR; sin migración ni reverso de datos.
+
+## Primer CI y ajuste del test
+
+Run 35035434828: CF-13 Chromium conservó la factura borrador y falló al cambiar
+pestaña durante el refresco posterior a emitir la segunda factura. Se espera
+ahora el mensaje real Factura emitida/Cobro registrado, que ocurre tras reload.
+COM-03 WebKit guardó cantidad 100/pallets 4: screenshot del artefacto 10422834061
+inspeccionado. El modal enfoca almacén en requestAnimationFrame; el test espera
+ese foco antes de escribir y verifica ambos valores antes de guardar.
+Cambios solo en sincronización/aserciones QA; no bypass, force click, pausas fijas,
+respuestas simuladas ni alteración de reglas. Revalidar ambos motores.
