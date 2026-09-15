@@ -3,6 +3,8 @@ name: UX6 Tasks Feedback
 on:
   pull_request:
     paths:
+      - 'api/tasks.js'
+      - 'scripts/check-task-related-visibility.mjs'
       - 'admin/tasks-workspace.js'
       - 'admin/tasks-workspace.css'
       - 'admin/erp.js'
@@ -25,6 +27,8 @@ jobs:
           node-version: '24'
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate related task visibility
+        run: node scripts/check-task-related-visibility.mjs
       - name: Validate safe Tasks feedback
         run: node scripts/check-ux6-tasks-feedback.mjs
       - name: Preserve Tasks and workflow ownership
