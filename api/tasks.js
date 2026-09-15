@@ -140,7 +140,8 @@ async function taskDetail(task, admin, manage) {
   const relatedIds = [...new Set([...dependencyIds,...dependentIds])];
   let related = [];
   if (relatedIds.length) {
-    const rows = await supabase('operational_task_workspace',{ query:`?select=*&id=in.(${relatedIds.join(',')})` });
+    const visibility = await visibilityQuery(admin,manage);
+    const rows = await supabase('operational_task_workspace',{ query:`?select=*&id=in.(${relatedIds.join(',')})${visibility}` });
     related = await enrichEntityLabels(rows || []);
   }
   const byId = new Map(related.map(row=>[row.id,row]));
@@ -151,6 +152,7 @@ async function taskDetail(task, admin, manage) {
     history:history || [],
     dependencies:dependencyIds.map(id=>byId.get(id)).filter(Boolean),
     dependents:dependentIds.map(id=>byId.get(id)).filter(Boolean),
+    restricted_dependency_count:dependencyIds.filter(id=>!byId.has(id)).length,
     capabilities:{ manage:Boolean(manage), write:await hasPermission(admin,'tasks.write') }
   };
 }

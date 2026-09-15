@@ -1,3 +1,12 @@
+## Continuación — visibilidad de tareas relacionadas (2026-09-15)
+
+PR #307 publicada, main 3b47f549074ef37cf35f48bb34122c84bd1c25de.
+Rama actual `fix/task-related-visibility`: dependencias/dependientes deben respetar
+la visibilidad del listado antes de enriquecer entidades. El contador de bloqueos
+y el RPC siguen siendo autoritativos. Ver TASK_RELATED_VISIBILITY_ACCEPTANCE.md;
+la PR registra CI exacto y publicación final. Escritorio sigue siendo prioridad.
+El resto de este documento conserva los cortes anteriores como contexto.
+
 # Current State — Export MCA ERP
 
 Actualización: 2026-09-15 UTC. Prioridad: cierre funcional en navegador de escritorio.

@@ -1,3 +1,12 @@
+## 2026-09-15 — Acceso a tareas relacionadas
+
+- Detalle aplica el filtro canónico de visibilidad a dependencias y dependientes
+  antes de consultar etiquetas de entidades; gestores conservan acceso completo.
+- Aviso cuando existen dependencias fuera del acceso, sin exponer su contenido.
+- Se conservan bloqueos, historial, comentarios y datos; sin migraciones.
+- Prueba aislada reproduce la fuga previa y verifica API/UI; ver matriz y PR
+  para CI e integración final.
+
 ## 2026-09-15 — Facturación coherente tras cancelar venta
 
 - Capability del workspace impide ofrecer nueva factura cuando el RPC no admite
