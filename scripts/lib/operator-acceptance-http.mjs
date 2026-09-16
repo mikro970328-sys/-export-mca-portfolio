@@ -17,7 +17,7 @@ const routes = {'/api/login':login,'/api/account':account,'/api/admins':admins,
 // Host the unmodified Vercel handlers on loopback. Only the /rest/v1 prefix is
 // stripped before proxying to the real PostgREST process; SQL, auth, projection,
 // permissions, request transactions and auditing are not replaced with mocks.
-export async function startOperatorApi({ fallbackHandler, dropApiResponse } = {}) {
+export async function startOperatorApi({ fallbackHandler, dropApiResponse, beforeApiResponse } = {}) {
   const rest = new URL(process.env.ERP_TEST_POSTGREST_URL || 'http://127.0.0.1:3000');
   if(rest.protocol!=='http:' || !['127.0.0.1','localhost','[::1]'].includes(rest.hostname)
     || rest.username || rest.password || rest.pathname!=='/' || rest.search) throw Error('PostgREST must be local QA');
@@ -38,10 +38,16 @@ export async function startOperatorApi({ fallbackHandler, dropApiResponse } = {}
       req.pipe(upstream);return;
     }
     // Fault injection only after a real API handler has committed its response.
-    if(dropApiResponse&&url.pathname.startsWith('/api/')){
+    if((dropApiResponse||beforeApiResponse)&&url.pathname.startsWith('/api/')){
       const end=res.end.bind(res);
       res.end=(body,...args)=>{
-        if(dropApiResponse(req,url,body)){res.destroy();return res;}
+        if(dropApiResponse?.(req,url,body)){res.destroy();return res;}
+        if(beforeApiResponse){
+          Promise.resolve().then(()=>beforeApiResponse(req,url,body)).then(()=>end(body,...args)).catch(error=>{
+            console.error('QA_RESPONSE_GATE_FAILED',error.message);res.destroy();
+          });
+          return res;
+        }
         return end(body,...args);
       };
     }

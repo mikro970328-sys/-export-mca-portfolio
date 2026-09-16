@@ -16,10 +16,10 @@ const mime = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
 
 // Optional asset gate controls delivery order in startup acceptance. HTTP status,
 // asset bytes, handlers and the service worker remain unchanged in every engine.
-export async function startBrowserAcceptanceServer({ beforeAsset, storageHandler, dropApiResponse } = {}) {
+export async function startBrowserAcceptanceServer({ beforeAsset, storageHandler, dropApiResponse, beforeApiResponse } = {}) {
   const handlers = new Map(await Promise.all(routeNames.map(async name =>
     [`/api/${name}`, (await import(new URL(`../../api/${name}.js`, import.meta.url))).default])));
-  return startOperatorApi({ dropApiResponse, fallbackHandler: async (req,res,url) => {
+  return startOperatorApi({ dropApiResponse, beforeApiResponse, fallbackHandler: async (req,res,url) => {
     if(storageHandler&&await storageHandler(req,res,url))return;
     const handler = handlers.get(url.pathname);
     if (handler) {
