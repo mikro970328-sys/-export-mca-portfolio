@@ -226,5 +226,30 @@ export async function checkOperatorHttp({db,f,users,test}) {
       assert.equal(Number((await f.one("select count(*) as n from audit_log where action='login_failed' and entity_id=$1",[users.b.id])).n),before+5);
       expect(await liveState(tokens.a),200);
     });
+    await test('HTTP-11 concurrent deliveries of one collection commit one payment and one audit',async()=>{
+      const inv=await f.invoice(await f.sale()),requestId=crypto.randomUUID();
+      const body={action:'register',invoice_id:inv.id,amount:125,request_id:requestId,notes:'QA same intent'};
+      const holder=await db.connect();let pending;
+      try{
+        await holder.query('begin');
+        await holder.query("select pg_advisory_xact_lock(hashtextextended('invoice-payment:' || $1,0))",[requestId]);
+        pending=Promise.all([1,2].map(()=>api.request('invoice-payments',{method:'POST',token:tokens.a,body})));
+        let blocked=0;const deadline=Date.now()+7000;
+        while(Date.now()<deadline){
+          blocked=Number((await db.query(`with recursive waiting(pid) as (
+            select pid from pg_stat_activity where $1::int=any(pg_blocking_pids(pid))
+            union select a.pid from pg_stat_activity a join waiting w on w.pid=any(pg_blocking_pids(a.pid))
+          ) select count(*)::int as n from waiting`,[holder.processID])).rows[0].n);
+          if(blocked>=2)break;await pause(20);
+        }
+        assert.ok(blocked>=2,'both HTTP deliveries overlap at the request lock');
+        await holder.query('commit');
+        const results=await pending;results.forEach(r=>expect(r,200));
+        assert.equal(results[0].body.payment.id,results[1].body.payment.id);
+        assert.equal((await f.rows('select id from payments where invoice_id=$1',[inv.id])).length,1);
+        assert.equal(Number((await f.financial(inv)).paid_amount),125);
+        assert.equal(Number((await f.one("select count(*) as n from audit_log where action='invoice_payment_registered' and entity_id=$1",[results[0].body.payment.id])).n),1);
+      }finally{await holder.query('rollback');if(pending)await pending;holder.release();}
+    });
   }finally{await api.close();}
 }
