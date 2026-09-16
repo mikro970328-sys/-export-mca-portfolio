@@ -1,37 +1,45 @@
 # Estado de respaldo y recuperación
 
-Corte: 2026-09-16. Consulta de configuración de solo lectura.
+Corte: 2026-09-16. Consulta de configuración y panel autenticado, de solo lectura.
 
 ## Confirmado
 
 - Proyecto qflncyhdspuvtrxsqgbj ACTIVE_HEALTHY, PostgreSQL 17.6.1.147.
-- Organización Export MCA Tracking, swtsszwnkpzcpuzenlps: plan free,
-  confirmado por get_organization; no se cambió la suscripción.
-- El conector disponible no expone inventario de backups. El panel de copias
-  redirige a inicio de sesión en este navegador; no se inició restauración.
-- La documentación oficial indica copias diarias administradas para planes
-  Pro/Team/Enterprise y recomienda exportaciones externas para free:
+- Organización Export MCA Tracking, swtsszwnkpzcpuzenlps, plan free.
+- El acceso mediante GitHub se completó con browserAuth; el panel del proyecto
+  mostró la organización, main Production y Scheduled backups. Ya no está
+  bloqueado por falta de inicio de sesión.
+- El panel dice expresamente que Free no incluye backups del proyecto; ofrece
+  Pro con hasta siete días de copias programadas. No hay inventario de copias
+  restaurables accesible en el plan actual. No afirmar que existe una copia.
+- URL observada del panel:
+  https://supabase.com/dashboard/project/qflncyhdspuvtrxsqgbj/database/backups/scheduled?method=github
+- Precio público revisado: Pro desde USD 25/mes, con siete días de backups de
+  base. El precio final depende de proyectos, cómputo y consumo.
+  https://supabase.com/pricing
+- La documentación recomienda exportación externa para free. Los backups de
+  base excluyen los objetos de Storage, que necesitan copia independiente.
   https://supabase.com/docs/guides/platform/backups
-- Los backups de base no incluyen los archivos de Storage; estos necesitan una
-  copia y verificación propia. Revisado también el changelog oficial:
-  https://supabase.com/changelog
 
-## No acreditado
+## Pendiente y decisión necesaria
 
-No se han acreditado copia recuperable, última fecha, retención, copia externa
-de documentos ni ensayo completo de restauración del proyecto. ACTIVE_HEALTHY
-y las bases de QA no demuestran recuperación ante desastre.
+1. Elegir un destino privado ya disponible para exportar base y archivos, o
+   autorizar por separado un plan de respaldo administrado. No contratar planes
+   ni add-ons sin presupuesto/autorización. No asumir que Pro cubre Storage.
+2. Obtener acceso de exportación por un canal seguro. No pedir contraseñas,
+   connection strings ni claves por chat; no colocar datos en el repo público
+   ni en artifacts de Actions. No usar la base del ERP como único destino.
+3. Crear la copia y documentar fecha, tamaño, integridad y retención.
+4. Ensayar en destino aislado: esquema/migraciones, usuarios/permisos, conteos y
+   saldos, hashes de archivos y recorrido comercial; medir punto y tiempo
+   recuperados sin sustituir producción.
 
-## Pasos concretos de cierre
+## Límite de la evidencia
 
-1. Consultar el inventario real de copias mediante sesión autorizada del panel
-   o Management API con acceso ya provisionado. No enviar claves por chat.
-2. Establecer destino privado y retención para exportación de base y objetos de
-   Storage, o elegir explícitamente una opción de respaldo administrado.
-3. Ensayar en destino aislado: esquema/migraciones, usuarios/permisos, conteos y
-   saldos, hashes de documentos y recorrido comercial; medir tiempo y punto
-   recuperado. Confirmar que producción permaneció intacta.
-4. Registrar fecha/hash/tamaño/retención de la copia y resultado de restauración.
+No se ha acreditado copia recuperable, última fecha, retención externa de
+documentos ni ensayo completo de restauración. La base saludable y las pruebas
+de QA no demuestran recuperación ante desastre. La funcionalidad publicada
+(#326/#327) y la restaurabilidad son resultados separados.
 
-No se compraron add-ons, crearon proyectos facturables, exportaron datos
+No se compraron planes, crearon proyectos facturables, exportaron datos
 comerciales ni restauró/reemplazó producción durante esta revisión.

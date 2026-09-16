@@ -22,9 +22,11 @@ Publicado: `0e53afab6c6efd45966686f597e1b5c20b6aa5cb`; producción
 
 **Pendiente concreto:** acreditar backup recuperable de base y archivos,
 inventario/fecha/retención y ensayo de restauración en destino aislado.
-Supabase confirmó plan free; el conector no lista copias y el panel requiere
-iniciar sesión. Leer security/BACKUP_RECOVERY_STATUS.md. No inventar cobertura
-de respaldo ni declarar el ERP completamente certificado.
+Acceso autenticado al panel ya verificado: Supabase Free no incluye backups
+del proyecto. El pendiente no es iniciar sesión: elegir exportación a destino
+privado o cambio de plan autorizado, respaldar también Storage y probar la
+restauración. Leer security/BACKUP_RECOVERY_STATUS.md. No inventar cobertura
+ni declarar el ERP completamente certificado.
 
 Continuar por recuperación, con escritorio prioritario. iPhone físico,
 BrowserStack, PWA instalada y push externo real siguen diferidos.
