@@ -1,26 +1,22 @@
 name: Isolated ERP recovery probe
-
 on:
   push:
     branches: ['build/credit-reversal-migration']
-
 permissions:
   contents: read
-
 jobs:
-  public-diagnostics-baseline:
+  public-diagnostics-correction:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: c42fc2e6d0d9df56436886ee485eae978ec1f4f2
+          ref: c5411599f559b3dcba249b4d524b2f0185ca1af1
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Validate acceptance adapter syntax
-        run: node --check scripts/check-api-public-error-stored.mjs
-      - name: Reproduce stored and indirect public diagnostics
+      - name: Stored and indirect diagnostics
         run: node scripts/check-api-public-error-stored.mjs
-      - name: Identify history and notification response owners
-        if: always()
-        run: git grep -n -E 'shipment_history|Falló WhatsApp|release_failed|notification_inbox_workspace' -- 'api/*.js' 'supabase/migrations/*.sql'
+      - name: Direct public errors
+        run: node scripts/check-api-public-error-responses.mjs
+      - name: Preserve notification claims after provider acceptance
+        run: node scripts/check-tracking-notification-claim.mjs
