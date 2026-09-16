@@ -1,3 +1,9 @@
+## 2026-09-16 · COGS y reportes Direct Ship
+
+La vista de costo por línea de venta omitía Direct Ship. Corrección y pruebas
+descritas en DIRECT_SHIP_FINANCIAL_REPORTS.md. Publicación pendiente del PR.
+La persistencia de asignación manual de tareas ya está publicada en PR #316.
+
 ## 2026-09-16 · Persistencia de reasignación manual
 
 Corrección del owner SQL de workflow: conserva equipo/usuario elegidos manualmente

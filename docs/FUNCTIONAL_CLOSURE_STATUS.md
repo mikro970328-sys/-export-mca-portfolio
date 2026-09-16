@@ -1,6 +1,6 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #315, 6ac358642491876f5bcd887b862e6051f2398087.
+Corte 2026-09-16. Base publicada PR #316, 8b69bfbc9b98f126d7735e32e2dc3d96fd01173b.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
@@ -52,4 +52,10 @@ de la ruta. La corrección en curso registra una reasignación explícita dentro
 RPC existente y la preserva al reconciliar y reabrir, incluso para equipo o sin
 responsable. Las tareas automáticas siguen la ruta. No reconstruye asignaciones
 antiguas ya sobrescritas ni añade un control para volver al modo automático.
-Ver WORKFLOW_MANUAL_ASSIGNMENT.md para alcance y pruebas. Publicación pendiente.
+Publicado en PR #316; 16/16 jobs de navegador. Ver WORKFLOW_MANUAL_ASSIGNMENT.md para alcance y pruebas.
+
+## Trabajo actual: finanzas Direct Ship
+
+Se reprodujo y corrigió en la vista propietaria la omisión del costo de Direct
+Ship. Ver DIRECT_SHIP_FINANCIAL_REPORTS.md: corrección física 840→810, costo,
+facturas, pagos y reportes entre dos operadores. CI/publicación pendientes.

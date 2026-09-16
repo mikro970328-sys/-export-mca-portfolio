@@ -7,7 +7,7 @@ import { startBrowserAcceptanceServer, root } from './server.mjs';
 // All commercial writes originate in the native UI. SQL only seeds the isolated
 // catalogues/identities and verifies results. No production URLs or credentials.
 test('direct ship: purchase to corrected physical dispatch without WR or stock', async ({ browser }, info) => {
-  test.setTimeout(300_000);
+  test.setTimeout(480_000);
   process.chdir(root);
   const db=await createOperatorAcceptanceDb();
   const nativeFetch=globalThis.fetch;
@@ -27,7 +27,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
         add column if not exists currency text default 'USD',
         add column if not exists created_at timestamptz default now(),
         add column if not exists updated_at timestamptz default now();
-      grant usage on sequence purchase_order_number_seq, sales_orders_so_serial_seq to service_role;
+      grant usage on sequence purchase_order_number_seq, sales_orders_so_serial_seq, invoices_invoice_serial_seq to service_role;
       grant select on load_expediente_documents, documents, load_traceability_sources,
         load_traceability_summary to service_role;
       grant select,insert on shipment_history to service_role;
@@ -45,7 +45,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     await api.ready(db);
     const master=await api.request('login',{method:'POST',body:{username:users.master.username,password:users.master.password}});
     expect(master.status).toBe(200);
-    const permissions=['procurement.read','procurement.write','sales.read','sales.write','logistics.read','logistics.write','warehouse.read'];
+    const permissions=['procurement.read','procurement.write','sales.read','sales.write','logistics.read','logistics.write','warehouse.read','finance.read','finance.write','reports.read'];
     const role=await api.request('access-control?resource=roles',{method:'PATCH',token:master.body.token,
       body:{id:users.a.access_role_id,permission_keys:permissions}});
     expect(role.status).toBe(200);
@@ -76,17 +76,17 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     loggedIn=true;
     await page.waitForFunction(()=>window.NavigationShell?.owner==='navigation-shell.js');
 
-    const module=name=>page.frameLocator(`#${name}Section iframe`);
-    const navigate=async name=>{
-      const button=page.locator(`[data-section="${name}Section"]`).first();
-      if(use.isMobile&&!await page.locator('#sidebar').evaluate(el=>el.classList.contains('mobile-open'))){
-        await page.locator('#mobileMenuBtn').click();await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);
+    const module=(name,target=page)=>target.frameLocator(`#${name}Section iframe`);
+    const navigate=async(name,target=page)=>{
+      const button=target.locator(`[data-section="${name}Section"]`).first();
+      if(use.isMobile&&!await target.locator('#sidebar').evaluate(el=>el.classList.contains('mobile-open'))){
+        await target.locator('#mobileMenuBtn').click();await expect(target.locator('#sidebar')).toHaveClass(/mobile-open/);
       }
       if(!await button.isVisible()){
         const group=button.locator('xpath=ancestor::*[contains(concat(" ",normalize-space(@class)," ")," nav-group ")]');
         await group.locator('.nav-group-btn').click();
       }
-      await button.click();await expect(page.locator(`#${name}Section`)).toBeVisible();return module(name);
+      await button.click();await expect(target.locator(`#${name}Section`)).toBeVisible();return module(name,target);
     };
     const responseFor=path=>page.waitForResponse(r=>new URL(r.url()).pathname===`/api/${path}`&&r.request().method()==='POST')
       .then(response=>({response}),error=>({error}));
@@ -241,6 +241,21 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       expect((await f.one('select fulfillment_status from sales_order_progress where sales_order_id=$1',[so.id])).fulfillment_status).toBe('dispatched');
       await expect(sales.locator('#salesSupplyBody')).toContainText('Despachado');
     });
+    // Keep an independent reader on Reports while the writer changes operations.
+    const readRole=await api.request('access-control?resource=roles',{method:'PATCH',token:master.body.token,body:{id:users.b.access_role_id,permission_keys:['reports.read','sales.read','finance.read','procurement.read']}});expect(readRole.status).toBe(200);
+    const observerContext=await browser.newContext({viewport:use.viewport,userAgent:use.userAgent,isMobile:use.isMobile,hasTouch:use.hasTouch,deviceScaleFactor:use.deviceScaleFactor,locale:'es-US',timezoneId:'America/New_York'});contexts.push(observerContext);
+    await observerContext.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin===api.base||['data:','blob:','about:'].includes(u.protocol))return route.continue();evidence.external.push(u.origin+u.pathname);return route.abort();});
+    const observer=await observerContext.newPage();observer.setDefaultTimeout(25_000);
+    observer.on('pageerror',e=>evidence.errors.push(e.message));
+    observer.on('response',r=>{const u=new URL(r.url());if(u.pathname.startsWith('/api/'))evidence.api.push({path:u.pathname,status:r.status(),method:r.request().method()});});
+    let reportNavigations=0;observer.on('framenavigated',()=>reportNavigations++);
+    await observer.goto(`${api.base}/admin/pwa.html`);await observer.locator('#username').fill(users.b.username);await observer.locator('#password').fill(users.b.password);await observer.locator('#login').click();await expect(observer.locator('#loginPage')).toBeHidden();
+    await observer.waitForFunction(()=>window.NavigationShell?.owner==='navigation-shell.js');
+    const reports=await navigate('reports',observer);
+    const reportNumber=async label=>{const text=await reports.locator(`#reportTable tbody tr:first-child [data-label="${label}"]`).textContent();return /[0-9]/.test(text)?Number(text.replace(/[^0-9.-]/g,'')):null;};
+    await expect.poll(()=>reportNumber('COGS reconocido'),{timeout:45_000}).toBe(2100);
+    const reportNavBaseline=reportNavigations;
+    const reportShot=async name=>{const path=info.outputPath(`${name}.png`);await observer.screenshot({path,timeout:5000});await info.attach(name,{path,contentType:'image/png'});};
     await step('DS-10 raw dispatched allocation remains protected',async()=>{
       await expect(sales.locator('[data-supply-action="unlink-direct"]')).toHaveCount(0);
       await expect(sales.locator('[data-supply-action="dispatch-direct"]')).toHaveCount(0);
@@ -278,6 +293,10 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await expect(sales.locator('#salesSupplyBody')).toContainText('Enviado real:');
       await expect(sales.locator('#salesSupplyBody')).toContainText('810');
       await expect(sales.locator('#salesSupplyBody')).toContainText('Diferencia: 30');
+      await expect.poll(()=>reportNumber('COGS reconocido'),{timeout:45_000}).toBe(2025);
+      await expect.poll(()=>reportNumber('Venta atribuida')).toBe(3240);
+      await expect.poll(()=>reportNumber('Valor no atribuido')).toBe(120);
+      await reportShot('11-observer-corrected-report');
       evidence.physicalCorrection={planned:840,shipped:810,difference:30};
       await shot('11-direct-corrected-810');
     });
@@ -306,7 +325,34 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       expect(Number(contents.allocated_sales_quantity)).toBe(810);expect(Number(contents.planned_sales_quantity)).toBe(840);
       await shot('13-correction-audit');
     });
-    expect(evidence.checkpoints).toHaveLength(13);
+    await step('DS-14 direct sale invoice and collection appear live in reader reports',async()=>{
+      await sales.locator('[data-supply-close="main"]').click();await sales.locator(`[data-view-order="${so.id}"]`).click();await sales.locator('[data-ws-tab="billing"]').click();
+      await sales.locator('[data-ws-action="new_invoice"]').first().click();await mutation('invoices',()=>sales.locator('#wsSaveInvoice').click());await expect(sales.locator('#salesWorkspaceInvoiceModal')).toBeHidden();
+      await sales.locator('[data-ws-action="issue_invoice"]').first().click();await mutation('invoices',()=>sales.locator('[data-sales-workspace-accept]').click());
+      await reports.locator('[data-dataset="invoices"]').click();await expect.poll(()=>reportNumber('Total'),{timeout:45_000}).toBe(3360);
+      await sales.locator('[data-ws-action="payment"]').first().click();await sales.locator('#wsPaymentAmount').fill('1000');await mutation('invoice-payments',()=>sales.locator('#wsSavePayment').click());await expect(sales.locator('#salesWorkspacePaymentModal')).toBeHidden();
+      await expect.poll(()=>reportNumber('AR actual'),{timeout:45_000}).toBe(2360);await expect.poll(()=>reportNumber('Cobrado aplicado')).toBe(1000);
+      expect(await reportNumber('COGS reconocido')).toBeNull();
+      const invoice=await f.one('select * from invoices');expect([...(await f.rows('select total,paid_amount,balance_due from invoice_financial_progress where invoice_id=$1',[invoice.id]))].map(r=>[r.total,r.paid_amount,r.balance_due].map(Number))).toEqual([[3360,1000,2360]]);
+      await sales.locator('[data-ws-tab="costs"]').click();await sales.locator('[data-ws-action="new_cost"]').first().click();await sales.locator('#wsCostAmount').fill('50');await mutation('costs',()=>sales.locator('#wsSaveCost').click());await expect(sales.locator('#salesWorkspaceCostModal')).toBeHidden();await sales.locator('[data-close="detail"]').click();
+      await reports.locator('[data-dataset="sales"]').click();await expect.poll(()=>reportNumber('Contribución'),{timeout:45_000}).toBe(1165);
+    });
+    await step('DS-15 supplier bill payment and reversal preserve direct shipment and update AP',async()=>{
+      const ap=await navigate('payables');await ap.locator('#newBill').click();await ap.locator('#bPO').selectOption(po.id);await ap.locator('#bSupplierInvoice').fill('QA-DIRECT-BILL');await ap.locator('[data-bill-line] [data-total]').fill('2100');
+      const created=await mutation('payables',()=>ap.locator('#saveBill').click());await expect(ap.locator('#billModal')).toBeHidden();const bill=created.bill;
+      await ap.locator(`[data-bill-action="post"][data-bill-id="${bill.id}"]`).click();await mutation('payables',()=>ap.locator('#decisionAccept').click());await expect(ap.locator('#decisionModal')).toBeHidden();
+      await reports.locator('[data-dataset="supplier_bills"]').click();await expect.poll(()=>reportNumber('AP actual'),{timeout:45_000}).toBe(2100);
+      await ap.locator(`[data-bill-action="pay"][data-bill-id="${bill.id}"]`).click();await ap.locator('#pAmount').fill('600');const paid=await mutation('supplier-payments',()=>ap.locator('#savePayment').click());await expect(ap.locator('#paymentModal')).toBeHidden();
+      await expect.poll(()=>reportNumber('AP actual'),{timeout:45_000}).toBe(1500);
+      await ap.locator('[data-entity="payments"]').click();await ap.locator(`[data-payment-action="reverse"][data-payment-id="${paid.payment.id}"]`).click();await ap.locator('#rReason').fill('QA payment entered by mistake');await mutation('supplier-payments',()=>ap.locator('#saveReverse').click());await expect(ap.locator('#reverseModal')).toBeHidden();
+      await expect.poll(()=>reportNumber('AP actual'),{timeout:45_000}).toBe(2100);
+      await reports.locator('[data-dataset="sales"]').click();await expect.poll(()=>reportNumber('COGS reconocido'),{timeout:45_000}).toBe(2025);await expect.poll(()=>reportNumber('Contribución')).toBe(1165);
+      await expect(reports.locator('#reportTable [data-label="Cobertura COGS"]')).toHaveText('actual');
+      expect(Number((await f.one('select allocated_sales_quantity from direct_shipment_effective_allocations where id=$1',[direct.id])).allocated_sales_quantity)).toBe(810);
+      await reportShot('15-observer-financial-report');
+    });
+    expect(reportNavigations).toBe(reportNavBaseline);evidence.reportNavigations={initial:reportNavBaseline,final:reportNavigations};
+    expect(evidence.checkpoints).toHaveLength(15);
     expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404||row.status>=500)).toEqual([]);
   } finally {
