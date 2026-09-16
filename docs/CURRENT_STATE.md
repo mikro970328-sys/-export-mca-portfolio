@@ -1,3 +1,11 @@
+## 2026-09-16 · Reversos de notas de crédito
+
+PR #319 publicada en 3e5cf437af7a9664706104058d2a927a1014b487: uso del saldo a
+favor, 50/50 workflows y 16/16 jobs de navegador. Continuación actual: reversos
+de notas con motivo e historial, límites de financiación y unidades reutilizadas.
+Ver INVOICE_CREDIT_REVERSALS.md y la PR para CI, migración y publicación finales.
+La siguiente etapa mantiene las variantes financieras y aceptación diaria.
+
 ## 2026-09-16 · Aplicación y devolución del saldo a favor
 
 PR #318 publicada en d86d1804472959aab3cb15657499e58213373685: notas de crédito
