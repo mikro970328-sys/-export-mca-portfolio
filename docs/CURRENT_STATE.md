@@ -1,3 +1,10 @@
+## Continuación y pendientes consolidados — 2026-09-16
+
+PR #310 publicada: main b74b55e189f0511aa5bd7b1020736d226ed2a051.
+Rama fix/customs-delete-recovery: recuperación tras eliminación documental.
+Leer FUNCTIONAL_CLOSURE_STATUS.md para el pendiente vigente; los cortes anteriores
+no sustituyen las pruebas más recientes. PR registra CI y publicación final.
+
 ## Continuación — recuperación de carga documental (2026-09-16)
 
 PR #309 publicada: main 554c18b71abd2b0e87a10aefb06cac8e8225b727.

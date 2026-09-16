@@ -646,15 +646,37 @@
       danger:true
     });
     if(!accepted)return;
+    let removed=false;
+    let cleanupPending=false;
     setCustomsFeedback('Eliminando versión vigente...',true);
     try{
       const result=await request('/api/shipment-documents',{method:'DELETE',body:JSON.stringify({document_id:item.id})});
+      removed=true;
+      cleanupPending=Boolean(result.storage_cleanup_pending);
       await refreshAfterCustomsChange(shipment,result);
-      if(result.storage_cleanup_pending)setCustomsFeedback('Documento retirado del ERP. La limpieza física quedó pendiente para reintento.',false);
+      if(cleanupPending)setCustomsFeedback('Documento retirado del ERP. La limpieza física quedó pendiente para reintento.',false);
       else setCustomsFeedback('Versión vigente eliminada. El readiness fue recalculado.',true);
     }catch(error){
       console.error('CONTAINER_DOCUMENT_DELETE_FAILED',{shipment_id:shipment.id,document_id:item.id,error});
-      setCustomsFeedback(safeContainerMessage(error,'No se pudo eliminar el documento. Intenta nuevamente.'),false);
+      if(!removed){
+        try{
+          const recovered=await loadShipmentDocuments(shipment);
+          const deleted=recovered?.documents?.find(document=>String(document.id)===String(item.id)&&String(document.shipment_id)===String(shipment.id)&&document.deleted_at);
+          if(deleted){
+            removed=true;
+            await refreshAfterCustomsChange(shipment,recovered);
+            setCustomsFeedback('Documento retirado del ERP. Su versión permanece en el historial.',true);
+            return;
+          }
+        }catch(recoveryError){
+          console.error('CONTAINER_DOCUMENT_DELETE_RECOVERY_FAILED',{shipment_id:shipment.id,document_id:item.id,error:recoveryError});
+        }
+      }
+      if(removed){
+        setCustomsFeedback('Documento retirado del ERP, pero no se pudo actualizar la pantalla. Vuelve a abrir el contenedor para revisarlo.'+(cleanupPending?' La limpieza física quedó pendiente.':''),false);
+      }else{
+        setCustomsFeedback('No se pudo confirmar si el documento fue retirado. Vuelve a abrir el contenedor y revisa el historial antes de intentarlo otra vez.',false);
+      }
     }
   }
 
