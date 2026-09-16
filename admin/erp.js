@@ -241,7 +241,7 @@
       }
       if (accessCan('logistics.read')) {
         await loadStylesheet('/admin/containers-module.css?v=20260904-owner-tracking1', 'data-containers-module-style');
-        await loadScript('/admin/containers-module.js?v=20260916-uploadrecovery1', 'data-containers-module');
+        await loadScript('/admin/containers-module.js?v=20260916-deleterecovery1', 'data-containers-module');
       }
       if (accessCan('logistics.write')) {
         await loadStylesheet('/admin/shipment-editor.css?v=20260903-ux7tracking2', 'data-shipment-editor-style');

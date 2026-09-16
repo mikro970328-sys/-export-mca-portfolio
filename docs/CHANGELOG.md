@@ -1,3 +1,12 @@
+## 2026-09-16 — Recuperación al retirar documentos
+
+- Confirmación de eliminación se conserva si falla el refresco.
+- Ante respuesta perdida, una lectura verifica el ID exacto y su marca de borrado;
+  ausencia del listado no se interpreta como eliminación.
+- No se repite DELETE. Se conserva aviso de limpieza física pendiente conocido.
+- 13 escenarios UI aislados y actualización de pendientes funcionales consolidados.
+- Evidencia final de CI/publicación en PR de fix/customs-delete-recovery.
+
 ## 2026-09-16 — Recuperación de confirmación documental
 
 - Carga Cuba reconoce guardado confirmado aunque falle el refresco posterior.

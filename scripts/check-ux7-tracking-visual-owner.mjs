@@ -131,7 +131,7 @@ if(fs.existsSync('admin/registration-form-shell.js'))failures.push('registration
 
 for(const text of [
   "loadStylesheet('/admin/containers-module.css?v=20260904-owner-tracking1', 'data-containers-module-style')",
-  "loadScript('/admin/containers-module.js?v=20260916-uploadrecovery1', 'data-containers-module')",
+  "loadScript('/admin/containers-module.js?v=20260916-deleterecovery1', 'data-containers-module')",
   "loadStylesheet('/admin/shipment-editor.css?v=20260903-ux7tracking2', 'data-shipment-editor-style')",
   "loadScript('/admin/shipment-editor.js?v=20260903-ux7tracking2', 'data-shipment-editor')"
 ])requireText(loader,text,`asset canónico ${text}`);
