@@ -11,6 +11,9 @@ let lineSeq=0;
 let receiptView='active';
 let quickProductTarget=null;
 let warehouseWriteAccess=false;
+let receiptRequestId=null;
+let receiptSaving=false;
+let receiptSaved=false;
 const modalTriggers=new Map();
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,6 +30,12 @@ const safeWarehouseErrors=new Set([
   'El proveedor seleccionado está inactivo',
   'Selecciona al menos un producto',
   'Falta el identificador',
+  'Fecha de recepción inválida',
+  'Solicitud de recepción inválida. Abre una nueva recepción.',
+  'Esta solicitud ya registró una recepción con otros datos. Revisa el listado antes de crear una nueva.',
+  'El almacén seleccionado no existe',
+  'Revisa el almacén, proveedor y fecha de recepción',
+  'Solicitud de recepción inválida',
   'La recepción no existe.',
   'La recepción ya no está disponible para anular.',
   'No se puede anular porque la recepción ya tiene movimientos de inventario.',
@@ -36,6 +45,7 @@ const safeWarehouseErrors=new Set([
   'Acción no reconocida'
 ]);
 const safeWarehousePatterns=[
+  /^Revisa las cantidades, pesos y costos de la línea \d+$/,
   /^Selecciona el producto de la línea \d+$/,
   /^El producto de la línea \d+ no existe$/,
   /^Pallets de la línea \d+ inválido$/,
@@ -163,8 +173,8 @@ function syncWriteControls(){
   for(const id of ['newReceipt','saveWarehouse','saveReceipt']){
     const node=$(id);
     if(!node)continue;
-    node.disabled=!warehouseWriteAccess;
-    node.setAttribute('aria-disabled',String(!warehouseWriteAccess));
+    node.disabled=!warehouseWriteAccess||(id==='saveReceipt'&&(receiptSaving||receiptSaved))||(id==='newReceipt'&&receiptSaving);
+    node.setAttribute('aria-disabled',String(node.disabled));
   }
   if($('newReceipt'))$('newReceipt').title=warehouseWriteAccess?'Registrar una nueva recepción física':'No tienes permiso para registrar recepciones';
   $('warehouseReadOnlyNote')?.classList.toggle('hidden',warehouseWriteAccess);
@@ -204,8 +214,8 @@ function addLine(seed={}){lineSeq++;const id=lineSeq,div=document.createElement(
 function removeLine(id){document.querySelector(`[data-line="${id}"]`)?.remove();if(!$('receiptLines').children.length)addLine();}
 function collectLines(){return [...document.querySelectorAll('#receiptLines .line')].map(div=>{const mode=div.dataset.entryMode||'pallets';return {product_id:div.querySelector('.line-product').value,entry_mode:mode,pallets:mode==='pallets'?div.querySelector('.line-pallets').value:'',quantity:mode==='units'?div.querySelector('.line-quantity').value:'',units_per_pallet:mode==='pallets'?div.querySelector('.line-upp').value:'',lot_number:div.querySelector('.line-lot').value,net_weight_kg:div.querySelector('.line-net').value,gross_weight_kg:div.querySelector('.line-gross').value,unit_cost:div.querySelector('.line-cost').value,currency:'USD',notes:div.querySelector('.line-notes').value};});}
 function openWarehouseModal(id,focusSelector){const modal=$(id);modalTriggers.set(id,document.activeElement);modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');setTimeout(()=>modal.querySelector(focusSelector)?.focus(),0);}
-function closeWarehouseModal(id){const modal=$(id);modal.classList.add('hidden');modal.setAttribute('aria-hidden','true');modalTriggers.get(id)?.focus?.();modalTriggers.delete(id);}
-function openReceipt(){if(!warehouseWriteAccess)return showNotice('No tienes permiso para registrar recepciones.');if(!warehouses.some(x=>x.active))return showNotice('Primero crea al menos un almacén activo.');$('receiptLines').innerHTML='';addLine();const now=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);$('rReceivedAt').value=now;['rReference','rTruck','rDriver','rNotes'].forEach(id=>$(id).value='');$('rWarehouse').value='';$('rSupplier').value='';$('rMsg').textContent='';openWarehouseModal('receiptModal','#rWarehouse');}
+function closeWarehouseModal(id){if(id==='receiptModal'&&receiptSaving)return;const modal=$(id);modal.classList.add('hidden');modal.setAttribute('aria-hidden','true');modalTriggers.get(id)?.focus?.();modalTriggers.delete(id);}
+function openReceipt(){if(receiptSaving)return;if(!warehouseWriteAccess)return showNotice('No tienes permiso para registrar recepciones.');if(!warehouses.some(x=>x.active))return showNotice('Primero crea al menos un almacén activo.');receiptRequestId=crypto.randomUUID();receiptSaved=false;syncWriteControls();$('receiptLines').innerHTML='';addLine();const now=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);$('rReceivedAt').value=now;['rReference','rTruck','rDriver','rNotes'].forEach(id=>$(id).value='');$('rWarehouse').value='';$('rSupplier').value='';$('rMsg').textContent='';openWarehouseModal('receiptModal','#rWarehouse');}
 function closeReceipt(){closeWarehouseModal('receiptModal');}
 function openQuickProduct(lineId){quickProductTarget=lineId;['qpName','qpSku','qpUnit','qpBrand','qpUnitsPallet','qpFormat'].forEach(id=>$(id).value='');$('qpUnit').value='unidades';$('qpMsg').textContent='';openWarehouseModal('quickProductModal','#qpName');}
 function closeQuickProduct(){closeWarehouseModal('quickProductModal');quickProductTarget=null;}
@@ -226,7 +236,36 @@ async function cancelReceipt(id,number){
 $('saveWarehouse').onclick=async()=>{try{if(!warehouseWriteAccess)return;await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_warehouse',code:$('whCode').value,name:$('whName').value,country:$('whCountry').value,city:$('whCity').value,address:$('whAddress').value,notes:$('whNotes').value})});note('whMsg','Almacén creado.',true);['whCode','whName','whCountry','whCity','whAddress','whNotes'].forEach(id=>$(id).value='');await load();}catch(error){note('whMsg',safeWarehouseMessage(error,'No se pudo crear el almacén. Intenta nuevamente.','create_warehouse'));}};
 $('saveProduct').onclick=async()=>{try{await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_product',sku:$('pSku').value,name:$('pName').value,brand:$('pBrand').value,category:$('pCategory').value,unit:$('pUnit').value,package_format:$('pFormat').value,default_units_per_pallet:$('pUnitsPallet').value,unit_weight_kg:$('pWeight').value,country_of_origin:$('pOrigin').value,hs_code:$('pHs').value,description:$('pDescription').value,notes:$('pNotes').value})});note('pMsg','Producto creado.',true);['pSku','pName','pBrand','pCategory','pUnit','pFormat','pUnitsPallet','pWeight','pOrigin','pHs','pDescription','pNotes'].forEach(id=>$(id).value='');await load();}catch(error){note('pMsg',safeWarehouseMessage(error,'No se pudo crear el producto. Intenta nuevamente.','create_product'));}};
 $('saveQuickProduct').onclick=async()=>{const btn=$('saveQuickProduct');try{btn.disabled=true;const d=await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_product',name:$('qpName').value,sku:$('qpSku').value,unit:$('qpUnit').value,brand:$('qpBrand').value,default_units_per_pallet:$('qpUnitsPallet').value,package_format:$('qpFormat').value})});const product=d.product;if(!product?.id){const error=new Error('No se pudo crear el producto');error.code='WAREHOUSE_PRODUCT_CREATE_EMPTY';throw error;}products=[{...product,active:product.active!==false},...products.filter(x=>x.id!==product.id)];renderProducts();refreshProductOptions();const div=document.querySelector(`[data-line="${quickProductTarget}"]`);if(div){div.querySelector('.line-product').value=product.id;applyProductToLine(div);}note('qpMsg','Producto creado.',true);setTimeout(closeQuickProduct,250);}catch(error){note('qpMsg',safeWarehouseMessage(error,'No se pudo crear el producto. Intenta nuevamente.','create_quick_product'));}finally{btn.disabled=false;}};
-$('saveReceipt').onclick=async()=>{const btn=$('saveReceipt');try{if(!warehouseWriteAccess)return;btn.disabled=true;const d=await api('/api/warehouse',{method:'POST',body:JSON.stringify({action:'create_receipt',warehouse_id:$('rWarehouse').value,received_at:$('rReceivedAt').value,supplier_id:$('rSupplier').value,reference_number:$('rReference').value,truck_reference:$('rTruck').value,driver_name:$('rDriver').value,notes:$('rNotes').value,items:collectLines()})});note('rMsg',`${d.receipt.receipt_number} registrada correctamente.`,true);await load();setTimeout(closeReceipt,450);}catch(error){note('rMsg',safeWarehouseMessage(error,'No se pudo registrar la recepción. Intenta nuevamente.','create_receipt'));}finally{btn.disabled=!warehouseWriteAccess;}};
+$('saveReceipt').onclick=async()=>{
+  if(!warehouseWriteAccess||receiptSaving||receiptSaved)return;
+  receiptSaving=true;
+  syncWriteControls();
+  try{
+    const d=await api('/api/warehouse',{method:'POST',body:JSON.stringify({
+      action:'create_receipt',registration_request_id:receiptRequestId,
+      warehouse_id:$('rWarehouse').value,received_at:$('rReceivedAt').value,
+      supplier_id:$('rSupplier').value,reference_number:$('rReference').value,
+      truck_reference:$('rTruck').value,driver_name:$('rDriver').value,
+      notes:$('rNotes').value,items:collectLines()
+    })});
+    if(!d.receipt?.id)throw new Error('WAREHOUSE_RECEIPT_CREATE_EMPTY');
+    receiptSaved=true;
+    note('rMsg',d.receipt.receipt_number+' registrada correctamente.',true);
+    try{
+      await load();
+      const savedRequestId=receiptRequestId;
+      setTimeout(()=>{if(receiptRequestId===savedRequestId)closeReceipt();},450);
+    }catch(error){
+      console.error('WAREHOUSE_RECEIPT_REFRESH_FAILED',error);
+      note('rMsg',d.receipt.receipt_number+' ya está registrada. No se pudo actualizar el listado; vuelve a cargarlo para verla.',true);
+    }
+  }catch(error){
+    note('rMsg',safeWarehouseMessage(error,'No se pudo confirmar la recepción. Reintenta sin cambiar los datos para recuperar el mismo registro.','create_receipt'));
+  }finally{
+    receiptSaving=false;
+    syncWriteControls();
+  }
+};
 
 $('newReceipt').onclick=openReceipt;
 $('closeReceipt').onclick=closeReceipt;
