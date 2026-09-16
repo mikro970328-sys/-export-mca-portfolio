@@ -372,53 +372,50 @@ async function finalizeUpload(admin, body) {
 
   const version = await nextVersion(operation, scope, documentType, shared.shared_bl);
 
-  try {
-    const created = await supabase('documents', {
-      method: 'POST',
-      prefer: 'return=representation',
-      body: {
-        operation_id: operation.id,
-        client_id: operation.client_id,
-        shipment_id: scope.shipment_id,
-        bol_number: scope.bol_number,
-        shared_bl: shared.shared_bl,
-        document_type: documentType,
-        file_name: fileName,
-        storage_bucket: BUCKET,
-        storage_path: storagePath,
-        mime_type: mimeType,
-        file_size_bytes: fileSizeBytes,
-        version,
-        notes,
-        uploaded_by_admin_id: admin.admin_id,
-        uploaded_by_username: admin.username || null
-      }
-    });
-
-    const document = created?.[0];
-    await writeAudit(admin, shared.shared_bl ? 'shared_bl_document_uploaded' : 'document_uploaded', 'document', document?.id || null, {
+  // A failed response does not prove the write rolled back. Never delete the
+  // uploaded object here: it may already belong to a committed document.
+  const created = await supabase('documents', {
+    method: 'POST',
+    prefer: 'return=representation',
+    body: {
       operation_id: operation.id,
-      operation_code: operation.operation_code,
       client_id: operation.client_id,
       shipment_id: scope.shipment_id,
-      container_number: scope.shipment?.container_number || null,
       bol_number: scope.bol_number,
       shared_bl: shared.shared_bl,
-      shared_clients: shared.relation?.clients || null,
-      shared_containers: shared.relation?.containers || null,
       document_type: documentType,
       file_name: fileName,
-      version
-    });
+      storage_bucket: BUCKET,
+      storage_path: storagePath,
+      mime_type: mimeType,
+      file_size_bytes: fileSizeBytes,
+      version,
+      notes,
+      uploaded_by_admin_id: admin.admin_id,
+      uploaded_by_username: admin.username || null
+    }
+  });
 
-    return {
-      ...document,
-      signed_url: document ? await createSignedPreview(document.storage_path) : null
-    };
-  } catch (error) {
-    try { await deleteStorageObject(storagePath); } catch {}
-    throw error;
-  }
+  const document = created?.[0];
+  await writeAudit(admin, shared.shared_bl ? 'shared_bl_document_uploaded' : 'document_uploaded', 'document', document?.id || null, {
+    operation_id: operation.id,
+    operation_code: operation.operation_code,
+    client_id: operation.client_id,
+    shipment_id: scope.shipment_id,
+    container_number: scope.shipment?.container_number || null,
+    bol_number: scope.bol_number,
+    shared_bl: shared.shared_bl,
+    shared_clients: shared.relation?.clients || null,
+    shared_containers: shared.relation?.containers || null,
+    document_type: documentType,
+    file_name: fileName,
+    version
+  });
+
+  return {
+    ...document,
+    signed_url: document ? await createSignedPreview(document.storage_path) : null
+  };
 }
 
 async function discardUpload(body) {

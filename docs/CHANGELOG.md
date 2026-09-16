@@ -1,3 +1,11 @@
+## 2026-09-15 — Conservar documentos ante fallos posteriores al guardado
+
+- Se retira el borrado automático de storage en errores de finalización, tanto
+  en documentos Cuba como en la API documental anterior.
+- Una respuesta fallida no demuestra rollback: el documento puede estar guardado.
+- Regresión aislada de ambas funciones; sin migraciones ni datos reales.
+- Ver DOCUMENT_UPLOAD_PRESERVATION.md y PR para evidencia final de publicación.
+
 ## 2026-09-15 — Acceso a tareas relacionadas
 
 - Detalle aplica el filtro canónico de visibilidad a dependencias y dependientes
