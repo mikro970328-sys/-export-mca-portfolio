@@ -1,3 +1,11 @@
+## 2026-09-16 — Aceptación SQL integrada de Tracking y tareas
+
+PR #313 publicada: 8dff2add51817deb14d0abb464c11aac53f78141.
+Nueva prueba tracking-workflow-lifecycle: 16 verificaciones sobre documentos,
+tareas/dependencias, destinatarios/permisos y avisos personales con RPC SQL reales.
+Ver TRACKING_WORKFLOW_LIFECYCLE.md; la PR registra CI final. Sin cambio de runtime
+ni migración nueva. Falta integrar estas acciones en dos sesiones de navegador.
+
 ## 2026-09-16 — Protección de avisos aceptados en Tracking
 
 PR #312 publicada en c156010464ef554cc17754c26e48d3befc006248; migración documental aplicada.
