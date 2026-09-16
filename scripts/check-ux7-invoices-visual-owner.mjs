@@ -197,6 +197,12 @@ class FakeElement {
   addEventListener(type, handler) { this.listeners.set(type, handler); }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
   focus() {}
+  contains(node) {
+    for (let current = node; current; current = current.parentElement) {
+      if (current === this) return true;
+    }
+    return false;
+  }
   querySelector() { return null; }
   closest() { return null; }
 }
