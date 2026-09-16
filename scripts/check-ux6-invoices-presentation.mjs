@@ -45,7 +45,7 @@ for(const text of [
   'function reportInvoiceError(context, error, fallback =',
   "console.error('INVOICES_UI_FAILED'",
   "reportInvoiceError('save_invoice', error)",
-  "reportInvoiceError('save_payment', error)",
+  "reportInvoiceError('save_payment', error,",
   "reportInvoiceError('decision', error)",
   "reportInvoiceError('bootstrap', error",
   'const PAYMENT_STATUS_LABELS = Object.freeze({',

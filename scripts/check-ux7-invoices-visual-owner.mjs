@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { webcrypto } from 'node:crypto';
 
 const files = {
   html: 'admin/invoices.html',
@@ -152,6 +153,7 @@ const embeddedWindow = {
 
 vm.runInNewContext(owner, {
   URLSearchParams,
+  crypto: webcrypto,
   console,
   document: { getElementById: () => null },
   fetch: async () => {
@@ -257,6 +259,7 @@ const fixtureInvoice = {
 
 vm.runInNewContext(owner, {
   URLSearchParams,
+  crypto: webcrypto,
   console,
   CustomEvent: class CustomEvent { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } },
   Element: FakeElement,

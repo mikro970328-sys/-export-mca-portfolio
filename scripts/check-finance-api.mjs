@@ -164,7 +164,7 @@ try{
   });
   await test('API-17 failed audit rolls back the receipt and the same request can then succeed',async()=>{
     const inv=await f.invoice(await f.sale()),body={action:'register',invoice_id:inv.id,amount:70,request_id:randomUUID()};
-    await db.exec("create function qa_fail_payment_audit() returns trigger language plpgsql as $ begin if new.action='invoice_payment_registered' then raise exception 'QA_AUDIT_FAILURE'; end if; return new; end; $; create trigger qa_payment_audit before insert on audit_log for each row execute function qa_fail_payment_audit()");
+    await db.exec("create function qa_fail_payment_audit() returns trigger language plpgsql as $$ begin if new.action='invoice_payment_registered' then raise exception 'QA_AUDIT_FAILURE'; end if; return new; end; $$; create trigger qa_payment_audit before insert on audit_log for each row execute function qa_fail_payment_audit()");
     assert.equal((await request('invoice-payments',body)).status,500);
     assert.equal((await f.rows('select id from payments where invoice_id=$1',[inv.id])).length,0);
     assert.equal(n((await f.financial(inv)).balance_due),400);
