@@ -1,3 +1,13 @@
+## 2026-09-16 — PR #326: diagnóstico interno fuera de respuestas públicas
+
+- Mensajes públicos para campos de fallo en Clientes/Contenedores/Historial y
+  exportación CSV. El historial de tracking conserva transición y autor.
+- Liberación con fallo de WhatsApp conserva éxito parcial; fallo desconocido
+  del backend de Contenedores usa 500/503 sin detalles internos.
+- Reproducción 21 fallos antes de corregir; aceptación 28/28 después.
+- Sin migración, eliminación de evidencia, cambio de permisos ni envíos reales.
+  CI y publicación definitivos se registran en la PR.
+
 ## 2026-09-16 · Cierre diario y recuperación de pagos al proveedor
 
 PR #323 publicada en `1296968075ed1adce7a81b483fd65bd266999c2b`; selección de

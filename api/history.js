@@ -1,10 +1,23 @@
-import { authorizeAdmin, fail, ok, readJson, sendWhatsApp, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, ok, publicNotificationData, publicNotificationError, readJson, sendWhatsApp, supabase, writeAudit } from './_lib.js';
 
 const selectFields=[
   '*',
   'clients(id,name,company,phone,email)',
   'shipments(id,container_number,operational_status,last_status,last_location)'
 ].join(',');
+
+function publicHistoryEvent(row){
+  const result=publicNotificationData(row);
+  if(row.event_type==='release_failed'){
+    result.details=publicNotificationError(row.details);
+  }else if(/^manual_(?:correction_)?(?:depa|release)$/.test(row.event_type)&&typeof row.details==='string'){
+    // Historical manual events combine the business transition and provider
+    // diagnosis in one string. Keep the transition and actor; mask its error suffix.
+    const marker=' · Falló WhatsApp: ',index=row.details.indexOf(marker);
+    if(index!==-1)result.details=row.details.slice(0,index+marker.length)+publicNotificationError(row.details.slice(index+marker.length));
+  }
+  return result;
+}
 
 function value(row,...keys){for(const key of keys)if(row?.[key]!==undefined&&row?.[key]!==null&&row?.[key]!=='')return row[key];return null;}
 function normalizeStatus(row){return String(value(row,'status','delivery_status')||'pending').toLowerCase();}
@@ -79,13 +92,13 @@ export default async function handler(req,res){
         rows=(rows||[]).map(row=>({...row,normalized_status:normalizeStatus(row),normalized_alert_status:normalizeAlertStatus(row),notification_type:notificationType(row)}));
         if(alertStatus)rows=rows.filter(row=>row.normalized_alert_status===alertStatus);
         if(status)rows=rows.filter(row=>row.normalized_status===status);
-        return ok(res,{notifications:rows.slice(0,300)});
+        return ok(res,{notifications:publicNotificationData(rows.slice(0,300))});
       }
 
       if(req.method==='PATCH'){
         const body=notificationPatchBody||{},id=String(body.id||'').trim(),action=String(body.action||'').trim().toLowerCase();if(!id)return fail(res,400,'Falta el identificador de la notificación');
         const row=await getNotification(id);if(!row)return fail(res,404,'Notificación no encontrada');
-        if(['mark_read','resolve','snooze','reopen'].includes(action)){const result=await updateOperationalNotification(admin,row,action,body);if(result.error)return fail(res,result.status||400,result.error);return ok(res,result);}
+        if(['mark_read','resolve','snooze','reopen'].includes(action)){const result=await updateOperationalNotification(admin,row,action,body);if(result.error)return fail(res,result.status||400,result.error);return ok(res,publicNotificationData(result));}
         if(action!=='retry')return fail(res,400,'Acción no válida');
         if(row.notification_scope==='operational')return fail(res,400,'Las alertas operativas no se reenvían por WhatsApp');
 
@@ -104,6 +117,6 @@ export default async function handler(req,res){
     const shipmentId=String(req.query?.shipment_id||'').trim(),clientId=String(req.query?.client_id||'').trim();if(!shipmentId&&!clientId)return fail(res,400,'Indica shipment_id o client_id');
     const filter=shipmentId?`shipment_id=eq.${encodeURIComponent(shipmentId)}`:`client_id=eq.${encodeURIComponent(clientId)}`;
     const tasks=[supabase('shipment_history',{query:`?select=*&${filter}&order=created_at.desc&limit=200`}),supabase('notifications',{query:`?select=*&${filter}&order=created_at.desc&limit=200`})];if(clientId)tasks.push(supabase('audit_log',{query:`?select=*&entity_type=eq.client&entity_id=eq.${encodeURIComponent(clientId)}&order=created_at.desc&limit=200`}));
-    const [events,notifications,auditEvents=[]]=await Promise.all(tasks);return ok(res,{events:events||[],notifications:notifications||[],audit_events:auditEvents||[]});
+    const [events,notifications,auditEvents=[]]=await Promise.all(tasks);return ok(res,{events:(events||[]).map(publicHistoryEvent),notifications:publicNotificationData(notifications||[]),audit_events:publicNotificationData(auditEvents||[])});
   }catch(error){console.error('HISTORY_API_ERROR',error);return fail(res,500,'No se pudo procesar la solicitud');}
 }

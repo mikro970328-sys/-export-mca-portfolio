@@ -27,3 +27,6 @@ jobs:
         run: node scripts/check-api-public-error-audit.mjs
       - name: Verify real handler responses with isolated failures
         run: node scripts/check-api-public-error-responses.mjs
+
+      - name: Verify stored and indirect notification diagnostics
+        run: node scripts/check-api-public-error-stored.mjs
