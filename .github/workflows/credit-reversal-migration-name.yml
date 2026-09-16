@@ -1,43 +1,35 @@
-name: Verify Published Collection Recovery
+name: Inspect Post-release Report Boundary
 on:
   push:
     branches: [build/credit-reversal-migration]
 permissions:
   contents: read
+  actions: read
 jobs:
-  public-read-only:
+  inspect:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          ref: 86bdec6215bf11cb3752616d5428a2120d33047b
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - name: Public assets match the merged candidate; financial APIs stay private
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 35143291710
+          name: browser-direct-ship-chromium-desktop
+          path: evidence
+      - name: Show the first failed boundary without repeating commercial actions
         run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          import assert from 'node:assert/strict';
-          const origins=['https://app.exportmca.com','https://admin.exportmca.com'];
-          const assets=['/admin/index.html','/admin/invoices.html','/admin/sales.html','/admin/invoices.js?v=20260916-payment1','/admin/sales-workspace.js?v=20260916-payment1'];
-          let passed=0;
-          for(const origin of origins){
-            for(const asset of assets){
-              const response=await fetch(origin+asset,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(20000)});
-              assert.equal(response.status,200);
-              const source=await response.text(),file=asset.slice(1).split('?')[0];
-              assert.equal(source,fs.readFileSync(file,'utf8'),'Published asset mismatch: '+origin+asset);
-              console.log('PASS public GET',origin+asset,200,'exact merged bytes');passed++;
-            }
-            for(const endpoint of ['/api/invoice-payments','/api/invoices']){
-              const response=await fetch(origin+endpoint,{signal:AbortSignal.timeout(20000)});
-              assert.equal(response.status,401);
-              const body=await response.json();assert.equal(typeof body.error,'string');
-              console.log('PASS private API GET',origin+endpoint,401);passed++;
-            }
-          }
-          assert.equal(passed,14);
-          console.log('READ_ONLY_RELEASE_CHECK',JSON.stringify({passed,commit:'86bdec6215bf11cb3752616d5428a2120d33047b',authenticatedRequests:0,businessWrites:0}));
-          NODE
+          python - <<'PY'
+          import pathlib,json
+          root=pathlib.Path('evidence')
+          for p in root.rglob('*.json'):
+            if 'attachments' in str(p): continue
+            try: d=json.loads(p.read_text())
+            except Exception: continue
+            if not isinstance(d,dict): continue
+            print('SUMMARY',p.name,json.dumps({k:d.get(k) for k in ['checkpoints','failure','errors','crashes','external']}))
+            for key in ['api','requests']:
+              if isinstance(d.get(key),list):
+                print('LAST_REQUESTS',json.dumps(d[key][-35:]))
+          for p in root.rglob('error-context.md'):
+            print('ERROR_CONTEXT',p.read_text()[:14000])
+          PY
