@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { setTimeout as pause } from 'node:timers/promises';
 
 // A has executed its real RPC and holds its transaction open. PostgreSQL must
@@ -132,4 +133,34 @@ export async function checkOperatorConcurrency({db,f,users,test}) {
     assert.equal(n((await one('select session_version from admin_users where id=$1',[users.b.id])).session_version),before+2);
     assert.equal((await rows("select id from audit_log where action='revoke_admin_sessions' and entity_id=$1",[users.b.id])).length,2);
   });
+
+  for(const direct of [false,true])await test('CON-'+(direct?'14':'13')+' concurrent supplier retries create exactly one cash movement and audit',async()=>{
+    const po=await f.purchase(),bill=await f.bill(po),key=randomUUID();
+    const pay=c=>c.query('select * from '+(direct?'pay_supplier_bill_canonical':'register_supplier_payment')+'($1,$2,current_date,null,null,null,$3,$4)',[direct?bill.id:po.id,direct?250:40,users.a.id,key]);
+    const race=await overlappingTransactions(db,pay,pay);
+    assert.equal(race.second.error,undefined,race.second.error?.message);
+    const id=race.first.rows[0].id;assert.equal(race.second.value.rows[0].id,id);
+    assert.equal((await rows('select id from supplier_payments where purchase_order_id=$1',[po.id])).length,1);
+    assert.equal((await rows("select id from audit_log where action in ('supplier_payment_registered','supplier_bill_paid') and entity_id=$1",[id])).length,1);
+    assert.equal(n((await f.ap(bill)).balance_due),direct?0:250);
+  });
+  await test('CON-15 overlapping supplier key reuse with different data conflicts after the first commit',async()=>{
+    const po=await f.purchase(),key=randomUUID();
+    const pay=(c,amount)=>c.query('select * from register_supplier_payment(p_purchase_order_id=>$1,p_amount=>$2,p_actor=>$3,p_request_id=>$4)',[po.id,amount,users.a.id,key]);
+    rejected(await overlappingTransactions(db,c=>pay(c,40),c=>pay(c,41)),'SUPPLIER_PAYMENT_REQUEST_CONFLICT');
+    const payments=await rows('select amount from supplier_payments where purchase_order_id=$1',[po.id]);
+    assert.equal(payments.length,1);assert.equal(n(payments[0].amount),40);
+  });
+  await test('CON-16 rolled-back supplier identity permits the waiting retry without phantom money or audit',async()=>{
+    const po=await f.purchase(),bill=await f.bill(po),key=randomUUID();
+    const pay=c=>c.query('select * from pay_supplier_bill_canonical(p_supplier_bill_id=>$1,p_amount=>250,p_actor=>$2,p_request_id=>$3)',[bill.id,users.a.id,key]);
+    const race=await overlappingTransactions(db,pay,pay,{rollbackFirst:true});
+    assert.equal(race.second.error,undefined,race.second.error?.message);
+    assert.notEqual(race.first.rows[0].id,race.second.value.rows[0].id);
+    assert.equal((await rows('select id from supplier_payments where purchase_order_id=$1',[po.id])).length,1);
+    assert.equal((await rows("select id from audit_log where action='supplier_bill_paid' and entity_id=$1",[race.first.rows[0].id])).length,0);
+    assert.equal((await rows("select id from audit_log where action='supplier_bill_paid' and entity_id=$1",[race.second.value.rows[0].id])).length,1);
+    assert.equal(n((await f.ap(bill)).balance_due),0);
+  });
+
 }

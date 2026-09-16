@@ -183,6 +183,119 @@ try{
     }
     assert.equal(success(await request('invoice-payments',body)).payment.id,payment.id);
   });
-  console.log(`Finance API acceptance: ${passed.length}/${passed.length+failures.length}; real handlers/SQL and collection audit; simulated auth/transport/other audit delivery.`);
+
+  await test('API-19 supplier retries share one ledger, application and audit even at full settlement',async()=>{
+    for(const amount of [40,250]){
+      const po=await f.purchase(),bill=await f.bill(po);
+      const body={action:'pay_bill',supplier_bill_id:bill.id,amount,request_id:randomUUID()};
+      const first=success(await request('supplier-payments',body)).payment;
+      const repeated=success(await request('supplier-payments',body)).payment;
+      assert.equal(repeated.id,first.id);assert.equal(n((await f.ap(bill)).paid_amount),amount);
+      assert.equal((await f.rows('select id from supplier_payments where purchase_order_id=$1',[po.id])).length,1);
+      assert.equal((await f.rows('select id from supplier_payment_applications where supplier_payment_id=$1',[first.id])).length,1);
+      const audit=await f.rows("select * from audit_log where action='supplier_bill_paid' and entity_id=$1",[first.id]);
+      assert.equal(audit.length,1);assert.equal(audit[0].actor_admin_id,f.actor);
+    }
+  });
+  await test('API-20 supplier advance replay preserves later allocation; independent equal payments remain valid',async()=>{
+    const po=await f.purchase(),bill=await f.bill(po),body={action:'register',purchase_order_id:po.id,amount:60,request_id:randomUUID()};
+    const first=success(await request('supplier-payments',body)).payment;
+    success(await request('supplier-payments',{action:'replace_applications',supplier_payment_id:first.id,applications:[{supplier_bill_id:bill.id,amount:35}]}));
+    const replay=success(await request('supplier-payments',body)).payment;
+    assert.equal(replay.id,first.id);assert.equal(n(replay.progress.applied_amount),35);assert.equal(n(replay.progress.unapplied_amount),25);
+    const other=success(await request('supplier-payments',{...body,request_id:randomUUID()})).payment;
+    assert.notEqual(first.id,other.id);assert.equal(n((await f.ap(bill)).paid_amount),35);
+    assert.equal((await f.rows("select id from audit_log where action='supplier_payment_registered' and entity_id=$1",[first.id])).length,1);
+  });
+  await test('API-21 supplier request conflicts bind action, target, actor and every financial field',async()=>{
+    const po=await f.purchase(),bill=await f.bill(po),otherPo=await f.purchase(),other=await f.bill(otherPo);
+    const actor=(await f.one("insert into admin_users(username,role) values('QA supplier other','master_admin') returning id")).id;
+    for(const action of ['register','pay_bill']){
+      const body={action,purchase_order_id:po.id,supplier_bill_id:bill.id,amount:40,request_id:randomUUID(),payment_date:'2026-09-16',method:'wire',reference:'QA',notes:'Original'};
+      const first=success(await request('supplier-payments',body)).payment;
+      for(const patch of [{amount:41},{payment_date:'2026-09-17'},{method:'cash'},{reference:'Changed'},{notes:'Changed'},
+        action==='register'?{purchase_order_id:otherPo.id}:{supplier_bill_id:other.id},
+        {action:action==='register'?'pay_bill':'register'}]){
+        const res=await request('supplier-payments',{...body,...patch});
+        assert.equal(res.status,400,JSON.stringify(res.body));assert.equal(res.body.details.code,'SUPPLIER_PAYMENT_REQUEST_CONFLICT');
+      }
+      const res=await api.request('supplier-payments',{method:'POST',body,admin:{...admin,admin_id:actor}});
+      assert.equal(res.status,400);assert.equal(res.body.details.code,'SUPPLIER_PAYMENT_REQUEST_CONFLICT');
+      assert.equal(success(await request('supplier-payments',body)).payment.id,first.id);
+    }
+    assert.equal((await f.rows('select id from supplier_payments where purchase_order_id=$1',[po.id])).length,2);
+    assert.equal(n((await f.ap(bill)).paid_amount),40);assert.equal(n((await f.ap(other)).paid_amount),0);
+  });
+  await test('API-22 supplier replay after reversal never revives a payment or its applications',async()=>{
+    for(const action of ['register','pay_bill']){
+      const po=await f.purchase(),bill=await f.bill(po),body={action,purchase_order_id:po.id,supplier_bill_id:bill.id,amount:80,request_id:randomUUID()};
+      const first=success(await request('supplier-payments',body)).payment;
+      success(await request('supplier-payments',{action:'reverse',supplier_payment_id:first.id,reason:'QA reversed'}));
+      const replay=success(await request('supplier-payments',body)).payment;
+      assert.equal(replay.id,first.id);assert.equal(replay.status,'reversed');
+      assert.equal(n((await f.ap(bill)).balance_due),250);
+      assert.equal((await f.rows('select id from supplier_payments where purchase_order_id=$1',[po.id])).length,1);
+    }
+  });
+  await test('API-23 invalid supplier identities and unauthorized replays cannot reach SQL',async()=>{
+    const po=await f.purchase(),bill=await f.bill(po);
+    for(const action of ['register','pay_bill']){
+      const body={action,purchase_order_id:po.id,supplier_bill_id:bill.id,amount:50,request_id:randomUUID()};
+      success(await request('supplier-payments',body));const before=api.calls.length;
+      for(const request_id of ['',42,'invalid',body.request_id+'extra']){
+        const res=await request('supplier-payments',{...body,request_id});
+        assert.equal(res.status,400);assert.equal(res.body.details.code,'SUPPLIER_PAYMENT_REQUEST_INVALID');
+      }
+      assert.equal((await api.request('supplier-payments',{method:'POST',body,admin:reader})).status,403);
+      assert.equal((await api.request('supplier-payments',{method:'POST',body})).status,401);
+      assert.equal(api.calls.length,before);
+    }
+  });
+  await test('API-24 supplier audit failure rolls back money and applications before a safe retry',async()=>{
+    const po=await f.purchase(),bill=await f.bill(po);
+    for(const action of ['register','pay_bill']){
+      const body={action,purchase_order_id:po.id,supplier_bill_id:bill.id,amount:40,request_id:randomUUID()};
+      const before=(await f.rows('select id from supplier_payments')).length;
+      await db.exec("create function qa_fail_supplier_audit() returns trigger language plpgsql as $$ begin if new.action in ('supplier_payment_registered','supplier_bill_paid') then raise exception 'QA_AUDIT_FAILURE'; end if; return new; end; $$; create trigger qa_supplier_audit before insert on audit_log for each row execute function qa_fail_supplier_audit()");
+      assert.equal((await request('supplier-payments',body)).status,500);
+      assert.equal((await f.rows('select id from supplier_payments')).length,before);
+      assert.equal((await f.rows('select id from supplier_payment_applications')).length,0);
+      assert.equal(n((await f.ap(bill)).balance_due),250);
+      await db.exec('drop trigger qa_supplier_audit on audit_log; drop function qa_fail_supplier_audit()');
+      const first=success(await request('supplier-payments',body)).payment;
+      assert.equal(success(await request('supplier-payments',body)).payment.id,first.id);
+    }
+  });
+  await test('API-25 supplier identity cannot be altered even during an authorized reversal transition',async()=>{
+    const po=await f.purchase(),body={action:'register',purchase_order_id:po.id,amount:10,request_id:randomUUID()};
+    const p=success(await request('supplier-payments',body)).payment;
+    for(const column of ['registration_request_id','registration_request_payload']){
+      await db.exec('savepoint supplier_immutable');
+      await assert.rejects(()=>db.query("update supplier_payments set "+column+"=null where id=$1",[p.id]),/SUPPLIER_PAYMENT_IMMUTABLE/);
+      await db.exec('rollback to savepoint supplier_immutable; release savepoint supplier_immutable');
+      await db.exec("savepoint supplier_reversal; select set_config('export_mca.supplier_payment_transition','reverse',true)");
+      await assert.rejects(()=>db.query("update supplier_payments set status='reversed',reversal_reason='QA',"+column+"=null where id=$1",[p.id]),/SUPPLIER_PAYMENT_IMMUTABLE/);
+      await db.exec('rollback to savepoint supplier_reversal; release savepoint supplier_reversal');
+    }
+    assert.equal(success(await request('supplier-payments',body)).payment.id,p.id);
+  });
+  await test('API-26 rollout preserves legacy SQL callers while the new API always uses atomic audit',async()=>{
+    const po=await f.purchase(),bill=await f.bill(po);
+    for(const action of ['register','pay_bill']){
+      const before=api.audits.length;
+      const p=success(await request('supplier-payments',{action,purchase_order_id:po.id,supplier_bill_id:bill.id,amount:20})).payment;
+      assert.equal(api.audits.length,before,'new handler must not emit a second caller-side audit');
+      const stored=await f.one('select registration_request_id from supplier_payments where id=$1',[p.id]);
+      assert.ok(stored.registration_request_id,'legacy HTTP request receives a server identity');
+      assert.equal((await f.rows("select id from audit_log where action in ('supplier_payment_registered','supplier_bill_paid') and entity_id=$1",[p.id])).length,1);
+    }
+    for(const fn of ['register_supplier_payment','pay_supplier_bill_canonical']){
+      const p=await f.one('select * from '+fn+'($1,10,current_date,null,null,null,$2)',[fn==='register_supplier_payment'?po.id:bill.id,f.actor]);
+      assert.equal(p.registration_request_id,null);
+      assert.equal((await f.rows("select id from audit_log where action in ('supplier_payment_registered','supplier_bill_paid') and entity_id=$1",[p.id])).length,0,'old caller still owns its audit during rollout');
+    }
+  });
+
+  console.log(`Finance API acceptance: ${passed.length}/${passed.length+failures.length}; real handlers/SQL and collection/supplier payment audit; simulated auth/transport/other audit delivery.`);
 }finally{await db.close();}
 if(failures.length)process.exitCode=1;

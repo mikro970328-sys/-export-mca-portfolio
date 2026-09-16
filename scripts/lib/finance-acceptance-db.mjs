@@ -22,7 +22,8 @@ const extra = [
   '20260916141741_invoice_credit_settlement.sql',
   '20260916171249_invoice_credit_note_reversal.sql',
   '20260916175720_supplier_finance_precision_integrity.sql',
-  '20260916192901_invoice_payment_retry_integrity.sql'
+  '20260916192901_invoice_payment_retry_integrity.sql',
+  '20260916212051_supplier_payment_retry_integrity.sql'
 ].map(file => `supabase/migrations/${file}`);
 
 // Preserve the historical August 29 ordering established in the logistics slice.

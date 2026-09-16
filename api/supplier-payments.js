@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 import { loadSupplierApCapabilityMaps, loadSupplierPaymentCapabilities } from './_supplier-ap-actions.js';
 
@@ -9,6 +10,8 @@ const num = value => Number(value || 0);
 
 function translatedError(raw) {
   const messages = [
+    ['SUPPLIER_PAYMENT_REQUEST_INVALID','La solicitud de pago tiene un identificador inválido.'],
+    ['SUPPLIER_PAYMENT_REQUEST_CONFLICT','La solicitud ya corresponde a otro pago. Revisa el historial antes de iniciar uno nuevo.'],
     ['SUPPLIER_PAYMENT_APPLICATION_AMOUNT_PRECISION','Cada monto distribuido debe tener como máximo 2 decimales.'],
     ['SUPPLIER_PAYMENT_AMOUNT_PRECISION','El monto del pago debe tener como máximo 2 decimales.'],
     ['PERMISSION_REQUIRED','No tienes permiso para ejecutar esta acción financiera.'],
@@ -123,6 +126,11 @@ export default async function handler(req, res) {
 
     const body = await readJson(req);
     const action = text(body.action,60).toLowerCase();
+    const requestId = body.request_id == null ? randomUUID() : String(body.request_id).trim();
+    if (['pay_bill','register'].includes(action) && requestId !== null
+        && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+      throw new Error('SUPPLIER_PAYMENT_REQUEST_INVALID');
+    }
 
     if (action === 'pay_bill') {
       const billId = text(body.supplier_bill_id,80);
@@ -132,11 +140,10 @@ export default async function handler(req, res) {
       if (!hasSupplierCentPrecision(amount)) throw new Error('SUPPLIER_PAYMENT_AMOUNT_PRECISION');
       const result = await supabase('rpc/pay_supplier_bill_canonical', { method:'POST', body:{
         p_supplier_bill_id:billId,p_amount:amount,p_payment_date:text(body.payment_date,40) || null,p_method:text(body.method,100) || null,
-        p_reference:text(body.reference,300) || null,p_notes:text(body.notes,2000) || null,p_actor:admin.admin_id || null
+        p_reference:text(body.reference,300) || null,p_notes:text(body.notes,2000) || null,p_actor:admin.admin_id || null,p_request_id:requestId
       }});
       const payment = rpcRow(result);
       if (!payment?.id) throw new Error('No se pudo registrar el pago de la factura');
-      await writeAudit(admin,'supplier_bill_paid','supplier_payment',payment.id,{ payment_number:payment.payment_number, supplier_bill_id:billId, purchase_order_id:payment.purchase_order_id, amount:Number(amount) });
       return ok(res,{ payment:await paymentWithCapabilities(admin,payment) });
     }
 
@@ -148,11 +155,10 @@ export default async function handler(req, res) {
       if (!hasSupplierCentPrecision(amount)) throw new Error('SUPPLIER_PAYMENT_AMOUNT_PRECISION');
       const result = await supabase('rpc/register_supplier_payment', { method:'POST', body:{
         p_purchase_order_id:poId,p_amount:amount,p_payment_date:text(body.payment_date,40) || null,p_method:text(body.method,100) || null,
-        p_reference:text(body.reference,300) || null,p_notes:text(body.notes,2000) || null,p_actor:admin.admin_id || null
+        p_reference:text(body.reference,300) || null,p_notes:text(body.notes,2000) || null,p_actor:admin.admin_id || null,p_request_id:requestId
       }});
       const payment = rpcRow(result);
       if (!payment?.id) throw new Error('No se pudo registrar el pago');
-      await writeAudit(admin,'supplier_payment_registered','supplier_payment',payment.id,{ payment_number:payment.payment_number, purchase_order_id:poId, amount:Number(amount) });
       return ok(res,{ payment:await paymentWithCapabilities(admin,payment) });
     }
 
@@ -181,7 +187,11 @@ export default async function handler(req, res) {
   } catch (error) {
     const raw = String(error?.message || '');
     const translated = translatedError(raw);
-    if (translated) return fail(res,400,translated);
+    if (translated) {
+      const code = raw.includes('SUPPLIER_PAYMENT_REQUEST_CONFLICT') ? 'SUPPLIER_PAYMENT_REQUEST_CONFLICT'
+        : raw.includes('SUPPLIER_PAYMENT_REQUEST_INVALID') ? 'SUPPLIER_PAYMENT_REQUEST_INVALID' : null;
+      return fail(res,400,translated,code ? {code} : undefined);
+    }
     console.error('[supplier-payments]',error);
     return fail(res,500,'No se pudo procesar el pago del proveedor');
   }

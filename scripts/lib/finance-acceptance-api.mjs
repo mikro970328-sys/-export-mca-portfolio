@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { randomUUID } from 'node:crypto';
 import { ok, fail, readJson, upstreamFailureStatus } from '../../api/_lib.js';
 
 // Real handlers/helpers; auth, audit delivery and PostgREST transport are adapters.
@@ -72,8 +73,8 @@ export function financeAcceptanceApi(db) {
     '_invoice-actions','_customer-finance-actions','_supplier-ap-actions','_cost-actions','_executive-dashboard']);
   function module(name){
     if(modules[name])return modules[name];if(!allowed.has(name))throw Error(`Unsupported test module ${name}`);
-    const source=fs.readFileSync(`api/${name}.js`,'utf8'),exports=[...source.matchAll(/export (?:async )?function (\w+)/g)].map(m=>m[1]),imports={_lib:lib};
-    const runnable=source.replace(/^import \{([^}]+)\} from '\.\/([^']+)\.js';$/gm,(_,bindings,dependency)=>{
+    const source=fs.readFileSync(`api/${name}.js`,'utf8'),exports=[...source.matchAll(/export (?:async )?function (\w+)/g)].map(m=>m[1]),imports={_lib:lib,nodeCrypto:{randomUUID}};
+    const runnable=source.replace(/^import \{ randomUUID \} from 'node:crypto';$/gm,'const { randomUUID } = imports.nodeCrypto;').replace(/^import \{([^}]+)\} from '\.\/([^']+)\.js';$/gm,(_,bindings,dependency)=>{
       if(dependency!=='_lib')imports[dependency]=module(dependency);return `const {${bindings}}=imports[${JSON.stringify(dependency)}];`;
     }).replace(/export default async function handler/,'async function handler').replace(/export ((?:async )?function )/g,'$1');
     if(/^import |^export /m.test(runnable))throw Error('Review module adapter boundary');
