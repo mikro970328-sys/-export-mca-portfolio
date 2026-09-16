@@ -1,38 +1,39 @@
-name: Workday Technical Audit
+name: Verify Published Supplier Recovery
 on:
   push:
     branches: [build/credit-reversal-migration]
 permissions:
   contents: read
 jobs:
-  read-only-source-audit:
+  public-read-only:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: c7cd441c27e7b1d8d0474df194ac0c8367ec8682
+          ref: 9f4aea87c412ac2dc467c0d934eee2f084307978
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Current owners and API security boundaries
-        run: |
-          node scripts/check-frontend-ownership.mjs
-          node scripts/audit-b9-api-boundaries.mjs
-          node scripts/check-b9-database-privileges.mjs
-          node scripts/check-b9-public-boundaries.mjs
-      - name: Locate stored technical errors and inventory writers
-        run: |
-          git grep -n -E 'last_error|error_message|notification_error|provider_error|error_details|inventory_movements' -- 'api/*.js' 'admin/*.js' 'admin/*.html' || test "$?" -eq 1
-          git grep -n -E 'register_supplier_payment\(uuid,numeric,date,text,text,text,uuid\)|pay_supplier_bill_canonical\(uuid,numeric,date,text,text,text,uuid\)' -- 'scripts/*.mjs' || test "$?" -eq 1
-      - name: Production dependency advisory snapshot
+      - name: Verify public assets and anonymous boundary without commercial writes
         run: |
           node --input-type=module <<'NODE'
-          import {spawnSync} from 'node:child_process';
-          const result=spawnSync('npm',['audit','--omit=dev','--json'],{encoding:'utf8',timeout:90000});
-          let report;try{report=JSON.parse(result.stdout);}catch{throw Error('Dependency audit did not return JSON');}
-          if(report.error)throw Error('Dependency registry audit unavailable: '+report.error.code);
-          console.log(JSON.stringify({metadata:report.metadata,vulnerabilities:Object.fromEntries(Object.entries(report.vulnerabilities||{}).map(([name,v])=>[name,{severity:v.severity,isDirect:v.isDirect,range:v.range,fixAvailable:v.fixAvailable,via:v.via.map(x=>typeof x==='string'?x:{title:x.title,url:x.url,range:x.range,severity:x.severity})}]))},null,2));
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const digest=value=>createHash('sha256').update(value).digest('hex');
+          const expected=digest(fs.readFileSync('admin/payables.js','utf8'));
+          let count=0;
+          for(const host of ['https://app.exportmca.com','https://admin.exportmca.com']){
+            for(const path of ['/admin/index.html','/admin/payables.html','/admin/payables.js?v=20260916-supplier-retry1','/api/supplier-payments']){
+              const response=await fetch(host+path,{cache:'no-store',signal:AbortSignal.timeout(20000)});
+              const body=await response.text();
+              assert.equal(response.status,path.startsWith('/api/')?401:200,host+path);
+              if(path==='/admin/payables.html')assert.ok(body.includes('/admin/payables.js?v=20260916-supplier-retry1'));
+              if(path.startsWith('/admin/payables.js'))assert.equal(digest(body),expected,'published owner differs from verified merge');
+              if(path.startsWith('/api/'))assert.ok(JSON.parse(body).error);
+              count++;console.log('PASS public GET '+host+path+' '+response.status);
+            }
+          }
+          assert.equal(count,8);console.log('Published supplier recovery: 8/8 read-only checks; exact JS SHA256 '+expected);
           NODE
