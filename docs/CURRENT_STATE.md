@@ -1,3 +1,10 @@
+## Continuación — recuperación de carga documental (2026-09-16)
+
+PR #309 publicada: main 554c18b71abd2b0e87a10aefb06cac8e8225b727.
+Rama fix/customs-upload-recovery: la UI consulta el archivo exacto tras un error
+ambiguo y distingue guardado de refresco fallido. No repite escrituras ni borra
+archivos. Ver CUSTOMS_UPLOAD_RECOVERY.md y PR para CI/publicación final.
+
 ## Continuación — conservación de archivos (2026-09-15)
 
 PR #308 publicada: main 2072fb563d04e9c2af48d14e5255869aff63908e.
