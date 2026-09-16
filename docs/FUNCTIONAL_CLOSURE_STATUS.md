@@ -1,6 +1,6 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #317, 85b6e2b47ed39f1188371e22b2097038a6de5f61.
+Corte 2026-09-16. Base publicada PR #318, d86d1804472959aab3cb15657499e58213373685.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
@@ -26,12 +26,11 @@ Este documento consolida límites actuales, no afirma que todos sean defectos.
 | Variantes financieras y reportes | Facturación/cobros/proveedor en variantes Direct Ship todavía fuera de sus recorridos; refresco completo de Reportes tras operaciones y reversos | Saldos, caja, costos y reportes coherentes entre dos sesiones, con evidencia por variante |
 | Aceptación final integrada | Recorrido de trabajo diario completo con roles y fallos de conexión/permisos en el alcance acordado | Matriz consolidada sin bloqueos críticos conocidos y publicación verificada |
 
-Trabajo actual: recorrido integrado de documentos → tarea → aviso personal en
-dos sesiones reales, reasignación y estado marítimo desde UI, sin recarga manual.
-Ver TRACKING_WORKFLOW_BROWSER.md y PR #315 para CI final; se corrigen acceso a
-Mis tareas y recorte del diálogo. Las 16 verificaciones SQL de #314 ya están
-incorporadas. No confundir este recorrido con toda la aceptación diaria: quedan
-las variantes financieras/reportes y la matriz final de trabajo completo.
+El recorrido de documentos → tarea → aviso personal, reasignación y estado
+marítimo desde UI está publicado en #315; #316 conserva la asignación manual.
+Las 16 verificaciones SQL de #314 están incorporadas. El trabajo actual amplía
+las variantes financieras y sus reportes con saldos a favor; sigue pendiente
+la matriz final de trabajo diario completo.
 
 ## Después y fuera de prioridad actual
 
@@ -65,6 +64,18 @@ facturas, pagos y reportes entre dos operadores. Publicado en PR #317.
 El caso físico 840→810 ya preserva los documentos; el ajuste comercial se hace
 mediante una nota de crédito explícita. INVOICE_QUANTITY_CREDITS.md describe el
 nuevo owner de notas y su integración con Facturación/Reportes, sin cambiar
-facturas históricas ni el dinero recibido. La PR registra los gates finales.
-Pendiente posterior: aplicar o devolver saldos a favor nacidos de estas notas,
-variantes restantes de la matriz financiera y aceptación diaria integral.
+facturas históricas ni el dinero recibido. Publicado en #318: 16 escenarios
+SQL/API, DS-16/18 y 16/16 jobs de navegador.
+
+## Continuación: uso del saldo a favor
+
+INVOICE_CREDIT_SETTLEMENT.md describe aplicaciones a otra factura del mismo
+cliente y moneda, registro de devoluciones efectivas y reversos de ambos con
+motivo. El saldo neto, caja, Dashboard y Reportes comparten los mismos owners.
+Quince escenarios SQL/API y DS-19/22 comprueban límites, permisos, concurrencia,
+reintentos, dependencias y refresco entre usuarios. Consultar la PR para gates
+y publicación finales; la existencia del archivo no acredita una migración remota.
+
+Pendiente posterior: reverso de notas de crédito por cantidad, variantes
+financieras restantes y aceptación diaria integral. Este bloque tampoco cambia
+precios de facturas emitidas ni ejecuta transferencias bancarias.

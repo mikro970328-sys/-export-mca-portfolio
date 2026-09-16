@@ -40,7 +40,7 @@ const workflow = read(files.workflow);
   '<body class="erp-module-page erp-module-reports" data-owner="reports.js">',
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/reports.css?v=20260903-ux7reports1',
-  '/admin/reports.js?v=20260916-credit1',
+  '/admin/reports.js?v=20260916-credit2',
   '/admin/embedded-auto-refresh.js?v=20260909-live7',
   'class="module-hero reports-page-head"',
   'id="reportsPageTitle">Reportes',

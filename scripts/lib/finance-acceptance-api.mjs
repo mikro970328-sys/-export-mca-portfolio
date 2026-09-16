@@ -6,13 +6,13 @@ import { ok, fail, readJson, upstreamFailureStatus } from '../../api/_lib.js';
 // Financial calculations and write guards execute against real SQL owners.
 export function financeAcceptanceApi(db) {
   const calls=[],audits=[],errors=[],users=new Map(),modules={};
-  const rpcNames=new Set(['create_invoice_quantity_credit','create_invoice_plan','replace_invoice_plan','transition_invoice','register_invoice_payment',
+  const rpcNames=new Set(['manage_invoice_credit','create_invoice_quantity_credit','create_invoice_plan','replace_invoice_plan','transition_invoice','register_invoice_payment',
     'reverse_invoice_payment','register_customer_advance','apply_customer_advance','refund_customer_advance',
     'reverse_customer_advance','reverse_customer_advance_application','reverse_customer_advance_refund',
     'register_supplier_payment','pay_supplier_bill_canonical','replace_supplier_payment_applications_canonical',
     'reverse_supplier_payment_canonical','create_cost_charge','create_posted_cost_charge','replace_cost_charge_canonical',
     'post_cost_charge_canonical','void_cost_charge_canonical','executive_report_dataset','executive_dashboard_rollup']);
-  const readTables=new Set(['invoice_net_items','invoice_credit_notes','invoice_credit_note_lines','clients','suppliers','products','invoices','invoice_items','payments','invoice_financial_progress',
+  const readTables=new Set(['invoice_credit_movement_state','invoice_net_items','invoice_credit_notes','invoice_credit_note_lines','clients','suppliers','products','invoices','invoice_items','payments','invoice_financial_progress',
     'invoice_action_capabilities','payment_action_capabilities','sales_orders','sales_order_items','sales_order_item_invoice_progress',
     'sales_order_customer_financial_progress','customer_advance_progress','customer_advances','customer_advance_applications','customer_advance_refunds',
     'sales_order_customer_finance_action_capabilities','proforma_action_capabilities','customer_advance_action_capabilities',

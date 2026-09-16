@@ -397,8 +397,57 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       expect(Number((await f.one('select quantity from invoice_items where invoice_id=$1',[creditedInvoice.id])).quantity)).toBe(840);
       evidence.creditConcurrency={retries:[200,200],writers:[200,400],reader:403,notes:3,creditBalance:44};
     });
+    let settlementTarget,applicationMovement,refundMovement;
+    const reportInvoiceValue=async(number,label)=>{
+      const row=reports.locator('#reportTable tbody tr').filter({hasText:number});
+      const value=await row.locator(`[data-label="${label}"]`).textContent();return Number(value.replace(/[^0-9.-]/g,''));
+    };
+    await step('DS-19 apply credit to another invoice without another cash receipt',async()=>{
+      await billing.locator('[data-close="detail"]').click();await billing.locator('[data-view="all"]').click();
+      await billing.locator('#newInvoice').click();await billing.locator('#iSalesOrder').selectOption(so.id);await billing.locator('[data-invoice-line] [data-qty]').fill('10');
+      const result=await mutation('invoices',()=>billing.locator('#saveInvoice').click());settlementTarget=result.invoice;await expect(billing.locator('#invoiceModal')).toBeHidden();
+      await billing.locator(`[data-invoice-action="issue"][data-invoice-id="${settlementTarget.id}"]`).click();await mutation('invoices',()=>billing.locator('#decisionAccept').click());await expect(billing.locator('#decisionModal')).toBeHidden();
+      const before=await f.report('cash');
+      await billing.locator(`[data-invoice-action="apply_credit"][data-invoice-id="${creditedInvoice.id}"]`).click();await expect(billing.locator('#balanceRefundWrap')).toBeHidden();
+      await billing.locator('#balanceTarget').selectOption(settlementTarget.id);await expect(billing.locator('#balanceAmount')).toHaveValue('40');await billing.locator('#balanceReason').fill('Aplicar saldo a la siguiente factura del cliente.');
+      applicationMovement=(await mutation('invoices',()=>billing.locator('#saveBalance').click())).movement;await expect(billing.locator('#balanceModal')).toBeHidden();
+      await expect(billing.locator('#detailBody')).toContainText('Aplicación entre facturas');await expect(billing.locator('#detailBody')).toContainText('USD 4.00');
+      await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Saldo a favor'),{timeout:45_000}).toBe(4);
+      await expect.poll(()=>reportInvoiceValue(settlementTarget.invoice_number,'AR actual')).toBe(0);await expect.poll(()=>reportInvoiceValue(settlementTarget.invoice_number,'Crédito recibido')).toBe(40);
+      expect(await f.report('cash')).toEqual(before);expect(Number((await f.one('select sum(paid_amount) as amount from invoice_financial_progress')).amount)).toBe(3240);
+      await shot('19-applied-credit');
+    });
+    await step('DS-20 record actual refund in cash and in the other operators reports',async()=>{
+      await billing.locator('#detailActions [data-invoice-action="refund_credit"]').click();await expect(billing.locator('#balanceTargetWrap')).toBeHidden();await expect(billing.locator('#balanceCopy')).toContainText('ya realizaste');
+      await expect(billing.locator('#balanceAmount')).toHaveValue('4');await billing.locator('#balanceReference').fill('QA-REFUND-004');await billing.locator('#balanceReason').fill('Devolución del saldo restante realizada al cliente.');
+      refundMovement=(await mutation('invoices',()=>billing.locator('#saveBalance').click())).movement;await expect(billing.locator('#balanceModal')).toBeHidden();
+      await expect(billing.locator('#detailBody')).toContainText('QA-REFUND-004');await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Saldo a favor'),{timeout:45_000}).toBe(0);await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Saldo devuelto')).toBe(4);
+      await reports.locator('[data-dataset="cash"]').click();await expect(reports.locator('#reportTable tbody')).toContainText('Devolución de saldo a favor');await expect(reports.locator('#reportTable tbody')).toContainText('QA-REFUND-004');
+      const cash=await f.report('cash');expect(cash.rows.filter(r=>r.event_type==='invoice_credit_refund')).toHaveLength(1);expect(cash.rows.reduce((n,r)=>n+Number(r.amount)*(r.direction==='in'?1:-1),0)).toBe(3236);
+      expect(Number((await f.financial(creditedInvoice)).customer_credit_balance)).toBe(0);await shot('20-credit-refund-history');
+    });
+    await step('DS-21 reverse application and refund without removing their history',async()=>{
+      for(const movement of [refundMovement,applicationMovement]){
+        await billing.locator(`[data-reverse-credit-movement="${movement.id}"]`).click();await billing.locator('#decisionReason').fill('QA corrección de registro, conservar historial.');await mutation('invoices',()=>billing.locator('#decisionAccept').click());await expect(billing.locator('#decisionModal')).toBeHidden();
+      }
+      await expect(billing.locator('#detailBody')).toContainText('Revertido');await expect.poll(()=>reports.locator('#reportTable tbody').textContent(),{timeout:45_000}).not.toContain('QA-REFUND-004');
+      await reports.locator('[data-dataset="invoices"]').click();await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Saldo a favor'),{timeout:45_000}).toBe(44);await expect.poll(()=>reportInvoiceValue(settlementTarget.invoice_number,'AR actual')).toBe(40);
+      expect((await f.rows('select id from invoice_credit_movements')).length).toBe(4);expect((await f.rows("select id from invoice_credit_movement_state where status='reversed'")).length).toBe(2);
+      await shot('21-credit-reversals');
+    });
+    await step('DS-22 competing application and refund consume available credit only once',async()=>{
+      const login=await api.request('login',{method:'POST',body:{username:users.a.username,password:users.a.password}});
+      const base={action:'credit_settlement',invoice_id:creditedInvoice.id,amount:'30',expected_available:'44',effective_date:new Date().toISOString().slice(0,10),reason:'QA concurrent use of same balance',method:'wire',reference:'QA-RACE-030'};
+      const intents=[{...base,movement_type:'application',target_invoice_id:settlementTarget.id,request_id:randomUUID()},{...base,movement_type:'refund',request_id:randomUUID()}],tokens=[login.body.token,master.body.token];
+      const results=await Promise.all(intents.map((body,i)=>api.request('invoices',{method:'POST',body,token:tokens[i]})));expect(results.map(r=>r.status).sort()).toEqual([200,400]);expect(results.find(r=>r.status===400).body.details.code).toBe('INVOICE_CREDIT_BALANCE_STALE');
+      const winner=results.findIndex(r=>r.status===200),retries=await Promise.all([1,2].map(()=>api.request('invoices',{method:'POST',body:intents[winner],token:tokens[winner]})));expect(retries.map(r=>r.status)).toEqual([200,200]);expect(retries[0].body.movement.id).toBe(retries[1].body.movement.id);
+      const readLogin=await api.request('login',{method:'POST',body:{username:users.b.username,password:users.b.password}});expect((await api.request('invoices',{method:'POST',token:readLogin.body.token,body:{...base,movement_type:'refund',request_id:randomUUID()}})).status).toBe(403);
+      await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Saldo a favor'),{timeout:45_000}).toBe(14);await expect.poll(()=>reportInvoiceValue(settlementTarget.invoice_number,'AR actual')).toBe(winner===0?10:40);
+      expect((await f.rows('select id from invoice_active_credit_movements')).length).toBe(1);expect(Number((await f.one("select sum(amount) as amount from payments where status='posted'")).amount)).toBe(3240);
+      evidence.creditSettlement={applied:40,refunded:4,reversedBoth:true,concurrentStatuses:[200,400],winner:intents[winner].movement_type,remainingCredit:14,retries:[200,200],reader:403};
+    });
     expect(reportNavigations).toBe(reportNavBaseline);evidence.reportNavigations={initial:reportNavBaseline,final:reportNavigations};
-    expect(evidence.checkpoints).toHaveLength(18);
+    expect(evidence.checkpoints).toHaveLength(22);
     expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404||row.status>=500)).toEqual([]);
   } finally {

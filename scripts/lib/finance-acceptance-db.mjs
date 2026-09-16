@@ -18,7 +18,8 @@ const extra = [
   '20260909185121_finance_cash_reconciliation.sql',
   '20260910123500_direct_ship_quantity_corrections.sql',
   '20260916034831_direct_ship_merchandise_cogs.sql',
-  '20260916110740_invoice_quantity_credit_notes.sql'
+  '20260916110740_invoice_quantity_credit_notes.sql',
+  '20260916141741_invoice_credit_settlement.sql'
 ].map(file => `supabase/migrations/${file}`);
 
 // Preserve the historical August 29 ordering established in the logistics slice.

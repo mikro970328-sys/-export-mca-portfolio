@@ -1,5 +1,5 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
-import { loadInvoiceFinanceCapabilityMaps } from './_invoice-actions.js';
+import { loadInvoiceFinanceCapabilityMaps, permissionAwareCapabilities } from './_invoice-actions.js';
 
 const text=(value,max=2000)=>String(value??'').trim().slice(0,max);
 const rpcRow=value=>Array.isArray(value)?(value[0]||null):(value||null);
@@ -7,6 +7,18 @@ const uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9
 
 function translatedError(raw){
   const messages=[
+    ['INVOICE_CREDIT_MOVEMENT_INVALID','La solicitud de movimiento de saldo no es válida.'],
+    ['INVOICE_CREDIT_MOVEMENT_NOT_FOUND','La operación de saldo a favor no existe.'],
+    ['INVOICE_CREDIT_MOVEMENT_REVERSED','La operación de saldo a favor ya está revertida.'],
+    ['INVOICE_CREDIT_BALANCE_USED','Revierte primero las aplicaciones o devoluciones que usaron ese saldo a favor.'],
+    ['INVOICE_CREDIT_BALANCE_STALE','El saldo a favor cambió. Actualiza y abre de nuevo el formulario.'],
+    ['INVOICE_CREDIT_EXCEEDS_AVAILABLE','El monto supera el saldo a favor disponible.'],
+    ['INVOICE_CREDIT_EXCEEDS_TARGET','El monto supera el saldo pendiente de la factura destino.'],
+    ['INVOICE_CREDIT_TARGET_INVALID','Selecciona otra factura emitida del mismo cliente y moneda.'],
+    ['INVOICE_CREDIT_AMOUNT_INVALID','Indica un monto mayor que cero con un máximo de dos decimales.'],
+    ['INVOICE_CREDIT_DATE_INVALID','Indica una fecha válida que no sea futura.'],
+    ['INVOICE_CREDIT_METHOD_REQUIRED','Selecciona el método de la devolución realizada.'],
+    ['INVOICE_HAS_CREDIT_MOVEMENTS','Revierte primero los movimientos de saldo a favor de esta factura.'],
     ['INVOICE_CREDIT_REQUEST_CONFLICT','La solicitud ya se utilizó para otra nota de crédito. Abre de nuevo el formulario.'],
     ['INVOICE_CREDIT_REQUEST_REQUIRED','La solicitud de nota de crédito no es válida. Abre de nuevo el formulario.'],
     ['INVOICE_CREDIT_ACTOR_INVALID','No tienes permiso para emitir esta nota de crédito.'],
@@ -63,7 +75,7 @@ function cleanLines(lines){
 }
 
 async function loadInvoices(admin){
-  const [invoices,items,financial,payments,capabilityBundle,credits,creditLines,netItems]=await Promise.all([
+  const [invoices,items,financial,payments,capabilityBundle,credits,creditLines,netItems,creditMovements]=await Promise.all([
     supabase('invoices',{query:'?select=id,invoice_number,sales_order_id,operation_id,client_id,issue_date,due_date,currency,status,notes,created_at,updated_at,client:clients(id,name,company,mipyme_name),sales_order:sales_orders(id,so_number,status,customer_reference)&order=created_at.desc&limit=1000'}),
     supabase('invoice_items',{query:'?select=id,invoice_id,sales_order_item_id,product_id,description,quantity,unit,unit_price,line_total,notes,created_at,product:products(id,sku,name,brand)&order=created_at.asc&limit=5000'}),
     supabase('invoice_financial_progress',{query:'?select=*&order=issue_date.desc&limit=1000'}),
@@ -71,8 +83,17 @@ async function loadInvoices(admin){
     loadInvoiceFinanceCapabilityMaps(admin),
     supabase('invoice_credit_notes',{query:'?select=id,credit_number,invoice_id,reason,total,currency,created_by,created_at&order=created_at.desc&limit=5000'}),
     supabase('invoice_credit_note_lines',{query:'?select=id,credit_note_id,invoice_item_id,quantity,previous_credited_quantity,unit_price,amount&limit=10000'}),
-    supabase('invoice_net_items',{query:'?select=id,credited_quantity&order=created_at.asc&limit=5000'})
+    supabase('invoice_net_items',{query:'?select=id,credited_quantity&order=created_at.asc&limit=5000'}),
+    supabase('invoice_credit_movement_state',{query:'?select=*&order=created_at.desc&limit=5000'})
   ]);
+  const movementsByInvoice=new Map();
+  for(const movement of creditMovements||[]){
+    const row={...movement,capabilities:permissionAwareCapabilities(movement.capabilities,capabilityBundle.write_access)};
+    for(const id of [movement.source_invoice_id,movement.target_invoice_id].filter(Boolean)){
+      if(!movementsByInvoice.has(id))movementsByInvoice.set(id,[]);
+      movementsByInvoice.get(id).push(row);
+    }
+  }
   const creditsByInvoice=new Map(),creditLinesByNote=new Map(),creditedByItem=new Map((netItems||[]).map(item=>[item.id,item.credited_quantity]));
   for(const line of creditLines||[]){
     if(!creditLinesByNote.has(line.credit_note_id))creditLinesByNote.set(line.credit_note_id,[]);
@@ -99,6 +120,7 @@ async function loadInvoices(admin){
       financial:financialByInvoice.get(invoice.id)||null,
       payments:paymentsByInvoice.get(invoice.id)||[],
       credit_notes:creditsByInvoice.get(invoice.id)||[],
+      credit_movements:movementsByInvoice.get(invoice.id)||[],
       capabilities:capabilityBundle.invoice_capabilities.get(invoice.id)||{actions:{}}
     }))
   };
@@ -163,6 +185,23 @@ export default async function handler(req,res){
     }
     if(req.method!=='POST')return fail(res,405,'Método no permitido');
     const body=await readJson(req),action=text(body.action,60).toLowerCase();
+
+    if(action==='credit_settlement'){
+      const kind=body.movement_type,reverse=kind==='reversal';
+      if(!['application','refund','reversal'].includes(kind))throw new Error('INVOICE_CREDIT_MOVEMENT_INVALID');
+      if(!uuid(body.request_id))throw new Error('INVOICE_CREDIT_REQUEST_REQUIRED');
+      if(reverse?!uuid(body.movement_id):!uuid(body.invoice_id))throw new Error('INVOICE_CREDIT_MOVEMENT_INVALID');
+      if(kind==='application'&&!uuid(body.target_invoice_id))throw new Error('INVOICE_CREDIT_TARGET_INVALID');
+      const amount=String(body.amount??'').trim(),available=String(body.expected_available??'').trim();
+      if(!reverse&&(!amount||!Number.isFinite(Number(amount))||Number(amount)<=0||!/^\d+(?:\.\d{1,2})?$/.test(amount)))throw new Error('INVOICE_CREDIT_AMOUNT_INVALID');
+      if(!reverse&&(!available||!Number.isFinite(Number(available))||Number(available)<0))throw new Error('INVOICE_CREDIT_BALANCE_STALE');
+      const reason=String(body.reason??'').trim();if(reason.length<3||reason.length>2000)throw new Error('INVOICE_CREDIT_REASON_REQUIRED');
+      const date=String(body.effective_date||new Date().toISOString().slice(0,10)),parsed=new Date(`${date}T00:00:00Z`);
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==date)throw new Error('INVOICE_CREDIT_DATE_INVALID');
+      const result=await supabase('rpc/manage_invoice_credit',{method:'POST',body:{p_action:kind,p_source_invoice_id:reverse?null:body.invoice_id,p_target_invoice_id:kind==='application'?body.target_invoice_id:null,p_movement_id:reverse?body.movement_id:null,p_amount:reverse?null:amount,p_reason:reason,p_request_id:body.request_id,p_actor:admin.admin_id,p_effective_date:date,p_method:kind==='refund'?text(body.method,120)||null:null,p_reference:kind==='refund'?text(body.reference,250)||null:null,p_expected_available:reverse?null:available}});
+      const movement=rpcRow(result);if(!movement?.id)throw new Error('INVOICE_CREDIT_MOVEMENT_UNEXPECTED');
+      return ok(res,{movement,invoice:await refreshedInvoice(admin,movement.source_invoice_id)});
+    }
 
     if(action==='credit_quantity'){
       if(!uuid(body.invoice_id))throw new Error('INVOICE_NOT_FOUND');
