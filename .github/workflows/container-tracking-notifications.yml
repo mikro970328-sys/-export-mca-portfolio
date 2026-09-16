@@ -6,6 +6,11 @@ on:
       - 'supabase/migrations/*container_tracking_assignment_notifications.sql'
       - 'scripts/check-container-tracking-notifications.mjs'
       - 'scripts/check-tracking-notification-claim.mjs'
+      - 'scripts/check-tracking-workflow-lifecycle.mjs'
+      - 'scripts/lib/*acceptance*.mjs'
+      - 'supabase/tests/fixtures/**'
+      - 'supabase/schema.sql'
+      - 'supabase/migrations/**'
       - 'api/manual-tracking-event.js'
       - 'api/shipments.js'
       - 'api/_notification-delivery.js'
@@ -16,6 +21,11 @@ on:
       - 'supabase/migrations/*container_tracking_assignment_notifications.sql'
       - 'scripts/check-container-tracking-notifications.mjs'
       - 'scripts/check-tracking-notification-claim.mjs'
+      - 'scripts/check-tracking-workflow-lifecycle.mjs'
+      - 'scripts/lib/*acceptance*.mjs'
+      - 'supabase/tests/fixtures/**'
+      - 'supabase/schema.sql'
+      - 'supabase/migrations/**'
       - 'api/manual-tracking-event.js'
       - 'api/shipments.js'
       - 'api/_notification-delivery.js'
@@ -41,3 +51,5 @@ jobs:
         run: node scripts/check-tracking-notification-claim.mjs
       - name: Check public error responses
         run: node scripts/check-api-public-error-responses.mjs
+      - name: Integrate tracking, documents, tasks and personal notifications
+        run: node scripts/check-tracking-workflow-lifecycle.mjs

@@ -1,6 +1,6 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #312, c156010464ef554cc17754c26e48d3befc006248.
+Corte 2026-09-16. Base publicada PR #313, 8dff2add51817deb14d0abb464c11aac53f78141.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
@@ -26,11 +26,12 @@ Este documento consolida límites actuales, no afirma que todos sean defectos.
 | Variantes financieras y reportes | Facturación/cobros/proveedor en variantes Direct Ship todavía fuera de sus recorridos; refresco completo de Reportes tras operaciones y reversos | Saldos, caja, costos y reportes coherentes entre dos sesiones, con evidencia por variante |
 | Aceptación final integrada | Recorrido de trabajo diario completo con roles y fallos de conexión/permisos en el alcance acordado | Matriz consolidada sin bloqueos críticos conocidos y publicación verificada |
 
-Trabajo actual: preservar la deduplicación de WhatsApp después de aceptación del
-proveedor cuando falla persistencia posterior. Ver TRACKING_NOTIFICATION_CLAIM.md.
-La recuperación tras eliminación (#311) y el recorrido documental (#312) están
-publicados. Esta corrección puntual no cierra la aceptación integrada de tareas
-ni prueba entrega externa real.
+Trabajo actual: aceptación SQL integrada de documentos → tarea → aviso personal,
+reasignación/dependencias/permisos y avisos de estados marítimos. Las 16
+verificaciones están en TRACKING_WORKFLOW_LIFECYCLE.md; CI en la PR asociada.
+No son prueba de interfaz ni concurrencia real: queda unir estas acciones en dos
+sesiones de navegador. Recuperaciones documentales (#311/#312) y conservación
+del claim tras aceptación WhatsApp (#313) están publicadas.
 
 ## Después y fuera de prioridad actual
 

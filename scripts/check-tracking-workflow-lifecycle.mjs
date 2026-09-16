@@ -1,0 +1,128 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { PGlite } from '@electric-sql/pglite';
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
+import { applyOperatorAcceptanceSchema } from './lib/operator-acceptance-db.mjs';
+import { operatorFixture } from './lib/operator-acceptance-fixture.mjs';
+const db=new PGlite({extensions:{pgcrypto}});
+await db.waitReady;
+try {
+  await applyOperatorAcceptanceSchema(db);
+  // The original legacy notification table, followed by unchanged migrations.
+  const schema=fs.readFileSync('supabase/schema.sql','utf8');
+  const notificationTable=schema.match(/create table if not exists public\.notifications \([\s\S]*?\n\);/g);
+  assert.equal(notificationTable?.length,1);
+  await db.exec(notificationTable[0]);
+  const webhookTable=schema.match(/create table if not exists public\.webhook_events \([\s\S]*?\n\);/g);
+  assert.equal(webhookTable?.length,1);
+  await db.exec(webhookTable[0]);
+  // Legacy fields outside the financial fixture; no business-function doubles.
+  await db.exec('alter table webhook_events add column provider text;');
+  for(const name of [
+    '20260728_finish_clients_notifications.sql',
+    '20260730_operational_notifications_phase1.sql',
+    '20260830154000_p4_task_engine.sql',
+    '20260830160500_p4_task_engine_index_hardening.sql',
+    '20260830161000_p4_task_dependency_completion_guard.sql',
+    '20260830170000_p5_workflow_routing_foundation.sql',
+    '20260830172000_p5_workflow_handoff_rules.sql',
+    '20260830174500_p5_workflow_dependency_integrity.sql',
+    '20260830203500_p8_operational_task_attention.sql',
+    '20260830211500_p9_operational_alert_condition_registry.sql',
+    '20260830211600_p9_alert_cycle_seed_normalization.sql',
+    '20260830211700_p9_alert_reconcile_column_qualification.sql',
+    '20260830211800_p9_alert_action_column_qualification.sql',
+    '20260830215500_p10_user_notification_inbox.sql',
+    '20260830220500_p10_notification_source_version_integrity.sql',
+    '20260903233021_b10_1_web_push_notifications.sql',
+    '20260904020411_container_tracking_assignment_notifications.sql',
+    '20260904091137_inactive_notifications_not_unread.sql'
+  ]) {
+    try {await db.exec(fs.readFileSync(`supabase/migrations/${name}`,'utf8'));}
+    catch(e){throw Error(`${name}: ${e.message}`);}
+  }
+  const {f,users}=await operatorFixture(db);
+  let checks=0;
+  const permissions=['notifications.read','logistics.read','documents.read','documents.write','tasks.read','tasks.write'];
+  for(const user of [users.a,users.b]) {
+    for(const permission of permissions) await db.query('insert into access_role_permissions(access_role_id,permission_key) values($1,$2) on conflict do nothing',[user.access_role_id,permission]);
+  }
+  await db.query("update workflow_task_routes set assigned_admin_id=$1 where workflow_key='shipment_cuba_documents'",[users.a.id]);
+  const shipment=await f.one("insert into shipments(container_number,client_id,importer_id,departure_date) values('QA-TASK-001',$1,$2,current_date) returning *",[f.client,f.importer]);
+  const tasks=()=>f.rows("select * from operational_tasks where entity_id=$1 and workflow_key='shipment_cuba_documents'",[shipment.id]);
+  const inbox=()=>f.rows('select * from notification_inbox_workspace where source_id=$1 order by created_at,id',[task.id]);
+  const reconcile=()=>db.query('select reconcile_user_notifications()');
+  const [task]=await tasks();
+  assert.equal(task.status,'pending');assert.equal(task.assigned_admin_id,users.a.id);checks++;
+  await reconcile();await reconcile();
+  let items=await inbox();
+  assert.equal(items.length,1);assert.equal(items[0].recipient_admin_id,users.a.id);assert.equal(items[0].is_unread,true);checks++;
+  await assert.rejects(db.query("select * from act_on_notification_inbox($1,$2,'mark_read')",[items[0].id,users.b.id]),/NOTIFICATION_NOT_FOUND/);
+  assert.equal((await inbox())[0].read_at,null);checks++;
+  await db.query("select * from act_on_notification_inbox($1,$2,'mark_read')",[items[0].id,users.a.id]);
+  assert.equal((await inbox())[0].is_unread,false);checks++;
+  const upload=(type,name)=>f.one(`select * from create_shipment_customs_document($1,$2,$3,$4,'shipment-documents',$5,'application/pdf',100,null,$6,'QA')`,[shipment.id,f.client,type,name,`${shipment.id}/${name}`,users.a.id]);
+  const packing=await upload('Packing List Cuba','packing-v1.pdf');
+  assert.equal((await tasks())[0].status,'pending');
+  await upload('Commercial Invoice Cuba','invoice-v1.pdf');
+  assert.equal((await tasks())[0].status,'completed');
+  assert.equal((await inbox())[0].source_active,false);checks++;
+  await db.query('select * from soft_delete_shipment_customs_document($1,$2,$3)',[packing.document_id,users.a.id,'QA']);
+  assert.equal((await tasks()).length,1);assert.equal((await tasks())[0].id,task.id);assert.equal((await tasks())[0].status,'pending');
+  await reconcile();await reconcile();
+  items=await inbox();assert.equal(items.length,1);assert.equal(items[0].source_active,true);
+  assert.equal(items[0].is_unread,false,'Reopening keeps the read state of the same assignment');checks++;
+  const current=(await tasks())[0];
+  await db.query('select update_operational_task($1,$2,$3,$4,$5,$6,null,$7,$8,$9)',[task.id,users.master.id,current.title,current.description,current.priority,current.due_at,users.b.id,'shipment',shipment.id]);
+  await reconcile();await reconcile();items=await inbox();
+  assert.equal(items.length,2);
+  assert.equal(items.find(x=>x.recipient_admin_id===users.a.id).source_active,false);
+  assert.equal(items.find(x=>x.recipient_admin_id===users.b.id).is_unread,true);checks++;
+  await db.query("delete from access_role_permissions where access_role_id=$1 and permission_key='documents.write'",[users.b.access_role_id]);
+  assert.deepEqual(await f.rows('select * from notification_task_recipients($1)',[task.id]),[]);checks++;
+  await db.query("insert into access_role_permissions(access_role_id,permission_key) values($1,'documents.write')",[users.b.access_role_id]);
+  assert.equal((await f.rows('select * from notification_task_recipients($1)',[task.id]))[0].admin_user_id,users.b.id);
+  await upload('Packing List Cuba','packing-v2.pdf');
+  assert.equal((await tasks())[0].status,'completed');
+  assert.equal((await inbox()).filter(x=>x.is_unread).length,0);checks++;
+  const history=await f.rows('select event_type from operational_task_history where task_id=$1',[task.id]);
+  assert.equal(history.filter(x=>x.event_type==='workflow_created').length,1);
+  assert.equal(history.filter(x=>x.event_type==='workflow_completed').length,2);
+  assert.equal(history.filter(x=>x.event_type==='workflow_reopened').length,1);checks++;
+  const manual=async title=>(await f.one(`select create_operational_task($1,$2,null,'normal',null,null,$3,null,null,'manual',null,null,null) as id`,[users.master.id,title,users.b.id])).id;
+  const prerequisite=await manual('QA prerequisite'),dependent=await manual('QA dependent');
+  await db.query('select set_operational_task_dependencies($1,$2::uuid[],$3)',[dependent,[prerequisite],users.master.id]);
+  await assert.rejects(db.query("select transition_operational_task($1,$2,'completed',null)",[dependent,users.b.id]),/TASK_OPEN_DEPENDENCIES/);
+  assert.equal((await f.one('select status from operational_tasks where id=$1',[dependent])).status,'pending');
+  await db.query("select transition_operational_task($1,$2,'completed',null)",[prerequisite,users.b.id]);
+  await db.query("select transition_operational_task($1,$2,'completed',null)",[dependent,users.b.id]);checks++;
+
+  // Real tracking inbox reconciler, with no subscriptions and no push transport.
+  const trackingInbox=()=>f.rows("select * from notification_inbox_workspace where source_id=$1 and source_event_type='tracking_status_changed'",[shipment.id]);
+  const trackingReconcile=()=>db.query('select reconcile_web_push_notifications()');
+  await db.query('insert into notification_preferences(admin_user_id,tracking_updates_enabled) values($1,false)',[users.b.id]);
+  await db.query("update shipments set last_status='Salió del puerto',last_event_at=clock_timestamp() where id=$1",[shipment.id]);
+  await trackingReconcile();await trackingReconcile();
+  let tracking=await trackingInbox();
+  assert.equal(tracking.filter(x=>x.recipient_admin_id===users.a.id).length,1);
+  assert.equal(tracking.filter(x=>x.recipient_admin_id===users.b.id).length,0);checks++;
+  await db.query('update notification_preferences set tracking_updates_enabled=true where admin_user_id=$1',[users.b.id]);
+  await trackingReconcile();await trackingReconcile();
+  assert.equal((await trackingInbox()).filter(x=>x.recipient_admin_id===users.b.id).length,1);checks++;
+  for(const status of ['Llegó al puerto','Descargado del buque','Liberado','Entregado']) {
+    await db.query('update shipments set last_status=$2,last_event_at=clock_timestamp() where id=$1',[shipment.id,status]);
+    await trackingReconcile();await trackingReconcile();
+  }
+  tracking=await trackingInbox();
+  assert.equal(tracking.filter(x=>x.recipient_admin_id===users.a.id).length,5);
+  assert.equal(tracking.filter(x=>x.recipient_admin_id===users.b.id).length,5);checks++;
+  await db.query("delete from access_role_permissions where access_role_id=$1 and permission_key='logistics.read'",[users.b.access_role_id]);
+  await db.query("update shipments set last_status='Liberado',last_event_at=clock_timestamp() where id=$1",[shipment.id]);
+  await trackingReconcile();await trackingReconcile();
+  tracking=await trackingInbox();
+  assert.equal(tracking.filter(x=>x.recipient_admin_id===users.a.id).length,6);
+  assert.equal(tracking.filter(x=>x.recipient_admin_id===users.b.id).length,5);checks++;
+  assert.equal((await f.one('select count(*)::int as count from push_delivery_queue')).count,0);
+  assert.equal((await f.one('select count(*)::int as count from notifications')).count,0);checks++;
+  console.log(`Tracking workflow lifecycle: ${checks} checks passed with real SQL tasks, documents and personal inbox (isolated, no sends).`);
+} catch(error) {console.error(error.message);process.exitCode=1;} finally {await db.close();}
