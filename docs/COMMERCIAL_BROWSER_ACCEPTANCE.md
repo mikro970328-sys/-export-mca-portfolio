@@ -1,3 +1,17 @@
+## Extensión vigente — jornada con proveedor (2026-09-16)
+
+La historia ahora exige 18 checkpoints. COM-13 crea/contabiliza factura del
+proveedor para la misma PO; COM-14 recupera pago 40 con todas las respuestas
+perdidas. COM-15 recupera anticipo 35 desde offline y confirmación perdida;
+COM-16 lo aplica y el lector ve AP 175 sin recargar. COM-17 quita/restituye permiso
+con el pago abierto y recupera liquidación 175; COM-18 concilia ambos lados.
+Resultado requerido: AR/AP 0; entrada 400, salida 250, caja neta 150; COGS real
+250, costo directo 50, contribución 100, stock 0, tres pagos y tres audits.
+El costo directo no se inventa como salida de caja.
+Leer SUPPLIER_PAYMENT_RECOVERY.md y la PR para resultados y publicación finales.
+Los límites sobre proveedor/costo estimado del texto histórico inferior solo
+describen la versión original de 12 pasos.
+
 # Aceptación comercial en navegador
 
 Fecha: 2026-09-09. Base: `5e2620bd6afe151807b3a17d6ebab394e5eee16b`.

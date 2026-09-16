@@ -1,3 +1,15 @@
+## 2026-09-16 · Cierre diario y recuperación de pagos al proveedor
+
+PR #323 publicada en `1296968075ed1adce7a81b483fd65bd266999c2b`; selección de
+Reportes durante refresco ya corregida. El cierre diario detectó que perder la
+confirmación de un pago de 40 producía seis registros. Se corrige identidad,
+reintento y audit atómico en los owners existentes. API 26/26, concurrencia/HTTP
+27/27 y COM-14 Chromium ya aprobados; COM-15/18 y CI final en la PR actual.
+Leer SUPPLIER_PAYMENT_RECOVERY.md. No declarar aplicada la migración ni publicado
+el cambio sin verificar la PR. Después sigue auditoría técnica consolidada.
+No repetir como pendientes los módulos funcionales ya probados; escritorio
+prioritario, iPhone/BrowserStack/push físico diferidos.
+
 ## 2026-09-16 · Selección de Reportes mientras actualiza
 
 PR #322 publicada en 86bdec6215bf11cb3752616d5428a2120d33047b: cobros
