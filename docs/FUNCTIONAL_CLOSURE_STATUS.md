@@ -1,6 +1,6 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #321, 0bb0def569c4f9e736d6297fbb273373ef626660.
+Corte 2026-09-16. Base publicada PR #322, 86bdec6215bf11cb3752616d5428a2120d33047b.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
@@ -106,3 +106,11 @@ PostgreSQL desechable. Corrección actual: identidad estable de la intención,
 auditoría atómica y aceptación de Facturación/Ventas, permisos y desconexión.
 Ver INVOICE_PAYMENT_RECOVERY.md. CI y publicación finales en la PR; este caso
 no sustituye la matriz consolidada ni la auditoría integral posterior.
+
+## Selección de Reportes durante actualización
+
+DS-28 ya tiene una reproducción controlada: el clic para cambiar a proveedor se
+ignoraba durante la lectura automática de facturas de cliente. Se corrige en
+reports.js conservando la intención más reciente y los filtros. Los datos SQL
+no se perdían. Ver REPORT_SELECTION_RECOVERY.md y la PR para evidencia final.
+No confundir este caso con cierre de la aceptación diaria global ni auditoría.

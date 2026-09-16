@@ -1,3 +1,12 @@
+## 2026-09-16 · Selección de Reportes mientras actualiza
+
+PR #322 publicada en 86bdec6215bf11cb3752616d5428a2120d33047b: cobros
+idempotentes y auditoría atómica. La repetición posterior dejó DS-28 pendiente.
+Ahora se reprodujo la causa: Reportes ignoraba un clic de dataset durante una
+lectura automática en curso. La corrección mantiene la última selección y lee
+de nuevo desde el owner existente. Ver REPORT_SELECTION_RECOVERY.md y la PR
+para CI y publicación finales; la aceptación diaria consolidada sigue abierta.
+
 ## 2026-09-16 · Recuperación diaria de cobros
 
 Base publicada PR #321, 0bb0def569c4f9e736d6297fbb273373ef626660: precisión y

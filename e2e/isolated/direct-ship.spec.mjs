@@ -15,6 +15,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
   const contexts=[];
   const evidence={checkpoints:[],api:[],errors:[],crashes:[],external:[],documents:{}};
   let api,page,loggedIn=false;
+  const reportGate={armed:false,held:null,release:null};
   try{
     await db.exec(`alter table clients add column phone text, add column email text,
       add column welcome_status text default 'pending';
@@ -36,7 +37,14 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     await db.exec(fs.readFileSync('supabase/migrations/20260910123500_direct_ship_quantity_corrections.sql','utf8'));
     const {f,users}=await operatorFixture(db);
-    api=await startBrowserAcceptanceServer();
+    api=await startBrowserAcceptanceServer({beforeApiResponse:async(req,url,body)=>{
+      // Delay one completed real read, without replacing its status or payload.
+      if(!reportGate.armed||req.method!=='GET'||url.pathname!=='/api/reports'||url.searchParams.get('dataset')!=='invoices')return;
+      reportGate.armed=false;
+      const data=JSON.parse(String(body));
+      reportGate.held={query:url.search,report:data.report?.key,rows:data.row_count};
+      await new Promise(resolve=>{reportGate.release=resolve;});
+    }});
     const origins=new Set([api.base,new URL(process.env.ERP_TEST_POSTGREST_URL).origin]);
     globalThis.fetch=(input,options)=>{
       const url=new URL(typeof input==='string'||input instanceof URL?input:input.url);
@@ -569,8 +577,18 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
         await supplierAp.locator('[data-bill-action="post"][data-bill-id="'+bill.id+'"]').click();await mutation('payables',()=>supplierAp.locator('#decisionAccept').click());await expect(supplierAp.locator('#decisionModal')).toBeHidden();
         expect(Number((await f.ap(bill)).bill_total)).toBe(1050);return bill;
       };
-      partialBillA=await make('2.50000001','QA-PARTIAL-A',true);partialBillB=await make('2.49999999','QA-PARTIAL-B');
+      partialBillA=await make('2.50000001','QA-PARTIAL-A',true);
+      reportGate.armed=true;
+      partialBillB=await make('2.49999999','QA-PARTIAL-B');
+      await expect.poll(()=>reportGate.held).toBeTruthy();
+      await expect(reports.locator('#reportTable')).toHaveAttribute('aria-busy','true');
+      const before=await reports.locator('[data-dataset][aria-selected="true"]').getAttribute('data-dataset');
       await reports.locator('[data-dataset="supplier_bills"]').click();
+      const after=await reports.locator('[data-dataset][aria-selected="true"]').getAttribute('data-dataset');
+      evidence.reportSelection={held:reportGate.held,before,after};
+      console.log('REPORT_SELECTION_DURING_REFRESH '+JSON.stringify(evidence.reportSelection));
+      expect(after,'a report tab click must survive an in-flight automatic refresh').toBe('supplier_bills');
+      reportGate.release();reportGate.release=null;
       for(const bill of [partialBillA,partialBillB])await expect.poll(()=>supplierReportValue(bill,'AP actual'),{timeout:45_000}).toBe(1050);
       expect(await activeSupplierCash()).toBe(1600);await shot('28-supplier-rounded-bills');
     });
@@ -627,6 +645,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404||row.status>=500)).toEqual([]);
   } finally {
+    reportGate.release?.();
     const evidencePath=info.outputPath('direct-ship-evidence.json');
     fs.mkdirSync(info.outputDir,{recursive:true});
     fs.writeFileSync(evidencePath,JSON.stringify(evidence,null,2));
