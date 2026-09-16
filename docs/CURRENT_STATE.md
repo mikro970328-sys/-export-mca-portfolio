@@ -1,3 +1,13 @@
+## Publicación y auditoría vigente — 2026-09-16
+
+PR #324 publicada en 9f4aea87c412ac2dc467c0d934eee2f084307978. Jornada comercial de 18 pasos aprobada en
+Chromium/WebKit, matriz 16/16, API financiera 26/26 y concurrencia/HTTP 27/27.
+Pagos al proveedor ahora recuperan confirmaciones perdidas sin duplicar dinero.
+Migración aplicada 20260916214707; producción dpl_9KawWZViHyByoBhEAXw5ScdR32NN READY.
+Ver security/WORKDAY_TECHNICAL_AUDIT_20260916.md: quedan A-01 errores indirectos/
+almacenados y A-02 frontera legacy de recepción manual, aún por reproducir.
+No volver a presentar la jornada #324 como pendiente ni declarar cerrado todo.
+
 ## 2026-09-16 · Cierre diario y recuperación de pagos al proveedor
 
 PR #323 publicada en `1296968075ed1adce7a81b483fd65bd266999c2b`; selección de

@@ -1,3 +1,14 @@
+## Corte posterior a #324 — 2026-09-16
+
+La jornada integrada ya aprobó 18 checkpoints en ambos motores y está publicada:
+9f4aea87c412ac2dc467c0d934eee2f084307978. Matriz 16/16, 19/19 workflows, migración y despliegue
+verificados en PR #324. La recuperación de pagos al proveedor también está cerrada.
+La siguiente labor no es otro módulo financiero: resolver hallazgos concretos de
+security/WORKDAY_TECHNICAL_AUDIT_20260916.md (errores indirectos/almacenados y
+frontera transaccional de recepción manual por reproducir), y validar controles
+de recuperación pendientes. No declarar el ERP totalmente certificado.
+Los cortes de estado inferiores son históricos respecto de esta publicación.
+
 # Estado vigente de cierre — 2026-09-16
 
 Este corte sustituye los pendientes históricos conservados más abajo.
