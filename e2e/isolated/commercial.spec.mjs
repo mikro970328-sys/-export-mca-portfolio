@@ -382,11 +382,17 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
     });
     await step('COM-14 a lost supplier payment confirmation is recovered without a second payment',async()=>{
       await ap.locator('[data-bill-action="pay"][data-bill-id="'+supplierBill.id+'"]').click();
+      await expect(ap.locator('#pAmount')).toBeFocused();
       await ap.locator('#pAmount').fill('40');
       await ap.locator('#pReference').fill('QA-SUPPLIER-LOST-CONFIRMATION');
+      await expect(ap.locator('#pAmount')).toHaveValue('40');
       supplierFault.armed=true;await ap.locator('#savePayment').click();
       await expect.poll(()=>supplierFault.droppedId).toBeTruthy();
       await expect(ap.locator('#savePayment')).toBeEnabled();
+      const committed=await f.rows("select id,amount from supplier_payments where reference='QA-SUPPLIER-LOST-CONFIRMATION'");
+      evidence.supplierLostResponse={rows:committed.map(row=>({id:row.id,amount:Number(row.amount)})),balance:Number((await f.ap(supplierBill)).balance_due)};
+      console.log('SUPPLIER_LOST_RESPONSE '+JSON.stringify(evidence.supplierLostResponse));
+      expect(committed,'a lost confirmation cannot multiply the committed payment').toHaveLength(1);
       await expect(ap.locator('#paymentMsg')).toContainText(/registrar|confirmar|intenta/i);
       await expect(ap.locator('#pAmount')).toHaveValue('40');
       expect(Number((await f.ap(supplierBill)).balance_due)).toBe(210);
