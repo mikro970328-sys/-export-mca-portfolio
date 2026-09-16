@@ -16,5 +16,5 @@ try {
   await checkOperatorConcurrency(context);
   await checkOperatorHttp(context);
   console.log(`Operator acceptance: ${passed} passed, ${failed} failed`);
-  if(failed || passed!==22)process.exitCode=1;
+  if(failed || passed!==23)process.exitCode=1;
 }finally{await db.end();}

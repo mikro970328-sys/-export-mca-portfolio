@@ -6,6 +6,8 @@ const rpcRow=value=>Array.isArray(value)?(value[0]||null):(value||null);
 function translatedError(raw){
   const messages=[
     ['INVOICE_CREDIT_BALANCE_USED','Revierte primero las aplicaciones o devoluciones que usaron ese saldo a favor.'],
+    ['PAYMENT_REQUEST_INVALID','La solicitud de cobro tiene un identificador inválido.'],
+    ['PAYMENT_REQUEST_CONFLICT','La solicitud ya corresponde a otro cobro. Revisa el historial antes de iniciar uno nuevo.'],
     ['JSON_INVALID','La solicitud no tiene un formato válido.'],
     ['PAYMENT_AMOUNT_INVALID','El monto del cobro debe ser mayor que cero.'],
     ['PAYMENT_INVOICE_NOT_FOUND','Factura no encontrada.'],
@@ -38,9 +40,10 @@ export default async function handler(req,res){
     if(action==='register'){
       const invoiceId=text(body.invoice_id,80);if(!invoiceId)throw new Error('Falta la factura');
       const amount=Number(body.amount);if(!Number.isFinite(amount)||amount<=0)throw new Error('PAYMENT_AMOUNT_INVALID');
-      const result=await supabase('rpc/register_invoice_payment',{method:'POST',body:{p_invoice_id:invoiceId,p_amount:String(amount),p_payment_date:text(body.payment_date,40)||null,p_method:text(body.method,120)||null,p_reference_number:text(body.reference_number,250)||null,p_notes:text(body.notes,2000)||null}});
+      const requestId=body.request_id==null?null:String(body.request_id).trim();
+      if(requestId!==null&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId))throw new Error('PAYMENT_REQUEST_INVALID');
+      const result=await supabase('rpc/register_invoice_payment',{method:'POST',body:{p_invoice_id:invoiceId,p_amount:String(amount),p_payment_date:text(body.payment_date,40)||null,p_method:text(body.method,120)||null,p_reference_number:text(body.reference_number,250)||null,p_notes:text(body.notes,2000)||null,p_request_id:requestId,p_actor:admin.admin_id||null}});
       const payment=rpcRow(result);if(!payment?.id)throw new Error('No se pudo registrar el cobro');
-      await writeAudit(admin,'invoice_payment_registered','payment',payment.id,{invoice_id:invoiceId,amount:payment.amount,currency:payment.currency,reference_number:payment.reference_number||null});
       return ok(res,{payment});
     }
     if(action==='reverse'){

@@ -1,6 +1,6 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #320, b827176978ccb834acbdd97da9d916155cfe4da0.
+Corte 2026-09-16. Base publicada PR #321, 0bb0def569c4f9e736d6297fbb273373ef626660.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
@@ -98,3 +98,11 @@ Ver SUPPLIER_FINANCE_VARIANTS.md y la PR para resultados de publicación.
 Con este bloque, la siguiente actividad es consolidar el recorrido diario con
 roles y fallos de conexión/permisos. No declarar cerrado todo el ERP ni añadir
 por defecto nuevas funciones financieras que no forman parte de estos recorridos.
+
+## Recuperación diaria de cobros
+
+La confirmación HTTP perdida reprodujo dos registros para un solo clic en
+PostgreSQL desechable. Corrección actual: identidad estable de la intención,
+auditoría atómica y aceptación de Facturación/Ventas, permisos y desconexión.
+Ver INVOICE_PAYMENT_RECOVERY.md. CI y publicación finales en la PR; este caso
+no sustituye la matriz consolidada ni la auditoría integral posterior.

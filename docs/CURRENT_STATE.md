@@ -1,3 +1,12 @@
+## 2026-09-16 · Recuperación diaria de cobros
+
+Base publicada PR #321, 0bb0def569c4f9e736d6297fbb273373ef626660: precisión y
+anticipos de proveedor, 19 workflows y 16/16 recorridos de navegador. La aceptación
+diaria reprodujo un cobro duplicado al perder su confirmación HTTP. Se corrige
+en el RPC existente y ambos formularios, con auditoría atómica y rechazo de
+reutilizaciones distintas. Ver INVOICE_PAYMENT_RECOVERY.md y resultados de la PR.
+Sigue pendiente el cierre consolidado de toda la matriz diaria, no rehacer módulos.
+
 ## 2026-09-16 · Precisión y anticipos de proveedores
 
 PR #320 publicada en b827176978ccb834acbdd97da9d916155cfe4da0: reversos de notas de

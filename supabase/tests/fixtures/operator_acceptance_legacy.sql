@@ -33,9 +33,7 @@ grant select on public.admin_users to service_role;
 alter table public.audit_log
   alter column action set not null,
   alter column entity_type set not null,
-  alter column created_at set not null,
-  add column actor_admin_id uuid references public.admin_users(id) on delete set null,
-  add column actor_username text;
+  alter column created_at set not null;
 -- Same legacy timestamp trigger body as 20260728_multi_admin_auth.sql.
 create function public.touch_admin_users_updated_at() returns trigger language plpgsql as $$
 begin

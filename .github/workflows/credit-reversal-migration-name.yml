@@ -1,35 +1,73 @@
-name: Inspect Post-release Report Boundary
+name: Reproduce Report Selection During Refresh
+
 on:
   push:
     branches: [build/credit-reversal-migration]
+
 permissions:
   contents: read
-  actions: read
+
 jobs:
-  inspect:
+  isolated-browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop]
+        # Each story initializes an empty database in its own service containers.
+        suite: [direct-ship]
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-qa-only
+          POSTGRES_DB: erp_operator_qa
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      postgrest:
+        image: postgrest/postgrest:v12.2.3
+        env:
+          PGRST_DB_URI: postgres://postgres:isolated-qa-only@postgres:5432/erp_operator_qa
+          PGRST_DB_SCHEMAS: public
+          PGRST_DB_ANON_ROLE: anon
+          PGRST_JWT_SECRET: isolated-postgrest-qa-secret-never-production-2026
+        ports: ['3000:3000']
+    env:
+      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
+      ERP_TEST_POSTGREST_URL: http://127.0.0.1:3000
+      ERP_TEST_POSTGREST_SECRET: isolated-postgrest-qa-secret-never-production-2026
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: 35143291710
-          name: browser-direct-ship-chromium-desktop
-          path: evidence
-      - name: Show the first failed boundary without repeating commercial actions
-        run: |
-          python - <<'PY'
-          import pathlib,json
-          root=pathlib.Path('evidence')
-          for p in root.rglob('*.json'):
-            if 'attachments' in str(p): continue
-            try: d=json.loads(p.read_text())
-            except Exception: continue
-            if not isinstance(d,dict): continue
-            print('SUMMARY',p.name,json.dumps({k:d.get(k) for k in ['checkpoints','failure','errors','crashes','external']}))
-            for key in ['api','requests']:
-              if isinstance(d.get(key),list):
-                print('LAST_REQUESTS',json.dumps(d[key][-35:]))
-          for p in root.rglob('error-context.md'):
-            print('ERROR_CONTEXT',p.read_text()[:14000])
-          PY
+          ref: 6992cb412e085a866ad946183b891a1ecfe41cf7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            e2e/isolated/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
+      - name: Preserve operator-local dispatch instants
+        run: node e2e/isolated/dispatch-time-check.mjs
+      - name: Install isolated browser engines
+        working-directory: e2e/isolated
+        run: npx playwright install --with-deps chromium webkit
+      - name: Actual UI and disposable PostgreSQL
+        working-directory: e2e/isolated
+        env:
+          DEBUG: pw:browser
+        run: npm test -- ${{ matrix.suite }}.spec.mjs --project=${{ matrix.project }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: browser-${{ matrix.suite }}-${{ matrix.project }}
+          path: e2e/isolated/test-results/
+          retention-days: 14
