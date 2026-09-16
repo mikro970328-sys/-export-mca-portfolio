@@ -24,3 +24,12 @@ CI pasa de 12 a 14 jobs. La PR registra fallos, correcciones y head final; no
 anticipar aceptación hasta resultados. No se cambian código productivo, esquema,
 permisos reales, dependencias ni datos de negocio. Estado marítimo y entrega de
 notificaciones quedan para otra matriz; este caso cierra documentación en Tracking.
+
+## Primer CI
+
+Run 35043099136: ambos motores llegaron a cargar/leer el primer archivo y fallaron
+por una expectativa incorrecta de readiness: la fixture sin salida tenía estado
+not_required. La fixture ahora tiene departure_date, según la regla SQL canónica.
+Se completan columnas legacy de importadores/clientes requeridas por sus APIs
+para eliminar errores de preparación; se añade aserción de cero respuestas 5xx.
+No se cambian reglas productivas ni se relajan aserciones de negocio.

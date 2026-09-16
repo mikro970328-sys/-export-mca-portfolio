@@ -8,15 +8,17 @@ import { documentStorage } from './document-storage.mjs';
 test('tracking documents: versions, readiness, reader and lost confirmations',async({browser},info)=>{
   test.setTimeout(240_000);process.chdir(root);
   const db=await createOperatorAcceptanceDb(),contexts=[],nativeFetch=globalThis.fetch;
-  const evidence={checkpoints:[],errors:[],external:[],storage:'explicit in-memory substitute; real handlers/auth/PostgreSQL'};
+  const evidence={checkpoints:[],errors:[],serverErrors:[],external:[],storage:'explicit in-memory substitute; real handlers/auth/PostgreSQL'};
   let api;
   try{
-    await db.exec(`alter table clients add column phone text,add column email text,add column welcome_status text default 'pending';
-      alter table importers add column address text,add column country text default 'Cuba',add column email text,add column phone text;
+    await db.exec(`alter table clients add column phone text,add column email text,add column welcome_status text default 'pending',add column created_at timestamptz default now();
+      alter table importers add column address text,add column country text default 'Cuba',add column email text,add column phone text,add column normalized_name text,add column created_at timestamptz default now(),add column updated_at timestamptz default now();
+      alter table client_importers add column created_at timestamptz default now();
       grant select on documents,load_expediente_documents,load_traceability_sources,load_traceability_summary to service_role;`);
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const {f,users}=await operatorFixture(db);
-    const shipment=await f.one("insert into shipments(container_number,client_id,importer_id) values('QA-DOC-001',$1,$2) returning *",[f.client,f.importer]);
+    await db.exec('update importers set normalized_name=upper(btrim(name))');
+    const shipment=await f.one("insert into shipments(container_number,client_id,importer_id,departure_date) values('QA-DOC-001',$1,$2,current_date) returning *",[f.client,f.importer]);
     const storage=documentStorage();api=await startBrowserAcceptanceServer({storageHandler:storage.handle});
     const allowed=new Set([api.base,new URL(process.env.ERP_TEST_POSTGREST_URL).origin]);
     globalThis.fetch=(input,options)=>{const url=new URL(typeof input==='string'||input instanceof URL?input:input.url);if(!allowed.has(url.origin))throw Error('QA refuses external backend traffic');return nativeFetch(input,options);};
@@ -32,6 +34,7 @@ test('tracking documents: versions, readiness, reader and lost confirmations',as
       const context=await browser.newContext({viewport:use.viewport,userAgent:use.userAgent,isMobile:use.isMobile,hasTouch:use.hasTouch,deviceScaleFactor:use.deviceScaleFactor,locale:'es-US',serviceWorkers:'allow'});contexts.push(context);
       await context.route('**/*',route=>{const url=new URL(route.request().url());if(url.origin===api.base||['data:','blob:','about:'].includes(url.protocol))return route.continue();evidence.external.push(url.origin+url.pathname);return route.abort();});
       const page=await context.newPage();pages[key]=page;page.on('pageerror',e=>evidence.errors.push(e.message));page.setDefaultTimeout(20_000);
+      page.on('response',response=>{const url=new URL(response.url());if(url.pathname.startsWith('/api/')&&response.status()>=500)evidence.serverErrors.push({path:url.pathname,status:response.status()});});
       await page.goto(`${api.base}/admin/pwa.html`);await page.locator('#username').fill(users[key].username);await page.locator('#password').fill(users[key].password);
       await page.locator('#login').click();await expect(page.locator('#loginPage')).toBeHidden();
       await page.waitForFunction(()=>window.NavigationShell?.owner==='navigation-shell.js');
@@ -83,14 +86,14 @@ test('tracking documents: versions, readiness, reader and lost confirmations',as
       await writer.route('**/api/shipment-documents',async route=>{
         if(route.request().method()==='DELETE'){deletes++;const response=await route.fetch();expect(response.status()).toBe(200);await route.abort('failed');}else await route.continue();
       });
-      await writer.locator(`[data-customs-delete="${current.id}"]`).click();await writer.getByRole('button',{name:'Eliminar vigente',exact:true}).click();
+      await writer.locator(`[data-customs-delete="${current.id}"]`).click();await writer.locator('[data-decision-yes]').click();
       await expect(writer.locator('#containerCustomsFeedback')).toContainText('Documento retirado del ERP');await writer.unroute('**/api/shipment-documents');expect(deletes).toBe(1);
       expect((await rows()).find(x=>x.id===current.id).deleted_at).toBeTruthy();expect(storage.objects.has(current.storage_path)).toBe(false);
       const ready=await f.one('select * from shipment_customs_document_readiness where shipment_id=$1',[shipment.id]);expect(ready.missing_documents).toContain('Packing List Cuba');
       await refreshReader();await expect(reader.locator('.container-customs')).toContainText('qa-packing-v2.pdf');
       expect((await rows()).filter(x=>x.document_type==='Packing List Cuba')).toHaveLength(2);
     });
-    expect(evidence.errors).toEqual([]);expect(evidence.external).toEqual([]);
+    expect(evidence.serverErrors).toEqual([]);expect(evidence.errors).toEqual([]);expect(evidence.external).toEqual([]);
     await writer.screenshot({path:info.outputPath('tracking-documents.png'),fullPage:true});
   }finally{
     fs.mkdirSync(info.outputDir,{recursive:true});fs.writeFileSync(info.outputPath('tracking-documents-evidence.json'),JSON.stringify(evidence,null,2));
