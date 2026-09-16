@@ -1,3 +1,24 @@
+# Estado vigente de cierre — 2026-09-16
+
+Este corte sustituye los pendientes históricos conservados más abajo.
+Base publicada PR #323. No equivale a una declaración de ERP totalmente certificado.
+
+| Bloque | Evidencia vigente | Pendiente real |
+|---|---|---|
+| Compra, recepción, venta, inventario y despacho | Cadena integrada existente COM-01/12; variantes SQL/API y cancelación | Repetición final de la matriz con el nuevo cierre |
+| Tracking, documentos, tareas y avisos personales | Recorridos de dos operadores publicados #312/316 | Auditoría técnica; entrega externa real no simulada sigue fuera de estas pruebas |
+| Crédito, reversos, Direct Ship y proveedor | #317/322, DS-01/33 y aceptación financiera | Repetición de regresiones con el fix de pagos |
+| Jornada y recuperación | Cobros idempotentes #322; selección de reportes #323; nuevo fallo de pagos a proveedor reproducido y corregido en rama | Finalizar COM-15/18, CI exacto, migración compatible y publicación; ver SUPPLIER_PAYMENT_RECOVERY.md |
+| Auditoría técnica | B9, permisos/sesiones, errores públicos y ownership existentes | Consolidar arquitectura/dependencias, privilegios/datos y errores indirectos/almacenados contra el estado actual |
+
+No rehacer funciones resueltas. No hacer QA comercial en producción/Preview.
+iPhone físico, BrowserStack Automate, PWA instalada y push no bloquean escritorio.
+No prometer porcentaje ni fecha de cierre sin cerrar la evidencia y sus límites.
+
+---
+
+## Registro histórico de decisiones (no usar como pendiente vigente)
+
 # Pendientes para cierre funcional de escritorio
 
 Corte 2026-09-16. Base publicada PR #322, 86bdec6215bf11cb3752616d5428a2120d33047b.

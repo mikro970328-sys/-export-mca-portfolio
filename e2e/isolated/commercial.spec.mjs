@@ -38,7 +38,13 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const { f,users } = await operatorFixture(db);
     const paymentFault={armed:false,droppedId:null};
+    const supplierFault={armed:false,droppedId:null};
     api = await startBrowserAcceptanceServer({dropApiResponse:(req,url,body)=>{
+      if(supplierFault.armed&&req.method==='POST'&&url.pathname==='/api/supplier-payments'){
+        let result;try{result=JSON.parse(String(body));}catch{return false;}
+        if(!result.payment?.id)return false;
+        supplierFault.droppedId=result.payment.id;return true;
+      }
       if(!paymentFault.armed||req.method!=='POST'||url.pathname!=='/api/invoice-payments')return false;
       let result;try{result=JSON.parse(String(body));}catch{return false;}
       if(!result.payment?.id)return false;
@@ -55,7 +61,7 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
     expect(master.status).toBe(200);
     const permissions = ['procurement.read','procurement.write','warehouse.read','warehouse.write',
       'sales.read','sales.write','logistics.read','logistics.write','finance.read','finance.write','reports.read'];
-    for (const [key,keys] of [['a',permissions],['b',['warehouse.read']]]) {
+    for (const [key,keys] of [['a',permissions],['b',['warehouse.read','finance.read','reports.read']]]) {
       const result = await api.request('access-control?resource=roles',{method:'PATCH',token:master.body.token,
         body:{id:users[key].access_role_id,permission_keys:keys}});
       expect(result.status).toBe(200);
@@ -358,10 +364,154 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       evidence.reconciliation={sale:400,purchase:250,collected:400,receivable:0,directCost:50,contribution:100,physicalStock:0,costCoverage:'estimated'};
       await screenshot(a,'12-reconciled-report');
     });
+    let supplierBill;
+    const ap=module(a,'payables');
+    await step('COM-13 the supplier bill closes the same purchase at actual cost',async()=>{
+      await navigate(a,'payables');await ap.locator('#newBill').click();
+      await ap.locator('#bPO').selectOption(po.id);
+      await ap.locator('#bSupplierInvoice').fill('QA-WORKDAY-SUPPLIER');
+      await ap.locator('[data-bill-line] [data-total]').fill('250');
+      supplierBill=(await mutation(a,'payables',()=>ap.locator('#saveBill').click())).bill;
+      await expect(ap.locator('#billModal')).toBeHidden();
+      await ap.locator('[data-bill-action="post"][data-bill-id="'+supplierBill.id+'"]').click();
+      await mutation(a,'payables',()=>ap.locator('#decisionAccept').click());
+      await expect(ap.locator('#decisionModal')).toBeHidden();
+      expect(Number((await f.ap(supplierBill)).bill_total)).toBe(250);
+      expect(supplierBill.purchase_order_id).toBe(po.id);
+      evidence.documents.supplierBill=supplierBill.bill_number;
+    });
+    await step('COM-14 a lost supplier payment confirmation is recovered without a second payment',async()=>{
+      await ap.locator('[data-bill-action="pay"][data-bill-id="'+supplierBill.id+'"]').click();
+      await expect(ap.locator('#pAmount')).toBeFocused();
+      await ap.locator('#pAmount').fill('40');
+      await ap.locator('#pReference').fill('QA-SUPPLIER-LOST-CONFIRMATION');
+      await expect(ap.locator('#pAmount')).toHaveValue('40');
+      supplierFault.armed=true;await ap.locator('#savePayment').click();
+      await expect.poll(()=>supplierFault.droppedId).toBeTruthy();
+      await expect(ap.locator('#savePayment')).toBeEnabled();
+      const committed=await f.rows("select id,amount from supplier_payments where reference='QA-SUPPLIER-LOST-CONFIRMATION'");
+      evidence.supplierLostResponse={rows:committed.map(row=>({id:row.id,amount:Number(row.amount)})),balance:Number((await f.ap(supplierBill)).balance_due)};
+      console.log('SUPPLIER_LOST_RESPONSE '+JSON.stringify(evidence.supplierLostResponse));
+      expect(committed,'a lost confirmation cannot multiply the committed payment').toHaveLength(1);
+      await expect(ap.locator('#paymentMsg')).toContainText(/registrar|confirmar|intenta/i);
+      await expect(ap.locator('#pAmount')).toHaveValue('40');
+      expect(Number((await f.ap(supplierBill)).balance_due)).toBe(210);
+      supplierFault.armed=false;
+      await mutation(a,'supplier-payments',()=>ap.locator('#savePayment').click());
+      const rows=await f.rows("select id,amount from supplier_payments where reference='QA-SUPPLIER-LOST-CONFIRMATION'");
+      evidence.supplierRetry={committedId:supplierFault.droppedId,rows:rows.map(row=>({id:row.id,amount:Number(row.amount)}))};
+      console.log('SUPPLIER_RETRY_AFTER_COMMIT '+JSON.stringify(evidence.supplierRetry));
+      expect(rows,'one payment intent must never become two cash outflows').toHaveLength(1);
+      expect(rows[0].id).toBe(supplierFault.droppedId);
+      expect(Number((await f.ap(supplierBill)).balance_due)).toBe(210);
+      await expect(ap.locator('#paymentModal')).toBeHidden();
+      await screenshot(a,'14-supplier-payment-recovered');
+    });
+
+    let supplierAdvance,observerReports;
+    const observedAP=async()=>{
+      const value=await observerReports.locator('#reportTable tbody tr').filter({hasText:supplierBill.bill_number}).locator('[data-label="AP actual"]').textContent();
+      return Number(value.replace(/[^0-9.-]/g,''));
+    };
+    await step('COM-15 offline entry and lost advance confirmation preserve one unapplied payment',async()=>{
+      await ap.locator('#newAdvancePayment').click();
+      await ap.locator('#pPO').selectOption(po.id);await ap.locator('#pAmount').fill('35');
+      await ap.locator('#pReference').fill('QA-SUPPLIER-ADVANCE-RECOVERY');
+      await a.page.context().setOffline(true);await ap.locator('#savePayment').click();
+      await expect(ap.locator('#savePayment')).toBeEnabled();
+      await expect(ap.locator('#paymentMsg')).toContainText(/confirmar|intentar/i);
+      expect(await f.rows("select id from supplier_payments where reference='QA-SUPPLIER-ADVANCE-RECOVERY'")).toHaveLength(0);
+      await expect(ap.locator('#pAmount')).toHaveValue('35');
+      await a.page.context().setOffline(false);
+      supplierFault.droppedId=null;supplierFault.armed=true;await ap.locator('#savePayment').click();
+      await expect.poll(()=>supplierFault.droppedId).toBeTruthy();await expect(ap.locator('#savePayment')).toBeEnabled();
+      await expect(ap.locator('#paymentMsg')).toContainText(/confirmar|intentar/i);
+      expect(await f.rows("select id from supplier_payments where reference='QA-SUPPLIER-ADVANCE-RECOVERY'")).toHaveLength(1);
+      expect(Number((await f.ap(supplierBill)).balance_due)).toBe(210);
+      supplierFault.armed=false;
+      supplierAdvance=(await mutation(a,'supplier-payments',()=>ap.locator('#savePayment').click())).payment;
+      expect(supplierAdvance.id).toBe(supplierFault.droppedId);expect(Number(supplierAdvance.progress.unapplied_amount)).toBe(35);
+      await expect(ap.locator('#paymentModal')).toBeHidden();
+    });
+    await step('COM-16 a reader sees allocation change AP without another cash movement or page reload',async()=>{
+      const readAp=await navigate(b,'payables');
+      await expect(readAp.locator('#payablesReadOnlyNote')).toBeVisible();
+      await expect(readAp.locator('[data-bill-action="pay"]')).toHaveCount(0);
+      await expect(readAp.locator('#newAdvancePayment')).toBeHidden();
+      observerReports=await navigate(b,'reports');
+      await observerReports.locator('[data-dataset="supplier_bills"]').click();
+      await expect.poll(observedAP,{timeout:45_000}).toBe(210);
+      const cashBefore=await f.report('cash');
+      await ap.locator('[data-payment-action="allocate"][data-payment-id="'+supplierAdvance.id+'"]').click();
+      await ap.locator('[data-allocation-bill="'+supplierBill.id+'"] [data-amount]').fill('35');
+      await mutation(a,'supplier-payments',()=>ap.locator('#saveAllocation').click());
+      await expect(ap.locator('#allocationModal')).toBeHidden();
+      await expect.poll(observedAP,{timeout:45_000}).toBe(175);
+      expect(await f.report('cash')).toEqual(cashBefore);
+    });
+    await step('COM-17 a revoked write preserves the form and restored permission safely settles after lost confirmation',async()=>{
+      await ap.locator('[data-entity="bills"]').click();
+      await ap.locator('[data-bill-action="pay"][data-bill-id="'+supplierBill.id+'"]').click();
+      await expect(ap.locator('#pAmount')).toBeFocused();await expect(ap.locator('#pAmount')).toHaveValue('175');
+      await ap.locator('#pReference').fill('QA-SUPPLIER-FINAL-RECOVERY');
+      const role=async keys=>{
+        const result=await api.request('access-control?resource=roles',{method:'PATCH',token:master.body.token,
+          body:{id:users.a.access_role_id,permission_keys:keys}});
+        expect(result.status).toBe(200);
+      };
+      await role(permissions.filter(key=>key!=='finance.write'));
+      await mutation(a,'supplier-payments',()=>ap.locator('#savePayment').click(),403);
+      await expect(ap.locator('#paymentMsg')).toContainText(/permiso/i);
+      await expect(ap.locator('#pReference')).toHaveValue('QA-SUPPLIER-FINAL-RECOVERY');
+      expect(await f.rows("select id from supplier_payments where reference='QA-SUPPLIER-FINAL-RECOVERY'")).toHaveLength(0);
+      expect(Number((await f.ap(supplierBill)).balance_due)).toBe(175);
+      await role(permissions);
+      supplierFault.droppedId=null;supplierFault.armed=true;await ap.locator('#savePayment').click();
+      await expect.poll(()=>supplierFault.droppedId).toBeTruthy();await expect(ap.locator('#savePayment')).toBeEnabled();
+      await expect(ap.locator('#paymentMsg')).toContainText(/confirmar|intentar/i);
+      expect(Number((await f.ap(supplierBill)).balance_due)).toBe(0);
+      await expect(ap.locator('#pAmount')).toHaveValue('175');
+      supplierFault.armed=false;
+      const payment=(await mutation(a,'supplier-payments',()=>ap.locator('#savePayment').click())).payment;
+      expect(payment.id).toBe(supplierFault.droppedId);await expect(ap.locator('#paymentModal')).toBeHidden();
+      expect(await f.rows("select id from supplier_payments where reference='QA-SUPPLIER-FINAL-RECOVERY'")).toHaveLength(1);
+      await expect.poll(observedAP,{timeout:45_000}).toBe(0);
+    });
+    await step('COM-18 both operators close one reconciled workday with actual cost and attributable payments',async()=>{
+      const login=await api.request('login',{method:'POST',body:{username:users.b.username,password:users.b.password}});
+      expect(login.status).toBe(200);
+      const report=async dataset=>{
+        const result=await api.request('reports?dataset='+dataset+'&include_options=0',{token:login.body.token});
+        expect(result.status).toBe(200);return result.body.rows;
+      };
+      const sale=(await report('sales')).find(row=>row.sales_order_id===so.id||row.so_number===so.so_number);
+      expect([sale.order_total,sale.recognized_merchandise_cogs,sale.direct_cost_amount,sale.contribution_margin].map(Number)).toEqual([400,250,50,100]);
+      expect(sale.merchandise_cost_coverage).toBe('actual');
+      const customer=(await report('invoices'))[0],supplier=(await report('supplier_bills'))[0];
+      expect(Number(customer.balance_due)).toBe(0);expect(Number(supplier.balance_due)).toBe(0);
+      const cash=await report('cash'),incoming=cash.filter(row=>row.direction==='in').reduce((sum,row)=>sum+Number(row.amount),0),
+        outgoing=cash.filter(row=>row.direction==='out').reduce((sum,row)=>sum+Number(row.amount),0);
+      expect([incoming,outgoing,incoming-outgoing]).toEqual([400,250,150]);
+      expect((await report('inventory')).reduce((sum,row)=>sum+Number(row.physical_quantity),0)).toBe(0);
+      const payments=await f.rows('select id,amount,created_by from supplier_payments where purchase_order_id=$1',[po.id]);
+      expect(payments).toHaveLength(3);expect(payments.map(row=>Number(row.amount)).sort((a,b)=>a-b)).toEqual([35,40,175]);
+      for(const p of payments){
+        const audit=await f.rows("select actor_admin_id from audit_log where entity_id=$1 and action in ('supplier_bill_paid','supplier_payment_registered')",[p.id]);
+        expect(audit).toHaveLength(1);expect(audit[0].actor_admin_id).toBe(users.a.id);expect(p.created_by).toBe(users.a.id);
+      }
+      const denied=await api.request('supplier-payments',{method:'POST',token:login.body.token,
+        body:{action:'register',purchase_order_id:po.id,amount:10}});
+      expect(denied.status).toBe(403);expect((await f.rows('select id from supplier_payments where purchase_order_id=$1',[po.id])).length).toBe(3);
+      evidence.reconciliation={sale:400,purchase:250,collected:400,paidSupplier:250,receivable:0,payable:0,
+        netCash:150,directCost:50,contribution:100,physicalStock:0,costCoverage:'actual',supplierPayments:3,supplierPaymentAudits:3};
+      console.log('WORKDAY_RECONCILED '+JSON.stringify(evidence.reconciliation));
+      await screenshot(b,'18-workday-supplier-settled');
+    });
+
     expect({a:a.navigations,b:b.navigations,bf:b.frames}).toEqual(nav);
     expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404 || row.status>=500)).toEqual([]);
-    expect(evidence.checkpoints).toHaveLength(12);
+    expect(evidence.checkpoints).toHaveLength(18);
   } finally {
     const path=info.outputPath('commercial-evidence.json');
     fs.mkdirSync(info.outputDir,{recursive:true});fs.writeFileSync(path,JSON.stringify(evidence,null,2));

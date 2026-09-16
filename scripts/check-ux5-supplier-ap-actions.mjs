@@ -97,7 +97,7 @@ for(const token of [
 for(const token of [
   "actionAllowed(bill, 'pay')",
   "mode === 'direct' && (!bill || !actionAllowed(bill, 'pay'))",
-  "state.paymentMode === 'direct' && (!bill || !actionAllowed(bill, 'pay'))",
+  "state.paymentMode === 'direct' && (!bill || (!state.paymentAttempted && !actionAllowed(bill, 'pay')))",
   "body.action = 'pay_bill'",
   'state.advancePurchaseOrders = Array.isArray(payments.advance_purchase_orders)'
 ])requireText(ui,token,'Payables direct-payment owner');

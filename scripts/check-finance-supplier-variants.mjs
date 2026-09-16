@@ -138,7 +138,8 @@ try {
    for(const table of ['supplier_bill_items','supplier_payments','supplier_payment_applications']){
     const p=await f.one("select has_table_privilege($1,$2,'INSERT,UPDATE,DELETE') allowed",[role,table]);assert.equal(p.allowed,false);
    }
-   assert.equal((await f.one("select has_function_privilege($1,'register_supplier_payment(uuid,numeric,date,text,text,text,uuid)','EXECUTE') allowed",[role])).allowed,role==='service_role');
+   assert.equal((await f.one("select has_function_privilege($1,'register_supplier_payment(uuid,numeric,date,text,text,text,uuid,uuid)','EXECUTE') allowed",[role])).allowed,role==='service_role');
+   assert.equal((await f.one("select has_function_privilege($1,'pay_supplier_bill_canonical(uuid,numeric,date,text,text,text,uuid,uuid)','EXECUTE') allowed",[role])).allowed,role==='service_role');
   }
  });
  await test('SF-14 valid zero-cost quantities remain payable at zero without an artificial cent',async()=>{

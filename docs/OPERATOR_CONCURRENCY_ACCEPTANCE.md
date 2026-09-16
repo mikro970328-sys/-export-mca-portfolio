@@ -1,3 +1,12 @@
+## Extensión vigente — pagos a proveedor (2026-09-16)
+
+CON-13/16 añaden reintentos coincidentes de anticipo y liquidación completa,
+conflicto de importe bajo la misma identidad y rollback de la primera transacción.
+Exigen bloqueo real vía pg_blocking_pids, un solo ledger/audit y ningún fantasma.
+Con 11 casos HTTP, la matriz completa exige 27 aprobados. Primer resultado:
+27/27 en run 35153269309. CI exacto y publicación finales constan en la PR
+de SUPPLIER_PAYMENT_RECOVERY.md; los conteos inferiores son históricos.
+
 # Aceptación de operadores y concurrencia
 
 Fecha: 2026-09-09. Base: `95e352e0d466ca8392adef89e8e4897d19cf2da3`.

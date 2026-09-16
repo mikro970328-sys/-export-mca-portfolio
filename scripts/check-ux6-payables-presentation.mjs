@@ -58,7 +58,10 @@ if(!failures.length){
     [payments,'Supplier payments API',"return fail(res,500,'No se pudo procesar el pago del proveedor')"]
   ]){
     requireText(source,'const translated = translatedError(raw)',`${label} traduce errores conocidos`);
-    requireText(source,'if (translated) return fail(res,400,translated)',`${label} conserva validaciones operativas`);
+    if (label === 'Supplier payments API') {
+      requireText(source,'if (translated) {',`${label} clasifica validaciones operativas`);
+      requireText(source,'return fail(res,400,translated,code ? {code} : undefined)',`${label} conserva validaciones y conflictos identificados`);
+    } else requireText(source,'if (translated) return fail(res,400,translated)',`${label} conserva validaciones operativas`);
     requireText(source,fallback,`${label} boundary inesperado estable`);
     forbid(source,/messages\.find\([^\n]+\)\?\.\[1\]\s*\|\|\s*raw/,`${label} devuelve error técnico crudo`);
   }

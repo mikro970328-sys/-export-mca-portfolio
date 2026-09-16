@@ -24,13 +24,16 @@
     allocationPaymentId: null,
     reversePaymentId: null,
     paymentMode: 'manual',
+    paymentRequestId: null,
+    paymentAttempted: false,
+    paymentSaving: false,
     directBillId: null,
     decision: null,
     loaded: false
   };
 
   const SAFE_AP_ERROR_PATTERNS = [
-    /^(?:No tienes|Purchase Order|Selecciona|Indica|Agrega|Falta|La Purchase Order|La cantidad|La distribución|La acción|El monto|El costo|El total|El pago|Factura|Pago|Solo|Esta factura|Este pago|Revierte|Acción de|Sesión vencida)/i,
+    /^(?:No tienes|La solicitud|Purchase Order|Selecciona|Indica|Agrega|Falta|La Purchase Order|La cantidad|La distribución|La acción|El monto|El costo|El total|El pago|Factura|Pago|Solo|Esta factura|Este pago|Revierte|Acción de|Sesión vencida)/i,
     /^No se pudo procesar (?:Cuentas por pagar|el pago del proveedor)(?:\. Intenta nuevamente\.)?$/i
   ];
 
@@ -371,6 +374,9 @@
   }
 
   function closePaymentModal(restoreFocus = true) {
+    if (state.paymentSaving) return;
+    state.paymentRequestId = null;
+    state.paymentAttempted = false;
     state.paymentMode = 'manual';
     state.directBillId = null;
     $('pPO').disabled = false;
@@ -714,12 +720,15 @@
   }
 
   function openPaymentCreate(mode = 'manual', billId = null) {
+    if (state.paymentSaving) return false;
     if (!state.writeAccess) return false;
     const bill = mode === 'direct' ? state.bills.find(row => String(row.id) === String(billId)) : null;
     if (mode === 'direct' && (!bill || !actionAllowed(bill, 'pay'))) return false;
     const available = mode === 'advance' ? state.advancePurchaseOrders : mode === 'manual' ? state.paymentPOs : [bill];
     if (!available.length) return false;
     state.paymentMode = mode;
+    state.paymentRequestId = crypto.randomUUID();
+    state.paymentAttempted = false;
     state.directBillId = bill?.id || null;
     fillPaymentPOs();
     $('pPO').disabled = mode === 'direct';
@@ -737,18 +746,24 @@
   }
 
   async function savePayment() {
+    if (state.paymentSaving) return;
     const purchaseOrderId = $('pPO').value;
     const amount = num($('pAmount').value);
     const bill = state.paymentMode === 'direct' ? state.bills.find(row => String(row.id) === String(state.directBillId)) : null;
     message('paymentMsg', '');
     if (!state.writeAccess) return message('paymentMsg', 'No tienes permiso para registrar pagos.');
-    if (state.paymentMode === 'direct' && (!bill || !actionAllowed(bill, 'pay'))) return message('paymentMsg', 'Esta factura ya no admite un pago directo.');
+    if (state.paymentMode === 'direct' && (!bill || (!state.paymentAttempted && !actionAllowed(bill, 'pay')))) return message('paymentMsg', 'Esta factura ya no admite un pago directo.');
     if (!purchaseOrderId) return message('paymentMsg', 'Selecciona una Purchase Order.');
     if (amount <= 0) return message('paymentMsg', 'El monto debe ser mayor que cero.');
     const button = $('savePayment');
+    const completedMode = state.paymentMode;
+    state.paymentSaving = true;
+    state.paymentAttempted = true;
     button.disabled = true;
+    let payment;
     try {
       const body = {
+        request_id: state.paymentRequestId,
         amount,
         payment_date: $('pDate').value || null,
         method: $('pMethod').value || null,
@@ -762,17 +777,30 @@
         body.action = 'register';
         body.purchase_order_id = purchaseOrderId;
       }
-      await request('/api/supplier-payments', { method: 'POST', body: JSON.stringify(body) });
-      const completedMode = state.paymentMode;
-      closePaymentModal(false);
-      state.entity = 'payments';
-      state.view = 'active';
-      await refresh();
-      setPageMessage(completedMode === 'advance' ? 'Anticipo registrado correctamente.' : 'Pago de proveedor registrado correctamente.', 'ok');
+      const data = await request('/api/supplier-payments', { method: 'POST', body: JSON.stringify(body) });
+      if (!data.payment?.id || data.payment.purchase_order_id !== purchaseOrderId) throw new Error('SUPPLIER_PAYMENT_CONFIRMATION_MISSING');
+      payment = data.payment;
     } catch (error) {
-      message('paymentMsg', reportApError('save_payment', error, 'No se pudo registrar el pago. Intenta nuevamente.'));
+      message('paymentMsg', reportApError('save_payment', error,
+        'No se pudo confirmar el pago. Conserva este formulario y vuelve a intentar sin cambiar los datos; no se repetirá el mismo pago.'));
     } finally {
+      state.paymentSaving = false;
       button.disabled = false;
+    }
+    if (!payment) return;
+    closePaymentModal(false);
+    state.entity = 'payments';
+    state.view = 'active';
+    const reversed = payment.status === 'reversed';
+    const confirmation = reversed ? 'Este pago ya fue revertido. No se registró uno nuevo.'
+      : completedMode === 'advance' ? 'Anticipo registrado correctamente.' : 'Pago de proveedor registrado correctamente.';
+    setPageMessage(confirmation, reversed ? 'bad' : 'ok');
+    try {
+      await refresh();
+      setPageMessage(confirmation, reversed ? 'bad' : 'ok');
+    } catch (error) {
+      console.error('PAYABLES_PAYMENT_REFRESH_FAILED', error);
+      setPageMessage(confirmation + ' No se pudo actualizar la pantalla; pulsa Actualizar Cuentas por pagar.', reversed ? 'bad' : 'ok');
     }
   }
 
