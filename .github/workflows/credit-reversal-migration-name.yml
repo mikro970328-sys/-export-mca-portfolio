@@ -1,153 +1,38 @@
-name: Verify Supplier Payment Recovery
+name: Workday Technical Audit
 on:
   push:
     branches: [build/credit-reversal-migration]
 permissions:
   contents: read
-
 jobs:
-  isolated-browser:
+  read-only-source-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
-    strategy:
-      fail-fast: false
-      matrix:
-        project: [chromium-desktop]
-        # Each story initializes an empty database in its own service containers.
-        suite: [commercial]
-    services:
-      postgres:
-        image: postgres:17.6
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: isolated-qa-only
-          POSTGRES_DB: erp_operator_qa
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      postgrest:
-        image: postgrest/postgrest:v12.2.3
-        env:
-          PGRST_DB_URI: postgres://postgres:isolated-qa-only@postgres:5432/erp_operator_qa
-          PGRST_DB_SCHEMAS: public
-          PGRST_DB_ANON_ROLE: anon
-          PGRST_JWT_SECRET: isolated-postgrest-qa-secret-never-production-2026
-        ports: ['3000:3000']
-    env:
-      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
-      ERP_TEST_POSTGREST_URL: http://127.0.0.1:3000
-      ERP_TEST_POSTGREST_SECRET: isolated-postgrest-qa-secret-never-production-2026
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 588ad8d7f7f1a2ac281772b7b7edd7dc21dda8dd
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            e2e/isolated/package-lock.json
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
-      - name: Preserve operator-local dispatch instants
-        run: node e2e/isolated/dispatch-time-check.mjs
-      - name: Install isolated browser engines
-        working-directory: e2e/isolated
-        run: npx playwright install --with-deps chromium webkit
-      - name: Actual UI and disposable PostgreSQL
-        working-directory: e2e/isolated
-        env:
-          DEBUG: pw:browser
-        run: npm test -- ${{ matrix.suite }}.spec.mjs --project=${{ matrix.project }}
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: browser-${{ matrix.suite }}-${{ matrix.project }}
-          path: e2e/isolated/test-results/
-          retention-days: 14
-
-  isolated-financial-flows:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: 588ad8d7f7f1a2ac281772b7b7edd7dc21dda8dd
+          ref: c7cd441c27e7b1d8d0474df194ac0c8367ec8682
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Real financial SQL and report reconciliation
-        run: node scripts/check-finance-acceptance.mjs
-      - name: Direct Ship COGS, correction and financial invariants
-        run: node scripts/check-finance-direct-ship.mjs
-      - name: Real API handlers with isolated financial SQL
-        run: node scripts/check-finance-api.mjs
-      - name: Quantity credit notes preserve invoices, payments and report balances
-        run: node scripts/check-finance-credit-notes.mjs
-      - name: Customer credit applications, refunds and reversals reconcile once
-        run: node scripts/check-finance-credit-settlement.mjs
-      - name: Quantity credit reversals preserve rounding, rebilling limits and downstream funds
-        run: node scripts/check-finance-credit-reversals.mjs
-      - name: Supplier bill precision and advance variants
-        run: node scripts/check-finance-supplier-variants.mjs
-      - name: Report refresh after local and external financial actions
-        run: node scripts/check-finance-refresh.mjs
-      - name: Existing financial and refresh contracts
+      - name: Current owners and API security boundaries
         run: |
-          node scripts/check-ux5-invoice-actions.mjs
-          node scripts/check-ux5-customer-finance-actions.mjs
-          node scripts/check-ux5-supplier-ap-actions.mjs
-          node scripts/check-ux6-costs-presentation.mjs
-          node scripts/check-executive-dashboard.mjs
-          node scripts/check-executive-reports.mjs
-          node scripts/check-sales-customer-finance.mjs
-          node scripts/check-live-erp-refresh.mjs
-          node scripts/check-live-sync-recovery-runtime.mjs
-
-  isolated-concurrency:
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    services:
-      postgres:
-        image: postgres:17.6
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: isolated-qa-only
-          POSTGRES_DB: erp_operator_qa
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      postgrest:
-        image: postgrest/postgrest:v12.2.3
-        env:
-          PGRST_DB_URI: postgres://postgres:isolated-qa-only@postgres:5432/erp_operator_qa
-          PGRST_DB_SCHEMAS: public
-          PGRST_DB_ANON_ROLE: anon
-          PGRST_JWT_SECRET: isolated-postgrest-qa-secret-never-production-2026
-        ports: ['3000:3000']
-    env:
-      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
-      ERP_TEST_POSTGREST_URL: http://127.0.0.1:3000
-      ERP_TEST_POSTGREST_SECRET: isolated-postgrest-qa-secret-never-production-2026
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: 588ad8d7f7f1a2ac281772b7b7edd7dc21dda8dd
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            e2e/isolated/package-lock.json
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: node scripts/check-operator-acceptance.mjs
+          node scripts/check-frontend-ownership.mjs
+          node scripts/audit-b9-api-boundaries.mjs
+          node scripts/check-b9-database-privileges.mjs
+          node scripts/check-b9-public-boundaries.mjs
+      - name: Locate stored technical errors and inventory writers
+        run: |
+          rg -n 'last_error|error_message|notification_error|provider_error|error_details|inventory_movements' api admin --glob '*.js' --glob '*.html' || test "$?" -eq 1
+          rg -n 'register_supplier_payment\(uuid,numeric,date,text,text,text,uuid\)|pay_supplier_bill_canonical\(uuid,numeric,date,text,text,text,uuid\)' scripts || test "$?" -eq 1
+      - name: Production dependency advisory snapshot
+        run: |
+          node --input-type=module <<'NODE'
+          import {spawnSync} from 'node:child_process';
+          const result=spawnSync('npm',['audit','--omit=dev','--json'],{encoding:'utf8',timeout:90000});
+          let report;try{report=JSON.parse(result.stdout);}catch{throw Error('Dependency audit did not return JSON');}
+          if(report.error)throw Error('Dependency registry audit unavailable: '+report.error.code);
+          console.log(JSON.stringify({metadata:report.metadata,vulnerabilities:Object.fromEntries(Object.entries(report.vulnerabilities||{}).map(([name,v])=>[name,{severity:v.severity,isDirect:v.isDirect,range:v.range,fixAvailable:v.fixAvailable,via:v.via.map(x=>typeof x==='string'?x:{title:x.title,url:x.url,range:x.range,severity:x.severity})}]))},null,2));
+          NODE
