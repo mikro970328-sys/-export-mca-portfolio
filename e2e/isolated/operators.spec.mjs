@@ -7,6 +7,7 @@ import { startBrowserAcceptanceServer, root } from './server.mjs';
 // This suite runs in disposable CI containers. It never accepts a remote ERP
 // URL, a production credential, an auth mock or a fabricated API response.
 test('two operators: rendered collections, forms, permissions, recovery and PWA entry', async ({ browser }, info) => {
+  test.setTimeout(360_000);
   process.chdir(root);
   const db = await createOperatorAcceptanceDb();
   let api;
@@ -18,7 +19,14 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
   try {
     const { f, users } = await operatorFixture(db);
     const invoice = await f.invoice(await f.sale());
-    api = await startBrowserAcceptanceServer();
+    const paymentFault={armed:false,droppedId:null,expectFailure:false};
+    api = await startBrowserAcceptanceServer({dropApiResponse:(req,url,body)=>{
+      if(!paymentFault.armed||req.method!=='POST'||url.pathname!=='/api/invoice-payments')return false;
+      let result;try{result=JSON.parse(String(body));}catch{return false;}
+      if(!result.payment?.id)return false;
+      if(!paymentFault.keepDropping)paymentFault.armed=false;
+      paymentFault.droppedId=result.payment.id;return true;
+    }});
     const localOrigins = new Set([api.base, new URL(process.env.ERP_TEST_POSTGREST_URL).origin]);
     globalThis.fetch = (input,options) => {
       const url = new URL(typeof input==='string' || input instanceof URL ? input : input.url);
@@ -83,7 +91,7 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       page.on('response', async response => {
         const url = new URL(response.url());
         if (url.origin!==api.base || !url.pathname.startsWith('/api/')) return;
-        diagnostics.api.push({ operator:key, path:url.pathname, status:response.status(), method:response.request().method() });
+        diagnostics.api.push({ operator:key, path:url.pathname, status:response.status(), method:response.request().method(), injected:paymentFault.expectFailure&&Boolean(paymentFault.droppedId)&&url.pathname==='/api/invoice-payments'&&response.status()===503 });
         if (url.pathname==='/api/live-updates' && response.status()===200) {
           try { state.liveVersion = Number((await response.json()).versions.invoices);state.liveResponses++; } catch {}
         }
@@ -235,12 +243,95 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       await row(b).scrollIntoViewIfNeeded();
       await screenshot(b,'10-fresh-session-current-balance');
     });
+    await step('UI-11 retry after a lost collection confirmation records the money only once', async()=> {
+      await openPayment(b);await frame(b).locator('#pAmount').fill('50');
+      await frame(b).locator('#pReference').fill('QA-LOST-CONFIRMATION');
+      await frame(b).locator('#pNotes').fill('Mantener este cobro al recuperar conexión');
+      paymentFault.armed=true;paymentFault.expectFailure=true;
+      await frame(b).locator('#savePayment').click();
+      await expect.poll(()=>paymentFault.droppedId).toBeTruthy();
+      await expect(frame(b).locator('#savePayment')).toBeEnabled();
+      // Chromium may redeliver the POST internally; WebKit may expose a network
+      // failure. Both routes must resolve the same committed receipt.
+      if(await frame(b).locator('#paymentModal').isVisible()){
+        await expect(frame(b).locator('#paymentMsg')).not.toBeEmpty();
+        await expect(frame(b).locator('#pAmount')).toHaveValue('50');
+        await expect(frame(b).locator('#pReference')).toHaveValue('QA-LOST-CONFIRMATION');
+        const response=b.page.waitForResponse(r=>new URL(r.url()).pathname==='/api/invoice-payments'&&r.request().method()==='POST');
+        await frame(b).locator('#savePayment').click();expect((await response).status()).toBe(200);
+      }
+      paymentFault.expectFailure=false;
+      await expect(frame(b).locator('#paymentModal')).toBeHidden();
+      const payments=await f.rows("select id,amount from payments where invoice_id=$1 and reference_number='QA-LOST-CONFIRMATION'",[invoice.id]);
+      console.log('LOST_CONFIRMATION '+JSON.stringify({rows:payments.length,amount:payments.reduce((sum,row)=>sum+Number(row.amount),0),balance:Number((await f.financial(invoice)).balance_due)}));
+      expect(payments).toHaveLength(1);
+      expect(payments[0].id).toBe(paymentFault.droppedId);
+      await balance(a,145);await balance(b,145);
+      await frame(b).locator('[data-close="detail"]').click();
+      await screenshot(b,'11-lost-confirmation-recovered');
+    });
+
+    await step('UI-12 an explicit retry confirms a committed receipt after every response was lost',async()=>{
+      await openPayment(b);await frame(b).locator('#pAmount').fill('25');
+      await frame(b).locator('#pReference').fill('QA-MANUAL-RETRY');
+      paymentFault.armed=true;paymentFault.keepDropping=true;paymentFault.droppedId=null;paymentFault.expectFailure=true;
+      await frame(b).locator('#savePayment').click();
+      await expect.poll(()=>paymentFault.droppedId).toBeTruthy();
+      await expect(frame(b).locator('#savePayment')).toBeEnabled();
+      await expect(frame(b).locator('#paymentMsg')).toContainText(/confirmar|intentar/i);
+      await expect(frame(b).locator('#paymentModal')).toBeVisible();
+      expect(Number((await f.financial(invoice)).balance_due)).toBe(120);
+      paymentFault.armed=false;paymentFault.keepDropping=false;paymentFault.expectFailure=false;
+      await expect(frame(b).locator('#pAmount')).toHaveValue('25');
+      const response=b.page.waitForResponse(r=>new URL(r.url()).pathname==='/api/invoice-payments'&&r.request().method()==='POST');
+      await frame(b).locator('#savePayment').click();expect((await response).status()).toBe(200);
+      await expect(frame(b).locator('#paymentModal')).toBeHidden();
+      const payments=await f.rows("select id from payments where invoice_id=$1 and reference_number='QA-MANUAL-RETRY'",[invoice.id]);
+      expect(payments).toHaveLength(1);expect(payments[0].id).toBe(paymentFault.droppedId);
+      expect(Number((await f.one("select count(*) as n from audit_log where action='invoice_payment_registered' and entity_id=$1",[payments[0].id])).n)).toBe(1);
+      await balance(a,120);await balance(b,120);
+      await frame(b).locator('[data-close="detail"]').click();await screenshot(b,'12-manual-confirmation-recovered');
+    });
+    await step('UI-13 permission revoked with a collection open prevents saving and preserves the form',async()=>{
+      await openPayment(b);await frame(b).locator('#pAmount').fill('25');
+      await frame(b).locator('#pReference').fill('QA-OPEN-PERMISSION');
+      await role(readKeys);
+      const denied=b.page.waitForResponse(r=>new URL(r.url()).pathname==='/api/invoice-payments'&&r.request().method()==='POST');
+      await frame(b).locator('#savePayment').click();expect((await denied).status()).toBe(403);
+      await expect(frame(b).locator('#paymentMsg')).toContainText(/permiso/i);
+      await expect(frame(b).locator('#pReference')).toHaveValue('QA-OPEN-PERMISSION');
+      expect(Number((await f.financial(invoice)).balance_due)).toBe(120);
+      expect(await f.rows("select id from payments where invoice_id=$1 and reference_number='QA-OPEN-PERMISSION'",[invoice.id])).toHaveLength(0);
+      await role(writeKeys);
+      const allowed=b.page.waitForResponse(r=>new URL(r.url()).pathname==='/api/invoice-payments'&&r.request().method()==='POST');
+      await frame(b).locator('#savePayment').click();expect((await allowed).status()).toBe(200);
+      await expect(frame(b).locator('#paymentModal')).toBeHidden();
+      await balance(a,95);await balance(b,95);
+      await frame(b).locator('[data-close="detail"]').click();
+    });
+    await step('UI-14 offline before delivery preserves the collection and saves once on reconnect',async()=>{
+      await openPayment(b);await frame(b).locator('#pAmount').fill('5');
+      await frame(b).locator('#pReference').fill('QA-OFFLINE-BEFORE-SAVE');
+      await b.context.setOffline(true);
+      await frame(b).locator('#savePayment').click();
+      await expect(frame(b).locator('#paymentMsg')).toContainText(/confirmar|intentar/i);
+      expect(Number((await f.financial(invoice)).balance_due)).toBe(95);
+      expect(await f.rows("select id from payments where invoice_id=$1 and reference_number='QA-OFFLINE-BEFORE-SAVE'",[invoice.id])).toHaveLength(0);
+      await b.context.setOffline(false);
+      await expect(frame(b).locator('#pAmount')).toHaveValue('5');
+      const response=b.page.waitForResponse(r=>new URL(r.url()).pathname==='/api/invoice-payments'&&r.request().method()==='POST');
+      await frame(b).locator('#savePayment').click();expect((await response).status()).toBe(200);
+      await expect(frame(b).locator('#paymentModal')).toBeHidden();
+      await balance(a,90);await balance(b,90);
+      expect(await f.rows("select id from payments where invoice_id=$1 and reference_number='QA-OFFLINE-BEFORE-SAVE'",[invoice.id])).toHaveLength(1);
+      await frame(b).locator('[data-close="detail"]').click();await screenshot(b,'14-offline-form-recovered');
+    });
     expect(diagnostics.errors).toEqual([]);
     expect(diagnostics.blockedExternal).toEqual([]);
     expect(diagnostics.api.filter(r=>r.status===404)).toEqual([]);
     // Unauthorized eager modules may answer 403; any 5xx is a real failure.
-    expect(diagnostics.api.filter(r=>r.status>=500)).toEqual([]);
-    expect(diagnostics.checkpoints).toHaveLength(10);
+    expect(diagnostics.api.filter(r=>r.status>=500&&!r.injected)).toEqual([]);
+    expect(diagnostics.checkpoints).toHaveLength(14);
   } catch (error) {
     diagnostics.failure = {message:error.message,cause:String(error.cause||''),
       pages:contexts.map(context=>context.pages().map(page=>({url:page.url(),closed:page.isClosed()})))};

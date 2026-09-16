@@ -15,7 +15,7 @@ const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 for(const text of [
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/invoices.css?v=20260903-ux7invoices1',
-  '/admin/invoices.js?v=20260916-credit4',
+  '/admin/invoices.js?v=20260916-payment1',
   '/admin/embedded-auto-refresh.js?v=20260909-live7',
   'data-owner="invoices.js"',
   'invoices-table-wrap',
@@ -45,7 +45,7 @@ for(const text of [
   'function reportInvoiceError(context, error, fallback =',
   "console.error('INVOICES_UI_FAILED'",
   "reportInvoiceError('save_invoice', error)",
-  "reportInvoiceError('save_payment', error)",
+  "reportInvoiceError('save_payment', error,",
   "reportInvoiceError('decision', error)",
   "reportInvoiceError('bootstrap', error",
   'const PAYMENT_STATUS_LABELS = Object.freeze({',

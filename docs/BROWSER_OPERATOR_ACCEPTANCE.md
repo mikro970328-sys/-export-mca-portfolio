@@ -61,3 +61,12 @@ Main: ocho de nueve workflows aprobados, incluidos Browser Operator Acceptance `
 Producción: PWA, shell, runtime live7 y ambos CSS viewport1 responden HTTP 200; las revisiones publicadas contienen las correcciones. API de versiones y Facturas responden HTTP 401 sin sesión. Consulta de logs 5xx para este deployment sin resultados en el intervalo observado 20:37:06–20:47:06 UTC.
 
 La emulación móvil valida este flujo con WebKit en Linux; quedan pendientes el dispositivo iPhone, instalación standalone, push del dispositivo y otros recorridos transversales. La auditoría integral sigue después del cierre funcional y las mejoras.
+
+## 2026-09-16 · Confirmación de cobros y permiso con formulario abierto
+
+Se amplía la misma suite con UI-11 (respuesta perdida, incluida redelivery del
+transporte), UI-12 (reintento explícito), UI-13 (revocación/restauración del permiso
+con el cobro abierto) y UI-14 (sin conexión antes de enviar). COM-11 incorpora la
+misma recuperación desde Ventas. La inyección solo corta la respuesta después de
+ejecutar el handler y SQL reales; no fabrica éxitos ni sustituye autenticación.
+Ver INVOICE_PAYMENT_RECOVERY.md y la PR para resultados finales.

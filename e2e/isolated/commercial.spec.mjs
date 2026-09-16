@@ -37,7 +37,13 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       grant select,insert on shipment_history to service_role;`);
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const { f,users } = await operatorFixture(db);
-    api = await startBrowserAcceptanceServer();
+    const paymentFault={armed:false,droppedId:null};
+    api = await startBrowserAcceptanceServer({dropApiResponse:(req,url,body)=>{
+      if(!paymentFault.armed||req.method!=='POST'||url.pathname!=='/api/invoice-payments')return false;
+      let result;try{result=JSON.parse(String(body));}catch{return false;}
+      if(!result.payment?.id)return false;
+      paymentFault.droppedId=result.payment.id;return true;
+    }});
     const origins = new Set([api.base,new URL(process.env.ERP_TEST_POSTGREST_URL).origin]);
     globalThis.fetch = (input,options) => {
       const url = new URL(typeof input==='string' || input instanceof URL ? input : input.url);
@@ -298,7 +304,22 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       for (const amount of [150,250]) {
         await sales.locator('[data-ws-action="payment"]').first().click();
         await sales.locator('#wsPaymentAmount').fill(String(amount));
+        if(amount===150){
+          await sales.locator('#wsPaymentReference').fill('QA-SALES-LOST-CONFIRMATION');
+          paymentFault.armed=true;
+          await sales.locator('#wsSavePayment').click();
+          await expect.poll(()=>paymentFault.droppedId).toBeTruthy();
+          await expect(sales.locator('#wsSavePayment')).toBeEnabled();
+          await expect(sales.locator('#wsPaymentMsg')).toContainText(/confirmar|intentar/i);
+          await expect(sales.locator('#wsPaymentAmount')).toHaveValue('150');
+          expect(Number((await f.financial(invoice)).balance_due)).toBe(250);
+          paymentFault.armed=false;
+        }
         await mutation(a,'invoice-payments',()=>sales.locator('#wsSavePayment').click());
+        if(amount===150){
+          const receipts=await f.rows("select id from payments where invoice_id=$1 and reference_number='QA-SALES-LOST-CONFIRMATION'",[invoice.id]);
+          expect(receipts).toHaveLength(1);expect(receipts[0].id).toBe(paymentFault.droppedId);
+        }
         await expect(sales.locator('#salesWorkspacePaymentModal')).toBeHidden();
         await expect(sales.locator('#detailMsg')).toContainText('Cobro registrado');
       }

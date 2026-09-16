@@ -18,6 +18,9 @@
     search: '',
     editingId: null,
     paymentInvoiceId: null,
+    paymentRequestId: null,
+    paymentAttempted: false,
+    paymentSaving: false,
     creditInvoice: null,
     creditRequestId: null,
     creditSaving: false,
@@ -285,6 +288,7 @@
 
   function closeModal(name, restoreFocus = true) {
     const id = modalId(name);
+    if (id === 'paymentModal' && state.paymentSaving) return;
     if (id === 'creditModal' && state.creditSaving) return;
     if (id === 'balanceModal' && state.balanceSaving) return;
     const modal = $(id);
@@ -667,6 +671,8 @@
     if (!invoice || !can(invoice, 'record_payment')) return false;
     const balance = num(invoice.financial?.balance_due);
     state.paymentInvoiceId = invoice.id;
+    state.paymentRequestId = crypto.randomUUID();
+    state.paymentAttempted = false;
     $('paymentTitle').textContent = `Registrar cobro · ${invoice.invoice_number}`;
     $('paymentSubtitle').textContent = `Saldo pendiente: ${money(balance, invoice.currency)}`;
     $('pAmount').max = String(balance);
@@ -682,18 +688,24 @@
   }
 
   async function savePayment() {
+    if (state.paymentSaving) return;
     const invoice = state.invoices.find(row => row.id === state.paymentInvoiceId);
     if (!invoice) return message('paymentMsg', 'Factura no encontrada.');
-    if (!can(invoice, 'record_payment')) return message('paymentMsg', 'Esta factura ya no admite cobros.');
+    if (!state.paymentAttempted && !can(invoice, 'record_payment')) return message('paymentMsg', 'Esta factura ya no admite cobros.');
     const amount = num($('pAmount').value);
     if (amount <= 0) return message('paymentMsg', 'El monto debe ser mayor que cero.');
     const button = $('savePayment');
+    state.paymentSaving = true;
+    state.paymentAttempted = true;
     button.disabled = true;
+    message('paymentMsg', '');
+    let payment;
     try {
-      await request('/api/invoice-payments', {
+      const data = await request('/api/invoice-payments', {
         method: 'POST',
         body: JSON.stringify({
           action: 'register',
+          request_id: state.paymentRequestId,
           invoice_id: invoice.id,
           amount,
           payment_date: $('pDate').value || null,
@@ -702,14 +714,27 @@
           notes: $('pNotes').value || null
         })
       });
-      closeModal('payment', false);
-      setPageMessage('Cobro registrado correctamente.', 'ok');
+      if (!data.payment?.id || data.payment.invoice_id !== invoice.id) throw new Error('PAYMENT_CONFIRMATION_MISSING');
+      payment = data.payment;
+    } catch (error) {
+      message('paymentMsg', reportInvoiceError('save_payment', error,
+        'No se pudo confirmar el cobro. Conserva este formulario y vuelve a intentar sin cambiar los datos; no se repetirá el mismo cobro.'));
+    } finally {
+      state.paymentSaving = false;
+      button.disabled = false;
+    }
+    if (!payment) return;
+    closeModal('payment', false);
+    const reversed = payment.status === 'reversed';
+    const confirmation = reversed ? 'Este cobro ya fue revertido. No se registró uno nuevo.' : 'Cobro registrado correctamente.';
+    setPageMessage(confirmation, reversed ? 'bad' : 'ok');
+    try {
       await refresh();
       openDetail(invoice.id);
+      setPageMessage(confirmation, reversed ? 'bad' : 'ok');
     } catch (error) {
-      message('paymentMsg', reportInvoiceError('save_payment', error));
-    } finally {
-      button.disabled = false;
+      console.error('INVOICES_PAYMENT_REFRESH_FAILED', error);
+      setPageMessage(confirmation + ' No se pudo actualizar la pantalla; pulsa Actualizar Facturación.', reversed ? 'bad' : 'ok');
     }
   }
 

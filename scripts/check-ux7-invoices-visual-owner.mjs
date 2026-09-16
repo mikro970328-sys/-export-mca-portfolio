@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { webcrypto } from 'node:crypto';
 
 const files = {
   html: 'admin/invoices.html',
@@ -44,7 +45,7 @@ for (const text of [
   '<body class="erp-module-page erp-module-invoices" data-owner="invoices.js">',
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/invoices.css?v=20260903-ux7invoices1',
-  '/admin/invoices.js?v=20260916-credit4',
+  '/admin/invoices.js?v=20260916-payment1',
   '/admin/embedded-auto-refresh.js?v=20260909-live7',
   'class="module-hero invoices-page-head"',
   'id="invoiceLastUpdated"',
@@ -152,6 +153,7 @@ const embeddedWindow = {
 
 vm.runInNewContext(owner, {
   URLSearchParams,
+  crypto: webcrypto,
   console,
   document: { getElementById: () => null },
   fetch: async () => {
@@ -257,6 +259,7 @@ const fixtureInvoice = {
 
 vm.runInNewContext(owner, {
   URLSearchParams,
+  crypto: webcrypto,
   console,
   CustomEvent: class CustomEvent { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } },
   Element: FakeElement,

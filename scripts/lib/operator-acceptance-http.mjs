@@ -17,7 +17,7 @@ const routes = {'/api/login':login,'/api/account':account,'/api/admins':admins,
 // Host the unmodified Vercel handlers on loopback. Only the /rest/v1 prefix is
 // stripped before proxying to the real PostgREST process; SQL, auth, projection,
 // permissions, request transactions and auditing are not replaced with mocks.
-export async function startOperatorApi({ fallbackHandler } = {}) {
+export async function startOperatorApi({ fallbackHandler, dropApiResponse } = {}) {
   const rest = new URL(process.env.ERP_TEST_POSTGREST_URL || 'http://127.0.0.1:3000');
   if(rest.protocol!=='http:' || !['127.0.0.1','localhost','[::1]'].includes(rest.hostname)
     || rest.username || rest.password || rest.pathname!=='/' || rest.search) throw Error('PostgREST must be local QA');
@@ -36,6 +36,14 @@ export async function startOperatorApi({ fallbackHandler } = {}) {
       },reply=>{res.writeHead(reply.statusCode,reply.headers);reply.pipe(res);});
       upstream.on('error',()=>{res.writeHead(502);res.end('QA database transport failed');});
       req.pipe(upstream);return;
+    }
+    // Fault injection only after a real API handler has committed its response.
+    if(dropApiResponse&&url.pathname.startsWith('/api/')){
+      const end=res.end.bind(res);
+      res.end=(body,...args)=>{
+        if(dropApiResponse(req,url,body)){res.destroy();return res;}
+        return end(body,...args);
+      };
     }
     const handler=routes[url.pathname];
     if(!handler){
@@ -217,6 +225,31 @@ export async function checkOperatorHttp({db,f,users,test}) {
       assert.ok(new Date(user.locked_until)>new Date());
       assert.equal(Number((await f.one("select count(*) as n from audit_log where action='login_failed' and entity_id=$1",[users.b.id])).n),before+5);
       expect(await liveState(tokens.a),200);
+    });
+    await test('HTTP-11 concurrent deliveries of one collection commit one payment and one audit',async()=>{
+      const inv=await f.invoice(await f.sale()),requestId=crypto.randomUUID();
+      const body={action:'register',invoice_id:inv.id,amount:125,request_id:requestId,notes:'QA same intent'};
+      const holder=await db.connect();let pending;
+      try{
+        await holder.query('begin');
+        await holder.query("select pg_advisory_xact_lock(hashtextextended('invoice-payment:' || $1,0))",[requestId]);
+        pending=Promise.all([1,2].map(()=>api.request('invoice-payments',{method:'POST',token:tokens.a,body})));
+        let blocked=0;const deadline=Date.now()+7000;
+        while(Date.now()<deadline){
+          blocked=Number((await db.query(`with recursive waiting(pid) as (
+            select pid from pg_stat_activity where $1::int=any(pg_blocking_pids(pid))
+            union select a.pid from pg_stat_activity a join waiting w on w.pid=any(pg_blocking_pids(a.pid))
+          ) select count(*)::int as n from waiting`,[holder.processID])).rows[0].n);
+          if(blocked>=2)break;await pause(20);
+        }
+        assert.ok(blocked>=2,'both HTTP deliveries overlap at the request lock');
+        await holder.query('commit');
+        const results=await pending;results.forEach(r=>expect(r,200));
+        assert.equal(results[0].body.payment.id,results[1].body.payment.id);
+        assert.equal((await f.rows('select id from payments where invoice_id=$1',[inv.id])).length,1);
+        assert.equal(Number((await f.financial(inv)).paid_amount),125);
+        assert.equal(Number((await f.one("select count(*) as n from audit_log where action='invoice_payment_registered' and entity_id=$1",[results[0].body.payment.id])).n),1);
+      }finally{await holder.query('rollback');if(pending)await pending;holder.release();}
     });
   }finally{await api.close();}
 }
