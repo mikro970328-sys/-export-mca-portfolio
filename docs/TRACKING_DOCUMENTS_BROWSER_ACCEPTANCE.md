@@ -8,7 +8,7 @@ PostgREST desechables. Storage es un sustituto explícito HTTP en memoria, con
 URLs temporales locales, multipart y bytes de archivo; no certifica Supabase
 Storage real. Se impide tráfico exterior y no se envían mensajes.
 
-Cinco checkpoints: lector sin mutaciones; Packing List visible por segundo
+Seis checkpoints (incluida concurrencia SQL): lector sin mutaciones; Packing List visible por segundo
 usuario y readiness parcial; Commercial Invoice completa readiness y descarga
 con bytes exactos; pérdida de respuesta después de finalizar recupera versión sin
 duplicar; pérdida de respuesta después de DELETE recupera retiro sin repetir.
@@ -21,8 +21,9 @@ de almacenamiento simulado se limita a la nueva suite. El servidor compartido
 solo añade el handler documental y un hook optativo para ese servicio local.
 
 CI pasa de 12 a 14 jobs. La PR registra fallos, correcciones y head final; no
-anticipar aceptación hasta resultados. No se cambian código productivo, esquema,
-permisos reales, dependencias ni datos de negocio. Estado marítimo y entrega de
+anticipar aceptación hasta resultados. La prueba detectó duplicación ante reenvío: se corrige la función de registro
+con una migración y se conserva el estado histórico en el payload de la API.
+No se cambian permisos, dependencias ni datos de negocio existentes. Estado marítimo y entrega de
 notificaciones quedan para otra matriz; este caso cierra documentación en Tracking.
 
 ## Primer CI
@@ -53,3 +54,29 @@ visible: la espera de UI no resolvía la interceptación de tráfico del service
 worker. Se mueve la inyección al res.end del servidor de pruebas: el handler
 real ya produjo su JSON tras commit, pero se destruye la conexión sin entregarlo.
 Se comprueba exactamente un corte por acción; no se desactiva el service worker.
+
+## Defecto real encontrado y corrección
+
+Run 35044054900: WebKit pasó; Chromium creó tres versiones (v1,v2,v3) al cortar
+la conexión tras commit, con v2/v3 referidas al mismo storage_path. La interfaz
+no repite POST explícitamente; el transporte puede reenviarlo antes de informar
+el error. La aserción de dos versiones se conserva, no se relaja.
+
+Migración 20260916012951_customs_document_upload_idempotency.sql, creada con CLI
+2.117.0: reutiliza el bloqueo de shipment existente y devuelve ID/versión del
+objeto ya registrado antes de incrementar versión o sustituir otra. Rechaza
+metadata incompatible o archivo borrado. Una repetición histórica no altera la
+versión vigente. Se conservan firma y permisos service_role; no modifica filas
+históricas ni elimina duplicados existentes. La API conserva el estado histórico
+del registro devuelto. Auditoría de intentos de la API puede registrar reenvíos;
+no se promete deduplicar esos intentos, solo documentos/versiones.
+
+Prueba local check-document-upload-idempotency.mjs: reenvío, historial, conflicto
+de tipo/nombre, archivo eliminado y privilegios. DOC-06 usa conexiones PostgreSQL
+independientes para dos registros simultáneos del mismo objeto. El changelog y
+[guía de funciones Supabase](https://supabase.com/docs/guides/database/functions)
+se revisaron; sin cambio relevante de API para esta corrección.
+
+Antes de producción: CI exacto, Preview y advisors; aplicar función compatible
+y verificar definición/permisos sin escrituras QA. Rollback restauraría la
+función anterior y reabriría el riesgo, no requiere reverso de datos.

@@ -96,6 +96,13 @@ test('tracking documents: versions, readiness, reader and lost confirmations',as
       await refreshReader();await expect(reader.locator('.container-customs')).toContainText('qa-packing-v2.pdf');
       expect((await rows()).filter(x=>x.document_type==='Packing List Cuba')).toHaveLength(2);
     });
+    await step('DOC-06 parallel registrations of one object return one document',async()=>{
+      const concurrent=await f.one("insert into shipments(container_number) values('QA-DOC-CONCURRENT') returning id");
+      const sql="select * from create_shipment_customs_document($1,null,'Packing List Cuba','parallel.pdf','erp-documents','qa/parallel.pdf','application/pdf',10,null,null,null)";
+      const results=await Promise.all([db.query(sql,[concurrent.id]),db.query(sql,[concurrent.id])]);
+      expect(results[0].rows).toEqual(results[1].rows);
+      expect(Number((await f.one('select count(*) from documents where shipment_id=$1',[concurrent.id])).count)).toBe(1);
+    });
     expect(evidence.serverErrors).toEqual([]);expect(evidence.errors).toEqual([]);expect(evidence.external).toEqual([]);
     await writer.screenshot({path:info.outputPath('tracking-documents.png'),fullPage:true});
   }finally{

@@ -6,6 +6,9 @@ on:
       - 'admin/containers-module.js'
       - 'scripts/check-customs-upload-recovery.mjs'
       - 'scripts/check-customs-delete-recovery.mjs'
+      - 'supabase/migrations/**'
+      - 'scripts/lib/sales-logistics-acceptance-db.mjs'
+      - 'scripts/check-document-upload-idempotency.mjs'
       - 'api/documents.js'
       - 'api/shipment-documents.js'
       - 'scripts/check-document-upload-preservation.mjs'
@@ -21,6 +24,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node scripts/check-document-upload-idempotency.mjs
       - run: node scripts/check-customs-delete-recovery.mjs
       - run: node scripts/check-customs-upload-recovery.mjs
       - run: node scripts/check-document-upload-preservation.mjs

@@ -1,3 +1,11 @@
+## 2026-09-16 — Finalización documental resistente a reenvíos
+
+- La aceptación integrada reprodujo dos versiones del mismo storage_path cuando
+  se pierde la respuesta después del commit. El RPC ahora devuelve el documento
+  existente bajo el bloqueo canónico del contenedor.
+- Conserva versión histórica, rechaza metadata incompatible y no revive borrados.
+- Pruebas de repetición y concurrencia; evidencia final y aplicación en PR #312.
+
 ## 2026-09-16 — Recorrido documental en navegador aislado
 
 - Nueva suite tracking-documents: dos operadores, versiones/readiness, descarga

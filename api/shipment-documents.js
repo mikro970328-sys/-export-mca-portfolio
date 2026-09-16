@@ -83,7 +83,7 @@ async function finalize(admin,body) {
   const document=await getDocument(result.document_id);
   if(!document)throw new Error('No se pudo recuperar el documento registrado');
   await writeAudit(admin,'shipment_customs_document_uploaded','document',document.id,{shipment_id:shipment.id,container_number:shipment.container_number,document_type:documentType,file_name:fileName,version:result.document_version});
-  return {...document,is_current:true,state:'current',signed_url:await signedPreview(storagePath)};
+  return {...document,is_current:!document.superseded_at,state:document.superseded_at?'superseded':'current',signed_url:await signedPreview(storagePath)};
 }
 
 async function discard(body) { const shipment=await getShipment(body.shipment_id),path=String(body.storage_path||'').trim(),expectedPrefix=`shipments/${shipment.id}/cuba-customs/`;if(!path.startsWith(expectedPrefix)||path.includes('..'))throw new Error('Ruta de documento inválida');await deleteObject(path); }
@@ -120,7 +120,7 @@ export default async function handler(req,res) {
   } catch(error) {
     console.error('[shipment-documents]',error);
     const raw=String(error.message||'');
-    const friendly=raw.includes('CUBA_DOCUMENT_HISTORICAL_DELETE_FORBIDDEN')?'Una versión histórica no puede eliminarse desde este flujo.':raw.includes('CUBA_DOCUMENT_ALREADY_DELETED')?'Este documento ya fue eliminado.':raw.includes('CUBA_DOCUMENT_NOT_FOUND')?'Documento no encontrado.':PUBLIC_ERRORS.get(error?.message);
+    const friendly=raw.includes('CUBA_DOCUMENT_UPLOAD_CONFLICT')?'Este archivo ya fue registrado con otros datos. Prepara una nueva carga.':raw.includes('CUBA_DOCUMENT_HISTORICAL_DELETE_FORBIDDEN')?'Una versión histórica no puede eliminarse desde este flujo.':raw.includes('CUBA_DOCUMENT_ALREADY_DELETED')?'Este documento ya fue eliminado.':raw.includes('CUBA_DOCUMENT_NOT_FOUND')?'Documento no encontrado.':PUBLIC_ERRORS.get(error?.message);
     return fail(res,upstreamFailureStatus(error,friendly?400:500),friendly||'No se pudieron procesar los documentos del contenedor');
   }
 }
