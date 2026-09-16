@@ -1,3 +1,39 @@
+## Estado vigente tras PR #327 — 2026-09-16
+
+Este corte sustituye los pendientes históricos que siguen debajo.
+Publicado: `0e53afab6c6efd45966686f597e1b5c20b6aa5cb`; producción
+`dpl_Cmwodra2TGpDukTwNySse2gmZvBr` READY en app.exportmca.com y admin.exportmca.com.
+
+- A-01 cerrado en #326: diagnósticos de notificaciones/historial proyectados
+  sin exponer errores técnicos ni borrar la historia.
+- A-02 cerrado en #327: recepción manual, líneas y auditoría atómicas;
+  reintentos/concurrencia recuperan un WR; una anulación no restituye stock.
+  La interfaz conserva la confirmación si falla el refresco. sw.js ya no devuelve
+  una respuesta nula al perder una lectura sin caché.
+- Evidencia del head ac2b69d8e22f4aa5d4d9baa3911cc17eee572922:
+  **24/24 workflows, 43 checks aprobados, 18/18 recorridos de navegador**.
+  Dos jobs de iPhone físico omitidos conforme al alcance, no certificados.
+  Prueba dirigida de recepción: **36/36** verificaciones HTTP/PostgreSQL reales.
+- Migración remota **20260916231419** aplicada. RPC idéntico al source,
+  service_role autorizado, anon/authenticated sin EXECUTE, identidad e índice
+  validados. Conteos preservados: 0 WR, 0 líneas, 0 movimientos.
+- La jornada comercial de 18 pasos, repetir compra, pagos/cobros y variantes
+  financieras publicadas anteriormente siguen resueltos. No reconstruir módulos.
+
+**Pendiente concreto:** acreditar backup recuperable de base y archivos,
+inventario/fecha/retención y ensayo de restauración en destino aislado.
+Supabase confirmó plan free; el conector no lista copias y el panel requiere
+iniciar sesión. Leer security/BACKUP_RECOVERY_STATUS.md. No inventar cobertura
+de respaldo ni declarar el ERP completamente certificado.
+
+Continuar por recuperación, con escritorio prioritario. iPhone físico,
+BrowserStack, PWA instalada y push externo real siguen diferidos.
+Sin QA comercial en producción/Preview ni notificaciones reales.
+Evidencia final y comprobación pública de publicación:
+https://github.com/mikro970328-sys/-export-mca-portfolio/pull/327
+
+---
+
 ## 2026-09-16 · Recuperación de recepciones manuales
 
 A-01 publicado por PR #326: main 8c05bf50f7130eac71745f94d32410c450ca46ea,

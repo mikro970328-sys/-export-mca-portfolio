@@ -1,3 +1,11 @@
+## 2026-09-16 · Publicación de recuperación de recepciones
+
+PR #327 integrada en 0e53afab6c6efd45966686f597e1b5c20b6aa5cb; migración 20260916231419
+y producción dpl_Cmwodra2TGpDukTwNySse2gmZvBr verificadas. 24/24 workflows,
+18/18 recorridos, 36/36 pruebas HTTP/SQL de recepción. A-01 y A-02 cerrados.
+Pendiente: copia restaurable de base/archivos y ensayo de recuperación.
+El detalle y los límites están en MANUAL_RECEIPT_RECOVERY.md y PR #327.
+
 ## 2026-09-16 — Recepciones manuales recuperables
 
 - Un WR manual, sus líneas y auditoría se guardan juntos en el RPC canónico.

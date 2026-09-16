@@ -1,3 +1,17 @@
+## Publicación verificada — 2026-09-16
+
+PR #327: 0e53afab6c6efd45966686f597e1b5c20b6aa5cb; producción
+dpl_Cmwodra2TGpDukTwNySse2gmZvBr READY, ambos dominios del ERP.
+Head ac2b69d8e22f4aa5d4d9baa3911cc17eee572922: 24/24 workflows,
+43 checks y 18/18 historias de navegador aprobadas. WR-01/06 pasa en ambos
+motores sin errores de página. Los dos jobs físicos de iPhone se omitieron.
+Migración remota 20260916231419: source exacto, permisos, índice y trigger
+verificados; 0 WR, 0 líneas y 0 movimientos preservados.
+Los párrafos de migración/CI pendiente inferiores documentan la investigación
+anterior a esta publicación. Resultado final y smoke público en PR #327.
+
+---
+
 # A-02 · Recepción manual y pérdida de confirmación
 
 Fecha: 2026-09-16. Rama: fix/manual-receipt-recovery.
