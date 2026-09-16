@@ -25,8 +25,8 @@ jobs:
           node scripts/check-b9-public-boundaries.mjs
       - name: Locate stored technical errors and inventory writers
         run: |
-          rg -n 'last_error|error_message|notification_error|provider_error|error_details|inventory_movements' api admin --glob '*.js' --glob '*.html' || test "$?" -eq 1
-          rg -n 'register_supplier_payment\(uuid,numeric,date,text,text,text,uuid\)|pay_supplier_bill_canonical\(uuid,numeric,date,text,text,text,uuid\)' scripts || test "$?" -eq 1
+          git grep -n -E 'last_error|error_message|notification_error|provider_error|error_details|inventory_movements' -- 'api/*.js' 'admin/*.js' 'admin/*.html' || test "$?" -eq 1
+          git grep -n -E 'register_supplier_payment\(uuid,numeric,date,text,text,text,uuid\)|pay_supplier_bill_canonical\(uuid,numeric,date,text,text,text,uuid\)' -- 'scripts/*.mjs' || test "$?" -eq 1
       - name: Production dependency advisory snapshot
         run: |
           node --input-type=module <<'NODE'
