@@ -64,6 +64,8 @@ jobs:
         run: node scripts/check-finance-api.mjs
       - name: Quantity credit notes preserve invoices, payments and report balances
         run: node scripts/check-finance-credit-notes.mjs
+      - name: Customer credit applications, refunds and reversals reconcile once
+        run: node scripts/check-finance-credit-settlement.mjs
       - name: Report refresh after local and external financial actions
         run: node scripts/check-finance-refresh.mjs
       - name: Existing financial and refresh contracts

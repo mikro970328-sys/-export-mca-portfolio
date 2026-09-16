@@ -21,6 +21,11 @@
     creditInvoice: null,
     creditRequestId: null,
     creditSaving: false,
+    balanceInvoice: null,
+    balanceTargets: [],
+    balanceKind: null,
+    balanceRequestId: null,
+    balanceSaving: false,
     decisionAction: null,
     loaded: false
   };
@@ -212,6 +217,7 @@
 
   function invoiceActions(invoice) {
     const actions = [invoiceActionButton(invoice, 'detail', 'Ver detalle')];
+    actions.push(balanceActions(invoice));
     if (can(invoice, 'credit')) actions.push(invoiceActionButton(invoice, 'credit', 'Nota de crédito'));
     if (can(invoice, 'record_payment')) actions.push(invoiceActionButton(invoice, 'payment', 'Registrar cobro', 'orange'));
     if (can(invoice, 'edit')) actions.push(invoiceActionButton(invoice, 'edit', 'Editar'));
@@ -278,6 +284,7 @@
   function closeModal(name, restoreFocus = true) {
     const id = modalId(name);
     if (id === 'creditModal' && state.creditSaving) return;
+    if (id === 'balanceModal' && state.balanceSaving) return;
     const modal = $(id);
     if (!modal) return;
     if (id === 'invoiceModal') {
@@ -478,16 +485,18 @@
     $('detailBody').innerHTML = `
       <div class="invoice-detail-summary">
         <article><span>Total neto</span><strong>${esc(money(financial.total, invoice.currency))}</strong></article>
-        <article><span>Cobrado</span><strong>${esc(money(financial.paid_amount, invoice.currency))}</strong></article>
+        <article><span>Aplicado neto</span><strong>${esc(money(financial.paid_amount, invoice.currency))}</strong></article>
         <article><span>Saldo</span><strong>${esc(money(financial.balance_due, invoice.currency))}</strong></article>
         <article><span>Estado</span><strong>${statusPill(invoice)}</strong></article>
       </div>
       ${invoice.credit_notes?.length ? `<div class="invoice-detail-summary"><article><span>Total original</span><strong>${esc(money(financial.original_total,invoice.currency))}</strong></article><article><span>Notas de crédito</span><strong>${esc(money(financial.credited_amount,invoice.currency))}</strong></article><article><span>Saldo a favor del cliente</span><strong>${esc(money(financial.customer_credit_balance,invoice.currency))}</strong></article></div>` : ''}
       <section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Líneas de la factura original</h3><span>${invoice.items?.length || 0} registro${invoice.items?.length === 1 ? '' : 's'}</span></header><div class="invoice-detail-items">${items || emptyState('Sin líneas', 'Esta factura no contiene líneas disponibles.')}</div></section>
       ${creditNoteSection(invoice)}
+      ${creditMovementSection(invoice)}
       <section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Cobros aplicados</h3><span>${invoice.payments?.length || 0} registro${invoice.payments?.length === 1 ? '' : 's'}</span></header><div class="invoice-detail-items">${payments || emptyState('Sin cobros', 'Todavía no hay dinero registrado contra esta factura.')}</div></section>
       ${invoice.notes ? `<div class="invoice-notes"><strong>Notas</strong><br>${esc(invoice.notes)}</div>` : ''}`;
     const actions = [];
+    actions.push(balanceActions(invoice));
     if (can(invoice, 'credit')) actions.push(invoiceActionButton(invoice, 'credit', 'Nota de crédito'));
     if (can(invoice, 'record_payment')) actions.push(invoiceActionButton(invoice, 'payment', 'Registrar cobro', 'orange'));
     if (can(invoice, 'edit')) actions.push(invoiceActionButton(invoice, 'edit', 'Editar'));
@@ -497,6 +506,82 @@
     message('detailMsg', '');
     openModal('detail');
     return true;
+  }
+
+  function balanceActions(invoice) {
+    const actions=[];
+    if (can(invoice,'apply_credit')) actions.push(invoiceActionButton(invoice,'apply_credit','Aplicar saldo a favor'));
+    if (can(invoice,'refund_credit')) actions.push(invoiceActionButton(invoice,'refund_credit','Registrar devolución'));
+    return actions.join('');
+  }
+
+  function creditMovementSection(invoice) {
+    const movements=invoice.credit_movements||[],f=invoice.financial||{};
+    if (!movements.length) return '';
+    const summary=[['Cobros registrados',f.cash_payment_amount],['Anticipos aplicados',f.advance_applied_amount],['Crédito recibido',f.credit_received_amount],['Aplicado a otras facturas',f.credit_transferred_amount],['Saldo devuelto',f.credit_refunded_amount]];
+    return `<section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Movimientos del saldo a favor</h3><span>${movements.length} registro(s)</span></header><div class="invoice-detail-summary">${summary.map(([label,value])=>`<article><span>${esc(label)}</span><strong>${esc(money(value,invoice.currency))}</strong></article>`).join('')}</div><div class="invoice-detail-items">${movements.map(row=>`<div class="invoice-detail-item"><div><div class="invoice-detail-item-title">${esc(row.movement_number)} · ${row.movement_type==='refund'?'Devolución':'Aplicación entre facturas'} · ${esc(paymentStatusLabel(row.status))}</div><div class="invoice-detail-item-meta">${esc(date(row.effective_date))} · ${esc(row.source_invoice_number)}${row.target_invoice_number?` → ${esc(row.target_invoice_number)}`:''}</div><div class="invoice-detail-item-meta">${esc(row.reason)}${row.reference?` · ${esc(row.reference)}`:''}</div>${row.reversal_reason?`<div class="invoice-detail-item-meta">Reverso: ${esc(row.reversal_reason)}</div>`:''}${capability(row,'reverse').reason==='INVOICE_CREDIT_BALANCE_USED'?'<div class="invoice-detail-item-meta">Revierte primero los usos posteriores de ese saldo.</div>':''}</div><div class="invoice-payment-actions"><strong>${esc(money(row.amount,row.currency))}</strong>${can(row,'reverse')?`<button class="btn danger" type="button" data-reverse-credit-movement="${esc(row.id)}" data-invoice-id="${esc(invoice.id)}">Revertir movimiento</button>`:''}</div></div>`).join('')}</div></section>`;
+  }
+
+  function openCreditBalance(id,kind) {
+    const invoice=state.invoices.find(row=>String(row.id)===String(id));
+    if (!invoice||state.balanceSaving||!can(invoice,kind==='application'?'apply_credit':'refund_credit')) return false;
+    state.balanceInvoice=invoice;state.balanceKind=kind;state.balanceRequestId=crypto.randomUUID();
+    state.balanceTargets=state.invoices.filter(row=>row.id!==invoice.id&&row.status==='issued'&&row.client_id===invoice.client_id&&row.currency===invoice.currency&&num(row.financial?.balance_due)>0);
+    const application=kind==='application';
+    $('balanceTitle').textContent=`${application?'Aplicar saldo a favor':'Registrar devolución'} · ${invoice.invoice_number}`;
+    $('balanceCopy').textContent=application?'El saldo se aplica a otra factura del mismo cliente y moneda. Esta operación no registra un nuevo ingreso de dinero.':'Registra aquí una devolución que ya realizaste al cliente. El ERP anotará la salida de caja; no ejecuta transferencias bancarias.';
+    $('balanceTargetWrap').hidden=!application;
+    $('balanceRefundWrap').hidden=application;
+    $('balanceTarget').innerHTML=state.balanceTargets.length?state.balanceTargets.map(row=>`<option value="${esc(row.id)}">${esc(row.invoice_number)} · Pendiente ${esc(money(row.financial.balance_due,row.currency))}</option>`).join(''):'<option value="">No hay facturas compatibles con saldo pendiente</option>';
+    $('balanceDate').value=localDateToday();$('balanceMethod').value='wire';$('balanceReference').value='';$('balanceReason').value='';
+    $('saveBalance').textContent=application?'Aplicar saldo':'Registrar devolución';
+    $('saveBalance').disabled=application&&!state.balanceTargets.length;
+    message('balanceMsg','');
+    setBalanceAmount();closeModal('detail',false);openModal('balance','balanceAmount');
+    return true;
+  }
+
+  function balanceLimit() {
+    const available=num(state.balanceInvoice?.financial?.customer_credit_balance);
+    if (state.balanceKind==='refund') return available;
+    const target=state.balanceTargets.find(row=>row.id===$('balanceTarget').value);
+    return Math.min(available,num(target?.financial?.balance_due));
+  }
+
+  function setBalanceAmount() {
+    $('balanceAmount').value=String(balanceLimit());$('balanceAmount').max=String(balanceLimit());updateBalanceSummary();
+  }
+
+  function updateBalanceSummary() {
+    const invoice=state.balanceInvoice,amount=num($('balanceAmount').value),available=num(invoice.financial.customer_credit_balance);
+    const target=state.balanceTargets.find(row=>row.id===$('balanceTarget').value);
+    $('balanceSummary').textContent=`Disponible: ${money(available,invoice.currency)} · Saldo a favor restante: ${money(Math.max(available-amount,0),invoice.currency)}${state.balanceKind==='application'&&target?` · Pendiente en ${target.invoice_number}: ${money(Math.max(num(target.financial.balance_due)-amount,0),invoice.currency)}`:''}`;
+  }
+
+  async function saveCreditBalance() {
+    if (state.balanceSaving) return;
+    const invoice=state.balanceInvoice,amount=$('balanceAmount').value.trim(),reason=$('balanceReason').value.trim();
+    if (!/^\d+(?:\.\d{1,2})?$/.test(amount)||num(amount)<=0||num(amount)>balanceLimit()) return message('balanceMsg','Indica un monto válido que no supere el saldo disponible o pendiente.');
+    if (reason.length<3) return message('balanceMsg','Indica un motivo de al menos 3 caracteres.');
+    if (!$('balanceDate').value) return message('balanceMsg','Indica la fecha del movimiento.');
+    state.balanceSaving=true;$('saveBalance').disabled=true;message('balanceMsg','');
+    try {
+      await request('/api/invoices',{method:'POST',body:JSON.stringify({action:'credit_settlement',movement_type:state.balanceKind,invoice_id:invoice.id,target_invoice_id:state.balanceKind==='application'?$('balanceTarget').value:null,amount,reason,request_id:state.balanceRequestId,expected_available:String(invoice.financial.customer_credit_balance),effective_date:$('balanceDate').value,method:$('balanceMethod').value,reference:$('balanceReference').value})});
+      await refresh();state.balanceSaving=false;closeModal('balance',false);openDetail(invoice.id);
+      setPageMessage(state.balanceKind==='application'?'Saldo aplicado correctamente.':'Devolución registrada correctamente.','ok');
+    } catch(error) {message('balanceMsg',reportInvoiceError('credit_settlement',error));}
+    finally {state.balanceSaving=false;$('saveBalance').disabled=false;}
+  }
+
+  function reverseCreditMovement(invoiceId,movementId) {
+    const invoice=state.invoices.find(row=>row.id===invoiceId),movement=invoice?.credit_movements?.find(row=>row.id===movementId);
+    if (!movement||!can(movement,'reverse')) return;
+    const requestId=crypto.randomUUID(),effectiveDate=localDateToday();
+    askDecision({title:'Revertir movimiento de saldo',copy:`Se revertirá ${movement.movement_number} por ${money(movement.amount,movement.currency)} y se restablecerán sus saldos. El historial se conserva.`,acceptLabel:'Revertir movimiento',reason:true,danger:true,onAccept:async reason=>{
+      if(reason.length<3)throw new Error('Indica un motivo de al menos 3 caracteres.');
+      await request('/api/invoices',{method:'POST',body:JSON.stringify({action:'credit_settlement',movement_type:'reversal',movement_id:movementId,reason,request_id:requestId,effective_date:effectiveDate})});
+      await refresh();openDetail(invoiceId);setPageMessage('Movimiento revertido correctamente.','ok');
+    }});
   }
 
   function creditNoteSection(invoice) {
@@ -691,6 +776,8 @@
     if (action === 'detail') return openDetail(id);
     if (action === 'payment') return openPayment(id);
     if (action === 'credit') return openCredit(id);
+    if (action === 'apply_credit') return openCreditBalance(id,'application');
+    if (action === 'refund_credit') return openCreditBalance(id,'refund');
     if (action === 'edit') {
       closeModal('detail', false);
       return openEdit(id);
@@ -722,6 +809,9 @@
     $('saveInvoice').addEventListener('click', saveInvoice);
     $('savePayment').addEventListener('click', savePayment);
     $('saveCredit').addEventListener('click', saveCredit);
+    $('saveBalance').addEventListener('click', saveCreditBalance);
+    $('balanceTarget').addEventListener('change', setBalanceAmount);
+    $('balanceAmount').addEventListener('input', updateBalanceSummary);
     $('creditLines').addEventListener('input', updateCreditSummary);
     $('decisionAccept').addEventListener('click', acceptDecision);
     document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
@@ -743,6 +833,8 @@
         return;
       }
       if (handleInvoiceAction(target)) return;
+      const movement = target.closest('[data-reverse-credit-movement]');
+      if (movement) return reverseCreditMovement(movement.dataset.invoiceId,movement.dataset.reverseCreditMovement);
       const reverse = target.closest('[data-reverse-payment]');
       if (reverse) reversePayment(reverse.dataset.reversePayment, reverse.dataset.invoiceId);
     });
@@ -753,7 +845,7 @@
     }));
     document.addEventListener('keydown', event => {
       if (event.key !== 'Escape') return;
-      const open = ['decisionModal', 'creditModal', 'paymentModal', 'invoiceModal', 'detailModal'].find(id => !$(id).classList.contains('hidden'));
+      const open = ['decisionModal', 'balanceModal', 'creditModal', 'paymentModal', 'invoiceModal', 'detailModal'].find(id => !$(id).classList.contains('hidden'));
       if (!open) return;
       event.stopImmediatePropagation();
       if (open === 'decisionModal') closeDecision();

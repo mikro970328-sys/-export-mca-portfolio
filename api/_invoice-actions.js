@@ -2,7 +2,7 @@ import { loadAdminAccessContext, supabase } from './_lib.js';
 
 const clone=value=>value&&typeof value==='object'?JSON.parse(JSON.stringify(value)):{actions:{}};
 
-function permissionAwareCapabilities(raw,writeAccess){
+export function permissionAwareCapabilities(raw,writeAccess){
   const state=clone(raw);
   const actions=state.actions&&typeof state.actions==='object'?state.actions:{};
   for(const entry of Object.values(actions)){

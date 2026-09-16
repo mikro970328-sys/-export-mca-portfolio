@@ -24,6 +24,7 @@
   }[character]));
 
   const MONEY_FIELDS = new Set([
+    'cash_payment_amount','advance_applied_amount','credit_received_amount','credit_transferred_amount','credit_refunded_amount',
     'original_total','credited_amount','customer_credit_balance',
     'order_total','attributed_sales_revenue','unattributed_order_value','recognized_merchandise_cogs',
     'gross_margin','direct_cost_amount','contribution_margin','invoice_total','paid_amount','balance_due',
@@ -56,7 +57,7 @@
     incomplete:'Incompleta', unavailable:'No disponible', pending:'Pendiente', received:'Recibido',
     not_received:'Sin recibir', in_progress:'En proceso', fulfilled:'Cumplida', unfulfilled:'Sin cumplir',
     customer_payment:'Cobro de cliente', customer_collection:'Cobro de cliente', supplier_payment:'Pago a proveedor',
-    customer_advance:'Anticipo de cliente', customer_advance_refund:'Reembolso de anticipo',
+    customer_advance:'Anticipo de cliente', customer_advance_refund:'Reembolso de anticipo', invoice_credit_refund:'Devolución de saldo a favor',
     in:'Entrada', out:'Salida', true:'Sí', false:'No'
   });
   const GOOD_STATES = new Set(['active','posted','paid','complete','completed','available','comparable','received','fulfilled','in','false']);

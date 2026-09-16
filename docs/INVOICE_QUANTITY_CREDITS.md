@@ -25,8 +25,9 @@ total neto 3240, saldo 2240, COGS 2025 y margen de factura 1215. Si los cobros
 superan el neto, la diferencia queda como saldo a favor, sin crear devolución ni
 movimiento de caja. La nota no cambia la venta original, PO, proveedor, despacho
 físico, inventario ni asignaciones logísticas; libera capacidad de facturación.
-No implementa cambio de precio, reverso de notas, devolución/aplicación de ese
-saldo a otra factura, documento fiscal local ni envío automático al cliente.
+No implementa cambio de precio, reverso de notas, documento fiscal local ni
+envío automático al cliente. La continuación de devolución/aplicación del saldo
+se documenta en INVOICE_CREDIT_SETTLEMENT.md.
 
 Validación local: 16 escenarios SQL/API de notas (840→810, reintentos/conflictos,
 estados, permisos, invariantes, centavos, cantidades fraccionarias, límites,

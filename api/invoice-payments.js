@@ -5,6 +5,7 @@ const rpcRow=value=>Array.isArray(value)?(value[0]||null):(value||null);
 
 function translatedError(raw){
   const messages=[
+    ['INVOICE_CREDIT_BALANCE_USED','Revierte primero las aplicaciones o devoluciones que usaron ese saldo a favor.'],
     ['JSON_INVALID','La solicitud no tiene un formato válido.'],
     ['PAYMENT_AMOUNT_INVALID','El monto del cobro debe ser mayor que cero.'],
     ['PAYMENT_INVOICE_NOT_FOUND','Factura no encontrada.'],

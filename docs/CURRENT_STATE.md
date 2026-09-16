@@ -1,3 +1,12 @@
+## 2026-09-16 · Aplicación y devolución del saldo a favor
+
+PR #318 publicada en d86d1804472959aab3cb15657499e58213373685: notas de crédito
+por cantidad, 22/22 workflows y 16/16 jobs de navegador. Continuación actual:
+aplicar el saldo a otra factura del mismo cliente y moneda, registrar una
+devolución realizada y revertir estos movimientos con historial. Ver
+INVOICE_CREDIT_SETTLEMENT.md; la PR registra CI, migración y publicación finales.
+No incluye todavía reversos de las notas de crédito por cantidad.
+
 ## 2026-09-16 · Notas de crédito por cantidad
 
 PR #317 publicada en 85b6e2b47ed39f1188371e22b2097038a6de5f61: COGS Direct Ship

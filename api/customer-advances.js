@@ -17,6 +17,7 @@ function translatedError(error){
     ['CUSTOMER_ADVANCE_REFUND_EXCEEDS_AVAILABLE','El reembolso supera el saldo disponible del anticipo.'],['CUSTOMER_ADVANCE_HAS_ACTIVE_APPLICATIONS','Revierte primero las aplicaciones activas del anticipo.'],['CUSTOMER_ADVANCE_HAS_ACTIVE_REFUNDS','Revierte primero los reembolsos activos del anticipo.'],
     ['CUSTOMER_ADVANCE_ALREADY_REVERSED','El anticipo ya está revertido.'],['CUSTOMER_ADVANCE_APPLICATION_ALREADY_REVERSED','La aplicación ya está revertida.'],['CUSTOMER_ADVANCE_REFUND_ALREADY_REVERSED','El reembolso ya está revertido.'],
     ['CUSTOMER_ADVANCE_REVERSAL_REASON_REQUIRED','Indica el motivo del reverso.'],['CUSTOMER_ADVANCE_APPLICATION_REVERSAL_REASON_REQUIRED','Indica el motivo del reverso.'],['CUSTOMER_ADVANCE_REFUND_REVERSAL_REASON_REQUIRED','Indica el motivo del reverso.'],
+    ['INVOICE_CREDIT_BALANCE_USED','Revierte primero las aplicaciones o devoluciones que usaron ese saldo a favor.'],
     ['PERMISSION_REQUIRED','No tienes permiso para realizar esta acción.']
   ];
   const matched=map.find(([key])=>raw.includes(key));

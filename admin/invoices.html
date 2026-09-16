@@ -142,6 +142,19 @@
     </div>
   </div>
 
+  <div id="balanceModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="balanceTitle" aria-describedby="balanceCopy" aria-hidden="true">
+    <div class="dialog compact invoice-payment-dialog">
+      <div class="dialog-head"><div><span class="invoices-dialog-kicker">Saldo a favor del cliente</span><h2 id="balanceTitle">Usar saldo a favor</h2><p id="balanceCopy" class="muted"></p></div><button class="btn invoices-close-button" type="button" data-close="balance" aria-label="Cerrar movimiento de saldo">✕</button></div>
+      <div id="balanceTargetWrap"><label for="balanceTarget">Factura destino *</label><select id="balanceTarget"></select></div>
+      <div class="grid"><div><label for="balanceAmount">Monto *</label><input id="balanceAmount" type="number" min="0.01" step="0.01" inputmode="decimal"></div><div><label for="balanceDate">Fecha *</label><input id="balanceDate" type="date"></div></div>
+      <div id="balanceRefundWrap" class="grid"><div><label for="balanceMethod">Método de devolución *</label><select id="balanceMethod"><option value="wire">Wire</option><option value="ach">ACH</option><option value="check">Cheque</option><option value="cash">Efectivo</option><option value="other">Otro</option></select></div><div><label for="balanceReference">Referencia</label><input id="balanceReference" maxlength="250" placeholder="Comprobante de la devolución"></div></div>
+      <label for="balanceReason">Motivo *</label><textarea id="balanceReason" maxlength="2000"></textarea>
+      <p id="balanceSummary" role="status" aria-live="polite"></p>
+      <div class="actions invoice-modal-actions"><button class="btn" type="button" data-close="balance">Cancelar</button><button id="saveBalance" class="btn orange" type="button">Registrar</button></div>
+      <div id="balanceMsg" class="msg invoice-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
   <div id="decisionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="decisionTitle" aria-describedby="decisionCopy" aria-hidden="true">
     <div class="dialog compact invoice-decision-dialog">
       <span class="invoices-dialog-kicker">Confirmación financiera</span>
@@ -154,7 +167,7 @@
   </div>
 
   <script src="/admin/form-drafts.js?v=20260909-drafts1" defer></script>
-  <script src="/admin/invoices.js?v=20260916-credit1" defer></script>
+  <script src="/admin/invoices.js?v=20260916-credit2" defer></script>
   <script src="/admin/embedded-auto-refresh.js?v=20260909-live7" defer></script>
 </body>
 </html>

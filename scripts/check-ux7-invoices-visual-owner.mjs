@@ -44,7 +44,7 @@ for (const text of [
   '<body class="erp-module-page erp-module-invoices" data-owner="invoices.js">',
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/invoices.css?v=20260903-ux7invoices1',
-  '/admin/invoices.js?v=20260916-credit1',
+  '/admin/invoices.js?v=20260916-credit2',
   '/admin/embedded-auto-refresh.js?v=20260909-live7',
   'class="module-hero invoices-page-head"',
   'id="invoiceLastUpdated"',
@@ -208,11 +208,11 @@ for (const id of [
   'iSalesOrder', 'iIssueDate', 'iDueDate', 'iNotes', 'invoiceLines', 'invoiceMsg',
   'saveInvoice', 'detailTitle', 'detailSubtitle', 'detailBody', 'detailActions', 'detailMsg',
   'paymentTitle', 'paymentSubtitle', 'pAmount', 'pDate', 'pMethod', 'pReference', 'pNotes',
-  'saveCredit', 'creditLines', 'creditTitle', 'creditReason', 'creditSummary', 'creditMsg', 'savePayment', 'paymentMsg', 'decisionTitle', 'decisionCopy', 'decisionAccept',
+  'saveBalance', 'balanceTarget', 'balanceAmount', 'balanceTitle', 'balanceCopy', 'balanceTargetWrap', 'balanceRefundWrap', 'balanceDate', 'balanceMethod', 'balanceReference', 'balanceReason', 'balanceMsg', 'balanceSummary', 'saveCredit', 'creditLines', 'creditTitle', 'creditReason', 'creditSummary', 'creditMsg', 'savePayment', 'paymentMsg', 'decisionTitle', 'decisionCopy', 'decisionAccept',
   'decisionReasonWrap', 'decisionReason', 'decisionMsg', 'invoiceRetry'
 ]) fixtureNodes.set(id, new FakeElement(id));
 
-for (const id of ['invoiceModal', 'detailModal', 'creditModal', 'paymentModal', 'decisionModal']) {
+for (const id of ['invoiceModal', 'detailModal', 'balanceModal', 'creditModal', 'paymentModal', 'decisionModal']) {
   fixtureNodes.set(id, new FakeElement(id, 'modal', 'hidden'));
 }
 const tabs = ['open', 'draft', 'paid', 'all'].map(view => {
@@ -262,11 +262,11 @@ vm.runInNewContext(owner, {
     getElementById: id => fixtureNodes.get(id) || null,
     addEventListener: (type, handler) => documentListeners.set(type, handler),
     querySelector: selector => selector === '.modal:not(.hidden)'
-      ? ['decisionModal', 'creditModal', 'paymentModal', 'invoiceModal', 'detailModal'].map(id => fixtureNodes.get(id)).find(node => !node.classList.contains('hidden')) || null
+      ? ['decisionModal', 'balanceModal', 'creditModal', 'paymentModal', 'invoiceModal', 'detailModal'].map(id => fixtureNodes.get(id)).find(node => !node.classList.contains('hidden')) || null
       : null,
     querySelectorAll: selector => {
       if (selector === '[data-view]') return tabs;
-      if (selector === '.modal') return ['invoiceModal', 'detailModal', 'creditModal', 'paymentModal', 'decisionModal'].map(id => fixtureNodes.get(id));
+      if (selector === '.modal') return ['invoiceModal', 'detailModal', 'balanceModal', 'creditModal', 'paymentModal', 'decisionModal'].map(id => fixtureNodes.get(id));
       if (selector === '[data-invoice-line]') return [];
       return [];
     }
