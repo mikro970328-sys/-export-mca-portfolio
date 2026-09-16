@@ -1,0 +1,19 @@
+name: Prepare Credit Reversal Migration
+on:
+  push:
+    branches: [build/credit-reversal-migration]
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Generate the migration with the pinned official CLI
+        run: |
+          npx --yes supabase@2.117.0 migration new --help
+          npx --yes supabase@2.117.0 migration new invoice_credit_note_reversal
