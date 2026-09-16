@@ -58,7 +58,7 @@ for(const text of [
 ])requireText(owner,text,`ownership canónico ${text}`);
 
 requireText(loader,"/admin/access-control.css?v=20260905-accessflow1",'revisión del CSS de Accesos');
-requireText(loader,"/admin/access-control-administration.js?v=20260905-accessflow1",'revisión del owner de Accesos');
+requireText(loader,"/admin/access-control-administration.js?v=20260916-tasksnav1",'revisión del owner de Accesos');
 requireText(loader,"await window.ExportMcaAccessControl.initialize()",'inicialización del contexto de acceso');
 requireText(styles,'.access-modal-message{margin:0 16px 12px}','feedback visible dentro del diálogo de Accesos');
 requireText(index,'/admin/erp.js?v=20260905-accessflow1','revisión del loader ERP');

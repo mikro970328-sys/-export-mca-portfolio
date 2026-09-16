@@ -93,6 +93,7 @@
   ]);
   const SECTION_PERMISSIONS = {
     dashboardSection:'dashboard.read',
+    tasksSection:'tasks.read',
     notificationsSection:'notifications.read',
     clientsSection:'clients.read',
     salesSection:'sales.read',

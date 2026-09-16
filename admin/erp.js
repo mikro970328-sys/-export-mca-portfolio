@@ -225,7 +225,7 @@
 
     bootPromise = (async () => {
       await accessStylesPromise;
-      await loadScript('/admin/access-control-administration.js?v=20260905-accessflow1', 'data-access-control-administration');
+      await loadScript('/admin/access-control-administration.js?v=20260916-tasksnav1', 'data-access-control-administration');
       if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
       await window.ExportMcaAccessControl.initialize();
       await iconSystemPromise;
@@ -250,7 +250,7 @@
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
       await loadStylesheet('/admin/account-administration.css?v=20260903-ux7account1', 'data-account-administration-style');
       await loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration');
-      await loadScript('/admin/navigation-shell.js?v=20260910-startup1', 'data-navigation-shell');
+      await loadScript('/admin/navigation-shell.js?v=20260916-tasksnav1', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {
         await loadStylesheet('/admin/tasks-workspace.css?v=20260903-ux7tasks1', 'data-tasks-workspace-style');

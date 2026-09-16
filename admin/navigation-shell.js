@@ -22,7 +22,7 @@
   ];
 
   const NAV_GROUPS = [
-    { key:'home', label:'Inicio', sections:['dashboardSection'] },
+    { key:'home', label:'Inicio', sections:['dashboardSection','tasksSection'] },
     { key:'commercial', label:'Comercial', sections:['salesSection','clientsSection','publicationsSection'] },
     { key:'purchases', label:'Compras', sections:['purchasesSection','suppliersSection'] },
     { key:'warehouse', label:'Almacén', sections:['warehouseSection','inventorySection','productsSection'] },
@@ -103,6 +103,22 @@
     button.onclick = event => { event.preventDefault(); openEmbeddedSection(config); };
     staging?.appendChild(button);
     return button;
+  }
+
+  function ensureTasksButton() {
+    if (document.querySelector('[data-section="tasksSection"]')) return;
+    const nav = document.querySelector('.sidebar-nav');
+    if (!nav) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.section = 'tasksSection';
+    button.dataset.navLabel = 'Mis tareas';
+    button.innerHTML = '<span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Mis tareas</span>';
+    button.setAttribute('aria-label', 'Mis tareas');
+    button.title = 'Mis tareas';
+    button.classList.toggle('hidden', !window.ExportMcaAccessControl?.can?.('tasks.read'));
+    button.onclick = event => { event.preventDefault(); window.showSection?.('tasksSection'); };
+    nav.appendChild(button);
   }
 
   function ensureEmbeddedSections() {
@@ -293,6 +309,7 @@
   function mount() {
     const sidebar = byId('sidebar');
     if (!sidebar) return;
+    ensureTasksButton();
     ensureEmbeddedSections();
     buildNavigationHierarchy();
     installAccessibleLabels();

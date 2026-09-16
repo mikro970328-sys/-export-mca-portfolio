@@ -19,3 +19,11 @@ Screenshots por operador y JSON saneado por job; cero errores JS/5xx y tráfico
 externo. No se graban credenciales. Matriz ampliada a ocho suites × dos motores.
 WebKit emulado no acredita iPhone real/PWA instalada/push. Estas pruebas no cierran
 por sí solas todas las variantes financieras/reportes ni aceptación final diaria.
+
+## Hallazgo en la primera ejecución
+
+La sesión tenía tasks.read y el workspace cargado pero no existía botón de
+navegación a Mis tareas. El owner navigation-shell ahora crea su entrada nativa
+y la conserva en el grupo Inicio. El owner de accesos añade tasksSection →
+tasks.read. No se añade iframe ni otro owner. El recorrido seguirá entrando
+por el menú; la versión de assets y sus contratos se actualizan juntos.
