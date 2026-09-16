@@ -38,7 +38,13 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const { f,users } = await operatorFixture(db);
     const paymentFault={armed:false,droppedId:null};
+    const supplierFault={armed:false,droppedId:null};
     api = await startBrowserAcceptanceServer({dropApiResponse:(req,url,body)=>{
+      if(supplierFault.armed&&req.method==='POST'&&url.pathname==='/api/supplier-payments'){
+        let result;try{result=JSON.parse(String(body));}catch{return false;}
+        if(!result.payment?.id)return false;
+        supplierFault.droppedId=result.payment.id;return true;
+      }
       if(!paymentFault.armed||req.method!=='POST'||url.pathname!=='/api/invoice-payments')return false;
       let result;try{result=JSON.parse(String(body));}catch{return false;}
       if(!result.payment?.id)return false;
@@ -358,10 +364,47 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       evidence.reconciliation={sale:400,purchase:250,collected:400,receivable:0,directCost:50,contribution:100,physicalStock:0,costCoverage:'estimated'};
       await screenshot(a,'12-reconciled-report');
     });
+    let supplierBill;
+    const ap=module(a,'payables');
+    await step('COM-13 the supplier bill closes the same purchase at actual cost',async()=>{
+      await navigate(a,'payables');await ap.locator('#newBill').click();
+      await ap.locator('#bPO').selectOption(po.id);
+      await ap.locator('#bSupplierInvoice').fill('QA-WORKDAY-SUPPLIER');
+      await ap.locator('[data-bill-line] [data-total]').fill('250');
+      supplierBill=(await mutation(a,'payables',()=>ap.locator('#saveBill').click())).bill;
+      await expect(ap.locator('#billModal')).toBeHidden();
+      await ap.locator('[data-bill-action="post"][data-bill-id="'+supplierBill.id+'"]').click();
+      await mutation(a,'payables',()=>ap.locator('#decisionAccept').click());
+      await expect(ap.locator('#decisionModal')).toBeHidden();
+      expect(Number((await f.ap(supplierBill)).bill_total)).toBe(250);
+      expect(supplierBill.purchase_order_id).toBe(po.id);
+      evidence.documents.supplierBill=supplierBill.bill_number;
+    });
+    await step('COM-14 a lost supplier payment confirmation is recovered without a second payment',async()=>{
+      await ap.locator('[data-bill-action="pay"][data-bill-id="'+supplierBill.id+'"]').click();
+      await ap.locator('#pAmount').fill('40');
+      await ap.locator('#pReference').fill('QA-SUPPLIER-LOST-CONFIRMATION');
+      supplierFault.armed=true;await ap.locator('#savePayment').click();
+      await expect.poll(()=>supplierFault.droppedId).toBeTruthy();
+      await expect(ap.locator('#savePayment')).toBeEnabled();
+      await expect(ap.locator('#paymentMsg')).toContainText(/registrar|confirmar|intenta/i);
+      await expect(ap.locator('#pAmount')).toHaveValue('40');
+      expect(Number((await f.ap(supplierBill)).balance_due)).toBe(210);
+      supplierFault.armed=false;
+      await mutation(a,'supplier-payments',()=>ap.locator('#savePayment').click());
+      const rows=await f.rows("select id,amount from supplier_payments where reference='QA-SUPPLIER-LOST-CONFIRMATION'");
+      evidence.supplierRetry={committedId:supplierFault.droppedId,rows:rows.map(row=>({id:row.id,amount:Number(row.amount)}))};
+      console.log('SUPPLIER_RETRY_AFTER_COMMIT '+JSON.stringify(evidence.supplierRetry));
+      expect(rows,'one payment intent must never become two cash outflows').toHaveLength(1);
+      expect(rows[0].id).toBe(supplierFault.droppedId);
+      expect(Number((await f.ap(supplierBill)).balance_due)).toBe(210);
+      await expect(ap.locator('#paymentModal')).toBeHidden();
+      await screenshot(a,'14-supplier-payment-recovered');
+    });
     expect({a:a.navigations,b:b.navigations,bf:b.frames}).toEqual(nav);
     expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404 || row.status>=500)).toEqual([]);
-    expect(evidence.checkpoints).toHaveLength(12);
+    expect(evidence.checkpoints).toHaveLength(14);
   } finally {
     const path=info.outputPath('commercial-evidence.json');
     fs.mkdirSync(info.outputDir,{recursive:true});fs.writeFileSync(path,JSON.stringify(evidence,null,2));
