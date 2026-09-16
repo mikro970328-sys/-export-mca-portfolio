@@ -51,6 +51,9 @@ test('tracking documents: versions, readiness, reader and lost confirmations',as
     const upload=async(key,version)=>{
       const chooser=writer.waitForEvent('filechooser');await writer.locator(`[data-customs-upload="${key}"]`).click();
       await (await chooser).setFiles({name:`qa-${version}.pdf`,mimeType:'application/pdf',buffer:pdf(version)});
+      // WebKit may deliver the input change after setFiles resolves. The previous
+      // success message is not evidence that this new upload has completed.
+      await expect(writer.locator('.container-customs')).toContainText(`qa-${version}.pdf`);
       await expect(writer.locator('#containerCustomsFeedback')).toContainText(/actualizado correctamente|quedó guardado correctamente/);
     };
     const rows=()=>f.rows('select * from documents where shipment_id=$1 order by document_type,version',[shipment.id]);

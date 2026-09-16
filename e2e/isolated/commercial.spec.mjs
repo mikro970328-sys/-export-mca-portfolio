@@ -150,12 +150,18 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await navigate(b,'inventory');await inventoryValues(0,0,0);
       await navigate(a,'purchases');await purchase.locator('[data-view="all"]').click();
       await purchase.locator('#newOrder').click();
+      await expect(purchase.locator('#oSupplier')).toBeFocused();
       await purchase.locator('#oSupplier').selectOption(f.supplier);
       await purchase.locator('#oWarehouse').selectOption(f.warehouse);
       await purchase.locator('#oReference').fill('QA commercial chain');
       await purchase.locator('.lProduct').selectOption(f.product);
       await purchase.locator('.lQty').fill('100');await purchase.locator('.lPallets').fill('10');
       await purchase.locator('.lPriceValue').fill('2.5');
+      await purchase.locator('.lPriceValue').press('Tab');
+      await expect(purchase.locator('.lQty')).toHaveValue('100');
+      await expect(purchase.locator('.lPallets')).toHaveValue('10');
+      await expect(purchase.locator('.lPriceValue')).toHaveValue('2.5');
+      await expect(purchase.locator('.lPricingHelp')).toContainText('$250.00');
       await mutation(a,'purchases',()=>purchase.locator('#saveOrder').click());
       await expect(purchase.locator('#orderModal')).toBeHidden();
       po=await f.one('select * from purchase_orders');evidence.documents.purchase=po.po_number;

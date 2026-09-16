@@ -36,3 +36,14 @@ No se cambian reglas productivas ni se relajan aserciones de negocio.
 
 WebKit intentó pulsar la fila de tabla oculta en el layout móvil. El selector
 exige ahora la representación visible (fila o tarjeta), sin force click.
+
+## Sincronización de navegador
+
+Run 35043427501 Chromium aprobó los cinco checkpoints; captura y JSON examinados,
+sin errores JS/5xx/tráfico externo. Run 35043500343 WebKit llegó a DOC-04 pero el
+helper aceptó el mensaje de éxito anterior antes del evento change del archivo.
+Ahora exige también el nombre único del archivo recién cargado en el detalle.
+La misma ejecución encontró COM-01 WebKit con total 0 en vez de 250. Se revisó
+el artefacto 10426580321; se espera el foco programado del modal y se comprueban
+cantidad, pallets, precio y total calculado antes de guardar. Se conserva la
+aserción del total guardado; no se reintenta ciegamente ni se cambia producción.
