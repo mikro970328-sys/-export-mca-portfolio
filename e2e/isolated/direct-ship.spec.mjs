@@ -406,9 +406,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await billing.locator('[data-close="detail"]').click();await billing.locator('[data-view="all"]').click();
       await billing.locator('#newInvoice').click();await billing.locator('#iSalesOrder').selectOption(so.id);await billing.locator('[data-invoice-line] [data-qty]').fill('10');
       const result=await mutation('invoices',()=>billing.locator('#saveInvoice').click());settlementTarget=result.invoice;await expect(billing.locator('#invoiceModal')).toBeHidden();
-      await billing.locator(`[data-invoice-action="issue"][data-invoice-id="${settlementTarget.id}"]`).click();await mutation('invoices',()=>billing.locator('#decisionAccept').click());await expect(billing.locator('#decisionModal')).toBeHidden();
+      await billing.locator(`#invoiceList [data-invoice-action="issue"][data-invoice-id="${settlementTarget.id}"]`).click();await mutation('invoices',()=>billing.locator('#decisionAccept').click());await expect(billing.locator('#decisionModal')).toBeHidden();
       const before=await f.report('cash');
-      await billing.locator(`[data-invoice-action="apply_credit"][data-invoice-id="${creditedInvoice.id}"]`).click();await expect(billing.locator('#balanceRefundWrap')).toBeHidden();
+      await billing.locator(`#invoiceList [data-invoice-action="apply_credit"][data-invoice-id="${creditedInvoice.id}"]`).click();await expect(billing.locator('#balanceRefundWrap')).toBeHidden();
       await billing.locator('#balanceTarget').selectOption(settlementTarget.id);await expect(billing.locator('#balanceAmount')).toHaveValue('40');await billing.locator('#balanceReason').fill('Aplicar saldo a la siguiente factura del cliente.');
       applicationMovement=(await mutation('invoices',()=>billing.locator('#saveBalance').click())).movement;await expect(billing.locator('#balanceModal')).toBeHidden();
       await expect(billing.locator('#detailBody')).toContainText('Aplicación entre facturas');await expect(billing.locator('#detailBody')).toContainText('USD 4.00');
