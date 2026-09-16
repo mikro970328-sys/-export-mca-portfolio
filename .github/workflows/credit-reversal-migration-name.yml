@@ -1,4 +1,4 @@
-name: Inspect Credit Reversal Browser Screenshot
+name: Inspect Credit Reversal Acceptance Evidence
 on:
   push:
     branches: [build/credit-reversal-migration]
@@ -15,22 +15,20 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           run-id: 35128013150
-          name: browser-direct-ship-webkit-mobile
+          name: browser-direct-ship-chromium-desktop
           path: evidence
-      - name: Read isolated failure screenshot and trace
+      - name: Read isolated desktop result and credit note screenshot
         run: |
           python - <<'PY'
           from pathlib import Path
-          import base64,json,zipfile
-          for p in Path('evidence').rglob('final-state.png'):
+          import base64,json
+          for p in Path('evidence').rglob('direct-ship-evidence.json'):
+              d=json.loads(p.read_text())
+              print('EVIDENCE '+json.dumps({k:v for k,v in d.items() if k!='api'}))
+              print('HTTP_COUNTS '+json.dumps({str(s):sum(r['status']==s for r in d['api']) for s in sorted({r['status'] for r in d['api']})}))
+          for p in Path('evidence').rglob('23-*.png'):
               data=base64.b64encode(p.read_bytes()).decode()
               print('IMAGE_BEGIN '+p.name)
               for offset in range(0,len(data),12000):print('IMAGE_CHUNK '+data[offset:offset+12000])
               print('IMAGE_END')
-          for p in Path('evidence').rglob('trace.zip'):
-              with zipfile.ZipFile(p) as z:
-                  for n in z.namelist():
-                      if not n.endswith('.trace'):continue
-                      for l in z.read(n).decode().splitlines():
-                          if 'balanceMsg' in l and ('Indica' in l or 'value' in l):print('FORM_TRACE '+l)
           PY
