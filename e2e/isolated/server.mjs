@@ -8,7 +8,8 @@ const routeNames = ['products','suppliers','purchases','warehouse','inventory','
   'payables','supplier-payments','costs','profitability','reports','ap-links','publications',
   'sales-order-ux','sales-workspace','sales-loads','sales-supply','customer-advances',
   'proformas','shipment-document-readiness','shipments','clients','importers','operational-links',
-  'direct-shipment-dispatch','shipment-documents'];
+  'direct-shipment-dispatch','shipment-documents','tasks','notification-inbox','push-subscriptions',
+  'history','workflow-routes','task-supervisor-queue','manual-tracking-event'];
 const mime = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
   '.json':'application/json', '.webmanifest':'application/manifest+json',
   '.png':'image/png', '.svg':'image/svg+xml', '.ico':'image/x-icon' };
