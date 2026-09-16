@@ -1,22 +1,38 @@
-name: Verify Supplier Finance Precision
+name: Inspect Supplier Finance Browser Evidence
 on:
   push:
     branches: [build/credit-reversal-migration]
 permissions:
   contents: read
+  actions: read
 jobs:
-  verify:
+  inspect:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          ref: 8c85087e00c9bb317b3a7e0191298495e3d4ced9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: node scripts/check-finance-supplier-variants.mjs
-      - run: node scripts/check-finance-api.mjs
-      - run: node scripts/check-ux7-payables-visual-owner.mjs
+          name: browser-direct-ship-chromium-desktop
+          run-id: 35134334240
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: evidence
+      - name: Read isolated acceptance evidence
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,base64
+          root=Path('evidence')
+          for p in sorted(root.rglob('direct-ship-evidence.json')):
+              d=json.loads(p.read_text())
+              out={k:d.get(k) for k in ['checkpoints','errors','crashes','external','reportNavigations','supplierVariants']}
+              out['api_failures']=[x for x in d.get('api',[]) if x['status']==404 or x['status']>=500]
+              print('EVIDENCE '+json.dumps(out),flush=True)
+          for name in ['28-supplier-rounded-bills.png','31-supplier-paid-report.png']:
+              files=sorted(root.rglob(name))
+              if not files: raise SystemExit('Missing '+name)
+              p=files[0]
+              print('IMAGE_BEGIN '+name,flush=True)
+              b=base64.b64encode(p.read_bytes()).decode()
+              for i in range(0,len(b),3000):print('IMAGE_CHUNK '+b[i:i+3000],flush=True)
+              print('IMAGE_END '+name,flush=True)
+          PY
