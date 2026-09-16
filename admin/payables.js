@@ -485,7 +485,7 @@
       const quantity = own ? num(own.billed_quantity) : available;
       const cost = own ? num(own.unit_cost) : num(item.unit_cost);
       const pricingMode = own?.pricing_mode === 'total' ? 'total' : 'unit';
-      const lineTotal = own ? num(own.line_total) : quantity * cost;
+      const lineTotal = own ? num(own.line_total) : Number(billPreviewCents(quantity, cost)) / 100;
       const hint = pricingMode === 'total' ? 'Importe exacto: total facturado' : 'Importe calculado: cantidad × costo unitario';
       return `<article class="payable-line" data-bill-line="${esc(item.id)}" data-pricing-mode="${pricingMode}">
         <div class="payable-line-title">${esc(label)}</div>
