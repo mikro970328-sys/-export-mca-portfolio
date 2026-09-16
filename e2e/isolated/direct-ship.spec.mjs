@@ -446,8 +446,69 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       expect((await f.rows('select id from invoice_active_credit_movements')).length).toBe(1);expect(Number((await f.one("select sum(amount) as amount from payments where status='posted'")).amount)).toBe(3240);
       evidence.creditSettlement={applied:40,refunded:4,reversedBoth:true,concurrentStatuses:[200,400],winner:intents[winner].movement_type,remainingCredit:14,retries:[200,200],reader:403};
     });
+    let creditNotesForReversal,cashBeforeNoteReversal;
+    const noteReversalBody=note=>({action:'reverse_credit_note',credit_note_id:note.id,request_id:randomUUID(),reason:'QA note entered in error; preserve original history.'});
+    const masterInvoice=async body=>{const r=await api.request('invoices',{method:'POST',body,token:master.body.token});expect(r.status,JSON.stringify(r.body)).toBe(200);return r.body;};
+    const reverseNoteUi=async note=>{
+      await billing.locator('[data-reverse-credit-note="'+note.id+'"]').click();
+      await billing.locator('#decisionReason').fill('QA corrección de nota, conservar historial y cobros.');
+      const result=await mutation('invoices',()=>billing.locator('#decisionAccept').click());await expect(billing.locator('#decisionModal')).toBeHidden();return result;
+    };
+    await step('DS-23 reverse latest quantity note in UI while preserving cash and showing dependencies',async()=>{
+      const active=await f.one('select * from invoice_active_credit_movements');
+      await masterInvoice({action:'credit_settlement',movement_type:'reversal',movement_id:active.id,request_id:randomUUID(),reason:'QA remove race winner before note reversals'});
+      await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Saldo a favor'),{timeout:45_000}).toBe(44);
+      cashBeforeNoteReversal=await f.report('cash');
+      creditNotesForReversal=await f.rows('select n.*,l.quantity from invoice_credit_notes n join invoice_credit_note_lines l on l.credit_note_id=n.id where n.invoice_id=$1 order by l.quantity',[creditedInvoice.id]);
+      await billing.locator('[data-close="detail"]').click();await billing.locator('#invoiceList [data-invoice-action="detail"][data-invoice-id="'+creditedInvoice.id+'"]').click();
+      await expect(billing.locator('[data-credit-note-id="'+creditNotesForReversal[2].id+'"]')).toContainText('notas posteriores');
+      await expect(billing.locator('[data-reverse-credit-note="'+creditNotesForReversal[2].id+'"]')).toHaveCount(0);
+      const result=await reverseNoteUi(creditNotesForReversal[0]);expect(result.reversal.reversal_number).toMatch(/^RC-/);
+      const row=billing.locator('[data-credit-note-id="'+creditNotesForReversal[0].id+'"]');await expect(row).toContainText('Revertida');await expect(row).toContainText('restauradas');await expect(row).toContainText('conservar historial');
+      await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Total'),{timeout:45_000}).toBe(3200);await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Saldo a favor')).toBe(40);
+      expect(await f.report('cash')).toEqual(cashBeforeNoteReversal);await row.scrollIntoViewIfNeeded();await shot('23-credit-note-reversed');
+    });
+    await step('DS-24 reused units block reversal until the replacement invoice is voided',async()=>{
+      await reverseNoteUi(creditNotesForReversal[1]);const last=creditNotesForReversal[2],row=billing.locator('[data-credit-note-id="'+last.id+'"]');
+      await expect(row).toContainText('ya se usaron en otra factura');await expect(row.locator('[data-reverse-credit-note]')).toHaveCount(0);
+      const blocked=await api.request('invoices',{method:'POST',token:master.body.token,body:noteReversalBody(last)});expect(blocked.status).toBe(400);expect(blocked.body.details.code).toBe('INVOICE_CREDIT_QUANTITY_REUSED');
+      await billing.locator('[data-close="detail"]').click();await billing.locator('#invoiceList [data-invoice-action="void"][data-invoice-id="'+settlementTarget.id+'"]').click();await mutation('invoices',()=>billing.locator('#decisionAccept').click());await expect(billing.locator('#decisionModal')).toBeHidden();
+      await billing.locator('#invoiceList [data-invoice-action="detail"][data-invoice-id="'+creditedInvoice.id+'"]').click();await reverseNoteUi(last);
+      await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Total'),{timeout:45_000}).toBe(3360);await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Notas de crédito')).toBe(0);await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'AR actual')).toBe(120);
+      expect(await f.report('cash')).toEqual(cashBeforeNoteReversal);expect(Number((await f.one('select quantity from invoice_items where invoice_id=$1',[creditedInvoice.id])).quantity)).toBe(840);
+      expect(Number((await f.one('select allocated_sales_quantity from direct_shipment_effective_allocations where id=$1',[direct.id])).allocated_sales_quantity)).toBe(810);
+      expect((await f.rows("select id from invoice_credit_note_state where status='reversed'")).length).toBe(3);await row.scrollIntoViewIfNeeded();await shot('24-reversal-restores-ar');
+    });
+    await step('DS-25 reversing a note competes atomically with rebilling its released unit',async()=>{
+      await billing.locator('[data-close="detail"]').click();
+      const body={...lastCreditBody,request_id:randomUUID(),reason:'QA one unit for rebilling race',lines:[{...lastCreditBody.lines[0],quantity:'1',expected_credited_quantity:'0'}]};
+      const note=(await masterInvoice(body)).credit_note,undo=noteReversalBody(note),item=await f.one('select sales_order_item_id from invoice_items where invoice_id=$1',[creditedInvoice.id]);
+      const login=await api.request('login',{method:'POST',body:{username:users.a.username,password:users.a.password}});
+      const create={action:'create_plan',sales_order_id:so.id,lines:[{sales_order_item_id:item.sales_order_item_id,quantity:'1'}]};
+      const results=await Promise.all([api.request('invoices',{method:'POST',token:master.body.token,body:undo}),api.request('invoices',{method:'POST',token:login.body.token,body:create})]);
+      expect(results.map(r=>r.status).sort()).toEqual([200,400]);
+      expect(results.find(r=>r.status===400).body.details.code).toBe(results[0].status===200?'INVOICE_QUANTITY_EXCEEDS_SALES_ORDER':'INVOICE_CREDIT_QUANTITY_REUSED');
+      if(results[1].status===200){await masterInvoice({action:'void',invoice_id:results[1].body.invoice.id});await masterInvoice(undo);}
+      const retried=await Promise.all([masterInvoice(undo),masterInvoice(undo)]);expect(retried[0].reversal.id).toBe(retried[1].reversal.id);
+      expect(Number((await f.one('select allocated_invoice_quantity from sales_order_item_invoice_progress where sales_order_item_id=$1',[item.sales_order_item_id])).allocated_invoice_quantity)).toBe(840);
+      await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'AR actual'),{timeout:45_000}).toBe(120);
+      evidence.creditNoteRebillRace={statuses:[200,400],winner:results[0].status===200?'reversal':'rebilling',allocatedQuantity:840,retries:[200,200]};
+    });
+    await step('DS-26 concurrent note reversals and read-only operator preserve one immutable reversal',async()=>{
+      const note=(await masterInvoice({...lastCreditBody,request_id:randomUUID(),reason:'QA competing note reversals',lines:[{...lastCreditBody.lines[0],quantity:'1',expected_credited_quantity:'0'}]})).credit_note;
+      const login=await api.request('login',{method:'POST',body:{username:users.a.username,password:users.a.password}}),readLogin=await api.request('login',{method:'POST',body:{username:users.b.username,password:users.b.password}});
+      const intents=[noteReversalBody(note),noteReversalBody(note)],tokens=[master.body.token,login.body.token];
+      const results=await Promise.all(intents.map((body,i)=>api.request('invoices',{method:'POST',body,token:tokens[i]})));
+      expect(results.map(r=>r.status).sort()).toEqual([200,400]);expect(results.find(r=>r.status===400).body.details.code).toBe('INVOICE_CREDIT_NOTE_REVERSED');
+      const winner=results.findIndex(r=>r.status===200),retry=await api.request('invoices',{method:'POST',body:intents[winner],token:tokens[winner]});expect(retry.status).toBe(200);expect(retry.body.reversal.id).toBe(results[winner].body.reversal.id);
+      expect((await api.request('invoices',{method:'POST',body:noteReversalBody(note),token:readLogin.body.token})).status).toBe(403);
+      expect((await f.rows('select id from invoice_credit_note_reversals where credit_note_id=$1',[note.id])).length).toBe(1);
+      await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Notas de crédito'),{timeout:45_000}).toBe(0);await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'AR actual')).toBe(120);
+      expect(await f.report('cash')).toEqual(cashBeforeNoteReversal);
+      evidence.creditNoteReversals={reversedNotes:5,concurrentStatuses:[200,400],retry:200,reader:403,originalInvoice:3360,originalCash:3240,remainingAR:120,physicalQuantity:810};
+    });
     expect(reportNavigations).toBe(reportNavBaseline);evidence.reportNavigations={initial:reportNavBaseline,final:reportNavigations};
-    expect(evidence.checkpoints).toHaveLength(22);
+    expect(evidence.checkpoints).toHaveLength(26);
     expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404||row.status>=500)).toEqual([]);
   } finally {

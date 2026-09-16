@@ -56,6 +56,7 @@ navegar de nuevo. Capturas y JSON conservan saldos, historial, caja y errores.
 Las pruebas comerciales usan bases desechables, nunca producción/Preview.
 
 Resultados remotos, versión de migración y deployment exacto se registran en
-la PR. No incluye reversos de las notas por cantidad, cambios de precio,
+la PR. El reverso de notas por cantidad se documenta en INVOICE_CREDIT_REVERSALS.md.
+No incluye cambios de precio,
 documento fiscal local, conciliación bancaria, notificación automática ni
 certificación de iPhone físico. No modifica inventario, logística o proveedor.
