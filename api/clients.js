@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, normalizePhone, ok, readJson, sendWhatsApp, supabase } from './_lib.js';
+import { authorizeAdmin, fail, normalizePhone, ok, publicNotificationData, readJson, sendWhatsApp, supabase } from './_lib.js';
 
 async function audit(action, entityId, details = {}) {
   try { await supabase('audit_log', { method: 'POST', body: [{ action, entity_type: 'client', entity_id: entityId, details }] }); } catch {}
@@ -74,7 +74,7 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const data = await supabase('clients', { query: '?select=*&order=created_at.desc' });
-      return ok(res, { clients: data || [] });
+      return ok(res, { clients: publicNotificationData(data || []) });
     }
 
     if (req.method === 'POST') {
@@ -97,7 +97,7 @@ export default async function handler(req, res) {
       }] });
       const client = created?.[0];
       await audit('client_created', client?.id, { name, phone, mipyme_name: client?.mipyme_name || null, importer_name: client?.importer_name || null });
-      return ok(res, { client, welcome: { status: 'pending' } });
+      return ok(res, { client: publicNotificationData(client), welcome: { status: 'pending' } });
     }
 
     if (req.method === 'PATCH') {
@@ -119,7 +119,7 @@ export default async function handler(req, res) {
       if (duplicate) return fail(res, 409, 'Otro cliente ya utiliza ese WhatsApp o correo', JSON.stringify({ existing_client: duplicate }));
       const updated = await supabase('clients', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}&select=*`, body: patch });
       await audit('client_updated', id, patch);
-      return ok(res, { client: updated?.[0] || { ...current, ...patch } });
+      return ok(res, { client: publicNotificationData(updated?.[0] || { ...current, ...patch }) });
     }
 
     if (req.method === 'DELETE') {

@@ -10,6 +10,31 @@ const json = (res, status, body) => {
 export function ok(res, body = {}) { return json(res, 200, body); }
 export function fail(res, status, message, details) { return json(res, status, { error: message, ...(details ? { details } : {}) }); }
 
+// Project diagnostic fields only when a handler explicitly returns notification
+// data. Stored rows, audit evidence, business fields and the JSON serializer
+// remain unchanged.
+const notificationDiagnosticFields = new Set([
+  'error', 'error_message', 'welcome_error', 'release_notification_error', 'notification_error'
+]);
+const publicNotificationMessages = new Set([
+  'Plantilla no configurada',
+  'Plantilla pendiente de configuración',
+  'El contenedor no tiene un cliente con WhatsApp activo'
+]);
+
+export function publicNotificationError(value) {
+  if (value === null || value === undefined || value === '') return value;
+  return publicNotificationMessages.has(value) ? value : 'No se pudo completar la notificación';
+}
+
+export function publicNotificationData(value) {
+  if (Array.isArray(value)) return value.map(publicNotificationData);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+    key, notificationDiagnosticFields.has(key) ? publicNotificationError(item) : publicNotificationData(item)
+  ]));
+}
+
 export async function readJson(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   const chunks = [];

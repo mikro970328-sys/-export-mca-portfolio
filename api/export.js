@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, supabase, upstreamFailureStatus } from './_lib.js';
+import { authorizeAdmin, fail, publicNotificationError, supabase, upstreamFailureStatus } from './_lib.js';
 
 const csv = value => `"${String(value ?? '').replaceAll('"','""')}"`;
 const dateStamp = () => new Date().toISOString().slice(0,10);
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       const rows = await supabase('notifications', { query: `?select=${encodeURIComponent(select)}&order=created_at.desc` });
       return sendCsv(res, 'export-mca-notificaciones',
         ['Fecha','Cliente','Destinatario','Tipo','Canal','Contenedor','Estado','Estado entrega','Proveedor ID','Error'],
-        (rows || []).map(x => [x.created_at,x.clients?.name,x.recipient || x.clients?.phone,x.event_type,x.channel,x.shipments?.container_number,x.status,x.delivery_status,x.provider_message_id,x.error_message])
+        (rows || []).map(x => [x.created_at,x.clients?.name,x.recipient || x.clients?.phone,x.event_type,x.channel,x.shipments?.container_number,x.status,x.delivery_status,x.provider_message_id,publicNotificationError(x.error_message)])
       );
     }
 

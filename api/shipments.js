@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, readJson, sendWhatsApp, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, publicNotificationData, publicNotificationError, readJson, sendWhatsApp, supabase, upstreamFailureStatus } from './_lib.js';
 import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
 import { claimNotificationDelivery, releaseNotificationDelivery } from './_notification-delivery.js';
 import { assertShipmentBusinessAction, loadShipmentActionCapabilityMap, loadShipmentActionCapabilities } from './_shipment-actions.js';
@@ -131,7 +131,7 @@ async function releaseShipment(shipment,admin) {
     await logNotification(shipment,'release',{ status:'failed',error:error.message,template_sid:contentSid,event_code:'RELEASE',delivery_key:claim.deliveryKey });
     await history(shipment,'release_failed','Contenedor liberado; falló la notificación',error.message);
     await audit('shipment_released_notification_failed',shipment,{ error:error.message,actor:admin.username,method:'manual',delivery_key:claim.deliveryKey });
-    return { released:true,notification_status:'failed',notification_error:error.message };
+    return { released:true,notification_status:'failed',notification_error:publicNotificationError(error.message) };
   }
   // Keep the claim after provider acceptance, even if persistence fails.
   await supabase('shipments',{ method:'PATCH',query:`?id=eq.${encodeURIComponent(shipment.id)}`,body:{ ...basePatch,release_notification_status:'sent',release_notification_error:null } });
@@ -154,7 +154,11 @@ function translatedError(error) {
     ['SHIPMENT_ACTION_INVALID','Acción de contenedor no válida.'],
     ['CONTAINER_REFERENCE_INVALID','La referencia del contenedor no es válida. Usa letras/números y, si necesitas, espacios, guion, punto, slash o underscore.']
   ];
-  return map.find(([key])=>raw.includes(key))?.[1]||raw;
+  const translated=map.find(([key])=>raw.includes(key))?.[1];
+  if (translated) return translated;
+  if (['Cantidad inválida','Fecha de salida inválida'].includes(raw)) return raw;
+  if (raw === 'JSON_INVALID') return 'Solicitud inválida';
+  return null;
 }
 
 export default async function handler(req,res) {
@@ -184,7 +188,7 @@ export default async function handler(req,res) {
         })(),
         capabilities:capabilityBundle.map.get(String(shipment.id))||{actions:{}}
       }));
-      return ok(res,{ shipments,write_access:capabilityBundle.write_access });
+      return ok(res,{ shipments:publicNotificationData(shipments),write_access:capabilityBundle.write_access });
     }
 
     if (req.method === 'DELETE') {
@@ -241,7 +245,7 @@ export default async function handler(req,res) {
         if (!isIsoContainer(containerNumber)) await history(shipment,'tracking_reference_provisional','Referencia provisional de contenedor','El seguimiento continuará dentro del ERP hasta registrar el número definitivo.');
         shipment.capabilities=await loadShipmentActionCapabilities(admin,shipment.id);
       }
-      return ok(res,{ shipment });
+      return ok(res,{ shipment:publicNotificationData(shipment) });
     }
 
     if (req.method === 'PATCH') {
@@ -313,14 +317,17 @@ export default async function handler(req,res) {
       await history(shipment,'updated','Datos del contenedor actualizados',JSON.stringify(patch));
       await audit('shipment_updated',shipment,patch);
       resultShipment.capabilities=await loadShipmentActionCapabilities(admin,resultShipment.id);
-      return ok(res,{ shipment:resultShipment });
+      return ok(res,{ shipment:publicNotificationData(resultShipment) });
     }
 
     return fail(res,405,'Método no permitido');
   } catch (error) {
     console.error('[shipments]',error);
     const message=translatedError(error);
-    const status=String(error?.message||'').includes('SHIPMENT_LINKED_TO_LOAD')?409:400;
-    return fail(res,status,message);
+    if (message) {
+      const status=String(error?.message||'').includes('SHIPMENT_LINKED_TO_LOAD')?409:400;
+      return fail(res,status,message);
+    }
+    return fail(res,upstreamFailureStatus(error,500),'No se pudo completar la operación del contenedor');
   }
 }
