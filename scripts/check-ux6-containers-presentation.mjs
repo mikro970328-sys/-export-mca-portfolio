@@ -40,7 +40,7 @@ for(const text of [
 ]) requireText(css,text,`selector CSS ${text}`);
 
 const styleLoad="loadStylesheet('/admin/containers-module.css?v=20260904-owner-tracking1', 'data-containers-module-style')";
-const scriptLoad="loadScript('/admin/containers-module.js?v=20260904-owner-tracking1', 'data-containers-module')";
+const scriptLoad="loadScript('/admin/containers-module.js?v=20260916-uploadrecovery1', 'data-containers-module')";
 requireText(erp,styleLoad,'carga stylesheet de Contenedores');
 requireText(erp,scriptLoad,'carga JavaScript de Contenedores');
 const styleIndex=erp.indexOf(styleLoad),scriptIndex=erp.indexOf(scriptLoad);

@@ -1,3 +1,11 @@
+## 2026-09-16 — Recuperación de confirmación documental
+
+- Carga Cuba reconoce guardado confirmado aunque falle el refresco posterior.
+- Respuesta perdida: consulta por archivo, contenedor y tipo; no repite escritura.
+- Si no puede confirmar, pide revisar el listado antes de volver a subir.
+- Distingue versión vigente e histórica; pruebas aisladas en workflow documental.
+- Evidencia y límites en CUSTOMS_UPLOAD_RECOVERY.md y PR asociada.
+
 ## 2026-09-15 — Conservar documentos ante fallos posteriores al guardado
 
 - Se retira el borrado automático de storage en errores de finalización, tanto

@@ -580,6 +580,8 @@
       input.remove();
       if(!file)return;
       let prepared=null;
+      let finalizationStarted=false;
+      let saved=false;
       setCustomsFeedback('Preparando carga...',true);
       try{
         const result=await request('/api/shipment-documents',{
@@ -598,14 +600,36 @@
           }).catch(()=>{});
           throw new Error('DOCUMENT_STORAGE_UPLOAD_FAILED');
         }
+        finalizationStarted=true;
         const finalized=await request('/api/shipment-documents',{
           method:'POST',
           body:JSON.stringify({action:'finalize_upload',shipment_id:shipment.id,document_type:prepared.document_type,file_name:prepared.file_name,mime_type:prepared.mime_type,file_size_bytes:prepared.file_size_bytes,storage_path:prepared.storage_path})
         });
+        saved=true;
         await refreshAfterCustomsChange(shipment,finalized);
         setCustomsFeedback(`${def.label} actualizado correctamente.`,true);
       }catch(error){
         console.error('CONTAINER_DOCUMENT_UPLOAD_FAILED',{shipment_id:shipment.id,document_type:def.key,error});
+        if(saved){
+          setCustomsFeedback('El documento quedó guardado, pero no se pudo actualizar la pantalla. Vuelve a abrir el contenedor para revisarlo.',false);
+          return;
+        }
+        if(finalizationStarted){
+          try{
+            const recovered=await loadShipmentDocuments(shipment);
+            const registered=recovered?.documents?.find(item=>item.storage_path===prepared.storage_path&&String(item.shipment_id)===String(shipment.id)&&item.document_type===prepared.document_type&&!item.deleted_at);
+            if(registered){
+              saved=true;
+              await refreshAfterCustomsChange(shipment,recovered);
+              setCustomsFeedback(registered.is_current?`${def.label} quedó guardado correctamente.`:'El documento quedó guardado; ya existe una versión posterior. Revisa el historial.',true);
+              return;
+            }
+          }catch(recoveryError){
+            console.error('CONTAINER_DOCUMENT_RECOVERY_FAILED',{shipment_id:shipment.id,error:recoveryError});
+          }
+          setCustomsFeedback(saved?'El documento quedó guardado, pero no se pudo actualizar la pantalla. Vuelve a abrir el contenedor para revisarlo.':'No se pudo confirmar si el documento quedó guardado. Vuelve a abrir el contenedor y revisa los documentos antes de subirlo otra vez.',false);
+          return;
+        }
         setCustomsFeedback(safeContainerMessage(error,'No se pudo subir el documento. Intenta nuevamente.'),false);
       }
     },{once:true});
