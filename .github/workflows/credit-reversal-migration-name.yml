@@ -5,18 +5,45 @@ on:
 permissions:
   contents: read
 jobs:
-  public-diagnostics-correction:
+  manual-receipt-baseline:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-qa-only
+          POSTGRES_DB: erp_operator_qa
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      postgrest:
+        image: postgrest/postgrest:v12.2.3
+        env:
+          PGRST_DB_URI: postgres://postgres:isolated-qa-only@postgres:5432/erp_operator_qa
+          PGRST_DB_SCHEMAS: public
+          PGRST_DB_ANON_ROLE: anon
+          PGRST_JWT_SECRET: isolated-postgrest-qa-secret-never-production-2026
+        ports: ['3000:3000']
+    env:
+      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
+      ERP_TEST_POSTGREST_URL: http://127.0.0.1:3000
+      ERP_TEST_POSTGREST_SECRET: isolated-postgrest-qa-secret-never-production-2026
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: c5411599f559b3dcba249b4d524b2f0185ca1af1
+          ref: f779d8eaca2b78e019ed4ebb188640d59d3f74e6
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Stored and indirect diagnostics
-        run: node scripts/check-api-public-error-stored.mjs
-      - name: Direct public errors
-        run: node scripts/check-api-public-error-responses.mjs
-      - name: Preserve notification claims after provider acceptance
-        run: node scripts/check-tracking-notification-claim.mjs
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Lost confirmation through real isolated HTTP and SQL
+        run: node scripts/check-warehouse-receipt-recovery.mjs
+      - name: Generate migration filename with the pinned CLI
+        if: always()
+        run: npx --yes supabase@2.117.0 migration new manual_receipt_retry_integrity --workdir /tmp/erp-manual-receipt-migration
