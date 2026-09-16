@@ -1,6 +1,8 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 import { loadSupplierApCapabilityMaps, loadSupplierBillCapabilities } from './_supplier-ap-actions.js';
 
+import { supplierNumberText, isSupplierDecimal, hasSupplierCentPrecision } from './_supplier-amounts.js';
+
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
 
@@ -13,6 +15,7 @@ function translatedError(raw) {
     ['SUPPLIER_BILL_PO_ITEM_REQUIRED','Falta una línea de Purchase Order.'],
     ['SUPPLIER_BILL_QUANTITY_INVALID','La cantidad facturada debe ser mayor que cero.'],
     ['SUPPLIER_BILL_UNIT_COST_INVALID','El costo unitario no es válido.'],
+    ['SUPPLIER_BILL_LINE_TOTAL_PRECISION','El total facturado debe tener como máximo 2 decimales.'],
     ['SUPPLIER_BILL_LINE_TOTAL_INVALID','El total facturado no es válido.'],
     ['SUPPLIER_BILL_COST_REQUIRED','Indica el costo unitario o el total facturado de la línea.'],
     ['SUPPLIER_BILL_EXCEEDS_PO_QUANTITY','La cantidad supera lo disponible por facturar en la Purchase Order.'],
@@ -33,6 +36,8 @@ function translatedError(raw) {
   const safeInput = [
     /^Selecciona una Purchase Order$/,
     /^Agrega al menos una línea a la factura del proveedor$/,
+    /^La línea \d+ de la factura no es válida$/,
+    /^El total facturado de la línea \d+ debe tener como máximo 2 decimales$/,
     /^Falta la línea \d+ de la Purchase Order$/,
     /^Indica (una cantidad válida|un total facturado válido|costo unitario o total facturado) en la línea \d+$/,
     /^Falta la factura (o la Purchase Order|del proveedor)$/
@@ -43,14 +48,16 @@ function translatedError(raw) {
 function cleanLines(lines) {
   if (!Array.isArray(lines) || !lines.length) throw new Error('Agrega al menos una línea a la factura del proveedor');
   return lines.map((line, index) => {
+    if (!line || typeof line !== 'object' || Array.isArray(line)) throw new Error(`La línea ${index + 1} de la factura no es válida`);
     const purchaseOrderItemId = text(line.purchase_order_item_id, 80);
-    const billedQuantity = text(line.billed_quantity, 80);
-    const unitCost = text(line.unit_cost, 80);
-    const lineTotal = text(line.line_total, 80);
+    const billedQuantity = supplierNumberText(line.billed_quantity);
+    const unitCost = supplierNumberText(line.unit_cost);
+    const lineTotal = supplierNumberText(line.line_total);
     if (!purchaseOrderItemId) throw new Error(`Falta la línea ${index + 1} de la Purchase Order`);
-    if (!billedQuantity || Number(billedQuantity) <= 0) throw new Error(`Indica una cantidad válida en la línea ${index + 1}`);
-    if (lineTotal !== '' && Number(lineTotal) < 0) throw new Error(`Indica un total facturado válido en la línea ${index + 1}`);
-    if (lineTotal === '' && (unitCost === '' || Number(unitCost) < 0)) throw new Error(`Indica costo unitario o total facturado en la línea ${index + 1}`);
+    if (!isSupplierDecimal(billedQuantity) || Number(billedQuantity) <= 0) throw new Error(`Indica una cantidad válida en la línea ${index + 1}`);
+    if (lineTotal !== '' && (!isSupplierDecimal(lineTotal) || Number(lineTotal) < 0)) throw new Error(`Indica un total facturado válido en la línea ${index + 1}`);
+    if (lineTotal === '' && (!isSupplierDecimal(unitCost) || Number(unitCost) < 0)) throw new Error(`Indica costo unitario o total facturado en la línea ${index + 1}`);
+    if (lineTotal !== '' && !hasSupplierCentPrecision(lineTotal)) throw new Error(`El total facturado de la línea ${index + 1} debe tener como máximo 2 decimales`);
     return {
       purchase_order_item_id:purchaseOrderItemId,
       billed_quantity:billedQuantity,

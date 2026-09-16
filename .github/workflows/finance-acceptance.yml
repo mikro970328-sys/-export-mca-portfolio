@@ -68,6 +68,8 @@ jobs:
         run: node scripts/check-finance-credit-settlement.mjs
       - name: Quantity credit reversals preserve rounding, rebilling limits and downstream funds
         run: node scripts/check-finance-credit-reversals.mjs
+      - name: Supplier bill precision and advance variants
+        run: node scripts/check-finance-supplier-variants.mjs
       - name: Report refresh after local and external financial actions
         run: node scripts/check-finance-refresh.mjs
       - name: Existing financial and refresh contracts

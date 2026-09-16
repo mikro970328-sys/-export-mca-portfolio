@@ -51,7 +51,7 @@ for (const text of [
   '<body class="erp-module-page erp-module-payables" data-owner="payables.js">',
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/payables.css?v=20260903-ux7payables1',
-  '/admin/payables.js?v=20260903-ux7payables1',
+  '/admin/payables.js?v=20260916-supplier1',
   '/admin/embedded-auto-refresh.js?v=20260909-live7',
   'class="module-hero payables-page-head"',
   'id="payablesLastUpdated"',
@@ -210,6 +210,12 @@ class FakeElement {
   addEventListener(type, handler) { this.listeners.set(type, handler); }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
   focus() {}
+  contains(node) {
+    for (let current = node; current; current = current.parentElement) {
+      if (current === this) return true;
+    }
+    return false;
+  }
   querySelector() { return null; }
   closest() { return null; }
 }

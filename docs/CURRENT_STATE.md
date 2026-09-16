@@ -1,3 +1,12 @@
+## 2026-09-16 · Precisión y anticipos de proveedores
+
+PR #320 publicada en b827176978ccb834acbdd97da9d916155cfe4da0: reversos de notas de
+crédito, 36/36 checks y 16/16 recorridos de navegador. La continuación reproduce
+y corrige saldos de proveedor inferiores al centavo y entradas no finitas, y
+amplía Direct Ship con anticipos, facturas parciales, distribución y pagos
+simultáneos. Ver SUPPLIER_FINANCE_VARIANTS.md; CI, migración y publicación finales
+en la PR. Próximo cierre: aceptación diaria integrada y fallos de conexión/permisos.
+
 ## 2026-09-16 · Reversos de notas de crédito
 
 PR #319 publicada en 3e5cf437af7a9664706104058d2a927a1014b487: uso del saldo a

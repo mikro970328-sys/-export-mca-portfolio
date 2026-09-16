@@ -1,6 +1,6 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #319, 3e5cf437af7a9664706104058d2a927a1014b487.
+Corte 2026-09-16. Base publicada PR #320, b827176978ccb834acbdd97da9d916155cfe4da0.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
@@ -85,3 +85,16 @@ registra los gates y publicación finales.
 Pendiente posterior: variantes financieras restantes y aceptación diaria
 integral. No se cambia el precio de facturas emitidas ni se ejecutan transferencias
 bancarias; iPhone físico continúa fuera de la prioridad actual.
+
+## Continuación: anticipos y facturas parciales del proveedor
+
+PR #320 publicó los reversos de notas de crédito por cantidad. El bloque actual
+corrige dos fallos reproducidos en AP: diferencias subcentavo que impedían cerrar
+facturas y valores numéricos especiales admitidos en líneas. Catorce casos SQL/API
+y DS-27/33 comprueban facturas parciales, anticipo previo, redistribución, rechazo
+atómico, pago final, reverso, permisos y concurrencia, con reportes entre usuarios.
+Ver SUPPLIER_FINANCE_VARIANTS.md y la PR para resultados de publicación.
+
+Con este bloque, la siguiente actividad es consolidar el recorrido diario con
+roles y fallos de conexión/permisos. No declarar cerrado todo el ERP ni añadir
+por defecto nuevas funciones financieras que no forman parte de estos recorridos.
