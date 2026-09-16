@@ -25,7 +25,7 @@ const DATASETS = Object.freeze({
     label:'Facturas / AR', dimensions:['period','currency','client','product'],
     columns:[
       ['issue_date','Fecha emisión'],['invoice_number','Factura'],['client_name','Cliente'],['client_company','Empresa'],['due_date','Vence'],
-      ['currency','Moneda'],['invoice_total','Total'],['paid_amount','Cobrado aplicado'],['balance_due','AR actual'],['payment_status','Estado cobro'],['overdue','Vencida'],
+      ['currency','Moneda'],['original_total','Total original'],['credited_amount','Notas de crédito'],['invoice_total','Total'],['paid_amount','Cobrado aplicado'],['balance_due','AR actual'],['customer_credit_balance','Saldo a favor'],['payment_status','Estado cobro'],['overdue','Vencida'],
       ['recognized_merchandise_cogs','COGS reconocido'],['merchandise_cost_coverage','Cobertura COGS'],['gross_margin','Margen bruto'],['gross_margin_pct','Margen bruto %'],['profitability_status','Estado rentabilidad']
     ]
   },

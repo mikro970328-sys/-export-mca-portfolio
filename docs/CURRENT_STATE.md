@@ -1,7 +1,14 @@
+## 2026-09-16 · Notas de crédito por cantidad
+
+PR #317 publicada en 85b6e2b47ed39f1188371e22b2097038a6de5f61: COGS Direct Ship
+corregido, 15 escenarios SQL y 16/16 jobs de navegador. Continuación actual:
+notas de crédito por cantidad para facturas emitidas. Ver INVOICE_QUANTITY_CREDITS.md
+para alcance, pruebas y límites; CI, migración y publicación finales en la PR.
+
 ## 2026-09-16 · COGS y reportes Direct Ship
 
 La vista de costo por línea de venta omitía Direct Ship. Corrección y pruebas
-descritas en DIRECT_SHIP_FINANCIAL_REPORTS.md. Publicación pendiente del PR.
+descritas en DIRECT_SHIP_FINANCIAL_REPORTS.md. Publicado en PR #317.
 La persistencia de asignación manual de tareas ya está publicada en PR #316.
 
 ## 2026-09-16 · Persistencia de reasignación manual

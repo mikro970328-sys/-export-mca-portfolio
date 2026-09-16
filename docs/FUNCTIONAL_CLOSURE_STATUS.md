@@ -1,6 +1,6 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #316, 8b69bfbc9b98f126d7735e32e2dc3d96fd01173b.
+Corte 2026-09-16. Base publicada PR #317, 85b6e2b47ed39f1188371e22b2097038a6de5f61.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
@@ -58,4 +58,13 @@ Publicado en PR #316; 16/16 jobs de navegador. Ver WORKFLOW_MANUAL_ASSIGNMENT.md
 
 Se reprodujo y corrigió en la vista propietaria la omisión del costo de Direct
 Ship. Ver DIRECT_SHIP_FINANCIAL_REPORTS.md: corrección física 840→810, costo,
-facturas, pagos y reportes entre dos operadores. CI/publicación pendientes.
+facturas, pagos y reportes entre dos operadores. Publicado en PR #317.
+
+## Continuación: crédito por unidades facturadas
+
+El caso físico 840→810 ya preserva los documentos; el ajuste comercial se hace
+mediante una nota de crédito explícita. INVOICE_QUANTITY_CREDITS.md describe el
+nuevo owner de notas y su integración con Facturación/Reportes, sin cambiar
+facturas históricas ni el dinero recibido. La PR registra los gates finales.
+Pendiente posterior: aplicar o devolver saldos a favor nacidos de estas notas,
+variantes restantes de la matriz financiera y aceptación diaria integral.

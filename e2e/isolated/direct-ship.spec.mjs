@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
+import {randomUUID} from 'node:crypto';
 import { createOperatorAcceptanceDb } from '../../scripts/lib/operator-acceptance-db.mjs';
 import { operatorFixture } from '../../scripts/lib/operator-acceptance-fixture.mjs';
 import { startBrowserAcceptanceServer, root } from './server.mjs';
 
-// All commercial writes originate in the native UI. SQL only seeds the isolated
-// catalogues/identities and verifies results. No production URLs or credentials.
+// The commercial flow uses native UI; the final concurrency checks use its real API.
+// SQL only seeds isolated catalogues/identities and verifies results.
 test('direct ship: purchase to corrected physical dispatch without WR or stock', async ({ browser }, info) => {
   test.setTimeout(480_000);
   process.chdir(root);
@@ -351,8 +352,53 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       expect(Number((await f.one('select allocated_sales_quantity from direct_shipment_effective_allocations where id=$1',[direct.id])).allocated_sales_quantity)).toBe(810);
       await reportShot('15-observer-financial-report');
     });
+    const billing=await navigate('invoices');
+    const creditedInvoice=await f.one('select * from invoices');
+    let lastCreditBody;
+    await step('DS-16 quantity credit preserves original invoice and cash, updates reader AR and margin',async()=>{
+      await reports.locator('[data-dataset="invoices"]').click();
+      await billing.locator(`[data-invoice-action="credit"][data-invoice-id="${creditedInvoice.id}"]`).click();
+      await billing.locator('#saveCredit').click();await expect(billing.locator('#creditMsg')).toContainText('cantidad válida');
+      await billing.locator('[data-credit-qty]').fill('841');await billing.locator('#saveCredit').click();await expect(billing.locator('#creditMsg')).toContainText('cantidad válida');
+      await billing.locator('[data-credit-qty]').fill('30');await billing.locator('#creditReason').fill('El proveedor entregó 810 de las 840 unidades facturadas.');
+      await expect(billing.locator('#creditSummary')).toContainText('USD 120.00');
+      const capture=r=>{if(new URL(r.url()).pathname==='/api/invoices'&&r.method()==='POST')lastCreditBody=r.postDataJSON();};page.on('request',capture);
+      await mutation('invoices',()=>billing.locator('#saveCredit').click());page.off('request',capture);
+      await expect(billing.locator('#creditModal')).toBeHidden();await expect(billing.locator('#detailBody')).toContainText('NC-');await expect(billing.locator('#detailBody')).toContainText('USD 3,360.00');
+      await expect(billing.locator('#detailBody')).toContainText('USD 3,240.00');await expect(billing.locator('#detailBody')).toContainText('30 cajas descontadas');
+      await expect.poll(()=>reportNumber('Total'),{timeout:45_000}).toBe(3240);await expect.poll(()=>reportNumber('AR actual')).toBe(2240);
+      await expect.poll(()=>reportNumber('Notas de crédito')).toBe(120);await expect.poll(()=>reportNumber('COGS reconocido')).toBe(2025);await expect.poll(()=>reportNumber('Margen bruto')).toBe(1215);
+      expect(Number((await f.one('select quantity from invoice_items where invoice_id=$1',[creditedInvoice.id])).quantity)).toBe(840);
+      expect(Number((await f.one('select amount from payments where invoice_id=$1',[creditedInvoice.id])).amount)).toBe(1000);
+      evidence.creditCorrection={original:3360,credit:120,net:3240,paid:1000,receivable:2240,cogs:2025,margin:1215};await shot('16-credit-note-detail');
+    });
+    await step('DS-17 paid invoice credit shows customer balance without moving cash',async()=>{
+      await billing.locator('#detailActions [data-invoice-action="payment"]').click();await expect(billing.locator('#pAmount')).toHaveValue('2240');
+      await mutation('invoice-payments',()=>billing.locator('#savePayment').click());await expect(billing.locator('#paymentModal')).toBeHidden();
+      await billing.locator('#detailActions [data-invoice-action="credit"]').click();await billing.locator('[data-credit-qty]').fill('10');await billing.locator('#creditReason').fill('QA ajuste adicional de diez unidades.');
+      await expect(billing.locator('#creditSummary')).toContainText('Saldo a favor: USD 40.00');
+      await mutation('invoices',()=>billing.locator('#saveCredit').click());await expect(billing.locator('#creditModal')).toBeHidden();
+      await expect(billing.locator('#detailBody')).toContainText('Saldo a favor del cliente');await expect(billing.locator('#detailBody')).toContainText('USD 40.00');
+      await expect.poll(()=>reportNumber('Saldo a favor'),{timeout:45_000}).toBe(40);await expect.poll(()=>reportNumber('AR actual')).toBe(0);await expect.poll(()=>reportNumber('Cobrado aplicado')).toBe(3240);
+      expect(Number((await f.one("select sum(amount) as total from payments where invoice_id=$1 and status='posted'",[creditedInvoice.id])).total)).toBe(3240);
+      await shot('17-customer-credit-balance');
+    });
+    await step('DS-18 API retries, concurrent writers and reader permissions prevent duplicate credits',async()=>{
+      const login=await api.request('login',{method:'POST',body:{username:users.a.username,password:users.a.password}});expect(login.status).toBe(200);
+      const retry=await Promise.all([1,2].map(()=>api.request('invoices',{method:'POST',token:login.body.token,body:lastCreditBody})));expect(retry.map(r=>r.status)).toEqual([200,200]);expect(retry[0].body.credit_note.id).toBe(retry[1].body.credit_note.id);
+      expect(Number((await f.one('select count(*) as n from invoice_credit_notes')).n)).toBe(2);
+      const body={...lastCreditBody,reason:'QA concurrent operator adjustment',lines:[{...lastCreditBody.lines[0],quantity:'1',expected_credited_quantity:'40'}]};
+      const results=await Promise.all([login.body.token,master.body.token].map(token=>api.request('invoices',{method:'POST',token,body:{...body,request_id:randomUUID()}})));
+      expect(results.map(r=>r.status).sort()).toEqual([200,400]);expect(results.find(r=>r.status===400).body.details.code).toBe('INVOICE_CREDIT_STALE');
+      const reader=await api.request('login',{method:'POST',body:{username:users.b.username,password:users.b.password}});
+      expect((await api.request('invoices',{method:'POST',token:reader.body.token,body:{...body,request_id:randomUUID()}})).status).toBe(403);
+      expect(Number((await f.one('select count(*) as n from invoice_credit_notes')).n)).toBe(3);
+      await expect.poll(()=>reportNumber('Saldo a favor'),{timeout:45_000}).toBe(44);await expect.poll(()=>reportNumber('Total')).toBe(3196);
+      expect(Number((await f.one('select quantity from invoice_items where invoice_id=$1',[creditedInvoice.id])).quantity)).toBe(840);
+      evidence.creditConcurrency={retries:[200,200],writers:[200,400],reader:403,notes:3,creditBalance:44};
+    });
     expect(reportNavigations).toBe(reportNavBaseline);evidence.reportNavigations={initial:reportNavBaseline,final:reportNavigations};
-    expect(evidence.checkpoints).toHaveLength(15);
+    expect(evidence.checkpoints).toHaveLength(18);
     expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404||row.status>=500)).toEqual([]);
   } finally {
