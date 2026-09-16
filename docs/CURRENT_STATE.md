@@ -1,3 +1,9 @@
+## 2026-09-16 · Persistencia de reasignación manual
+
+Corrección del owner SQL de workflow: conserva equipo/usuario elegidos manualmente
+al actualizar y reabrir tareas. Ruta automática intacta sin intervención. Migración
+y aceptación descritas en docs/WORKFLOW_MANUAL_ASSIGNMENT.md; publicación pendiente.
+
 ## Correcciones detectadas por el recorrido de navegador
 
 Se añade Mis tareas al owner de navegación y su permiso tasks.read al owner de

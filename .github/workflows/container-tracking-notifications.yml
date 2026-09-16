@@ -7,6 +7,7 @@ on:
       - 'scripts/check-container-tracking-notifications.mjs'
       - 'scripts/check-tracking-notification-claim.mjs'
       - 'scripts/check-tracking-workflow-lifecycle.mjs'
+      - 'scripts/check-workflow-manual-assignment.mjs'
       - 'scripts/lib/*acceptance*.mjs'
       - 'supabase/tests/fixtures/**'
       - 'supabase/schema.sql'
@@ -22,6 +23,7 @@ on:
       - 'scripts/check-container-tracking-notifications.mjs'
       - 'scripts/check-tracking-notification-claim.mjs'
       - 'scripts/check-tracking-workflow-lifecycle.mjs'
+      - 'scripts/check-workflow-manual-assignment.mjs'
       - 'scripts/lib/*acceptance*.mjs'
       - 'supabase/tests/fixtures/**'
       - 'supabase/schema.sql'
@@ -53,3 +55,6 @@ jobs:
         run: node scripts/check-api-public-error-responses.mjs
       - name: Integrate tracking, documents, tasks and personal notifications
         run: node scripts/check-tracking-workflow-lifecycle.mjs
+
+      - name: Manual workflow assignment persistence and migration
+        run: node scripts/check-workflow-manual-assignment.mjs

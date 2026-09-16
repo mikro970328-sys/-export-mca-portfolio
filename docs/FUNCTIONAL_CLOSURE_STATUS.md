@@ -1,14 +1,14 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #314, 0d362ad97e7ab4a48622e6b909134700c0cddfe4.
+Corte 2026-09-16. Base publicada PR #315, 6ac358642491876f5bcd887b862e6051f2398087.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
 ## Evidencia disponible
 
-- Siete recorridos de navegador vigentes: operators, commercial, direct-ship,
-  cancellation-finance, navigation-startup, repeat-purchase y tracking-documents.
-  Chromium escritorio y WebKit emulado; PR #312 aprobó 14/14 jobs y 10/10 workflows.
+- Ocho recorridos de navegador vigentes: operators, commercial, direct-ship,
+  cancellation-finance, navigation-startup, repeat-purchase, tracking-documents y tracking-workflow.
+  Chromium escritorio y WebKit emulado; PR #315 aprobó 16/16 jobs y 35/35 workflows.
 - Compras, recepciones, inventario, ventas, cargues, cobros y variantes de reversos
   cuentan con matrices SQL/API y recorrido comercial; no rehacerlos desde cero.
 - Repetir compra (#306), corrección física Direct Ship 840→810 (#298), oferta de
@@ -44,3 +44,12 @@ iPhone físico, PWA instalada y push real aplazados por Daniel. No son requisito
 para continuar escritorio ni motivo para comprar BrowserStack ahora.
 No estimar un porcentaje ni fecha de cierre sin completar la matriz integrada.
 No enviar mensajes a clientes ni hacer QA comercial en producción/Preview.
+
+## Reasignación manual de workflow
+
+PR #315 detectó que la siguiente actualización del envío restauraba el responsable
+de la ruta. La corrección en curso registra una reasignación explícita dentro del
+RPC existente y la preserva al reconciliar y reabrir, incluso para equipo o sin
+responsable. Las tareas automáticas siguen la ruta. No reconstruye asignaciones
+antiguas ya sobrescritas ni añade un control para volver al modo automático.
+Ver WORKFLOW_MANUAL_ASSIGNMENT.md para alcance y pruebas. Publicación pendiente.

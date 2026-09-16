@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
 // Apply after the operator acceptance foundation; all business RPCs stay intact.
-export async function applyTrackingWorkflowAcceptanceSchema(db) {
+export async function applyTrackingWorkflowAcceptanceSchema(db, {manualAssignment = true} = {}) {
   // The original legacy notification table, followed by unchanged migrations.
   const schema=fs.readFileSync('supabase/schema.sql','utf8');
   const notificationTable=schema.match(/create table if not exists public\.notifications \([\s\S]*?\n\);/g);
@@ -31,7 +31,8 @@ export async function applyTrackingWorkflowAcceptanceSchema(db) {
     '20260830220500_p10_notification_source_version_integrity.sql',
     '20260903233021_b10_1_web_push_notifications.sql',
     '20260904020411_container_tracking_assignment_notifications.sql',
-    '20260904091137_inactive_notifications_not_unread.sql'
+    '20260904091137_inactive_notifications_not_unread.sql',
+    ...(manualAssignment ? ['20260916033448_workflow_manual_assignment.sql'] : [])
   ]) {
     try {await db.exec(fs.readFileSync(`supabase/migrations/${name}`,'utf8'));}
     catch(e){throw Error(`${name}: ${e.message}`);}

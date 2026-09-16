@@ -1,0 +1,62 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {PGlite} from '@electric-sql/pglite';
+import {pgcrypto} from '@electric-sql/pglite/contrib/pgcrypto';
+import {applyOperatorAcceptanceSchema} from './lib/operator-acceptance-db.mjs';
+import {applyTrackingWorkflowAcceptanceSchema} from './lib/tracking-workflow-acceptance-db.mjs';
+import {operatorFixture} from './lib/operator-acceptance-fixture.mjs';
+
+const db=new PGlite({extensions:{pgcrypto}});await db.waitReady;
+try {
+  await applyOperatorAcceptanceSchema(db);
+  await applyTrackingWorkflowAcceptanceSchema(db,{manualAssignment:false});
+  const {f,users}=await operatorFixture(db);
+  let checks=0;
+  const route='shipment_cuba_documents';
+  await db.query('update workflow_task_routes set assigned_admin_id=$1 where workflow_key=$2',[users.a.id,route]);
+  const create=async label=>{
+    const s=await f.one('insert into shipments(container_number,client_id,importer_id,departure_date) values($1,$2,$3,current_date) returning id',[label,f.client,f.importer]);
+    return f.one('select * from operational_tasks where entity_id=$1 and workflow_key=$2',[s.id,route]);
+  };
+  const row=t=>f.one('select * from operational_tasks where id=$1',[t.id]);
+  const edit=async(t,admin,team=null,title=t.title)=>db.query('select update_operational_task($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[t.id,users.master.id,title,t.description,t.priority,t.due_at,team,admin,t.entity_type,t.entity_id]);
+  const sync=t=>db.query('select reconcile_shipment_workflow_tasks($1,true)',[t.entity_id]);
+  const legacy=await create('QA-LEGACY-MANUAL');await edit(legacy,users.b.id);
+  const overwritten=await create('QA-LEGACY-RESET');await edit(overwritten,users.b.id);await sync(overwritten);
+  const automatic=await create('QA-AUTOMATIC');await edit(automatic,users.a.id,null,'Title edit only');
+  await db.exec(fs.readFileSync('supabase/migrations/20260916033448_workflow_manual_assignment.sql','utf8'));
+  assert.equal((await row(legacy)).workflow_assignment_manual,true);
+  assert.equal((await row(overwritten)).workflow_assignment_manual,false);
+  assert.equal((await row(automatic)).workflow_assignment_manual,false);checks++;
+  await sync(legacy);assert.equal((await row(legacy)).assigned_admin_id,users.b.id);checks++;
+  await db.query('update workflow_task_routes set assigned_admin_id=$1 where workflow_key=$2',[users.master.id,route]);
+  await sync(automatic);await sync(legacy);
+  assert.equal((await row(automatic)).assigned_admin_id,users.master.id);
+  assert.equal((await row(legacy)).assigned_admin_id,users.b.id);checks++;
+  await edit(automatic,users.b.id);await sync(automatic);
+  assert.equal((await row(automatic)).assigned_admin_id,users.b.id);
+  assert.equal((await row(automatic)).workflow_assignment_manual,true);checks++;
+  await edit(await row(automatic),users.b.id,null,'Another title');await sync(automatic);
+  assert.equal((await row(automatic)).workflow_assignment_manual,true);checks++;
+  const upload=type=>f.one("select * from create_shipment_customs_document($1,$2,$3,$4,'shipment-documents',$5,'application/pdf',100,null,$6,'QA')",[automatic.entity_id,f.client,type,`${type}.pdf`,`${automatic.entity_id}/${type}.pdf`,users.a.id]);
+  const packing=await upload('Packing List Cuba');await upload('Commercial Invoice Cuba');
+  assert.equal((await row(automatic)).status,'completed');
+  await db.query('select * from soft_delete_shipment_customs_document($1,$2,$3)',[packing.document_id,users.a.id,'QA']);
+  assert.equal((await row(automatic)).status,'pending');assert.equal((await row(automatic)).assigned_admin_id,users.b.id);checks++;
+  const team=await f.one("insert into teams(name) values('QA manual team') returning id");
+  await edit(automatic,null,team.id);await sync(automatic);
+  assert.equal((await row(automatic)).assigned_team_id,team.id);assert.equal((await row(automatic)).assigned_admin_id,null);checks++;
+  await edit(automatic,null);await sync(automatic);
+  assert.equal((await row(automatic)).assigned_team_id,null);assert.equal((await row(automatic)).assigned_admin_id,null);checks++;
+  await assert.rejects(edit(automatic,users.b.id,team.id),/TASK_ASSIGNEE_NOT_TEAM_MEMBER/);
+  assert.equal((await row(automatic)).assigned_admin_id,null);checks++;
+  await edit(automatic,users.a.id);await db.query("update workflow_task_routes set enabled=false where workflow_key=$1",[route]);await sync(automatic);
+  assert.equal((await row(automatic)).status,'cancelled');
+  await db.query('update workflow_task_routes set enabled=true where workflow_key=$1',[route]);await sync(automatic);
+  assert.equal((await row(automatic)).status,'pending');assert.equal((await row(automatic)).assigned_admin_id,users.a.id);checks++;
+  for(const role of ['anon','authenticated','service_role']) {
+    const privileges=await f.rows("select proname,has_function_privilege($1,oid,'EXECUTE') as allowed from pg_proc where pronamespace='public'::regnamespace and proname in ('sync_workflow_task','update_operational_task')",[role]);
+    assert.equal(privileges.length,2);assert.ok(privileges.every(p=>p.allowed===(role==='service_role')));
+  }checks++;
+  console.log(`Workflow manual assignment: ${checks} SQL scenarios passed (migration, routes, edits, reopen, team/null, validation and grants).`);
+} catch(e){console.error(e);process.exitCode=1;} finally {await db.close();}

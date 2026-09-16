@@ -101,6 +101,12 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
       await openInbox(b);await expect(b.locator('.notification-item').filter({hasText:'Tracking actualizado'}).filter({hasText:'Llegó al puerto'})).toBeVisible();await b.locator('#notificationClose').click();
       expect((await f.one("select count(*)::int as count from shipment_history where shipment_id=$1 and event_type='manual_arrv'",[shipment.id])).count).toBe(1);
     });
+    await step('TW-06 manual assignee survives tracking reconciliation in both sessions',async()=>{
+      expect((await f.one('select assigned_admin_id,workflow_assignment_manual from operational_tasks where id=$1',[task.id]))).toEqual({assigned_admin_id:users.a.id,workflow_assignment_manual:true});
+      await expect(card(b)).toHaveCount(0);
+      await navigate(a,'tasksSection');await expect(card(a)).toContainText('QA operator a');
+      expect((await f.one("select count(*)::int as count from notification_inbox_items where source_id=$1 and recipient_admin_id=$2 and source_event_type='task_assignment'",[task.id,users.a.id])).count).toBe(1);
+    });
     expect(evidence.navigations).toEqual(navigations);expect(evidence.errors).toEqual([]);expect(evidence.serverErrors).toEqual([]);expect(evidence.external).toEqual([]);
   } finally {
     fs.mkdirSync(info.outputDir,{recursive:true});
