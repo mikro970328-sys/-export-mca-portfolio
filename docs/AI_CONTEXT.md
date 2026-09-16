@@ -1,3 +1,18 @@
+## Hallazgo durante aceptación documental — PR #312
+
+La suite detectó duplicación por reenvío después de perder confirmación. Se añade
+migración 20260916012951_customs_document_upload_idempotency.sql y prueba de
+concurrencia. Ver TRACKING_DOCUMENTS_BROWSER_ACCEPTANCE.md y PR para CI, aplicación
+de migración y publicación final. No asumir aplicada una migración por existir.
+
+## Continuación — prueba documental integrada (2026-09-16)
+
+PR #311 publicada, base ef0369fc1711868b3a16d7ddc0b8597953cd642e.
+Rama test/tracking-documents-browser añade dos operadores, archivos/versiones,
+readiness y pérdida de confirmación sobre backend SQL real y Storage local
+simulado. Ver TRACKING_DOCUMENTS_BROWSER_ACCEPTANCE.md y PR para CI final.
+No repetir como pendientes las recuperaciones de UI ya publicadas.
+
 ## Continuación y pendientes consolidados — 2026-09-16
 
 PR #310 publicada: main b74b55e189f0511aa5bd7b1020736d226ed2a051.

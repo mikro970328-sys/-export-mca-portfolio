@@ -8,20 +8,30 @@ const routeNames = ['products','suppliers','purchases','warehouse','inventory','
   'payables','supplier-payments','costs','profitability','reports','ap-links','publications',
   'sales-order-ux','sales-workspace','sales-loads','sales-supply','customer-advances',
   'proformas','shipment-document-readiness','shipments','clients','importers','operational-links',
-  'direct-shipment-dispatch'];
+  'direct-shipment-dispatch','shipment-documents'];
 const mime = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
   '.json':'application/json', '.webmanifest':'application/manifest+json',
   '.png':'image/png', '.svg':'image/svg+xml', '.ico':'image/x-icon' };
 
 // Optional asset gate controls delivery order in startup acceptance. HTTP status,
 // asset bytes, handlers and the service worker remain unchanged in every engine.
-export async function startBrowserAcceptanceServer({ beforeAsset } = {}) {
+export async function startBrowserAcceptanceServer({ beforeAsset, storageHandler, dropApiResponse } = {}) {
   const handlers = new Map(await Promise.all(routeNames.map(async name =>
     [`/api/${name}`, (await import(new URL(`../../api/${name}.js`, import.meta.url))).default])));
   return startOperatorApi({ fallbackHandler: async (req,res,url) => {
+    if(storageHandler&&await storageHandler(req,res,url))return;
     const handler = handlers.get(url.pathname);
     if (handler) {
       req.query = Object.fromEntries(url.searchParams);
+      // Optional fault injection after the real handler has produced its result.
+      // Unlike browser routing, this also reaches service-worker-owned requests.
+      if(dropApiResponse){
+        const end=res.end.bind(res);
+        res.end=(body,...args)=>{
+          if(dropApiResponse(req,url,body)){res.destroy();return res;}
+          return end(body,...args);
+        };
+      }
       try { await handler(req,res); }
       catch (error) {
         console.error('QA_HANDLER_FAILED', url.pathname, error.code || error.message);
