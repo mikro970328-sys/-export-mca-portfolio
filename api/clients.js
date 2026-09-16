@@ -95,9 +95,9 @@ export default async function handler(req, res) {
         active: true,
         welcome_status: 'pending'
       }] });
-      const client = created?.[0];
+      const client = publicNotificationData(created?.[0]);
       await audit('client_created', client?.id, { name, phone, mipyme_name: client?.mipyme_name || null, importer_name: client?.importer_name || null });
-      return ok(res, { client: publicNotificationData(client), welcome: { status: 'pending' } });
+      return ok(res, { client, welcome: { status: 'pending' } });
     }
 
     if (req.method === 'PATCH') {
