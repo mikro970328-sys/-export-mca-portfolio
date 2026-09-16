@@ -11,15 +11,26 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: browser-cancellation-finance-webkit-mobile
-          run-id: 35159275659
+          pattern: browser-*-webkit-mobile
+          run-id: 35159648336
           github-token: ${{ github.token }}
           path: evidence
-      - name: Read the final operator view
+      - name: Read failing operator evidence
         run: |
           python3 - <<'PY'
-          import pathlib,base64
-          files=sorted(pathlib.Path('evidence').rglob('final-a*.png'),key=lambda p:len(str(p)))
-          if not files: raise SystemExit('Missing final-a image')
-          print('SCREENSHOT64:'+base64.b64encode(files[0].read_bytes()).decode())
+          import pathlib,base64,json
+          root=pathlib.Path('evidence')
+          for story in ['direct-ship','warehouse-recovery','cancellation-finance']:
+            dirs=list(root.glob('browser-'+story+'-*'))
+            if not dirs: continue
+            base=dirs[0]
+            names=['final-state*.png','final-a*.png']
+            images=[p for n in names for p in base.rglob(n)]
+            if images:
+              p=min(images,key=lambda p:len(str(p)))
+              print('SCREENSHOT_'+story+':'+base64.b64encode(p.read_bytes()).decode())
+            records=[p for p in base.rglob('*evidence*.json') if 'attachments' not in str(p)]
+            for p in records:
+              d=json.loads(p.read_text())
+              print('EVIDENCE_'+story+':'+json.dumps(d))
           PY
