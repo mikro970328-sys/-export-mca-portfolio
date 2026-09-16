@@ -1,4 +1,4 @@
-name: Inspect Lost Collection Evidence
+name: Review Collection Recovery Evidence
 on:
   push:
     branches: [build/credit-reversal-migration]
@@ -13,18 +13,23 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: 35140765936
-          name: browser-operators-chromium-desktop
+          run-id: 35142597288
+          pattern: browser-*-chromium-desktop
           path: evidence
-      - name: Show isolated evidence
+      - name: Summarize browser evidence and selected screenshots
         run: |
           python - <<'PY'
-          import json,pathlib
+          import json,pathlib,base64
           root=pathlib.Path('evidence')
-          for p in root.rglob('diagnostics.json'):
-            d=json.loads(p.read_text())
-            print('DIAGNOSTICS',json.dumps({k:d.get(k) for k in ['failure','clicks','errors','checkpoints']}))
-            print('PAYMENT_API',json.dumps([r for r in d.get('api',[]) if r.get('path')=='/api/invoice-payments']))
-          for p in root.rglob('error-context.md'):
-            print('ERROR_CONTEXT',p.read_text()[:20000])
+          for filename in ['diagnostics.json','commercial-evidence.json']:
+            for p in sorted(root.rglob(filename)):
+              d=json.loads(p.read_text())
+              print('EVIDENCE',str(p),json.dumps({k:d.get(k) for k in ['checkpoints','reconciliation','failure','errors']}))
+          for name in ['14-offline-form-recovered.png','11-invoice-paid.png']:
+            candidates=list(root.rglob(name))
+            if candidates:
+              print('IMAGE_BEGIN',name)
+              encoded=base64.b64encode(candidates[0].read_bytes()).decode()
+              for i in range(0,len(encoded),3000): print(encoded[i:i+3000])
+              print('IMAGE_END')
           PY
