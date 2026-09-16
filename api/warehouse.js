@@ -1,13 +1,9 @@
-import { authorizeAdmin, fail, ok, readJson, supabase } from './_lib.js';
+import crypto from 'node:crypto';
+import { authorizeAdmin, fail, ok, readJson, supabase, upstreamFailureStatus } from './_lib.js';
 import { loadWarehouseReceiptActionCapabilityMap } from './_warehouse-actions.js';
 
 const text = value => String(value ?? '').trim();
 const numberOrNull = value => value === '' || value === null || value === undefined ? null : Number(value);
-const positive = (value, label, allowZero = false) => {
-  const n = Number(value);
-  if (!Number.isFinite(n) || (allowZero ? n < 0 : n <= 0)) throw new Error(`${label} inválido`);
-  return n;
-};
 const isNumericText = value => /^[-+]?\d+(?:[.,]\d+)?$/.test(text(value));
 const normalizeUnit = (value, fallback = 'unidades') => {
   const candidate = text(value);
@@ -18,6 +14,14 @@ const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || nu
 
 function translatedError(raw) {
   const messages = [
+    ['WR_REQUEST_CONFLICT','Esta solicitud ya registró una recepción con otros datos. Revisa el listado antes de crear una nueva.'],
+    ['WR_WAREHOUSE_REQUIRED','Selecciona el almacén que recibe la mercancía'],
+    ['WR_WAREHOUSE_NOT_FOUND','El almacén seleccionado no existe'],
+    ['WR_SUPPLIER_NOT_FOUND','El proveedor seleccionado no existe'],
+    ['WR_SUPPLIER_INACTIVE','El proveedor seleccionado está inactivo'],
+    ['WR_ITEMS_REQUIRED','Agrega al menos una línea de mercancía'],
+    ['WR_HEADER_INVALID','Revisa el almacén, proveedor y fecha de recepción'],
+    ['WR_PAYLOAD_INVALID','Solicitud de recepción inválida'],
     ['PERMISSION_REQUIRED','No tienes permiso para ejecutar esta acción de almacén.'],
     ['WR_NOT_FOUND','La recepción no existe.'],
     ['WR_NOT_RECEIVED','La recepción ya no está disponible para anular.'],
@@ -29,6 +33,22 @@ function translatedError(raw) {
   ];
   const translated = messages.find(([key]) => raw.includes(key))?.[1];
   if (translated) return translated;
+  const lineMatch = raw.match(/WR_LINE_(PRODUCT_REQUIRED|PRODUCT_NOT_FOUND|PALLETS_INVALID|UNITS_INVALID|QUANTITY_INVALID|MODE_INVALID|NET_INVALID|GROSS_INVALID|COST_INVALID|NUMBER_INVALID):(\d+)/);
+  if (lineMatch) {
+    const n = lineMatch[2];
+    return {
+      PRODUCT_REQUIRED:'Selecciona el producto de la línea '+n,
+      PRODUCT_NOT_FOUND:'El producto de la línea '+n+' no existe',
+      PALLETS_INVALID:'Pallets de la línea '+n+' inválido',
+      UNITS_INVALID:'Unidades por pallet inválidas en la línea '+n,
+      QUANTITY_INVALID:'Cantidad de la línea '+n+' inválido',
+      MODE_INVALID:'Forma de recepción inválida en línea '+n,
+      NET_INVALID:'Peso neto inválido en línea '+n,
+      GROSS_INVALID:'Peso bruto inválido en línea '+n,
+      COST_INVALID:'Costo inválido en línea '+n,
+      NUMBER_INVALID:'Revisa las cantidades, pesos y costos de la línea '+n
+    }[lineMatch[1]];
+  }
   const safe = new Set([
     'Código, nombre y país son obligatorios',
     'El nombre del producto es obligatorio',
@@ -150,92 +170,36 @@ export default async function handler(req, res) {
       }
 
       if (action === 'create_receipt') {
-        const warehouseId = text(body.warehouse_id);
-        if (!warehouseId) throw new Error('Selecciona el almacén que recibe la mercancía');
-        const lines = Array.isArray(body.items) ? body.items : [];
-        if (!lines.length) throw new Error('Agrega al menos una línea de mercancía');
-
-        const supplierId = text(body.supplier_id) || null;
-        let supplierName = null;
-        if (supplierId) {
-          const supplierRows = await supabase('suppliers', {
-            query:`?select=id,name,active&id=eq.${encodeURIComponent(supplierId)}&limit=1`
-          });
-          const supplier = supplierRows?.[0];
-          if (!supplier) throw new Error('El proveedor seleccionado no existe');
-          if (supplier.active === false) throw new Error('El proveedor seleccionado está inactivo');
-          supplierName = supplier.name;
+        const requestId = text(body.registration_request_id) || crypto.randomUUID();
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+          return fail(res,400,'Solicitud de recepción inválida. Abre una nueva recepción.');
         }
-
-        const productIds = [...new Set(lines.map(line => text(line.product_id)).filter(Boolean))];
-        if (!productIds.length) throw new Error('Selecciona al menos un producto');
-        const productRows = await supabase('products', {
-          query:`?select=id,name,unit,default_units_per_pallet&id=in.(${productIds.join(',')})`
-        });
-        const productById = new Map((productRows || []).map(product => [product.id, product]));
-
-        const cleanLines = lines.map((line, index) => {
-          const productId = text(line.product_id);
-          if (!productId) throw new Error(`Selecciona el producto de la línea ${index + 1}`);
-          const product = productById.get(productId);
-          if (!product) throw new Error(`El producto de la línea ${index + 1} no existe`);
-
-          const entryMode = text(line.entry_mode).toLowerCase() || 'units';
-          let pallets = 0;
-          let quantity = 0;
-          let unitsPerPallet = numberOrNull(line.units_per_pallet);
-
-          if (entryMode === 'pallets') {
-            pallets = positive(line.pallets, `Pallets de la línea ${index + 1}`);
-            if (unitsPerPallet === null) unitsPerPallet = numberOrNull(product.default_units_per_pallet);
-            if (unitsPerPallet !== null && (!Number.isFinite(unitsPerPallet) || unitsPerPallet <= 0)) {
-              throw new Error(`Unidades por pallet inválidas en la línea ${index + 1}`);
-            }
-            quantity = unitsPerPallet ? pallets * unitsPerPallet : 0;
-          } else if (entryMode === 'units') {
-            quantity = positive(line.quantity, `Cantidad de la línea ${index + 1}`);
-            pallets = 0;
-            unitsPerPallet = null;
-          } else {
-            throw new Error(`Forma de recepción inválida en línea ${index + 1}`);
-          }
-
-          const netWeight = numberOrNull(line.net_weight_kg);
-          const grossWeight = numberOrNull(line.gross_weight_kg);
-          const unitCost = numberOrNull(line.unit_cost);
-          if (netWeight !== null && (!Number.isFinite(netWeight) || netWeight < 0)) throw new Error(`Peso neto inválido en línea ${index + 1}`);
-          if (grossWeight !== null && (!Number.isFinite(grossWeight) || grossWeight < 0)) throw new Error(`Peso bruto inválido en línea ${index + 1}`);
-          if (unitCost !== null && (!Number.isFinite(unitCost) || unitCost < 0)) throw new Error(`Costo inválido en línea ${index + 1}`);
-
-          return {
-            product_id:productId, pallets, quantity, unit:normalizeUnit(product.unit),
-            units_per_pallet:unitsPerPallet, net_weight_kg:netWeight, gross_weight_kg:grossWeight,
-            unit_cost:unitCost, currency:text(line.currency).toUpperCase() || 'USD',
-            lot_number:text(line.lot_number) || null, notes:text(line.notes) || null
-          };
-        });
-
-        const receivedAt = body.received_at ? new Date(body.received_at).toISOString() : new Date().toISOString();
-        const createdHeaders = await supabase('warehouse_receipts', { method:'POST', query:'?select=*', body:[{
-          warehouse_id:warehouseId, supplier_id:supplierId, supplier_name:supplierName,
-          received_at:receivedAt, truck_reference:text(body.truck_reference) || null,
-          driver_name:text(body.driver_name) || null, reference_number:text(body.reference_number) || null,
-          notes:text(body.notes) || null, created_by:admin.admin_id || null
-        }] });
-        const receipt = createdHeaders?.[0];
-        if (!receipt?.id) throw new Error('No se pudo crear la recepción');
-        try {
-          const createdItems = await supabase('warehouse_receipt_items', { method:'POST', query:'?select=*', body:cleanLines.map(line => ({ ...line, receipt_id:receipt.id })) });
-          await audit(admin, 'warehouse_receipt_created', 'warehouse_receipt', receipt.id, {
-            receipt_number:receipt.receipt_number, warehouse_id:warehouseId, supplier_id:supplierId,
-            lines:cleanLines.length, total_quantity:cleanLines.reduce((sum,x)=>sum+x.quantity,0),
-            total_pallets:cleanLines.reduce((sum,x)=>sum+x.pallets,0)
-          });
-          return ok(res, { receipt:{ ...receipt, items:createdItems || [] } });
-        } catch (error) {
-          await supabase('warehouse_receipts', { method:'DELETE', query:`?id=eq.${encodeURIComponent(receipt.id)}` }).catch(()=>{});
-          throw error;
+        let receivedAt = null;
+        if (body.received_at) {
+          const parsed = new Date(body.received_at);
+          if (!Number.isFinite(parsed.getTime())) return fail(res,400,'Fecha de recepción inválida');
+          receivedAt = parsed.toISOString();
         }
+        const payload = {
+          warehouse_id:text(body.warehouse_id) || null,
+          supplier_id:text(body.supplier_id) || null,
+          received_at:receivedAt,
+          truck_reference:text(body.truck_reference) || null,
+          driver_name:text(body.driver_name) || null,
+          reference_number:text(body.reference_number) || null,
+          notes:text(body.notes) || null,
+          items:Array.isArray(body.items) ? body.items.map(line => Object.fromEntries(
+            ['product_id','entry_mode','pallets','quantity','units_per_pallet','net_weight_kg',
+              'gross_weight_kg','unit_cost','currency','lot_number','notes']
+              .map(key => [key,line?.[key] ?? null])
+          )) : []
+        };
+        const result = await supabase('rpc/create_warehouse_receipt_canonical', {
+          method:'POST',body:{p_payload:payload,p_actor:admin.admin_id,p_request_id:requestId}
+        });
+        const receipt = rpcRow(result);
+        if (!receipt?.id) throw new Error('WR_CREATE_EMPTY');
+        return ok(res,{receipt});
       }
 
       return fail(res, 400, 'Acción no reconocida');
@@ -279,7 +243,7 @@ export default async function handler(req, res) {
     console.error('WAREHOUSE_API_ERROR', error);
     const raw = String(error.message || 'No se pudo procesar la operación de almacén');
     const translated = translatedError(raw);
-    if (translated) return fail(res, 400, translated);
-    return fail(res, 500, 'No se pudo procesar la operación de almacén');
+    if (translated) return fail(res, raw.includes('PERMISSION_REQUIRED') ? 403 : raw.includes('WR_REQUEST_CONFLICT') ? 409 : 400, translated);
+    return fail(res, upstreamFailureStatus(error,500), 'No se pudo procesar la operación de almacén');
   }
 }
