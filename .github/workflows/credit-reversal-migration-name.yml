@@ -1,35 +1,43 @@
-name: Review Collection Recovery Evidence
+name: Verify Published Collection Recovery
 on:
   push:
     branches: [build/credit-reversal-migration]
 permissions:
   contents: read
-  actions: read
 jobs:
-  evidence:
+  public-read-only:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: 35142597288
-          pattern: browser-*-chromium-desktop
-          path: evidence
-      - name: Summarize browser evidence and selected screenshots
+          ref: 86bdec6215bf11cb3752616d5428a2120d33047b
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Public assets match the merged candidate; financial APIs stay private
         run: |
-          python - <<'PY'
-          import json,pathlib,base64
-          root=pathlib.Path('evidence')
-          for filename in ['diagnostics.json','commercial-evidence.json']:
-            for p in sorted(root.rglob(filename)):
-              d=json.loads(p.read_text())
-              print('EVIDENCE',str(p),json.dumps({k:d.get(k) for k in ['checkpoints','reconciliation','failure','errors']}))
-          for name in ['14-offline-form-recovered.png','11-invoice-paid.png']:
-            candidates=list(root.rglob(name))
-            if candidates:
-              print('IMAGE_BEGIN',name)
-              encoded=base64.b64encode(candidates[0].read_bytes()).decode()
-              for i in range(0,len(encoded),3000): print(encoded[i:i+3000])
-              print('IMAGE_END')
-          PY
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const origins=['https://app.exportmca.com','https://admin.exportmca.com'];
+          const assets=['/admin/index.html','/admin/invoices.html','/admin/sales.html','/admin/invoices.js?v=20260916-payment1','/admin/sales-workspace.js?v=20260916-payment1'];
+          let passed=0;
+          for(const origin of origins){
+            for(const asset of assets){
+              const response=await fetch(origin+asset,{headers:{'Cache-Control':'no-cache'},signal:AbortSignal.timeout(20000)});
+              assert.equal(response.status,200);
+              const source=await response.text(),file=asset.slice(1).split('?')[0];
+              assert.equal(source,fs.readFileSync(file,'utf8'),'Published asset mismatch: '+origin+asset);
+              console.log('PASS public GET',origin+asset,200,'exact merged bytes');passed++;
+            }
+            for(const endpoint of ['/api/invoice-payments','/api/invoices']){
+              const response=await fetch(origin+endpoint,{signal:AbortSignal.timeout(20000)});
+              assert.equal(response.status,401);
+              const body=await response.json();assert.equal(typeof body.error,'string');
+              console.log('PASS private API GET',origin+endpoint,401);passed++;
+            }
+          }
+          assert.equal(passed,14);
+          console.log('READ_ONLY_RELEASE_CHECK',JSON.stringify({passed,commit:'86bdec6215bf11cb3752616d5428a2120d33047b',authenticatedRequests:0,businessWrites:0}));
+          NODE
