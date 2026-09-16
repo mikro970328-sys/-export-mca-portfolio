@@ -1,3 +1,18 @@
+## 2026-09-16 · Recuperación de recepciones manuales
+
+A-01 publicado por PR #326: main 8c05bf50f7130eac71745f94d32410c450ca46ea,
+producción dpl_GfxskdZ5RjJnWkVMftGSBtxewhD4 READY; 17/17 workflows y 16/16
+recorridos. Historial y notificaciones conservan diagnóstico sin exponerlo.
+
+A-02 reproducido: perder una confirmación y reintentar duplicó una entrega de
+12 unidades en dos WR, 24 unidades y dos auditorías. La rama
+fix/manual-receipt-recovery incorpora guardado transaccional e identidad estable.
+35/35 verificaciones HTTP/PostgreSQL pasan; navegador, gates definitivos y
+aplicación/publicación se registrarán en la PR. No asumir migración aplicada.
+Leer MANUAL_RECEIPT_RECOVERY.md y security/BACKUP_RECOVERY_STATUS.md.
+Supabase: organización en plan free; respaldo restaurable aún no acreditado.
+Escritorio prioritario; iPhone físico/BrowserStack/push siguen diferidos.
+
 ## 2026-09-16 · Diagnósticos públicos de notificaciones (PR #326)
 
 La reproducción aislada confirmó 21 exposiciones de errores almacenados/indirectos.

@@ -1,3 +1,14 @@
+## 2026-09-16 — Recepciones manuales recuperables
+
+- Un WR manual, sus líneas y auditoría se guardan juntos en el RPC canónico.
+- La identidad del formulario conserva el mismo registro al reintentar y evita
+  duplicar inventario. Cambiar datos o actor para la misma identidad se rechaza.
+- El formulario distingue guardado confirmado de fallo posterior de refresco;
+  bloquea un segundo envío mientras guarda y conserva datos durante un corte.
+- Migración generada por CLI 2.117.0; histórico y recepción de PO conservados.
+- Ensayo real aislado: 35 comprobaciones de concurrencia, rollback, catálogo,
+  permisos, anulación y replay. CI/publicación definitivos constan en la PR.
+
 ## 2026-09-16 — PR #326: diagnóstico interno fuera de respuestas públicas
 
 - Mensajes públicos para campos de fallo en Clientes/Contenedores/Historial y

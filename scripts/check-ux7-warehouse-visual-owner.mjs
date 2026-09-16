@@ -37,7 +37,7 @@ for (const text of [
   '<body class="erp-module-page erp-module-warehouse" data-owner="warehouse.js">',
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/warehouse.css?v=20260902-ux7warehouse1',
-  '/admin/warehouse.js?v=20260902-ux7warehouse1',
+  '/admin/warehouse.js?v=20260916-receipt-recovery1',
   '/admin/embedded-auto-refresh.js?v=20260909-live7',
   'class="module-hero warehouse-page-head"',
   'id="stats" class="stats warehouse-metrics"',
