@@ -414,6 +414,8 @@ await recoveryCase('REPORT-06 a selection queued during CSV export loads afterwa
   const exporting=h.nodes.get('exportReport').listeners.get('click')();
   assert.match(h.requests[1],/dataset=sales/);assert.match(h.requests[1],/format=csv/);
   await h.window.ExecutiveReports.open('supplier_bills');
+  assert.doesNotMatch(h.nodes.get('reportTable').innerHTML,/INITIAL/,'the previous table must not appear under the newly selected dataset');
+  assert.match(h.nodes.get('reportTable').innerHTML,/Consultando reporte/);
   h.pending[1].resolve({status:200,ok:true,headers:{get:()=>''},blob:async()=>new Blob(['csv'],{type:'text/csv'})});
   await settle();
   assert.equal(h.requests.length,3);assert.match(h.requests[2],/dataset=supplier_bills/);

@@ -350,6 +350,7 @@
     if (config) setDimensions(config.dimensions,config.basis);
     renderTabs();
     renderMetrics({ row_count:0 });
+    renderLoading();
     await loadReport(false);
   }
 
