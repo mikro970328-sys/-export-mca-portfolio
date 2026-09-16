@@ -793,6 +793,11 @@
     if(!section)return;
     section.dataset.tasksOwner = 'tasks-workspace.js';
     section.innerHTML=shellMarkup();
+    // The animated section creates a containing block; dialogs belong to the
+    // viewport so their header and controls cannot be clipped by that section.
+    const modal=byId('tasksModal');
+    document.body.appendChild(modal);
+    modal.addEventListener('click',handleClick);
     section.addEventListener('click',handleClick);
     bindFilters();
     document.addEventListener('keydown',handleDocumentKeydown);
@@ -805,6 +810,7 @@
     await load();
     window.addEventListener('export-mca:section-changed',event=>{
       if(event.detail?.id==='tasksSection'&&!state.loaded)load();
+      else if(event.detail?.id&&event.detail.id!=='tasksSection')closeModal();
     });
   }
 

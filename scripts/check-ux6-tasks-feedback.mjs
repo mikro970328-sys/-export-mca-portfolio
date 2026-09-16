@@ -50,7 +50,7 @@ for(const text of [
 ])requireText(css,text,`presentación de Tareas ${text}`);
 
 requireText(loader,"/admin/tasks-workspace.css?v=20260903-ux7tasks1",'revisión del CSS de Tareas');
-requireText(loader,"/admin/tasks-workspace.js?v=20260915-taskvisibility1",'revisión del JS de Tareas');
+requireText(loader,"/admin/tasks-workspace.js?v=20260916-taskdialog1",'revisión del JS de Tareas');
 requireText(index,'/admin/erp.js?v=20260905-accessflow1','revisión del loader ERP');
 
 for(const text of [

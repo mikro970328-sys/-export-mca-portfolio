@@ -27,3 +27,8 @@ navegación a Mis tareas. El owner navigation-shell ahora crea su entrada nativa
 y la conserva en el grupo Inicio. El owner de accesos añade tasksSection →
 tasks.read. No se añade iframe ni otro owner. El recorrido seguirá entrando
 por el menú; la versión de assets y sus contratos se actualizan juntos.
+
+El segundo intento reprodujo el diálogo recortado por su sección animada; el
+click real en Cerrar era interceptado. tasks-workspace monta su propio diálogo
+en body, conserva sus eventos y lo cierra al abandonar la sección. No se fuerza
+el click ni se desactiva la animación del ERP en la prueba.

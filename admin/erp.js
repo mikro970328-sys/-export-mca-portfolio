@@ -254,7 +254,7 @@
 
       if (accessCan('tasks.read')) {
         await loadStylesheet('/admin/tasks-workspace.css?v=20260903-ux7tasks1', 'data-tasks-workspace-style');
-        await loadScript('/admin/tasks-workspace.js?v=20260915-taskvisibility1', 'data-tasks-workspace');
+        await loadScript('/admin/tasks-workspace.js?v=20260916-taskdialog1', 'data-tasks-workspace');
         await loadScript('/admin/tasks-navigation.js?v=20260830-p4', 'data-tasks-navigation');
         if (accessCan('tasks.manage')) {
           await loadStylesheet('/admin/workflow-route-settings.css?v=20260830-p5', 'data-workflow-route-settings-style');
