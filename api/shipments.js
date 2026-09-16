@@ -122,13 +122,9 @@ async function releaseShipment(shipment,admin) {
     return { released:true,notification_status:'already_notified' };
   }
 
+  let sent;
   try {
-    const sent = await sendWhatsApp({ to:shipment.clients.phone,contentSid,variables:{ '1':shipment.clients.name || 'Cliente','2':shipment.container_number } });
-    await supabase('shipments',{ method:'PATCH',query:`?id=eq.${encodeURIComponent(shipment.id)}`,body:{ ...basePatch,release_notification_status:'sent',release_notification_error:null } });
-    await logNotification(shipment,'release',{ status:sent.status || 'queued',sid:sent.sid,template_sid:contentSid,sent_at:now,event_code:'RELEASE',delivery_key:claim.deliveryKey });
-    await history(shipment,'released','Contenedor liberado manualmente',`Administrador: ${admin.username || 'desconocido'} · WhatsApp: ${sent.sid}`);
-    await audit('shipment_released',shipment,{ sid:sent.sid,actor:admin.username,method:'manual',delivery_key:claim.deliveryKey });
-    return { released:true,sid:sent.sid,notification_status:sent.status || 'queued' };
+    sent = await sendWhatsApp({ to:shipment.clients.phone,contentSid,variables:{ '1':shipment.clients.name || 'Cliente','2':shipment.container_number } });
   } catch (error) {
     await releaseNotificationDelivery(shipment.id,claim.deliveryKey);
     await supabase('shipments',{ method:'PATCH',query:`?id=eq.${encodeURIComponent(shipment.id)}`,body:{ ...basePatch,release_notification_status:'failed',release_notification_error:error.message } });
@@ -137,6 +133,13 @@ async function releaseShipment(shipment,admin) {
     await audit('shipment_released_notification_failed',shipment,{ error:error.message,actor:admin.username,method:'manual',delivery_key:claim.deliveryKey });
     return { released:true,notification_status:'failed',notification_error:error.message };
   }
+  // Keep the claim after provider acceptance, even if persistence fails.
+  await supabase('shipments',{ method:'PATCH',query:`?id=eq.${encodeURIComponent(shipment.id)}`,body:{ ...basePatch,release_notification_status:'sent',release_notification_error:null } });
+  await logNotification(shipment,'release',{ status:sent.status || 'queued',sid:sent.sid,template_sid:contentSid,sent_at:now,event_code:'RELEASE',delivery_key:claim.deliveryKey });
+  await history(shipment,'released','Contenedor liberado manualmente',`Administrador: ${admin.username || 'desconocido'} · WhatsApp: ${sent.sid}`);
+  await audit('shipment_released',shipment,{ sid:sent.sid,actor:admin.username,method:'manual',delivery_key:claim.deliveryKey });
+  return { released:true,sid:sent.sid,notification_status:sent.status || 'queued' };
+
 }
 
 function translatedError(error) {

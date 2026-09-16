@@ -1,14 +1,14 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #310, b74b55e189f0511aa5bd7b1020736d226ed2a051.
+Corte 2026-09-16. Base publicada PR #312, c156010464ef554cc17754c26e48d3befc006248.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
 ## Evidencia disponible
 
-- Seis recorridos de navegador vigentes: operators, commercial, direct-ship,
-  cancellation-finance, navigation-startup y repeat-purchase. Chromium escritorio
-  y WebKit emulado; PR #310 aprobó 12/12 jobs y 36/36 workflows.
+- Siete recorridos de navegador vigentes: operators, commercial, direct-ship,
+  cancellation-finance, navigation-startup, repeat-purchase y tracking-documents.
+  Chromium escritorio y WebKit emulado; PR #312 aprobó 14/14 jobs y 10/10 workflows.
 - Compras, recepciones, inventario, ventas, cargues, cobros y variantes de reversos
   cuentan con matrices SQL/API y recorrido comercial; no rehacerlos desde cero.
 - Repetir compra (#306), corrección física Direct Ship 840→810 (#298), oferta de
@@ -21,14 +21,16 @@ Este documento consolida límites actuales, no afirma que todos sean defectos.
 
 | Bloque | Falta demostrar | Criterio de cierre |
 |---|---|---|
-| Tracking y documentos | Cadena integrada de estados, carga/vigencia/descarga/eliminación, readiness y recuperación de fallos en navegador con servicios aislados | Pruebas que comprueben estado e historial tras cada acción y resultado visible por otro operador |
+| Tracking y documentos | Cadena integrada de estados marítimos; ciclo documental con dos operadores ya cubierto en #312 | Pruebas que comprueben estado e historial tras cada acción y resultado visible por otro operador |
 | Tareas y notificaciones | Creación por eventos, asignación/permisos/dependencias y lectura entre usuarios en recorrido integrado; fallos de entrega y no duplicación | Matriz de eventos con destinatarios correctos, rechazo de accesos y sin duplicación; transportes externos de prueba explícitos |
 | Variantes financieras y reportes | Facturación/cobros/proveedor en variantes Direct Ship todavía fuera de sus recorridos; refresco completo de Reportes tras operaciones y reversos | Saldos, caja, costos y reportes coherentes entre dos sesiones, con evidencia por variante |
 | Aceptación final integrada | Recorrido de trabajo diario completo con roles y fallos de conexión/permisos en el alcance acordado | Matriz consolidada sin bloqueos críticos conocidos y publicación verificada |
 
-Trabajo actual: recuperación tras eliminación documental. Validación aislada
-específica documentada en CUSTOMS_DELETE_RECOVERY.md; PR certifica publicación.
-No declarar cerrado el bloque documental solo por corregir sus mensajes.
+Trabajo actual: preservar la deduplicación de WhatsApp después de aceptación del
+proveedor cuando falla persistencia posterior. Ver TRACKING_NOTIFICATION_CLAIM.md.
+La recuperación tras eliminación (#311) y el recorrido documental (#312) están
+publicados. Esta corrección puntual no cierra la aceptación integrada de tareas
+ni prueba entrega externa real.
 
 ## Después y fuera de prioridad actual
 

@@ -1,3 +1,12 @@
+## 2026-09-16 — Protección de avisos aceptados en Tracking
+
+PR #312 publicada en c156010464ef554cc17754c26e48d3befc006248; migración documental aplicada.
+La continuación corrige liberación indebida del claim WhatsApp tras aceptación
+por el proveedor si falla el PATCH posterior. Dos handlers afectados; sin DDL.
+Prueba aislada de siete escenarios en check-tracking-notification-claim.mjs.
+Ver TRACKING_NOTIFICATION_CLAIM.md y PR asociada para CI/publicación final.
+Tareas integradas y demás pendientes siguen en FUNCTIONAL_CLOSURE_STATUS.md.
+
 ## Hallazgo durante aceptación documental — PR #312
 
 La suite detectó duplicación por reenvío después de perder confirmación. Se añade

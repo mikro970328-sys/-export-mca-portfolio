@@ -5,12 +5,20 @@ on:
     paths:
       - 'supabase/migrations/*container_tracking_assignment_notifications.sql'
       - 'scripts/check-container-tracking-notifications.mjs'
+      - 'scripts/check-tracking-notification-claim.mjs'
+      - 'api/manual-tracking-event.js'
+      - 'api/shipments.js'
+      - 'api/_notification-delivery.js'
       - '.github/workflows/container-tracking-notifications.yml'
   push:
     branches: [main]
     paths:
       - 'supabase/migrations/*container_tracking_assignment_notifications.sql'
       - 'scripts/check-container-tracking-notifications.mjs'
+      - 'scripts/check-tracking-notification-claim.mjs'
+      - 'api/manual-tracking-event.js'
+      - 'api/shipments.js'
+      - 'api/_notification-delivery.js'
       - '.github/workflows/container-tracking-notifications.yml'
 
 permissions:
@@ -29,3 +37,7 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Validate notification contract
         run: node scripts/check-container-tracking-notifications.mjs
+      - name: Preserve accepted WhatsApp claims on persistence failures
+        run: node scripts/check-tracking-notification-claim.mjs
+      - name: Check public error responses
+        run: node scripts/check-api-public-error-responses.mjs
