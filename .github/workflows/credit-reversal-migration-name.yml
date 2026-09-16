@@ -1,19 +1,32 @@
-name: Prepare Credit Reversal Migration
+name: Inspect Credit Reversal Browser Evidence
 on:
   push:
     branches: [build/credit-reversal-migration]
 permissions:
   contents: read
+  actions: read
 jobs:
-  generate:
+  inspect:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/download-artifact@v4
         with:
-          node-version: '24'
-      - name: Generate the migration with the pinned official CLI
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 35128013150
+          name: browser-direct-ship-webkit-mobile
+          path: evidence
+      - name: Inspect isolated failure context
         run: |
-          npx --yes supabase@2.117.0 migration new --help
-          npx --yes supabase@2.117.0 migration new invoice_credit_note_reversal
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          for p in Path('evidence').rglob('error-context.md'):
+              print('CONTEXT '+str(p))
+              print(p.read_text())
+          for p in Path('evidence').rglob('direct-ship-evidence.json'):
+              d=json.loads(p.read_text())
+              print('EVIDENCE '+json.dumps({k:d.get(k) for k in ['errors','crashes','external','checkpoints']}))
+              print('LAST_API '+json.dumps(d.get('api',[])[-30:]))
+          PY
