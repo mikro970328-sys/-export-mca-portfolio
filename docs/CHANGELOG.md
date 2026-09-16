@@ -1,3 +1,10 @@
+## 2026-09-16 — Recorrido documental en navegador aislado
+
+- Nueva suite tracking-documents: dos operadores, versiones/readiness, descarga
+  y recuperación de confirmación perdida después de commit real.
+- Storage simulado explícitamente en memoria; handlers, permisos y SQL reales.
+- Matriz de CI ampliada a 14 jobs. Resultado final en PR asociada.
+
 ## 2026-09-16 — Recuperación al retirar documentos
 
 - Confirmación de eliminación se conserva si falla el refresco.

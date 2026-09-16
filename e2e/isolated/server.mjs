@@ -8,17 +8,18 @@ const routeNames = ['products','suppliers','purchases','warehouse','inventory','
   'payables','supplier-payments','costs','profitability','reports','ap-links','publications',
   'sales-order-ux','sales-workspace','sales-loads','sales-supply','customer-advances',
   'proformas','shipment-document-readiness','shipments','clients','importers','operational-links',
-  'direct-shipment-dispatch'];
+  'direct-shipment-dispatch','shipment-documents'];
 const mime = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
   '.json':'application/json', '.webmanifest':'application/manifest+json',
   '.png':'image/png', '.svg':'image/svg+xml', '.ico':'image/x-icon' };
 
 // Optional asset gate controls delivery order in startup acceptance. HTTP status,
 // asset bytes, handlers and the service worker remain unchanged in every engine.
-export async function startBrowserAcceptanceServer({ beforeAsset } = {}) {
+export async function startBrowserAcceptanceServer({ beforeAsset, storageHandler } = {}) {
   const handlers = new Map(await Promise.all(routeNames.map(async name =>
     [`/api/${name}`, (await import(new URL(`../../api/${name}.js`, import.meta.url))).default])));
   return startOperatorApi({ fallbackHandler: async (req,res,url) => {
+    if(storageHandler&&await storageHandler(req,res,url))return;
     const handler = handlers.get(url.pathname);
     if (handler) {
       req.query = Object.fromEntries(url.searchParams);
