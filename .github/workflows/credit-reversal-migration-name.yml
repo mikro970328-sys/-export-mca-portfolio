@@ -1,4 +1,4 @@
-name: Reproduce Supplier Payment Recovery
+name: Verify Supplier Payment Recovery
 on:
   push:
     branches: [build/credit-reversal-migration]
@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 1044f795f0d6842b4d98728a62e6dc7822a472f9
+          ref: 588ad8d7f7f1a2ac281772b7b7edd7dc21dda8dd
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -69,3 +69,85 @@ jobs:
           name: browser-${{ matrix.suite }}-${{ matrix.project }}
           path: e2e/isolated/test-results/
           retention-days: 14
+
+  isolated-financial-flows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 588ad8d7f7f1a2ac281772b7b7edd7dc21dda8dd
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Real financial SQL and report reconciliation
+        run: node scripts/check-finance-acceptance.mjs
+      - name: Direct Ship COGS, correction and financial invariants
+        run: node scripts/check-finance-direct-ship.mjs
+      - name: Real API handlers with isolated financial SQL
+        run: node scripts/check-finance-api.mjs
+      - name: Quantity credit notes preserve invoices, payments and report balances
+        run: node scripts/check-finance-credit-notes.mjs
+      - name: Customer credit applications, refunds and reversals reconcile once
+        run: node scripts/check-finance-credit-settlement.mjs
+      - name: Quantity credit reversals preserve rounding, rebilling limits and downstream funds
+        run: node scripts/check-finance-credit-reversals.mjs
+      - name: Supplier bill precision and advance variants
+        run: node scripts/check-finance-supplier-variants.mjs
+      - name: Report refresh after local and external financial actions
+        run: node scripts/check-finance-refresh.mjs
+      - name: Existing financial and refresh contracts
+        run: |
+          node scripts/check-ux5-invoice-actions.mjs
+          node scripts/check-ux5-customer-finance-actions.mjs
+          node scripts/check-ux5-supplier-ap-actions.mjs
+          node scripts/check-ux6-costs-presentation.mjs
+          node scripts/check-executive-dashboard.mjs
+          node scripts/check-executive-reports.mjs
+          node scripts/check-sales-customer-finance.mjs
+          node scripts/check-live-erp-refresh.mjs
+          node scripts/check-live-sync-recovery-runtime.mjs
+
+  isolated-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-qa-only
+          POSTGRES_DB: erp_operator_qa
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      postgrest:
+        image: postgrest/postgrest:v12.2.3
+        env:
+          PGRST_DB_URI: postgres://postgres:isolated-qa-only@postgres:5432/erp_operator_qa
+          PGRST_DB_SCHEMAS: public
+          PGRST_DB_ANON_ROLE: anon
+          PGRST_JWT_SECRET: isolated-postgrest-qa-secret-never-production-2026
+        ports: ['3000:3000']
+    env:
+      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
+      ERP_TEST_POSTGREST_URL: http://127.0.0.1:3000
+      ERP_TEST_POSTGREST_SECRET: isolated-postgrest-qa-secret-never-production-2026
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 588ad8d7f7f1a2ac281772b7b7edd7dc21dda8dd
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            e2e/isolated/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node scripts/check-operator-acceptance.mjs
