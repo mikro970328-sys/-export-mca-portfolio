@@ -1,3 +1,10 @@
+## Correcciones detectadas por el recorrido de navegador
+
+Se añade Mis tareas al owner de navegación y su permiso tasks.read al owner de
+accesos. El diálogo de tareas se monta fuera de la sección animada para evitar
+recorte y bloqueo del botón Cerrar. Son correcciones de runtime; CI/publicación
+definitivos constan en PR #315. Sin DDL ni mensajes reales.
+
 ## 2026-09-16 — Recorrido de Tracking, tareas e inbox en navegador
 
 Base PR #314 publicada: 0d362ad97e7ab4a48622e6b909134700c0cddfe4.

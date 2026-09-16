@@ -79,7 +79,7 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
     });
     await step('TW-03 retiring a document reopens the same task live',async()=>{
       const doc=await f.one("select id from documents where shipment_id=$1 and document_type='Packing List Cuba' and superseded_at is null",[shipment.id]);
-      await a.locator(`[data-customs-delete="${doc.id}"]`).click();await a.locator('[data-decision-yes]').click();await expect(a.locator('#containerCustomsFeedback')).toContainText('Documento retirado del ERP');
+      await a.locator(`[data-customs-delete="${doc.id}"]`).click();await a.locator('[data-decision-yes]').click();await expect(a.locator('#containerCustomsFeedback')).toContainText('Versión vigente eliminada');
       await expect(card(b).locator('.tasks-status')).toHaveText('Pendiente',{timeout:45_000});
       expect((await f.rows("select id from operational_tasks where entity_id=$1 and workflow_key='shipment_cuba_documents'",[shipment.id])).map(x=>x.id)).toEqual([task.id]);
       expect((await f.one("select count(*)::int as count from notification_inbox_items where source_id=$1 and recipient_admin_id=$2 and source_event_type='task_assignment'",[task.id,users.b.id])).count).toBe(1);
@@ -96,7 +96,7 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
     });
     await step('TW-05 tracking status changed through UI produces the other users notice',async()=>{
       await navigate(a,'containersSection');await a.locator(`[data-container-menu="${shipment.id}"]:visible`).click();await a.locator('[data-container-action="manual_update"]').click();
-      await a.locator('[name="manualTrackingEvent"][value="arrived"]').check();await a.locator('#manualTrackingLocation').fill('Mariel QA');await a.locator('.manual-track-confirm').click();await expect(a.locator('[data-manual-track]')).toHaveCount(0);
+      await a.locator('.manual-track-step').filter({has:a.locator('[name="manualTrackingEvent"][value="arrived"]')}).click();await a.locator('#manualTrackingLocation').fill('Mariel QA');await a.locator('.manual-track-confirm').click();await expect(a.locator('[data-manual-track]')).toHaveCount(0);
       await expect(a.locator(`[data-shipment-row="${shipment.id}"]:visible`).first()).toContainText('Llegó al puerto');
       await openInbox(b);await expect(b.locator('.notification-item').filter({hasText:'Tracking actualizado'}).filter({hasText:'Llegó al puerto'})).toBeVisible();await b.locator('#notificationClose').click();
       expect((await f.one("select count(*)::int as count from shipment_history where shipment_id=$1 and event_type='manual_arrv'",[shipment.id])).count).toBe(1);
