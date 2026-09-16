@@ -1,3 +1,13 @@
+## 2026-09-16 · Diagnósticos públicos de notificaciones (PR #326)
+
+La reproducción aislada confirmó 21 exposiciones de errores almacenados/indirectos.
+Corrección en los owners de API: Clientes, Contenedores, Historial y CSV; se
+conservan registros internos, estados, permisos e identidad de los envíos.
+28/28 escenarios nuevos, 97/97 errores públicos previos y 7/7 claims pasan en
+el ensayo dirigido. CI completo/publicación: consultar PR #326, no inferirlos.
+Leer security/STORED_NOTIFICATION_ERRORS.md. A-02 (confirmación de recepciones
+manuales) y respaldo/restauración siguen pendientes; escritorio prioritario.
+
 ## Publicación y auditoría vigente — 2026-09-16
 
 PR #324 publicada en 9f4aea87c412ac2dc467c0d934eee2f084307978. Jornada comercial de 18 pasos aprobada en
