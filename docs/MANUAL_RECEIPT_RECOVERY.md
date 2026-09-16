@@ -71,12 +71,17 @@ de cerrar/recargar la página.
 
 ## Refresco interrumpido
 
-Run 35159648336: Chromium completó WR-01 a WR-06. WebKit recuperó el mismo WR
-tras offline y confirmación perdida, pero una lectura abortada dejó el formulario
-esperando después del guardado. El refresco confirmado ahora tiene un límite de
-12 segundos, cancela la lectura tardía y permite cerrar conservando el éxito.
-Las 36 verificaciones HTTP/SQL de ese head pasaron (run 35159648354).
+Las 36 verificaciones HTTP/SQL pasaron en run 35159648354. Chromium también
+completó WR-01/06. La inyección de fallo de lectura con context.route no cubre
+peticiones del service worker en WebKit; por eso WR-03 esperaba un error aunque
+la página mostraba éxito. La prueba ahora interrumpe la respuesta real del
+servidor aislado, limitada a la sesión A, y exige evidencia del corte.
+No se desactiva el service worker ni se fabrica una respuesta de negocio.
+
+El refresco de un WR confirmado tiene un límite de 12 segundos: una conexión
+que no termina se cancela, sin renderizado tardío, y el formulario conserva
+la confirmación y puede cerrarse. El POST conserva su identidad de reintento.
 
 La historia Direct Ship valida el valor de unidades por pallet antes del POST:
-la captura de ese run mostró 10, no los 84 que la prueba pretendía introducir;
-el ERP rechazó correctamente la medida inconsistente sin enviar la compra.
+la captura del run 35159648336 mostró 10, no los 84 que la prueba pretendía
+introducir; el ERP rechazó correctamente la medida inconsistente.

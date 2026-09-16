@@ -10,7 +10,7 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
   test.setTimeout(240_000);process.chdir(root);
   const db=await createOperatorAcceptanceDb(),nativeFetch=globalThis.fetch,contexts=[];
   const evidence={checkpoints:[],requests:[],errors:[],external:[]};
-  const fault={drop:false,droppedId:null,hold:false,release:null,held:null};
+  const fault={drop:false,droppedId:null,hold:false,release:null,held:null,blockRefresh:false,blockedRefreshes:0,readToken:null};
   let api;
   try {
     await db.exec(`alter table clients add column phone text, add column email text,
@@ -35,6 +35,12 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
     const {f,users}=await operatorFixture(db);
     api=await startBrowserAcceptanceServer({
       dropApiResponse:(req,url,body)=>{
+        // Interrupt the actual server response, including service-worker-owned
+        // requests that browser route interception cannot cover in WebKit.
+        if(fault.blockRefresh&&req.method==='GET'&&url.pathname==='/api/warehouse'
+          &&req.headers.authorization==='Bearer '+fault.readToken){
+          fault.blockedRefreshes++;return true;
+        }
         if(!fault.drop||req.method!=='POST'||url.pathname!=='/api/warehouse')return false;
         let result;try{result=JSON.parse(String(body));}catch{return false;}
         if(!result.receipt?.id)return false;
@@ -69,20 +75,14 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
       const context=await browser.newContext({viewport:use.viewport,userAgent:use.userAgent,isMobile:use.isMobile,
         hasTouch:use.hasTouch,deviceScaleFactor:use.deviceScaleFactor,locale:'es-US',timezoneId:'America/New_York'});
       contexts.push(context);
-      const network={blockRefresh:false,blockedRefreshes:0};
       await context.route('**/*',route=>{
         const request=route.request(),url=new URL(request.url());
-        if(url.origin===api.base){
-          if(network.blockRefresh&&url.pathname==='/api/warehouse'&&request.method()==='GET'){
-            network.blockedRefreshes++;return route.abort('failed');
-          }
-          return route.continue();
-        }
+        if(url.origin===api.base)return route.continue();
         if(['data:','blob:','about:'].includes(url.protocol))return route.continue();
         evidence.external.push(url.origin+url.pathname);return route.abort('blockedbyclient');
       });
       const page=await context.newPage();page.setDefaultTimeout(15_000);
-      sessions[key]={page,context,network,navigations:0,frames:0};
+      sessions[key]={page,context,navigations:0,frames:0};
       page.on('pageerror',e=>evidence.errors.push({operator:key,message:e.message}));
       page.on('framenavigated',frame=>{
         if(frame===page.mainFrame())sessions[key].navigations++;
@@ -98,7 +98,9 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
       await page.goto(api.base+'/admin/pwa.html');
       await page.locator('#username').fill(users[key].username);await page.locator('#password').fill(users[key].password);
       const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/login'&&r.request().method()==='POST');
-      await page.locator('#login').click();expect((await response).status()).toBe(200);
+      await page.locator('#login').click();
+      const loginResponse=await response;expect(loginResponse.status()).toBe(200);
+      if(key==='a')fault.readToken=(await loginResponse.json()).token;
       await expect(page.locator('#loginPage')).toBeHidden();
       await page.waitForFunction(()=>window.NavigationShell?.owner==='navigation-shell.js');
     }
@@ -164,14 +166,14 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
       expect((await f.rows("select id from audit_log where action='warehouse_receipt_created'")).length).toBe(1);
     });
     await step('WR-03 saved receipt remains saved when refreshing the list fails',async()=>{
-      await open('QA-WR-REFRESH',5);a.network.blockRefresh=true;
+      await open('QA-WR-REFRESH',5);fault.blockRefresh=true;
       await warehouse.locator('#saveReceipt').click();
       await expect(warehouse.locator('#rMsg')).toContainText('ya está registrada');
-      expect(a.network.blockedRefreshes).toBeGreaterThan(0);
+      expect(fault.blockedRefreshes).toBeGreaterThan(0);
       await expect(warehouse.locator('#newReceipt')).toBeEnabled();
       await expect(warehouse.locator('#saveReceipt')).toBeDisabled();
       await stockTotal(17);expect((await f.rows('select id from warehouse_receipts')).length).toBe(2);
-      a.network.blockRefresh=false;await warehouse.locator('#closeReceipt').click();
+      fault.blockRefresh=false;await warehouse.locator('#closeReceipt').click();
     });
     await step('WR-04 in-flight receipt blocks a second save and close',async()=>{
       await open('QA-WR-INFLIGHT',3);fault.hold=true;
@@ -219,7 +221,8 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
     const screenshot=info.outputPath('manual-receipt-recovery.png');await a.page.screenshot({path:screenshot});
     await info.attach('manual receipt recovery',{path:screenshot,contentType:'image/png'});
   }finally{
-    fault.release?.();
+    fault.blockRefresh=false;fault.release?.();
+    evidence.blockedRefreshes=fault.blockedRefreshes;
     const path=info.outputPath('manual-receipt-evidence.json');fs.mkdirSync(info.outputDir,{recursive:true});
     fs.writeFileSync(path,JSON.stringify(evidence,null,2));await info.attach('manual receipt evidence',{path,contentType:'application/json'});
     for(const context of contexts)await context.close();
