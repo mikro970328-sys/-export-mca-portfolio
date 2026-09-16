@@ -1,4 +1,4 @@
-name: Inspect Credit Reversal Browser Evidence
+name: Inspect Credit Reversal Browser Screenshot
 on:
   push:
     branches: [build/credit-reversal-migration]
@@ -17,16 +17,20 @@ jobs:
           run-id: 35128013150
           name: browser-direct-ship-webkit-mobile
           path: evidence
-      - name: Inspect isolated failure context
+      - name: Read isolated failure screenshot and trace
         run: |
           python - <<'PY'
           from pathlib import Path
-          import json
-          for p in Path('evidence').rglob('error-context.md'):
-              print('CONTEXT '+str(p))
-              print(p.read_text())
-          for p in Path('evidence').rglob('direct-ship-evidence.json'):
-              d=json.loads(p.read_text())
-              print('EVIDENCE '+json.dumps({k:d.get(k) for k in ['errors','crashes','external','checkpoints']}))
-              print('LAST_API '+json.dumps(d.get('api',[])[-30:]))
+          import base64,json,zipfile
+          for p in Path('evidence').rglob('final-state.png'):
+              data=base64.b64encode(p.read_bytes()).decode()
+              print('IMAGE_BEGIN '+p.name)
+              for offset in range(0,len(data),12000):print('IMAGE_CHUNK '+data[offset:offset+12000])
+              print('IMAGE_END')
+          for p in Path('evidence').rglob('trace.zip'):
+              with zipfile.ZipFile(p) as z:
+                  for n in z.namelist():
+                      if not n.endswith('.trace'):continue
+                      for l in z.read(n).decode().splitlines():
+                          if 'balanceMsg' in l and ('Indica' in l or 'value' in l):print('FORM_TRACE '+l)
           PY
