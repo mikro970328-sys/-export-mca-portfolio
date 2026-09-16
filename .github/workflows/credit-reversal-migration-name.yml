@@ -1,36 +1,41 @@
-name: Inspect isolated browser evidence
+name: Verify published receipt recovery
 on:
   push:
     branches: ['build/credit-reversal-migration']
 permissions:
   contents: read
-  actions: read
 jobs:
-  evidence:
+  public-readonly:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
         with:
-          pattern: browser-*-webkit-mobile
-          run-id: 35159648336
-          github-token: ${{ github.token }}
-          path: evidence
-      - name: Read failing operator evidence
+          ref: 0e53afab6c6efd45966686f597e1b5c20b6aa5cb
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Public assets and anonymous API boundary only
         run: |
-          python3 - <<'PY'
-          import pathlib,base64,json
-          root=pathlib.Path('evidence')
-          for story in ['direct-ship','warehouse-recovery','cancellation-finance']:
-            dirs=list(root.glob('browser-'+story+'-*'))
-            if not dirs: continue
-            base=dirs[0]
-            names=['final-state*.png','final-a*.png']
-            images=[p for n in names for p in base.rglob(n)]
-            if images:
-              p=min(images,key=lambda p:len(str(p)))
-              print('SCREENSHOT_'+story+':'+base64.b64encode(p.read_bytes()).decode())
-            records=[p for p in base.rglob('*evidence*.json') if 'attachments' not in str(p)]
-            for p in records:
-              d=json.loads(p.read_text())
-              print('EVIDENCE_'+story+':'+json.dumps(d))
-          PY
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
+          const expected=new Map(['admin/warehouse.js','sw.js'].map(file=>[file,hash(fs.readFileSync(file))]));
+          for(const origin of ['https://app.exportmca.com','https://admin.exportmca.com']){
+            for(const [file,digest] of expected){
+              const asset=await fetch(origin+'/'+file+'?v=20260916-receipt-recovery1',{signal:AbortSignal.timeout(20000)});
+              assert.equal(asset.status,200);
+              assert.equal(hash(Buffer.from(await asset.arrayBuffer())),digest,file);
+            }
+            const page=await fetch(origin+'/admin/warehouse.html',{signal:AbortSignal.timeout(20000)});
+            assert.equal(page.status,200);assert.match(await page.text(),/warehouse\.js\?v=20260916-receipt-recovery1/);
+            for(const name of ['warehouse','history','clients','shipments','export']){
+              const response=await fetch(origin+'/api/'+name,{signal:AbortSignal.timeout(20000)});
+              assert.equal(response.status,401,origin+' /api/'+name);
+              await response.arrayBuffer();
+            }
+            console.log('PASS '+origin+' exact receipt/worker assets and five anonymous API boundaries');
+          }
+          console.log('PASS public read-only smoke; no credentials, commercial writes or notifications');
+          JS
