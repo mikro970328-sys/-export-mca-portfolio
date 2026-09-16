@@ -8,7 +8,8 @@ with allocation_costs as (
   select sfa.sales_order_item_id, sfa.allocated_quantity,
          l.status <> 'cancelled' as active,
          lic.currency, lic.recognized_unit_cogs,
-         lic.cost_coverage
+         lic.cost_coverage,
+         (sfa.allocated_quantity * lic.recognized_unit_cogs)::numeric as allocated_cost
   from public.sales_fulfillment_allocations sfa
   join public.load_items li on li.id=sfa.load_item_id
   join public.loads l on l.id=li.load_id
@@ -18,7 +19,8 @@ with allocation_costs as (
          true as active,
          cb.currency,
          (dsa.allocated_purchase_quantity * cb.recognized_unit_cost / nullif(dsa.allocated_sales_quantity,0))::numeric,
-         case when cb.recognized_unit_cost is null then 'incomplete_allocation' else cb.cost_coverage end
+         case when cb.recognized_unit_cost is null then 'incomplete_allocation' else cb.cost_coverage end,
+         (dsa.allocated_purchase_quantity * cb.recognized_unit_cost)::numeric
   from public.direct_shipment_effective_allocations dsa
   join public.sales_procurement_allocations spa on spa.id=dsa.sales_procurement_allocation_id
   join public.sales_supply_plan_lines spl on spl.id=spa.supply_plan_line_id
@@ -33,7 +35,7 @@ with allocation_costs as (
     count(currency) filter (where active)::integer as known_currency_allocation_count,
     count(distinct currency) filter (where active)::integer as source_currency_count,
     min(currency) filter (where active) as single_currency,
-    sum(allocated_quantity * recognized_unit_cogs) filter (where active and recognized_unit_cogs is not null)::numeric as cost_candidate,
+    sum(allocated_cost) filter (where active and recognized_unit_cogs is not null)::numeric as cost_candidate,
     bool_or(cost_coverage is null or cost_coverage='incomplete_allocation') filter (where active) as has_incomplete_source,
     bool_and(cost_coverage='actual') filter (where active) as all_actual,
     bool_and(cost_coverage='estimated') filter (where active) as all_estimated

@@ -23,8 +23,8 @@ Factura emitida, cobros, factura de proveedor y pagos conservan importes; correg
 cantidad física no equivale a corregir deuda comercial. Si se facturaron 840 y
 sólo hay 810 asignadas, la rentabilidad de la factura queda incompleta, no inventada.
 
-14 escenarios SQL cubren estimado/actual/parcial, corrección, AR/AP/caja intactos,
-reverso de pago, anulación de bill, costo ausente, unidades distintas, FX, cantidad
+15 escenarios SQL cubren estimado/actual/parcial, corrección, AR/AP/caja intactos,
+reverso de pago, anulación de bill, costo ausente, unidades distintas y razón no finita sin pérdida del costo total, FX, cantidad
 cero, ausencia de almacén y combinación de almacén más Direct Ship.
 La suite de navegador Direct Ship amplía DS-01–DS-13 con segundo operador en
 Reportes y DS-14–DS-15 para factura/cobro, costo directo, bill, pago y reverso.

@@ -48,6 +48,9 @@ try {
   await f.one("select * from correct_direct_shipment_quantity($1,0,0,0,0,'QA no physical units',$2)",[direct.id,f.actor]);
   assert.equal((await saleReport()).recognized_merchandise_cogs,null);checks++;
   for(const table of ['warehouse_receipts','loads','inventory_movements'])assert.equal(Number((await f.one(`select count(*) as count from ${table}`)).count),0);checks++;
+  const ratio=await makeDirect({quantity:3});await f.one('select * from mark_direct_shipment_dispatched($1)',[ratio.shipment.id]);
+  await f.one("select * from correct_direct_shipment_quantity($1,3,0,1,0,'QA non-terminating unit ratio',$2)",[ratio.direct.id,f.actor]);
+  assert.equal((await f.one('select attributable_merchandise_cogs=2.5 as exact from sales_order_item_merchandise_cogs where sales_order_item_id=$1',[ratio.so.items[0].id])).exact,true);checks++;
   const mixed=await f.sale({lines:[{...f.baseLine,ordered_quantity:200,ordered_pallets:20}]});
   const warehousePO=await f.purchase();await f.fulfill(mixed,warehousePO);
   await makeDirect({quantity:100,existingSale:mixed});
