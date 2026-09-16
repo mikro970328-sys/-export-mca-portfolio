@@ -58,6 +58,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Real financial SQL and report reconciliation
         run: node scripts/check-finance-acceptance.mjs
+      - name: Direct Ship COGS, correction and financial invariants
+        run: node scripts/check-finance-direct-ship.mjs
       - name: Real API handlers with isolated financial SQL
         run: node scripts/check-finance-api.mjs
       - name: Report refresh after local and external financial actions
