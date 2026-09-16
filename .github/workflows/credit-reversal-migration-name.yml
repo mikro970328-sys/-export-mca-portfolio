@@ -1,38 +1,36 @@
-name: Inspect Supplier Finance Browser Evidence
+name: Verify Published Supplier Finance Assets
 on:
   push:
     branches: [build/credit-reversal-migration]
 permissions:
   contents: read
-  actions: read
 jobs:
-  inspect:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
         with:
-          name: browser-direct-ship-chromium-desktop
-          run-id: 35134334240
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path: evidence
-      - name: Read isolated acceptance evidence
+          ref: 0bb0def569c4f9e736d6297fbb273373ef626660
+      - name: Anonymous read-only production smoke
         run: |
           python - <<'PY'
           from pathlib import Path
-          import json,base64
-          root=Path('evidence')
-          for p in sorted(root.rglob('direct-ship-evidence.json')):
-              d=json.loads(p.read_text())
-              out={k:d.get(k) for k in ['checkpoints','errors','crashes','external','reportNavigations','supplierVariants']}
-              out['api_failures']=[x for x in d.get('api',[]) if x['status']==404 or x['status']>=500]
-              print('EVIDENCE '+json.dumps(out),flush=True)
-          for name in ['28-supplier-rounded-bills.png','31-supplier-paid-report.png']:
-              files=sorted(root.rglob(name))
-              if not files: raise SystemExit('Missing '+name)
-              p=files[0]
-              print('IMAGE_BEGIN '+name,flush=True)
-              b=base64.b64encode(p.read_bytes()).decode()
-              for i in range(0,len(b),3000):print('IMAGE_CHUNK '+b[i:i+3000],flush=True)
-              print('IMAGE_END '+name,flush=True)
+          import urllib.request,urllib.error,json
+          from concurrent.futures import ThreadPoolExecutor
+          paths=[('/admin/pwa.html',200,None),('/admin/payables.html',200,'admin/payables.html'),('/admin/payables.js?v=20260916-supplier1',200,'admin/payables.js'),('/api/payables',401,None),('/api/supplier-payments',401,None),('/api/reports',401,None)]
+          def check(item):
+              host,path,expected,file=item
+              req=urllib.request.Request('https://'+host+path,headers={'User-Agent':'ExportMCA-read-only-release-check'})
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as r:status=r.status;body=r.read()
+              except urllib.error.HTTPError as e:status=e.code;body=e.read()
+              exact=body==Path(file).read_bytes() if file else None
+              result={'host':host,'path':path,'status':status,'exact':exact,'ok':status==expected and (exact is None or exact)}
+              print('PUBLIC_SMOKE '+json.dumps(result),flush=True)
+              return result
+          tasks=[(host,*row) for host in ['app.exportmca.com','admin.exportmca.com'] for row in paths]
+          with ThreadPoolExecutor(max_workers=4) as pool:results=list(pool.map(check,tasks))
+          assert all(r['ok'] for r in results),results
+          print('PUBLIC_SMOKE_PASSED 12/12; no authentication, no business mutations')
           PY
