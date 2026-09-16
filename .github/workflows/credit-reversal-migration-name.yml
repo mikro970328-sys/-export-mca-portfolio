@@ -1,55 +1,22 @@
-name: Reproduce Supplier Finance Variants
+name: Verify Supplier Finance Precision
 on:
   push:
     branches: [build/credit-reversal-migration]
 permissions:
   contents: read
 jobs:
-  reproduce:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: b827176978ccb834acbdd97da9d916155cfe4da0
+          ref: 8c85087e00c9bb317b3a7e0191298495e3d4ced9
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Baseline isolated PostgreSQL calculation
-        run: |
-          node --input-type=module <<'JS'
-          import {createFinanceAcceptanceDb} from './scripts/lib/finance-acceptance-db.mjs';
-          import {financeFixture} from './scripts/lib/finance-acceptance-fixture.mjs';
-          const db=await createFinanceAcceptanceDb(),f=await financeFixture(db);
-          try{
-           for(const sample of [
-            {name:'line_total_nan',line:{billed_quantity:3,line_total:'NaN'}},
-            {name:'line_total_infinity',line:{billed_quantity:3,line_total:'Infinity'}},
-            {name:'unit_cost_nan',line:{billed_quantity:3,unit_cost:'NaN'}},
-            {name:'rounded_down',line:{billed_quantity:3,unit_cost:'0.33333333'},pay:1},
-            {name:'rounded_up',line:{billed_quantity:3,unit_cost:'0.33333334'},pay:1}
-           ]){
-            await db.exec('begin');
-            try {
-             const po=await f.purchase(),line={purchase_order_item_id:po.items[0].id,...sample.line};
-             const b=await f.one('select * from create_supplier_bill_plan(p_purchase_order_id=>$1,p_lines=>$2::jsonb,p_supplier_invoice_number=>$3,p_actor=>$4)',[po.id,JSON.stringify([line]),'PROBE-'+sample.name,f.actor]);
-             await f.one("select * from transition_supplier_bill_canonical($1,'post',$2)",[b.id,f.actor]);
-             const result={name:sample.name,accepted:true,before:await f.ap(b)};
-             if(sample.pay){
-              await db.exec('savepoint payment_probe');
-              try{await f.payBill(b,sample.pay);result.after=await f.ap(b);}catch(e){await db.exec('rollback to savepoint payment_probe');result.paymentError=e.message;}
-              await db.exec('release savepoint payment_probe');
-             }
-             console.log('SUPPLIER_PROBE '+JSON.stringify(result));
-            }catch(e){console.log('SUPPLIER_PROBE '+JSON.stringify({name:sample.name,accepted:false,error:e.message}));}
-            finally{await db.exec('rollback');}
-           }
-          }finally{await db.close();}
-          JS
-      - name: Generate a migration filename with official CLI
-        run: |
-          npx --yes supabase@2.117.0 --version
-          npx --yes supabase@2.117.0 migration new --help
-          npx --yes supabase@2.117.0 migration new supplier_finance_precision_integrity
+      - run: node scripts/check-finance-supplier-variants.mjs
+      - run: node scripts/check-finance-api.mjs
+      - run: node scripts/check-ux7-payables-visual-owner.mjs
