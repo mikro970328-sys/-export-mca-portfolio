@@ -7,6 +7,10 @@ const uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9
 
 function translatedError(raw){
   const messages=[
+    ['INVOICE_CREDIT_NOTE_NOT_FOUND','La nota de crédito no existe.'],
+    ['INVOICE_CREDIT_NOTE_REVERSED','La nota de crédito ya está revertida.'],
+    ['INVOICE_CREDIT_LATER_NOTE_ACTIVE','Revierte primero las notas posteriores de esos mismos productos.'],
+    ['INVOICE_CREDIT_QUANTITY_REUSED','Las cantidades descontadas ya se usaron en otra factura. Corrige o anula esa factura antes de revertir la nota.'],
     ['INVOICE_CREDIT_MOVEMENT_INVALID','La solicitud de movimiento de saldo no es válida.'],
     ['INVOICE_CREDIT_MOVEMENT_NOT_FOUND','La operación de saldo a favor no existe.'],
     ['INVOICE_CREDIT_MOVEMENT_REVERSED','La operación de saldo a favor ya está revertida.'],
@@ -19,9 +23,9 @@ function translatedError(raw){
     ['INVOICE_CREDIT_DATE_INVALID','Indica una fecha válida que no sea futura.'],
     ['INVOICE_CREDIT_METHOD_REQUIRED','Selecciona el método de la devolución realizada.'],
     ['INVOICE_HAS_CREDIT_MOVEMENTS','Revierte primero los movimientos de saldo a favor de esta factura.'],
-    ['INVOICE_CREDIT_REQUEST_CONFLICT','La solicitud ya se utilizó para otra nota de crédito. Abre de nuevo el formulario.'],
-    ['INVOICE_CREDIT_REQUEST_REQUIRED','La solicitud de nota de crédito no es válida. Abre de nuevo el formulario.'],
-    ['INVOICE_CREDIT_ACTOR_INVALID','No tienes permiso para emitir esta nota de crédito.'],
+    ['INVOICE_CREDIT_REQUEST_CONFLICT','La solicitud ya se utilizó para otra operación de crédito. Abre de nuevo el formulario.'],
+    ['INVOICE_CREDIT_REQUEST_REQUIRED','La solicitud de crédito no es válida. Abre de nuevo el formulario.'],
+    ['INVOICE_CREDIT_ACTOR_INVALID','No tienes permiso para realizar esta operación de crédito.'],
     ['INVOICE_CREDIT_REQUIRES_ISSUED','La factura debe estar emitida para crear una nota de crédito.'],
     ['INVOICE_CREDIT_REASON_REQUIRED','Indica un motivo de entre 3 y 2000 caracteres.'],
     ['INVOICE_CREDIT_LINES_INVALID','Una línea de la nota de crédito no es válida.'],
@@ -81,7 +85,7 @@ async function loadInvoices(admin){
     supabase('invoice_financial_progress',{query:'?select=*&order=issue_date.desc&limit=1000'}),
     supabase('payments',{query:'?select=id,invoice_id,amount,currency,payment_date,method,reference_number,status,notes,created_at&order=payment_date.desc,created_at.desc&limit=5000'}),
     loadInvoiceFinanceCapabilityMaps(admin),
-    supabase('invoice_credit_notes',{query:'?select=id,credit_number,invoice_id,reason,total,currency,created_by,created_at&order=created_at.desc&limit=5000'}),
+    supabase('invoice_credit_note_state',{query:'?select=*&order=created_at.desc&limit=5000'}),
     supabase('invoice_credit_note_lines',{query:'?select=id,credit_note_id,invoice_item_id,quantity,previous_credited_quantity,unit_price,amount&limit=10000'}),
     supabase('invoice_net_items',{query:'?select=id,credited_quantity&order=created_at.asc&limit=5000'}),
     supabase('invoice_credit_movement_state',{query:'?select=*&order=created_at.desc&limit=5000'})
@@ -101,7 +105,7 @@ async function loadInvoices(admin){
   }
   for(const credit of credits||[]){
     if(!creditsByInvoice.has(credit.invoice_id))creditsByInvoice.set(credit.invoice_id,[]);
-    creditsByInvoice.get(credit.invoice_id).push({...credit,lines:creditLinesByNote.get(credit.id)||[]});
+    creditsByInvoice.get(credit.invoice_id).push({...credit,capabilities:permissionAwareCapabilities(credit.capabilities,capabilityBundle.write_access),lines:creditLinesByNote.get(credit.id)||[]});
   }
   const itemsByInvoice=new Map();
   for(const item of items||[]){if(!itemsByInvoice.has(item.invoice_id))itemsByInvoice.set(item.invoice_id,[]);itemsByInvoice.get(item.invoice_id).push({...item,credited_quantity:creditedByItem.get(item.id)||0});}
@@ -185,6 +189,16 @@ export default async function handler(req,res){
     }
     if(req.method!=='POST')return fail(res,405,'Método no permitido');
     const body=await readJson(req),action=text(body.action,60).toLowerCase();
+
+    if(action==='reverse_credit_note'){
+      if(!uuid(body.credit_note_id))throw new Error('INVOICE_CREDIT_NOTE_NOT_FOUND');
+      if(!uuid(body.request_id))throw new Error('INVOICE_CREDIT_REQUEST_REQUIRED');
+      const reason=String(body.reason??'').trim();
+      if(reason.length<3||reason.length>2000)throw new Error('INVOICE_CREDIT_REASON_REQUIRED');
+      const reversal=rpcRow(await supabase('rpc/reverse_invoice_quantity_credit',{method:'POST',body:{p_credit_note_id:body.credit_note_id,p_request_id:body.request_id,p_reason:reason,p_actor:admin.admin_id}}));
+      if(!reversal?.id)throw new Error('INVOICE_CREDIT_REVERSAL_UNEXPECTED');
+      return ok(res,{reversal,invoice:await refreshedInvoice(admin,reversal.invoice_id)});
+    }
 
     if(action==='credit_settlement'){
       const kind=body.movement_type,reverse=kind==='reversal';

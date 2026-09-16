@@ -275,6 +275,8 @@
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
     requestAnimationFrame(() => {
+      // Opening focus must not interrupt an operator who already chose a field.
+      if (modal.classList.contains('hidden') || modal.contains(document.activeElement)) return;
       const target = focusId ? $(focusId) : modal.querySelector('button,select,input,textarea');
       target?.focus();
     });
@@ -586,7 +588,19 @@
 
   function creditNoteSection(invoice) {
     if (!invoice.credit_notes?.length) return '';
-    return `<section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Notas de crédito</h3><span>${invoice.credit_notes.length} registro(s)</span></header><div class="invoice-detail-items">${invoice.credit_notes.map(note=>`<div class="invoice-detail-item"><div><div class="invoice-detail-item-title">${esc(note.credit_number)} · ${esc(date(note.created_at))}</div><div class="invoice-detail-item-meta">${esc(note.reason)}</div>${note.lines.map(line=>{const item=invoice.items.find(item=>item.id===line.invoice_item_id);return `<div class="invoice-detail-item-meta">${esc(item?.description||'Producto')}: ${esc(line.quantity)} ${esc(item?.unit||'')} descontadas · ${esc(money(line.amount,note.currency))}</div>`;}).join('')}</div><strong>${esc(money(note.total,note.currency))}</strong></div>`).join('')}</div></section>`;
+    const hints={INVOICE_CREDIT_LATER_NOTE_ACTIVE:'Revierte primero las notas posteriores de estos mismos productos.',INVOICE_CREDIT_BALANCE_USED:'Revierte primero las aplicaciones o devoluciones que usaron este saldo.',INVOICE_CREDIT_QUANTITY_REUSED:'Estas cantidades ya se usaron en otra factura. Corrige o anula esa factura antes de revertir esta nota.'};
+    return `<section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Notas de crédito</h3><span>${invoice.credit_notes.length} registro(s)</span></header><div class="invoice-detail-items">${invoice.credit_notes.map(note=>`<div class="invoice-detail-item" data-credit-note-id="${esc(note.id)}"><div><div class="invoice-detail-item-title">${esc(note.credit_number)} · ${esc(date(note.created_at))} · ${note.status==='reversed'?'Revertida':'Vigente'}</div><div class="invoice-detail-item-meta">${esc(note.reason)}</div>${note.lines.map(line=>{const item=invoice.items.find(item=>item.id===line.invoice_item_id);return `<div class="invoice-detail-item-meta">${esc(item?.description||'Producto')}: ${esc(line.quantity)} ${esc(item?.unit||'')} ${note.status==='reversed'?'restauradas':'descontadas'} · ${esc(money(line.amount,note.currency))}</div>`;}).join('')}${note.reversal_id?`<div class="invoice-detail-item-meta">${esc(note.reversal_number)} · ${esc(date(note.reversed_at))} · ${esc(note.reversal_reason)}</div>`:''}${hints[capability(note,'reverse').reason]?`<div class="invoice-detail-item-meta">${esc(hints[capability(note,'reverse').reason])}</div>`:''}</div><div class="invoice-payment-actions"><strong>${esc(money(note.total,note.currency))}</strong>${can(note,'reverse')?`<button class="btn danger" type="button" data-reverse-credit-note="${esc(note.id)}" data-invoice-id="${esc(invoice.id)}">Revertir nota</button>`:''}</div></div>`).join('')}</div></section>`;
+  }
+
+  function reverseCreditNote(invoiceId,noteId) {
+    const invoice=state.invoices.find(row=>row.id===invoiceId),note=invoice?.credit_notes?.find(row=>row.id===noteId);
+    if (!note||!can(note,'reverse')) return;
+    const requestId=crypto.randomUUID();
+    askDecision({title:'Revertir nota de crédito',copy:`Se restaurarán las cantidades y el importe de ${note.credit_number} (${money(note.total,note.currency)}). Puede aumentar el saldo pendiente. La nota y el motivo del reverso quedarán en el historial. Los cobros registrados no cambian.`,acceptLabel:'Revertir nota',reason:true,danger:true,onAccept:async reason=>{
+      if(reason.length<3||reason.length>2000)throw new Error('Indica un motivo de entre 3 y 2000 caracteres.');
+      await request('/api/invoices',{method:'POST',body:JSON.stringify({action:'reverse_credit_note',credit_note_id:noteId,reason,request_id:requestId})});
+      await refresh();openDetail(invoiceId);setPageMessage('Nota de crédito revertida. El historial y los cobros se conservan.','ok');
+    }});
   }
 
   function openCredit(id) {
@@ -833,6 +847,8 @@
         return;
       }
       if (handleInvoiceAction(target)) return;
+      const note = target.closest('[data-reverse-credit-note]');
+      if (note) return reverseCreditNote(note.dataset.invoiceId,note.dataset.reverseCreditNote);
       const movement = target.closest('[data-reverse-credit-movement]');
       if (movement) return reverseCreditMovement(movement.dataset.invoiceId,movement.dataset.reverseCreditMovement);
       const reverse = target.closest('[data-reverse-payment]');

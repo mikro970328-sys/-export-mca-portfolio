@@ -1,6 +1,6 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #318, d86d1804472959aab3cb15657499e58213373685.
+Corte 2026-09-16. Base publicada PR #319, 3e5cf437af7a9664706104058d2a927a1014b487.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
@@ -76,6 +76,12 @@ Quince escenarios SQL/API y DS-19/22 comprueban límites, permisos, concurrencia
 reintentos, dependencias y refresco entre usuarios. Consultar la PR para gates
 y publicación finales; la existencia del archivo no acredita una migración remota.
 
-Pendiente posterior: reverso de notas de crédito por cantidad, variantes
-financieras restantes y aceptación diaria integral. Este bloque tampoco cambia
-precios de facturas emitidas ni ejecuta transferencias bancarias.
+Aplicaciones/devoluciones publicadas en #319: 50/50 workflows y 16/16 jobs de
+navegador, con 22 pasos Direct Ship por motor. La continuación actual añade el
+reverso de notas por cantidad descrito en INVOICE_CREDIT_REVERSALS.md. Protege
+saldo ya utilizado, refacturación y redondeo, con historial inmutable. La PR
+registra los gates y publicación finales.
+
+Pendiente posterior: variantes financieras restantes y aceptación diaria
+integral. No se cambia el precio de facturas emitidas ni se ejecutan transferencias
+bancarias; iPhone físico continúa fuera de la prioridad actual.
