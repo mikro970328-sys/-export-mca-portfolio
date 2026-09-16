@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 47011e24f70969733c4f5a747b0a035352d25988
+          ref: 0f6b22fc031b37b69039c92a1661c176c85c64d0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -44,3 +44,9 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Lost confirmation through real isolated HTTP and SQL
         run: node scripts/check-warehouse-receipt-recovery.mjs
+      - name: Existing warehouse presentation and canonical action contracts
+        run: |
+          node scripts/check-ux5-warehouse-receipt-actions.mjs
+          node scripts/check-ux6-warehouse-embedded-ownership.mjs
+          node scripts/check-ux7-warehouse-visual-owner.mjs
+          node scripts/check-purchase-total-and-load-units.mjs
