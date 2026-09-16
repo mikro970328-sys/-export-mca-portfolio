@@ -1,3 +1,18 @@
+## Retomar desde #324 — jornada publicada, auditoría con hallazgos
+
+Main 9f4aea87c412ac2dc467c0d934eee2f084307978; producción dpl_9KawWZViHyByoBhEAXw5ScdR32NN READY. 19/19 workflows,
+16/16 recorridos; COM-01/18 cuadra venta/cobro 400, pago proveedor 250, AR/AP 0,
+COGS real 250, costo 50, contribución 100, caja neta 150 e inventario 0.
+Pagos proveedor idempotentes y audit atómico ya aplicados/publicados, sin cambiar
+las cinco filas históricas. Leer security/WORKDAY_TECHNICAL_AUDIT_20260916.md.
+Siguiente bloque concreto A-01: errores técnicos retornados indirectamente o
+almacenados (shipments/history/clients/export); primero marcador de prueba y
+luego saneamiento sin borrar historia. A-02: reproducir pérdida de confirmación
+al crear recepción manual legacy; no afirmar defecto sin ensayo ni revocar
+service_role a ciegas. No tocar otros módulos de #324 ni rehacer la jornada.
+Escritorio prioritario; iPhone físico/BrowserStack/push diferidos. Nada de QA
+comercial en producción/Preview ni mensajes reales. No subagentes por defecto.
+
 ## 2026-09-16 · Cierre diario y recuperación de pagos al proveedor
 
 PR #323 publicada en `1296968075ed1adce7a81b483fd65bd266999c2b`; selección de
