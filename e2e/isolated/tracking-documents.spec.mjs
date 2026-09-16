@@ -19,7 +19,14 @@ test('tracking documents: versions, readiness, reader and lost confirmations',as
     const {f,users}=await operatorFixture(db);
     await db.exec('update importers set normalized_name=upper(btrim(name))');
     const shipment=await f.one("insert into shipments(container_number,client_id,importer_id,departure_date) values('QA-DOC-001',$1,$2,current_date) returning *",[f.client,f.importer]);
-    const storage=documentStorage();api=await startBrowserAcceptanceServer({storageHandler:storage.handle});
+    const storage=documentStorage(),cuts={finalize:false,remove:false,finalizeCount:0,removeCount:0};
+    api=await startBrowserAcceptanceServer({storageHandler:storage.handle,dropApiResponse:(req,url,body)=>{
+      if(url.pathname!=='/api/shipment-documents')return false;
+      let payload;try{payload=JSON.parse(String(body));}catch{return false;}
+      if(cuts.finalize&&req.method==='POST'&&payload.document){cuts.finalize=false;cuts.finalizeCount++;return true;}
+      if(cuts.remove&&req.method==='DELETE'&&payload.deleted){cuts.remove=false;cuts.removeCount++;return true;}
+      return false;
+    }});
     const allowed=new Set([api.base,new URL(process.env.ERP_TEST_POSTGREST_URL).origin]);
     globalThis.fetch=(input,options)=>{const url=new URL(typeof input==='string'||input instanceof URL?input:input.url);if(!allowed.has(url.origin))throw Error('QA refuses external backend traffic');return nativeFetch(input,options);};
     await api.ready(db);
@@ -74,23 +81,16 @@ test('tracking documents: versions, readiness, reader and lost confirmations',as
       const response=await reader.request.get(signed);expect(response.status()).toBe(200);expect(await response.body()).toEqual(pdf('invoice-v1'));
     });
     await step('DOC-04 lost finalization response recovers committed version without duplicate',async()=>{
-      let dropped=0;
-      await writer.route('**/api/shipment-documents',async route=>{
-        if(route.request().method()==='POST'&&route.request().postDataJSON()?.action==='finalize_upload'&&!dropped){
-          const response=await route.fetch();expect(response.status()).toBe(200);dropped++;await route.abort('failed');
-        }else await route.continue();
-      });
-      await upload('packing_list_cuba','packing-v2');await writer.unroute('**/api/shipment-documents');expect(dropped).toBe(1);
+      cuts.finalize=true;
+      await upload('packing_list_cuba','packing-v2');expect(cuts.finalizeCount).toBe(1);
       const packing=(await rows()).filter(x=>x.document_type==='Packing List Cuba');expect(packing).toHaveLength(2);expect(packing[0].superseded_at).toBeTruthy();expect(packing[1].superseded_at).toBeNull();
       await refreshReader();await expect(reader.locator('.container-customs')).toContainText('qa-packing-v2.pdf');await expect(reader.locator('.container-customs-versions')).toContainText('qa-packing-v1.pdf');
     });
     await step('DOC-05 lost delete response recovers retirement and readiness without repeating',async()=>{
-      const current=(await rows()).find(x=>x.document_type==='Packing List Cuba'&&!x.superseded_at);let deletes=0;
-      await writer.route('**/api/shipment-documents',async route=>{
-        if(route.request().method()==='DELETE'){deletes++;const response=await route.fetch();expect(response.status()).toBe(200);await route.abort('failed');}else await route.continue();
-      });
+      const current=(await rows()).find(x=>x.document_type==='Packing List Cuba'&&!x.superseded_at);
+      cuts.remove=true;
       await writer.locator(`[data-customs-delete="${current.id}"]`).click();await writer.locator('[data-decision-yes]').click();
-      await expect(writer.locator('#containerCustomsFeedback')).toContainText('Documento retirado del ERP');await writer.unroute('**/api/shipment-documents');expect(deletes).toBe(1);
+      await expect(writer.locator('#containerCustomsFeedback')).toContainText('Documento retirado del ERP');expect(cuts.removeCount).toBe(1);
       expect((await rows()).find(x=>x.id===current.id).deleted_at).toBeTruthy();expect(storage.objects.has(current.storage_path)).toBe(false);
       const ready=await f.one('select * from shipment_customs_document_readiness where shipment_id=$1',[shipment.id]);expect(ready.missing_documents).toContain('Packing List Cuba');
       await refreshReader();await expect(reader.locator('.container-customs')).toContainText('qa-packing-v2.pdf');

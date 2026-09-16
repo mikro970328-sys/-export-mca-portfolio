@@ -15,8 +15,8 @@ duplicar; pérdida de respuesta después de DELETE recupera retiro sin repetir.
 Se verifican SQL, historial de versiones y la siguiente lectura del otro usuario.
 No se afirma sincronización automática con el modal del lector ya abierto.
 
-La pérdida de respuesta se produce en el navegador después de ejecutar el handler
-real (route.fetch y abort); no se fabrica una respuesta de negocio. El servicio
+La pérdida de respuesta se produce cerrando la conexión del servidor local después
+de ejecutar el handler real; no se fabrica una respuesta de negocio. El servicio
 de almacenamiento simulado se limita a la nueva suite. El servidor compartido
 solo añade el handler documental y un hook optativo para ese servicio local.
 
@@ -47,3 +47,9 @@ La misma ejecución encontró COM-01 WebKit con total 0 en vez de 250. Se revis�
 el artefacto 10426580321; se espera el foco programado del modal y se comprueban
 cantidad, pallets, precio y total calculado antes de guardar. Se conserva la
 aserción del total guardado; no se reintenta ciegamente ni se cambia producción.
+
+Run 35043841444 volvió a dar dropped=0 en WebKit aunque el archivo nuevo ya era
+visible: la espera de UI no resolvía la interceptación de tráfico del service
+worker. Se mueve la inyección al res.end del servidor de pruebas: el handler
+real ya produjo su JSON tras commit, pero se destruye la conexión sin entregarlo.
+Se comprueba exactamente un corte por acción; no se desactiva el service worker.

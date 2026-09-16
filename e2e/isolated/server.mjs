@@ -15,7 +15,7 @@ const mime = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
 
 // Optional asset gate controls delivery order in startup acceptance. HTTP status,
 // asset bytes, handlers and the service worker remain unchanged in every engine.
-export async function startBrowserAcceptanceServer({ beforeAsset, storageHandler } = {}) {
+export async function startBrowserAcceptanceServer({ beforeAsset, storageHandler, dropApiResponse } = {}) {
   const handlers = new Map(await Promise.all(routeNames.map(async name =>
     [`/api/${name}`, (await import(new URL(`../../api/${name}.js`, import.meta.url))).default])));
   return startOperatorApi({ fallbackHandler: async (req,res,url) => {
@@ -23,6 +23,15 @@ export async function startBrowserAcceptanceServer({ beforeAsset, storageHandler
     const handler = handlers.get(url.pathname);
     if (handler) {
       req.query = Object.fromEntries(url.searchParams);
+      // Optional fault injection after the real handler has produced its result.
+      // Unlike browser routing, this also reaches service-worker-owned requests.
+      if(dropApiResponse){
+        const end=res.end.bind(res);
+        res.end=(body,...args)=>{
+          if(dropApiResponse(req,url,body)){res.destroy();return res;}
+          return end(body,...args);
+        };
+      }
       try { await handler(req,res); }
       catch (error) {
         console.error('QA_HANDLER_FAILED', url.pathname, error.code || error.message);
