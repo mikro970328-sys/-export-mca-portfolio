@@ -24,6 +24,7 @@
   }[character]));
 
   const MONEY_FIELDS = new Set([
+    'original_total','credited_amount','customer_credit_balance',
     'order_total','attributed_sales_revenue','unattributed_order_value','recognized_merchandise_cogs',
     'gross_margin','direct_cost_amount','contribution_margin','invoice_total','paid_amount','balance_due',
     'bill_total','amount'

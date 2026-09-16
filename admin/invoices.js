@@ -18,6 +18,9 @@
     search: '',
     editingId: null,
     paymentInvoiceId: null,
+    creditInvoice: null,
+    creditRequestId: null,
+    creditSaving: false,
     decisionAction: null,
     loaded: false
   };
@@ -209,6 +212,7 @@
 
   function invoiceActions(invoice) {
     const actions = [invoiceActionButton(invoice, 'detail', 'Ver detalle')];
+    if (can(invoice, 'credit')) actions.push(invoiceActionButton(invoice, 'credit', 'Nota de crédito'));
     if (can(invoice, 'record_payment')) actions.push(invoiceActionButton(invoice, 'payment', 'Registrar cobro', 'orange'));
     if (can(invoice, 'edit')) actions.push(invoiceActionButton(invoice, 'edit', 'Editar'));
     if (can(invoice, 'issue')) actions.push(invoiceActionButton(invoice, 'issue', 'Emitir', 'primary'));
@@ -224,8 +228,8 @@
       <div class="invoice-cell"><span class="invoice-cell-label">Cliente</span><span class="invoice-cell-main">${esc(clientName(invoice))}</span><span class="invoice-cell-sub">${esc(reference)}</span></div>
       <div class="invoice-cell"><span class="invoice-cell-label">Venta</span><span class="invoice-cell-main">${esc(invoice.sales_order?.so_number || 'Sin venta')}</span><span class="invoice-cell-sub">Vence ${esc(date(invoice.due_date))}</span></div>
       <div class="invoice-cell"><span class="invoice-cell-label">Estado</span>${statusPill(invoice)}</div>
-      <div class="invoice-cell"><span class="invoice-cell-label">Total</span><span class="invoice-money">${esc(money(financial.total, invoice.currency))}</span><span class="invoice-cell-sub">Facturado</span></div>
-      <div class="invoice-cell"><span class="invoice-cell-label">Saldo</span><span class="invoice-money balance">${esc(money(financial.balance_due, invoice.currency))}</span><span class="invoice-cell-sub">Pendiente</span></div>
+      <div class="invoice-cell"><span class="invoice-cell-label">Total</span><span class="invoice-money">${esc(money(financial.total, invoice.currency))}</span><span class="invoice-cell-sub">${num(financial.credited_amount)>0?'Neto tras notas de crédito':'Facturado'}</span></div>
+      <div class="invoice-cell"><span class="invoice-cell-label">Saldo</span><span class="invoice-money balance">${esc(money(financial.balance_due, invoice.currency))}</span><span class="invoice-cell-sub">${num(financial.customer_credit_balance)>0?`A favor: ${esc(money(financial.customer_credit_balance,invoice.currency))}`:'Pendiente'}</span></div>
       <div class="invoice-row-actions" aria-label="Acciones de ${esc(invoice.invoice_number || 'factura')}">${invoiceActions(invoice)}</div>
     </article>`;
   }
@@ -273,6 +277,7 @@
 
   function closeModal(name, restoreFocus = true) {
     const id = modalId(name);
+    if (id === 'creditModal' && state.creditSaving) return;
     const modal = $(id);
     if (!modal) return;
     if (id === 'invoiceModal') {
@@ -472,15 +477,18 @@
     const payments = paymentRows(invoice);
     $('detailBody').innerHTML = `
       <div class="invoice-detail-summary">
-        <article><span>Total</span><strong>${esc(money(financial.total, invoice.currency))}</strong></article>
+        <article><span>Total neto</span><strong>${esc(money(financial.total, invoice.currency))}</strong></article>
         <article><span>Cobrado</span><strong>${esc(money(financial.paid_amount, invoice.currency))}</strong></article>
         <article><span>Saldo</span><strong>${esc(money(financial.balance_due, invoice.currency))}</strong></article>
         <article><span>Estado</span><strong>${statusPill(invoice)}</strong></article>
       </div>
-      <section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Líneas facturadas</h3><span>${invoice.items?.length || 0} registro${invoice.items?.length === 1 ? '' : 's'}</span></header><div class="invoice-detail-items">${items || emptyState('Sin líneas', 'Esta factura no contiene líneas disponibles.')}</div></section>
+      ${invoice.credit_notes?.length ? `<div class="invoice-detail-summary"><article><span>Total original</span><strong>${esc(money(financial.original_total,invoice.currency))}</strong></article><article><span>Notas de crédito</span><strong>${esc(money(financial.credited_amount,invoice.currency))}</strong></article><article><span>Saldo a favor del cliente</span><strong>${esc(money(financial.customer_credit_balance,invoice.currency))}</strong></article></div>` : ''}
+      <section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Líneas de la factura original</h3><span>${invoice.items?.length || 0} registro${invoice.items?.length === 1 ? '' : 's'}</span></header><div class="invoice-detail-items">${items || emptyState('Sin líneas', 'Esta factura no contiene líneas disponibles.')}</div></section>
+      ${creditNoteSection(invoice)}
       <section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Cobros aplicados</h3><span>${invoice.payments?.length || 0} registro${invoice.payments?.length === 1 ? '' : 's'}</span></header><div class="invoice-detail-items">${payments || emptyState('Sin cobros', 'Todavía no hay dinero registrado contra esta factura.')}</div></section>
       ${invoice.notes ? `<div class="invoice-notes"><strong>Notas</strong><br>${esc(invoice.notes)}</div>` : ''}`;
     const actions = [];
+    if (can(invoice, 'credit')) actions.push(invoiceActionButton(invoice, 'credit', 'Nota de crédito'));
     if (can(invoice, 'record_payment')) actions.push(invoiceActionButton(invoice, 'payment', 'Registrar cobro', 'orange'));
     if (can(invoice, 'edit')) actions.push(invoiceActionButton(invoice, 'edit', 'Editar'));
     if (can(invoice, 'issue')) actions.push(invoiceActionButton(invoice, 'issue', 'Emitir factura', 'primary'));
@@ -489,6 +497,70 @@
     message('detailMsg', '');
     openModal('detail');
     return true;
+  }
+
+  function creditNoteSection(invoice) {
+    if (!invoice.credit_notes?.length) return '';
+    return `<section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Notas de crédito</h3><span>${invoice.credit_notes.length} registro(s)</span></header><div class="invoice-detail-items">${invoice.credit_notes.map(note=>`<div class="invoice-detail-item"><div><div class="invoice-detail-item-title">${esc(note.credit_number)} · ${esc(date(note.created_at))}</div><div class="invoice-detail-item-meta">${esc(note.reason)}</div>${note.lines.map(line=>{const item=invoice.items.find(item=>item.id===line.invoice_item_id);return `<div class="invoice-detail-item-meta">${esc(item?.description||'Producto')}: ${esc(line.quantity)} ${esc(item?.unit||'')} descontadas · ${esc(money(line.amount,note.currency))}</div>`;}).join('')}</div><strong>${esc(money(note.total,note.currency))}</strong></div>`).join('')}</div></section>`;
+  }
+
+  function openCredit(id) {
+    const invoice=state.invoices.find(row=>String(row.id)===String(id));
+    if (!invoice || !can(invoice,'credit') || state.creditSaving) return false;
+    state.creditInvoice=invoice;
+    state.creditRequestId=crypto.randomUUID();
+    $('creditTitle').textContent=`Nota de crédito · ${invoice.invoice_number}`;
+    $('creditLines').innerHTML=invoice.items.filter(item=>num(item.quantity)>num(item.credited_quantity)).map(item=>`<div class="invoice-form-section" data-credit-line="${esc(item.id)}"><label for="credit-${esc(item.id)}">${esc(item.description||'Producto')} · Cantidad a descontar</label><div class="muted">Original: ${esc(item.quantity)} ${esc(item.unit)} · Ya descontadas: ${esc(item.credited_quantity||0)} · Precio: ${esc(money(item.unit_price,invoice.currency))}</div><input id="credit-${esc(item.id)}" data-credit-qty type="number" min="0" max="${esc(num(item.quantity)-num(item.credited_quantity))}" step="any" inputmode="decimal" value="0"></div>`).join('');
+    $('creditReason').value='';
+    message('creditMsg','');
+    updateCreditSummary();
+    closeModal('detail',false);
+    openModal('credit', $('creditLines').querySelector('input')?.id);
+    return true;
+  }
+
+  function creditInput() {
+    const invoice=state.creditInvoice;
+    let amount=0,invalid=false;
+    const lines=[...$('creditLines').querySelectorAll('[data-credit-line]')].map(node=>{
+      const item=invoice.items.find(row=>row.id===node.dataset.creditLine);
+      const input=node.querySelector('[data-credit-qty]'),quantity=Number(input.value);
+      const remaining=num(item.quantity)-num(item.credited_quantity);
+      if (!input.value.trim()||!Number.isFinite(quantity)||quantity<0||quantity>remaining) invalid=true;
+      // Preview only; SQL performs the authoritative decimal rounding.
+      if (quantity>0&&quantity<=remaining) amount+=(Math.round((remaining*num(item.unit_price)+Number.EPSILON)*100)-Math.round(((remaining-quantity)*num(item.unit_price)+Number.EPSILON)*100))/100;
+      return {invoice_item_id:item.id,quantity:input.value,expected_credited_quantity:String(item.credited_quantity||0)};
+    }).filter(line=>Number(line.quantity)>0);
+    return {lines,amount,invalid};
+  }
+
+  function updateCreditSummary() {
+    const {amount,invalid}=creditInput(),invoice=state.creditInvoice;
+    const net=num(invoice.financial.total)-amount,paid=num(invoice.financial.paid_amount);
+    $('creditSummary').textContent=invalid?'Indica cantidades entre cero y el máximo disponible.':`Crédito: ${money(amount,invoice.currency)} · Total neto: ${money(net,invoice.currency)} · Pendiente: ${money(Math.max(net-paid,0),invoice.currency)} · Saldo a favor: ${money(Math.max(paid-net,0),invoice.currency)}`;
+  }
+
+  async function saveCredit() {
+    if (state.creditSaving) return;
+    const invoice=state.creditInvoice,{lines,invalid}=creditInput(),reason=$('creditReason').value.trim();
+    if (invalid||!lines.length) return message('creditMsg','Indica una cantidad válida para descontar.');
+    if (reason.length<3||reason.length>2000) return message('creditMsg','Indica un motivo de entre 3 y 2000 caracteres.');
+    state.creditSaving=true;
+    $('saveCredit').disabled=true;
+    message('creditMsg','');
+    try {
+      await request('/api/invoices',{method:'POST',body:JSON.stringify({action:'credit_quantity',invoice_id:invoice.id,request_id:state.creditRequestId,lines,reason})});
+      await refresh();
+      state.creditSaving=false;
+      closeModal('credit',false);
+      openDetail(invoice.id);
+      setPageMessage('Nota de crédito emitida. Los cobros registrados se conservan.','ok');
+    } catch(error) {
+      message('creditMsg',reportInvoiceError('credit_quantity',error));
+    } finally {
+      state.creditSaving=false;
+      $('saveCredit').disabled=false;
+    }
   }
 
   function openPayment(id) {
@@ -618,6 +690,7 @@
     const { invoiceAction: action, invoiceId: id } = button.dataset;
     if (action === 'detail') return openDetail(id);
     if (action === 'payment') return openPayment(id);
+    if (action === 'credit') return openCredit(id);
     if (action === 'edit') {
       closeModal('detail', false);
       return openEdit(id);
@@ -648,6 +721,8 @@
     $('iSalesOrder').addEventListener('change', () => renderInvoiceLines(state.editingId ? state.invoices.find(row => row.id === state.editingId) : null));
     $('saveInvoice').addEventListener('click', saveInvoice);
     $('savePayment').addEventListener('click', savePayment);
+    $('saveCredit').addEventListener('click', saveCredit);
+    $('creditLines').addEventListener('input', updateCreditSummary);
     $('decisionAccept').addEventListener('click', acceptDecision);
     document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
       state.view = button.dataset.view;
@@ -678,7 +753,7 @@
     }));
     document.addEventListener('keydown', event => {
       if (event.key !== 'Escape') return;
-      const open = ['decisionModal', 'paymentModal', 'invoiceModal', 'detailModal'].find(id => !$(id).classList.contains('hidden'));
+      const open = ['decisionModal', 'creditModal', 'paymentModal', 'invoiceModal', 'detailModal'].find(id => !$(id).classList.contains('hidden'));
       if (!open) return;
       event.stopImmediatePropagation();
       if (open === 'decisionModal') closeDecision();

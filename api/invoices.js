@@ -3,9 +3,20 @@ import { loadInvoiceFinanceCapabilityMaps } from './_invoice-actions.js';
 
 const text=(value,max=2000)=>String(value??'').trim().slice(0,max);
 const rpcRow=value=>Array.isArray(value)?(value[0]||null):(value||null);
+const uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(value);
 
 function translatedError(raw){
   const messages=[
+    ['INVOICE_CREDIT_REQUEST_CONFLICT','La solicitud ya se utilizó para otra nota de crédito. Abre de nuevo el formulario.'],
+    ['INVOICE_CREDIT_REQUEST_REQUIRED','La solicitud de nota de crédito no es válida. Abre de nuevo el formulario.'],
+    ['INVOICE_CREDIT_ACTOR_INVALID','No tienes permiso para emitir esta nota de crédito.'],
+    ['INVOICE_CREDIT_REQUIRES_ISSUED','La factura debe estar emitida para crear una nota de crédito.'],
+    ['INVOICE_CREDIT_REASON_REQUIRED','Indica un motivo de entre 3 y 2000 caracteres.'],
+    ['INVOICE_CREDIT_LINES_INVALID','Una línea de la nota de crédito no es válida.'],
+    ['INVOICE_CREDIT_QUANTITY_INVALID','Indica una cantidad válida para descontar.'],
+    ['INVOICE_CREDIT_EXCEEDS_QUANTITY','La cantidad supera las unidades pendientes de descontar.'],
+    ['INVOICE_CREDIT_STALE','La factura recibió otra nota de crédito. Actualiza y abre de nuevo el formulario.'],
+    ['INVOICE_HAS_CREDITS','La factura tiene notas de crédito y debe conservarse en el historial.'],
     ['JSON_INVALID','La solicitud no tiene un formato válido.'],
     ['INVOICE_SO_NOT_FOUND','Sales Order no encontrada.'],
     ['INVOICE_SO_NOT_BILLABLE','La Sales Order debe estar confirmada o cerrada para facturar.'],
@@ -52,15 +63,27 @@ function cleanLines(lines){
 }
 
 async function loadInvoices(admin){
-  const [invoices,items,financial,payments,capabilityBundle]=await Promise.all([
+  const [invoices,items,financial,payments,capabilityBundle,credits,creditLines,netItems]=await Promise.all([
     supabase('invoices',{query:'?select=id,invoice_number,sales_order_id,operation_id,client_id,issue_date,due_date,currency,status,notes,created_at,updated_at,client:clients(id,name,company,mipyme_name),sales_order:sales_orders(id,so_number,status,customer_reference)&order=created_at.desc&limit=1000'}),
     supabase('invoice_items',{query:'?select=id,invoice_id,sales_order_item_id,product_id,description,quantity,unit,unit_price,line_total,notes,created_at,product:products(id,sku,name,brand)&order=created_at.asc&limit=5000'}),
     supabase('invoice_financial_progress',{query:'?select=*&order=issue_date.desc&limit=1000'}),
     supabase('payments',{query:'?select=id,invoice_id,amount,currency,payment_date,method,reference_number,status,notes,created_at&order=payment_date.desc,created_at.desc&limit=5000'}),
-    loadInvoiceFinanceCapabilityMaps(admin)
+    loadInvoiceFinanceCapabilityMaps(admin),
+    supabase('invoice_credit_notes',{query:'?select=id,credit_number,invoice_id,reason,total,currency,created_by,created_at&order=created_at.desc&limit=5000'}),
+    supabase('invoice_credit_note_lines',{query:'?select=id,credit_note_id,invoice_item_id,quantity,previous_credited_quantity,unit_price,amount&limit=10000'}),
+    supabase('invoice_net_items',{query:'?select=id,credited_quantity&order=created_at.asc&limit=5000'})
   ]);
+  const creditsByInvoice=new Map(),creditLinesByNote=new Map(),creditedByItem=new Map((netItems||[]).map(item=>[item.id,item.credited_quantity]));
+  for(const line of creditLines||[]){
+    if(!creditLinesByNote.has(line.credit_note_id))creditLinesByNote.set(line.credit_note_id,[]);
+    creditLinesByNote.get(line.credit_note_id).push(line);
+  }
+  for(const credit of credits||[]){
+    if(!creditsByInvoice.has(credit.invoice_id))creditsByInvoice.set(credit.invoice_id,[]);
+    creditsByInvoice.get(credit.invoice_id).push({...credit,lines:creditLinesByNote.get(credit.id)||[]});
+  }
   const itemsByInvoice=new Map();
-  for(const item of items||[]){if(!itemsByInvoice.has(item.invoice_id))itemsByInvoice.set(item.invoice_id,[]);itemsByInvoice.get(item.invoice_id).push(item);}
+  for(const item of items||[]){if(!itemsByInvoice.has(item.invoice_id))itemsByInvoice.set(item.invoice_id,[]);itemsByInvoice.get(item.invoice_id).push({...item,credited_quantity:creditedByItem.get(item.id)||0});}
   const financialByInvoice=new Map((financial||[]).map(row=>[row.invoice_id,row]));
   const paymentsByInvoice=new Map();
   for(const payment of payments||[]){
@@ -75,6 +98,7 @@ async function loadInvoices(admin){
       items:itemsByInvoice.get(invoice.id)||[],
       financial:financialByInvoice.get(invoice.id)||null,
       payments:paymentsByInvoice.get(invoice.id)||[],
+      credit_notes:creditsByInvoice.get(invoice.id)||[],
       capabilities:capabilityBundle.invoice_capabilities.get(invoice.id)||{actions:{}}
     }))
   };
@@ -139,6 +163,28 @@ export default async function handler(req,res){
     }
     if(req.method!=='POST')return fail(res,405,'Método no permitido');
     const body=await readJson(req),action=text(body.action,60).toLowerCase();
+
+    if(action==='credit_quantity'){
+      if(!uuid(body.invoice_id))throw new Error('INVOICE_NOT_FOUND');
+      if(!uuid(body.request_id))throw new Error('INVOICE_CREDIT_REQUEST_REQUIRED');
+      const reason=String(body.reason??'').trim();
+      if(reason.length<3||reason.length>2000)throw new Error('INVOICE_CREDIT_REASON_REQUIRED');
+      if(!Array.isArray(body.lines)||!body.lines.length||body.lines.length>200)throw new Error('INVOICE_CREDIT_LINES_INVALID');
+      const seen=new Set();
+      const lines=body.lines.map(line=>{
+        if(!line||!uuid(line.invoice_item_id)||seen.has(line.invoice_item_id))throw new Error('INVOICE_CREDIT_LINES_INVALID');
+        seen.add(line.invoice_item_id);
+        const quantity=String(line.quantity??'').trim(),expected=String(line.expected_credited_quantity??'').trim();
+        if(!quantity||!Number.isFinite(Number(quantity))||Number(quantity)<=0)throw new Error('INVOICE_CREDIT_QUANTITY_INVALID');
+        if(!expected||!Number.isFinite(Number(expected))||Number(expected)<0)throw new Error('INVOICE_CREDIT_LINES_INVALID');
+        return {invoice_item_id:line.invoice_item_id,quantity,expected_credited_quantity:expected};
+      });
+      const result=await supabase('rpc/create_invoice_quantity_credit',{method:'POST',body:{p_invoice_id:body.invoice_id,p_request_id:body.request_id,p_lines:lines,p_reason:reason,p_actor:admin.admin_id}});
+      const credit=rpcRow(result);
+      if(!credit?.id)throw new Error('INVOICE_CREDIT_UNEXPECTED');
+      // The immutable note records the actor, reason and request exactly once in SQL.
+      return ok(res,{credit_note:credit,invoice:await refreshedInvoice(admin,body.invoice_id)});
+    }
 
     if(action==='create_plan'){
       const salesOrderId=text(body.sales_order_id,80);if(!salesOrderId)throw new Error('Selecciona una Sales Order');

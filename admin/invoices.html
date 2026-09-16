@@ -131,6 +131,17 @@
     </div>
   </div>
 
+  <div id="creditModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="creditTitle" aria-describedby="creditCopy" aria-hidden="true">
+    <div class="dialog invoice-form-dialog">
+      <div class="dialog-head"><div><span class="invoices-dialog-kicker">Ajuste de cantidades</span><h2 id="creditTitle">Nota de crédito</h2><p id="creditCopy" class="muted">Descuenta las unidades que no corresponden al cobro. La factura original y el dinero recibido se conservan. Si ya se pagó de más, quedará un saldo a favor del cliente; esta acción no devuelve dinero.</p></div><button class="btn invoices-close-button" type="button" data-close="credit" aria-label="Cerrar nota de crédito">✕</button></div>
+      <div id="creditLines"></div>
+      <label for="creditReason">Motivo *</label><textarea id="creditReason" maxlength="2000" placeholder="Ejemplo: se entregaron 810 unidades de las 840 facturadas."></textarea>
+      <p id="creditSummary" role="status" aria-live="polite"></p>
+      <div class="actions invoice-modal-actions"><button class="btn" type="button" data-close="credit">Cancelar</button><button id="saveCredit" class="btn orange" type="button">Emitir nota de crédito</button></div>
+      <div id="creditMsg" class="msg invoice-dialog-message" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
   <div id="decisionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="decisionTitle" aria-describedby="decisionCopy" aria-hidden="true">
     <div class="dialog compact invoice-decision-dialog">
       <span class="invoices-dialog-kicker">Confirmación financiera</span>
@@ -143,7 +154,7 @@
   </div>
 
   <script src="/admin/form-drafts.js?v=20260909-drafts1" defer></script>
-  <script src="/admin/invoices.js?v=20260903-ux7invoices1" defer></script>
+  <script src="/admin/invoices.js?v=20260916-credit1" defer></script>
   <script src="/admin/embedded-auto-refresh.js?v=20260909-live7" defer></script>
 </body>
 </html>
