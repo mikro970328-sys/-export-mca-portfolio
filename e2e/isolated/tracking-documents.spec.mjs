@@ -42,11 +42,11 @@ test('tracking documents: versions, readiness, reader and lost confirmations',as
       if(use.isMobile&&!await page.locator('#sidebar').evaluate(el=>el.classList.contains('mobile-open')))await page.locator('#mobileMenuBtn').click();
       if(!await button.isVisible())await button.locator('xpath=ancestor::*[contains(concat(" ",normalize-space(@class)," ")," nav-group ")]').locator('.nav-group-btn').click();
       await button.click();await expect(page.locator('#containersSection')).toBeVisible();
-      await page.locator(`[data-shipment-row="${shipment.id}"]`).first().click();await expect(page.locator('.container-customs')).toBeVisible();
+      await page.locator(`[data-shipment-row="${shipment.id}"]:visible`).first().click();await expect(page.locator('.container-customs')).toBeVisible();
     }
     const writer=pages.a,reader=pages.b;
     const step=async(name,fn)=>test.step(name,async()=>{await fn();evidence.checkpoints.push(name);});
-    const refreshReader=async()=>{await reader.locator('#closeModal').click();await reader.locator(`[data-shipment-row="${shipment.id}"]`).first().click();await expect(reader.locator('.container-customs')).toBeVisible();};
+    const refreshReader=async()=>{await reader.locator('#closeModal').click();await reader.locator(`[data-shipment-row="${shipment.id}"]:visible`).first().click();await expect(reader.locator('.container-customs')).toBeVisible();};
     const pdf=version=>Buffer.from(`%PDF-1.4\nQA document ${version}\n%%EOF\n`);
     const upload=async(key,version)=>{
       const chooser=writer.waitForEvent('filechooser');await writer.locator(`[data-customs-upload="${key}"]`).click();

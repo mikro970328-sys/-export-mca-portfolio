@@ -27,9 +27,12 @@ notificaciones quedan para otra matriz; este caso cierra documentación en Track
 
 ## Primer CI
 
-Run 35043099136: ambos motores llegaron a cargar/leer el primer archivo y fallaron
+Run 35043099136: Chromium llegó a cargar/leer el primer archivo y falló
 por una expectativa incorrecta de readiness: la fixture sin salida tenía estado
 not_required. La fixture ahora tiene departure_date, según la regla SQL canónica.
 Se completan columnas legacy de importadores/clientes requeridas por sus APIs
 para eliminar errores de preparación; se añade aserción de cero respuestas 5xx.
 No se cambian reglas productivas ni se relajan aserciones de negocio.
+
+WebKit intentó pulsar la fila de tabla oculta en el layout móvil. El selector
+exige ahora la representación visible (fila o tarjeta), sin force click.
