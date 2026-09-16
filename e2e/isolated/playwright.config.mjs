@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['operators.spec.mjs','commercial.spec.mjs','direct-ship.spec.mjs','cancellation-finance.spec.mjs','navigation-startup.spec.mjs','repeat-purchase.spec.mjs','tracking-documents.spec.mjs','tracking-workflow.spec.mjs'],
+  testMatch: ['operators.spec.mjs','commercial.spec.mjs','direct-ship.spec.mjs','cancellation-finance.spec.mjs','navigation-startup.spec.mjs','repeat-purchase.spec.mjs','tracking-documents.spec.mjs','tracking-workflow.spec.mjs','warehouse-recovery.spec.mjs'],
   fullyParallel: false,
   workers: 1,
   retries: 0,

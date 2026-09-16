@@ -190,10 +190,28 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
       await warehouse.locator('#saveReceipt').click();expect((await recovery).status()).toBe(200);
       await expect(warehouse.locator('#receiptModal')).toBeHidden();await stockTotal(24);
     });
+    await step('WR-06 replay of a receipt cancelled by another operator never reports fresh stock',async()=>{
+      await open('QA-WR-CANCELLED',6);fault.drop=true;fault.droppedId=null;
+      await warehouse.locator('#saveReceipt').click();
+      await expect.poll(()=>fault.droppedId).toBeTruthy();
+      await expect(warehouse.locator('#saveReceipt')).toBeEnabled();
+      // Intervening authorized operator uses the real API, not a SQL state edit.
+      const cancelled=await api.request('warehouse',{method:'PATCH',token:master.body.token,
+        body:{action:'cancel_receipt',id:fault.droppedId}});
+      expect(cancelled.status).toBe(200);
+      fault.drop=false;
+      const replay=a.page.waitForResponse(r=>new URL(r.url()).pathname==='/api/warehouse'&&r.request().method()==='POST');
+      await warehouse.locator('#saveReceipt').click();expect((await replay).status()).toBe(200);
+      await expect(warehouse.locator('#rMsg')).toContainText('ya está anulada');
+      await expect(warehouse.locator('#saveReceipt')).toBeDisabled();
+      await stockTotal(24);
+      expect((await f.rows("select id from warehouse_receipts where status='cancelled'")).length).toBe(1);
+      await warehouse.locator('#closeReceipt').click();
+    });
     expect(evidence.errors).toEqual([]);
-    expect(new Set(evidence.requests.map(x=>x.id)).size).toBe(4);
+    expect(new Set(evidence.requests.map(x=>x.id)).size).toBe(5);
     const audits=await f.rows("select actor_admin_id from audit_log where action='warehouse_receipt_created'");
-    expect(audits).toHaveLength(4);expect(audits.every(x=>x.actor_admin_id===users.a.id)).toBe(true);
+    expect(audits).toHaveLength(5);expect(audits.every(x=>x.actor_admin_id===users.a.id)).toBe(true);
     const screenshot=info.outputPath('manual-receipt-recovery.png');await a.page.screenshot({path:screenshot});
     await info.attach('manual receipt recovery',{path:screenshot,contentType:'image/png'});
   }finally{

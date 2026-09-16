@@ -250,14 +250,15 @@ $('saveReceipt').onclick=async()=>{
     })});
     if(!d.receipt?.id)throw new Error('WAREHOUSE_RECEIPT_CREATE_EMPTY');
     receiptSaved=true;
-    note('rMsg',d.receipt.receipt_number+' registrada correctamente.',true);
+    const cancelled=d.receipt.status==='cancelled';
+    note('rMsg',d.receipt.receipt_number+(cancelled?' ya está anulada. No se añadió mercancía.':' registrada correctamente.'),true);
     try{
       await load();
       const savedRequestId=receiptRequestId;
-      setTimeout(()=>{if(receiptRequestId===savedRequestId)closeReceipt();},450);
+      if(!cancelled)setTimeout(()=>{if(receiptRequestId===savedRequestId)closeReceipt();},450);
     }catch(error){
       console.error('WAREHOUSE_RECEIPT_REFRESH_FAILED',error);
-      note('rMsg',d.receipt.receipt_number+' ya está registrada. No se pudo actualizar el listado; vuelve a cargarlo para verla.',true);
+      note('rMsg',d.receipt.receipt_number+(cancelled?' ya está anulada.':' ya está registrada.')+' No se pudo actualizar el listado; vuelve a cargarlo para verla.',true);
     }
   }catch(error){
     note('rMsg',safeWarehouseMessage(error,'No se pudo confirmar la recepción. Reintenta sin cambiar los datos para recuperar el mismo registro.','create_receipt'));

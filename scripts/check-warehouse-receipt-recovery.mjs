@@ -166,6 +166,19 @@ try {
   assert.equal((await send(legacy)).status,200);checks++;
   await expected(next({registration_request_id:'bad'}),400);checks++;
   await expected(next({received_at:'bad'}),400);checks++;
+  const directBefore=await counts();
+  const direct=await send(next({supplier_id:null,items:[
+    {...body.items[0],quantity:6},{...body.items[0],product_id:f.productB,quantity:4}
+  ]}));
+  assert.equal(direct.status,200,direct.body.error);
+  assert.equal(direct.body.receipt.supplier_id,null);assert.equal(direct.body.receipt.supplier_name,null);
+  assert.equal(direct.body.receipt.items.length,2);
+  const directAfter=await counts();
+  assert.equal(directAfter.receipts-directBefore.receipts,1);
+  assert.equal(directAfter.items-directBefore.items,2);
+  assert.equal(directAfter.audits-directBefore.audits,1);
+  assert.equal(Number(directAfter.physical)-Number(directBefore.physical),10);checks++;
+  console.log('PASS direct receipt without supplier preserves multiple products in one delivery');
   const privilege=(await db.query(`select
     has_function_privilege('anon','public.create_warehouse_receipt_canonical(jsonb,uuid,uuid)','execute') as anon,
     has_function_privilege('authenticated','public.create_warehouse_receipt_canonical(jsonb,uuid,uuid)','execute') as authenticated,
