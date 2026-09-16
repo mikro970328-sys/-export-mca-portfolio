@@ -17,6 +17,8 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
       alter table importers add column address text,add column country text default 'Cuba',add column email text,add column phone text,add column normalized_name text,add column created_at timestamptz default now(),add column updated_at timestamptz default now();
       alter table client_importers add column created_at timestamptz default now();
       alter table shipments add column release_method text,add column released_by_admin_id uuid,add column released_by_username text,add column release_notification_status text default 'pending',add column release_notification_error text;
+      grant update on shipments to service_role;
+      grant select,insert on shipment_history to service_role;
       grant select on documents,load_expediente_documents,load_traceability_sources,load_traceability_summary,notifications,webhook_events to service_role;`);
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     const {f,users}=await operatorFixture(db);
