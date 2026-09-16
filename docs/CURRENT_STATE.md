@@ -1,3 +1,18 @@
+## Correcciones detectadas por el recorrido de navegador
+
+Se añade Mis tareas al owner de navegación y su permiso tasks.read al owner de
+accesos. El diálogo de tareas se monta fuera de la sección animada para evitar
+recorte y bloqueo del botón Cerrar. Son correcciones de runtime; CI/publicación
+definitivos constan en PR #315. Sin DDL ni mensajes reales.
+
+## 2026-09-16 — Recorrido de Tracking, tareas e inbox en navegador
+
+Base PR #314 publicada: 0d362ad97e7ab4a48622e6b909134700c0cddfe4.
+Rama test/tracking-workflow-browser añade dos sesiones reales y PostgreSQL aislado:
+documentos → tarea, lectura personal, reapertura, reasignación y tracking desde UI.
+La prueba verifica cambios sin navegación/recarga manual. Validación remota pendiente;
+ver TRACKING_WORKFLOW_BROWSER.md y PR para resultado final. Sin mensajes externos.
+
 ## 2026-09-16 — Aceptación SQL integrada de Tracking y tareas
 
 PR #313 publicada: 8dff2add51817deb14d0abb464c11aac53f78141.

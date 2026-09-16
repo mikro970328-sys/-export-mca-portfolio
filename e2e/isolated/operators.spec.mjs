@@ -106,6 +106,8 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       expect((await response).status()).toBe(200);
       await expect(session.page.locator('#loginPage')).toBeHidden();
       await expect(session.page.locator('#invoicesSection')).toBeVisible();
+      await expect(session.page.locator('[data-section="tasksSection"]')).toHaveCount(1);
+      await expect(session.page.locator('[data-section="tasksSection"]')).toBeHidden();
       await balance(session,Number((await f.financial(invoice)).balance_due));
     };
     const openPayment = async session => {

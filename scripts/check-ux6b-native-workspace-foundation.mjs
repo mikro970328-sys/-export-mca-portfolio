@@ -130,9 +130,9 @@ for(const ref of [
   "/admin/workers-module.js?v=20260903-ux7workers1",
   "/admin/containers-module.js?v=20260916-deleterecovery1",
   "/admin/operational-alert-center.js?v=20260903-ux7alerts1",
-  "/admin/access-control-administration.js?v=20260905-accessflow1",
+  "/admin/access-control-administration.js?v=20260916-tasksnav1",
   "/admin/account-administration.js?v=20260903-ux7account1",
-  "/admin/tasks-workspace.js?v=20260915-taskvisibility1"
+  "/admin/tasks-workspace.js?v=20260916-taskdialog1"
 ])requireText(loader,ref,`asset revisado ${ref}`);
 
 for(const source of [index,clients,alerts,access,account,tasks]){

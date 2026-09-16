@@ -1,6 +1,6 @@
 # Pendientes para cierre funcional de escritorio
 
-Corte 2026-09-16. Base publicada PR #313, 8dff2add51817deb14d0abb464c11aac53f78141.
+Corte 2026-09-16. Base publicada PR #314, 0d362ad97e7ab4a48622e6b909134700c0cddfe4.
 Prioridad de Daniel: funcionalidad, después mejoras y después auditoría integral.
 Este documento consolida límites actuales, no afirma que todos sean defectos.
 
@@ -26,12 +26,12 @@ Este documento consolida límites actuales, no afirma que todos sean defectos.
 | Variantes financieras y reportes | Facturación/cobros/proveedor en variantes Direct Ship todavía fuera de sus recorridos; refresco completo de Reportes tras operaciones y reversos | Saldos, caja, costos y reportes coherentes entre dos sesiones, con evidencia por variante |
 | Aceptación final integrada | Recorrido de trabajo diario completo con roles y fallos de conexión/permisos en el alcance acordado | Matriz consolidada sin bloqueos críticos conocidos y publicación verificada |
 
-Trabajo actual: aceptación SQL integrada de documentos → tarea → aviso personal,
-reasignación/dependencias/permisos y avisos de estados marítimos. Las 16
-verificaciones están en TRACKING_WORKFLOW_LIFECYCLE.md; CI en la PR asociada.
-No son prueba de interfaz ni concurrencia real: queda unir estas acciones en dos
-sesiones de navegador. Recuperaciones documentales (#311/#312) y conservación
-del claim tras aceptación WhatsApp (#313) están publicadas.
+Trabajo actual: recorrido integrado de documentos → tarea → aviso personal en
+dos sesiones reales, reasignación y estado marítimo desde UI, sin recarga manual.
+Ver TRACKING_WORKFLOW_BROWSER.md y PR #315 para CI final; se corrigen acceso a
+Mis tareas y recorte del diálogo. Las 16 verificaciones SQL de #314 ya están
+incorporadas. No confundir este recorrido con toda la aceptación diaria: quedan
+las variantes financieras/reportes y la matriz final de trabajo completo.
 
 ## Después y fuera de prioridad actual
 
