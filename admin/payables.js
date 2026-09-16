@@ -346,6 +346,7 @@
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
     requestAnimationFrame(() => {
+      if (modal.classList.contains('hidden') || modal.contains(document.activeElement)) return;
       const target = focusId ? $(focusId) : modal.querySelector('button,select,input,textarea');
       target?.focus();
     });
@@ -420,15 +421,32 @@
     $('bPO').innerHTML = '<option value="">Selecciona una Purchase Order</option>' + eligiblePOs(editingBill).map(order => `<option value="${esc(order.id)}">${esc(order.po_number)} · ${esc(supplierName(order))}</option>`).join('');
   }
 
+  // Preview only: decimal integer arithmetic follows SQL line rounding without binary-float ties.
+  function billPreviewCents(quantity, unitCost = '1') {
+    let coefficient = 1n, scale = 0;
+    for (const input of [quantity, unitCost]) {
+      const value = String(input ?? '').trim();
+      if (value.length > 80 || !/^\+?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value)) return 0n;
+      const [decimal, exponent = '0'] = value.toLowerCase().split('e');
+      if (Math.abs(Number(exponent)) > 308) return 0n;
+      const fraction = (decimal.split('.')[1] || '').length;
+      coefficient *= BigInt(decimal.replace(/[+.]/g, ''));
+      scale += fraction - Number(exponent);
+    }
+    if (scale <= 2) return coefficient * 10n ** BigInt(2 - scale);
+    const divisor = 10n ** BigInt(scale - 2);
+    return (coefficient + divisor / 2n) / divisor;
+  }
+
   function updateBillPreview() {
     const order = state.purchaseOrders.find(row => String(row.id) === String($('bPO').value));
     const total = [...document.querySelectorAll('[data-bill-line]')].reduce((sum, node) => {
       const quantity = num(node.querySelector('[data-qty]')?.value);
       if (!(quantity > 0)) return sum;
-      if (node.dataset.pricingMode === 'total') return sum + num(node.querySelector('[data-total]')?.value);
-      return sum + quantity * num(node.querySelector('[data-cost]')?.value);
-    }, 0);
-    $('billCalculatedTotal').textContent = `Total: ${money(total, order?.currency || 'USD')}`;
+      if (node.dataset.pricingMode === 'total') return sum + billPreviewCents(node.querySelector('[data-total]')?.value);
+      return sum + billPreviewCents(node.querySelector('[data-qty]')?.value, node.querySelector('[data-cost]')?.value);
+    }, 0n);
+    $('billCalculatedTotal').textContent = `Total: ${money(Number(total) / 100, order?.currency || 'USD')}`;
   }
 
   function syncBillLine(node, source = 'quantity') {
@@ -445,8 +463,7 @@
       if (costInput) costInput.value = quantity > 0 && totalInput?.value !== '' ? inputNumber(total / quantity) : '';
       if (hint) hint.textContent = 'Importe exacto: total facturado';
     } else {
-      const cost = num(costInput?.value);
-      if (totalInput) totalInput.value = quantity > 0 && costInput?.value !== '' ? inputNumber(quantity * cost, 6) : '';
+      if (totalInput) totalInput.value = quantity > 0 && costInput?.value !== '' ? String(Number(billPreviewCents(quantityInput.value, costInput.value)) / 100) : '';
       if (hint) hint.textContent = 'Importe calculado: cantidad × costo unitario';
     }
     updateBillPreview();
@@ -468,7 +485,7 @@
       const quantity = own ? num(own.billed_quantity) : available;
       const cost = own ? num(own.unit_cost) : num(item.unit_cost);
       const pricingMode = own?.pricing_mode === 'total' ? 'total' : 'unit';
-      const lineTotal = own ? num(own.line_total) : quantity * cost;
+      const lineTotal = own ? num(own.line_total) : Number(billPreviewCents(quantity, cost)) / 100;
       const hint = pricingMode === 'total' ? 'Importe exacto: total facturado' : 'Importe calculado: cantidad × costo unitario';
       return `<article class="payable-line" data-bill-line="${esc(item.id)}" data-pricing-mode="${pricingMode}">
         <div class="payable-line-title">${esc(label)}</div>
@@ -625,6 +642,12 @@
       billDraft = null;
       const confirmation = state.editingBillId ? 'Factura de proveedor actualizada correctamente.' : 'Borrador de factura de proveedor creado correctamente.';
       closeModal('bill', false);
+      if (!editing) {
+        state.entity = 'bills';
+        state.view = 'open';
+        state.search = '';
+        $('search').value = '';
+      }
       await refresh();
       setPageMessage(confirmation, 'ok');
     } catch (error) {

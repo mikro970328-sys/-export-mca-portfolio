@@ -6,13 +6,13 @@ import { ok, fail, readJson, upstreamFailureStatus } from '../../api/_lib.js';
 // Financial calculations and write guards execute against real SQL owners.
 export function financeAcceptanceApi(db) {
   const calls=[],audits=[],errors=[],users=new Map(),modules={};
-  const rpcNames=new Set(['reverse_invoice_quantity_credit','manage_invoice_credit','create_invoice_quantity_credit','create_invoice_plan','replace_invoice_plan','transition_invoice','register_invoice_payment',
+  const rpcNames=new Set(['create_supplier_bill_plan','replace_supplier_bill_plan_canonical','transition_supplier_bill_canonical','reverse_invoice_quantity_credit','manage_invoice_credit','create_invoice_quantity_credit','create_invoice_plan','replace_invoice_plan','transition_invoice','register_invoice_payment',
     'reverse_invoice_payment','register_customer_advance','apply_customer_advance','refund_customer_advance',
     'reverse_customer_advance','reverse_customer_advance_application','reverse_customer_advance_refund',
     'register_supplier_payment','pay_supplier_bill_canonical','replace_supplier_payment_applications_canonical',
     'reverse_supplier_payment_canonical','create_cost_charge','create_posted_cost_charge','replace_cost_charge_canonical',
     'post_cost_charge_canonical','void_cost_charge_canonical','executive_report_dataset','executive_dashboard_rollup']);
-  const readTables=new Set(['invoice_credit_note_state','invoice_credit_movement_state','invoice_net_items','invoice_credit_notes','invoice_credit_note_lines','clients','suppliers','products','invoices','invoice_items','payments','invoice_financial_progress',
+  const readTables=new Set(['supplier_bill_items','purchase_order_items','purchase_order_ap_item_progress','invoice_credit_note_state','invoice_credit_movement_state','invoice_net_items','invoice_credit_notes','invoice_credit_note_lines','clients','suppliers','products','invoices','invoice_items','payments','invoice_financial_progress',
     'invoice_action_capabilities','payment_action_capabilities','sales_orders','sales_order_items','sales_order_item_invoice_progress',
     'sales_order_customer_financial_progress','customer_advance_progress','customer_advances','customer_advance_applications','customer_advance_refunds',
     'sales_order_customer_finance_action_capabilities','proforma_action_capabilities','customer_advance_action_capabilities',
@@ -23,6 +23,10 @@ export function financeAcceptanceApi(db) {
     'warehouse_receipt_item_merchandise_cost','load_merchandise_cogs','posted_cost_charge_allocations','load_direct_costs',
     'shipment_direct_costs','operation_direct_costs','sales_order_direct_costs']);
   const readSql={
+    supplier_bills:'select b.*,to_jsonb(s) as supplier,to_jsonb(po) as purchase_order from supplier_bills b join suppliers s on s.id=b.supplier_id join purchase_orders po on po.id=b.purchase_order_id',
+    supplier_bill_items:'select i.*,to_jsonb(p) as product from supplier_bill_items i join products p on p.id=i.product_id',
+    purchase_order_items:'select i.*,to_jsonb(p) as product from purchase_order_items i join products p on p.id=i.product_id',
+    purchase_orders:'select po.*,to_jsonb(s) as supplier from purchase_orders po join suppliers s on s.id=po.supplier_id',
     invoices:'select i.*,to_jsonb(c) as client,to_jsonb(so) as sales_order from invoices i join clients c on c.id=i.client_id join sales_orders so on so.id=i.sales_order_id',
     invoice_items:'select i.*,to_jsonb(p) as product from invoice_items i join products p on p.id=i.product_id',
     sales_orders:'select so.*,to_jsonb(c) as client from sales_orders so join clients c on c.id=so.client_id',
@@ -64,7 +68,7 @@ export function financeAcceptanceApi(db) {
       const offset=Number(query.get('offset')||0),limit=Number(query.get('limit')||data.length);return data.slice(offset,offset+limit);
     }
   };
-  const allowed=new Set(['invoices','invoice-payments','customer-advances','supplier-payments','costs','reports',
+  const allowed=new Set(['payables','_supplier-amounts','invoices','invoice-payments','customer-advances','supplier-payments','costs','reports',
     '_invoice-actions','_customer-finance-actions','_supplier-ap-actions','_cost-actions','_executive-dashboard']);
   function module(name){
     if(modules[name])return modules[name];if(!allowed.has(name))throw Error(`Unsupported test module ${name}`);

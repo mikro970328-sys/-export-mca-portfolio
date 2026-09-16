@@ -1,36 +1,80 @@
-name: Verify Published Supplier Finance Assets
+name: Reproduce Lost Collection Confirmation
+
 on:
   push:
     branches: [build/credit-reversal-migration]
+
 permissions:
   contents: read
+
 jobs:
-  verify:
+  isolated-browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop]
+        # Each story initializes an empty database in its own service containers.
+        suite: [operators]
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-qa-only
+          POSTGRES_DB: erp_operator_qa
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      postgrest:
+        image: postgrest/postgrest:v12.2.3
+        env:
+          PGRST_DB_URI: postgres://postgres:isolated-qa-only@postgres:5432/erp_operator_qa
+          PGRST_DB_SCHEMAS: public
+          PGRST_DB_ANON_ROLE: anon
+          PGRST_JWT_SECRET: isolated-postgrest-qa-secret-never-production-2026
+        ports: ['3000:3000']
+    env:
+      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
+      ERP_TEST_POSTGREST_URL: http://127.0.0.1:3000
+      ERP_TEST_POSTGREST_SECRET: isolated-postgrest-qa-secret-never-production-2026
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 0bb0def569c4f9e736d6297fbb273373ef626660
-      - name: Anonymous read-only production smoke
+          ref: db2487320509c55de40d0f40a1ffe0a29895df0b
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            e2e/isolated/package-lock.json
+      - name: Generate the migration name with the official CLI
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import urllib.request,urllib.error,json
-          from concurrent.futures import ThreadPoolExecutor
-          paths=[('/admin/pwa.html',200,None),('/admin/payables.html',200,'admin/payables.html'),('/admin/payables.js?v=20260916-supplier1',200,'admin/payables.js'),('/api/payables',401,None),('/api/supplier-payments',401,None),('/api/reports',401,None)]
-          def check(item):
-              host,path,expected,file=item
-              req=urllib.request.Request('https://'+host+path,headers={'User-Agent':'ExportMCA-read-only-release-check'})
-              try:
-                  with urllib.request.urlopen(req,timeout=30) as r:status=r.status;body=r.read()
-              except urllib.error.HTTPError as e:status=e.code;body=e.read()
-              exact=body==Path(file).read_bytes() if file else None
-              result={'host':host,'path':path,'status':status,'exact':exact,'ok':status==expected and (exact is None or exact)}
-              print('PUBLIC_SMOKE '+json.dumps(result),flush=True)
-              return result
-          tasks=[(host,*row) for host in ['app.exportmca.com','admin.exportmca.com'] for row in paths]
-          with ThreadPoolExecutor(max_workers=4) as pool:results=list(pool.map(check,tasks))
-          assert all(r['ok'] for r in results),results
-          print('PUBLIC_SMOKE_PASSED 12/12; no authentication, no business mutations')
-          PY
+          npx --yes supabase@2.117.0 --version
+          npx --yes supabase@2.117.0 migration --help
+          npx --yes supabase@2.117.0 migration new --help
+          npx --yes supabase@2.117.0 migration new invoice_payment_retry_integrity
+          git ls-files --others --exclude-standard supabase/migrations
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
+      - name: Preserve operator-local dispatch instants
+        run: node e2e/isolated/dispatch-time-check.mjs
+      - name: Install isolated browser engines
+        working-directory: e2e/isolated
+        run: npx playwright install --with-deps chromium webkit
+      - name: Actual UI and disposable PostgreSQL
+        working-directory: e2e/isolated
+        env:
+          DEBUG: pw:browser
+        run: npm test -- ${{ matrix.suite }}.spec.mjs --project=${{ matrix.project }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: browser-${{ matrix.suite }}-${{ matrix.project }}
+          path: e2e/isolated/test-results/
+          retention-days: 14
