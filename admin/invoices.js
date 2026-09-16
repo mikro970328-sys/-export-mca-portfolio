@@ -275,6 +275,8 @@
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
     requestAnimationFrame(() => {
+      // Opening focus must not interrupt an operator who already chose a field.
+      if (modal.classList.contains('hidden') || modal.contains(document.activeElement)) return;
       const target = focusId ? $(focusId) : modal.querySelector('button,select,input,textarea');
       target?.focus();
     });

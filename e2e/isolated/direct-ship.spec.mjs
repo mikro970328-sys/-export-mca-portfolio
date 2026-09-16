@@ -418,8 +418,17 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await shot('19-applied-credit');
     });
     await step('DS-20 record actual refund in cash and in the other operators reports',async()=>{
+      // Choose another field before the opening frame: deferred autofocus must not steal it.
+      const keepsChosenField=await billing.locator('#detailActions [data-invoice-action="refund_credit"]').evaluate(async button=>{
+        const doc=button.ownerDocument;button.click();const reference=doc.getElementById('balanceReference');reference.focus();
+        await new Promise(resolve=>doc.defaultView.requestAnimationFrame(resolve));return doc.activeElement===reference;
+      });
+      expect(keepsChosenField,'opening the refund must preserve the field selected by the operator').toBe(true);
+      await billing.locator('#balanceModal [data-close="balance"]').first().click();
+      await billing.locator('#invoiceList [data-invoice-action="detail"][data-invoice-id="'+creditedInvoice.id+'"]').click();
       await billing.locator('#detailActions [data-invoice-action="refund_credit"]').click();await expect(billing.locator('#balanceTargetWrap')).toBeHidden();await expect(billing.locator('#balanceCopy')).toContainText('ya realizaste');
       await expect(billing.locator('#balanceAmount')).toHaveValue('4');await billing.locator('#balanceReference').fill('QA-REFUND-004');await billing.locator('#balanceReason').fill('Devolución del saldo restante realizada al cliente.');
+      await expect(billing.locator('#balanceReference')).toHaveValue('QA-REFUND-004');await expect(billing.locator('#balanceAmount')).toHaveValue('4');
       refundMovement=(await mutation('invoices',()=>billing.locator('#saveBalance').click())).movement;await expect(billing.locator('#balanceModal')).toBeHidden();
       await expect(billing.locator('#detailBody')).toContainText('QA-REFUND-004');await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Saldo a favor'),{timeout:45_000}).toBe(0);await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Saldo devuelto')).toBe(4);
       await reports.locator('[data-dataset="cash"]').click();await expect(reports.locator('#reportTable tbody')).toContainText('Devolución de saldo a favor');await expect(reports.locator('#reportTable tbody')).toContainText('QA-REFUND-004');

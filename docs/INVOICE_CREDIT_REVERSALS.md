@@ -56,6 +56,10 @@ de AR y carreras reales de reverso contra rebill y doble reverso. Se conserva
 la entrega física 810, factura original 3360 y cobros 3240; tras revertir todas
 las notas queda AR 120. El lector ve los cambios sin navegar ni recargar.
 
+DS-20 también reproduce una selección rápida de otro campo al abrir el formulario:
+el autofocus diferido respeta el campo elegido por el operador y conserva monto
+y referencia antes de enviar una devolución. No se relajan sus validaciones.
+
 Las pruebas comerciales se ejecutan solo en bases desechables. La PR registra
 los gates finales, artefactos, migración remota y publicación exacta. No confundir
 la existencia de esta migración con su aplicación remota. No incluye ajuste de
