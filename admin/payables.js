@@ -644,7 +644,7 @@
       closeModal('bill', false);
       if (!editing) {
         state.entity = 'bills';
-        state.view = 'draft';
+        state.view = 'open';
         state.search = '';
         $('search').value = '';
       }

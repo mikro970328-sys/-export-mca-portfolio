@@ -35,7 +35,8 @@ El frontend calcula sólo la vista previa con enteros decimales, redondea cada
 línea antes de sumar y respeta el campo que el operador eligió al abrir un modal.
 El recorrido detectó además que crear una factura desde Pagos dejaba el listado
 en Pagos, ocultando el borrador recién creado. Al guardar una factura nueva se
-abre Facturas → Borradores y se limpia la búsqueda para mostrarla.
+abre Facturas → Abiertas y se limpia la búsqueda para mostrarla. La misma fila
+permanece visible al contabilizarla y permite continuar directamente al pago.
 
 ## Aceptación SQL/API y navegador
 

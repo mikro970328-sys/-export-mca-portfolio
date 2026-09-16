@@ -565,7 +565,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
         await expect(supplierAp.locator('#billCalculatedTotal')).toContainText('USD 1,050.00');
         const bill=(await mutation('payables',()=>supplierAp.locator('#saveBill').click())).bill;await expect(supplierAp.locator('#billModal')).toBeHidden();
         await expect(supplierAp.locator('[data-entity="bills"]')).toHaveAttribute('aria-pressed','true');
-        await expect(supplierAp.locator('[data-view="draft"]')).toHaveAttribute('aria-pressed','true');
+        await expect(supplierAp.locator('[data-view="open"]')).toHaveAttribute('aria-pressed','true');
         await supplierAp.locator('[data-bill-action="post"][data-bill-id="'+bill.id+'"]').click();await mutation('payables',()=>supplierAp.locator('#decisionAccept').click());await expect(supplierAp.locator('#decisionModal')).toBeHidden();
         expect(Number((await f.ap(bill)).bill_total)).toBe(1050);return bill;
       };
