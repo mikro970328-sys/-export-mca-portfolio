@@ -15,13 +15,11 @@ jobs:
           run-id: 35159275659
           github-token: ${{ github.token }}
           path: evidence
-      - name: Read the failed browser boundary
+      - name: Read the final operator view
         run: |
           python3 - <<'PY'
-          import pathlib,json
-          for p in pathlib.Path('evidence').rglob('error-context.md'):
-              print(p.read_text())
-          for p in pathlib.Path('evidence').rglob('*evidence*.json'):
-              v=json.loads(p.read_text())
-              print(json.dumps({'checkpoints':v.get('checkpoints'),'errors':v.get('errors'),'api':v.get('api',[])[-35:]},ensure_ascii=False))
+          import pathlib,base64
+          files=sorted(pathlib.Path('evidence').rglob('final-a*.png'),key=lambda p:len(str(p)))
+          if not files: raise SystemExit('Missing final-a image')
+          print('SCREENSHOT64:'+base64.b64encode(files[0].read_bytes()).decode())
           PY
