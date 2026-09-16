@@ -15,6 +15,8 @@
     dimensions:new Set(),
     basis:'period_activity',
     loading:false,
+    reportQueued:false,
+    optionsQueued:false,
     started:false,
     generatedAt:null
   };
@@ -296,13 +298,30 @@
     }
   }
 
+  async function finishLoading() {
+    setLoading(false);
+    if (!state.reportQueued) return;
+    const includeOptions = state.optionsQueued;
+    state.reportQueued = false;
+    state.optionsQueued = false;
+    await loadReport(includeOptions);
+  }
+
   async function loadReport(includeOptions = false) {
-    if (state.loading || !token()) return;
+    if (!token()) return;
+    if (state.loading) {
+      // Keep the latest requested view/filters and one follow-up read. The
+      // current response cannot repaint a selection made while it was pending.
+      state.reportQueued = true;
+      state.optionsQueued = state.optionsQueued || includeOptions;
+      return;
+    }
     setLoading(true);
     setMessage('');
     renderLoading();
     try {
       const data = await request(buildUrl('json', includeOptions || !state.options));
+      if (state.reportQueued) return;
       state.datasets = Array.isArray(data.datasets) ? data.datasets : state.datasets;
       state.columns = Array.isArray(data.report?.columns) ? data.report.columns : [];
       state.rows = Array.isArray(data.rows) ? data.rows : [];
@@ -315,16 +334,17 @@
       renderTable();
       parent?.dispatchEvent?.(new CustomEvent('export-mca:data-loaded'));
     } catch (error) {
+      if (state.reportQueued) return;
       reportError('load', error);
       setMessage(safeReportMessage(error), 'bad');
       renderLoadError();
     } finally {
-      setLoading(false);
+      await finishLoading();
     }
   }
 
   async function switchDataset(dataset) {
-    if (!dataset || dataset === state.dataset || state.loading) return;
+    if (!dataset || dataset === state.dataset) return;
     state.dataset = dataset;
     const config = state.datasets.find(item => item.key === dataset);
     if (config) setDimensions(config.dimensions,config.basis);
@@ -340,13 +360,14 @@
     loadReport(false);
   }
 
-  function filenameFromDisposition(header) {
+  function filenameFromDisposition(header, dataset = state.dataset) {
     const match = String(header || '').match(/filename="?([^";]+)"?/i);
-    return match?.[1] || `export-mca-${state.dataset}.csv`;
+    return match?.[1] || `export-mca-${dataset}.csv`;
   }
 
   async function exportCsv() {
     if (state.loading || !token()) return;
+    const exportedDataset = state.dataset;
     setLoading(true);
     setMessage('');
     try {
@@ -359,7 +380,7 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = filenameFromDisposition(response.headers.get('Content-Disposition'));
+      link.download = filenameFromDisposition(response.headers.get('Content-Disposition'), exportedDataset);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -369,7 +390,7 @@
       reportError('export', error);
       setMessage(safeReportMessage(error,'No se pudo exportar el CSV. Intenta nuevamente.'), 'bad');
     } finally {
-      setLoading(false);
+      await finishLoading();
     }
   }
 

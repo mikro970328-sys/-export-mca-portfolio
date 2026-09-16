@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
+import assert from 'node:assert/strict';
 
 const files = {
   html:'admin/reports.html',
@@ -40,7 +41,7 @@ const workflow = read(files.workflow);
   '<body class="erp-module-page erp-module-reports" data-owner="reports.js">',
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/reports.css?v=20260903-ux7reports1',
-  '/admin/reports.js?v=20260916-credit2',
+  '/admin/reports.js?v=20260916-queue1',
   '/admin/embedded-auto-refresh.js?v=20260909-live7',
   'class="module-hero reports-page-head"',
   'id="reportsPageTitle">Reportes',
@@ -213,6 +214,8 @@ class FakeElement {
   }
   addEventListener(type, handler) { this.listeners.set(type,handler); }
   setAttribute(name, value) { this.attributes.set(name,String(value)); }
+  click() { this.listeners.get('click')?.(); }
+  remove() {}
   querySelectorAll(selector) {
     if (selector !== '[data-dataset]') return [];
     return [...this.innerHTML.matchAll(/data-dataset="([^"]+)"/g)].map(match => {
@@ -223,7 +226,7 @@ class FakeElement {
   }
 }
 
-function executeReports({ sessionToken = '', search = '?embedded=1', responseData = null } = {}) {
+function executeReports({ sessionToken = '', search = '?embedded=1', responseData = null, fetchResponse = null } = {}) {
   const ids = [
     'reportMessage','currency','clientId','supplierId','productId','datasetTabs','startDate','endDate','rowLimit',
     'reportMeta','reportDatasetMetric','reportRowsMetric','reportBasisMetric','reportCurrencyMetric','reportFiltersMetric',
@@ -240,10 +243,11 @@ function executeReports({ sessionToken = '', search = '?embedded=1', responseDat
   const listeners = new Map();
   const redirects = [];
   const requests = [];
+  const downloads = [];
   const document = {
     getElementById:id => nodes.get(id) || null,
     querySelectorAll:selector => selector === '[data-filter-dimension]' ? dimensions : [],
-    createElement:() => new FakeElement('created'),
+    createElement:() => { const link=new FakeElement('created');downloads.push(link);return link; },
     body:{ appendChild() {} }
   };
   const location = { search, replace:path => redirects.push(`self:${path}`) };
@@ -261,6 +265,7 @@ function executeReports({ sessionToken = '', search = '?embedded=1', responseDat
   };
   const fetch = async url => {
     requests.push(String(url));
+    if(fetchResponse)return fetchResponse(String(url));
     return { status:200, ok:true, json:async () => responseData || {}, headers:{ get:() => '' } };
   };
   const context = {
@@ -269,7 +274,7 @@ function executeReports({ sessionToken = '', search = '?embedded=1', responseDat
     CustomEvent:class { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } }
   };
   vm.runInNewContext(owner,context,{filename:files.owner});
-  return { nodes, listeners, redirects, requests, window };
+  return { nodes, listeners, redirects, requests, downloads, window, setSession:value=>{sessionToken=value;} };
 }
 
 const waiting = executeReports({ sessionToken:'' });
@@ -319,6 +324,104 @@ if (!fixture.nodes.get('reportTable').innerHTML.includes('report-status good')) 
 if (fixture.nodes.get('reportResultCount').textContent !== '1 resultado') failures.push('Reportes no actualizó el contador visible');
 if (fixture.nodes.get('reportLastUpdated').textContent.includes('Preparando')) failures.push('Reportes no actualizó la hora de lectura');
 if (fixture.nodes.get('reportTable').attributes.get('aria-busy') !== 'false') failures.push('Reportes no liberó aria-busy al terminar la lectura');
+
+
+const settle = async()=>{for(let i=0;i<30;i++)await Promise.resolve();};
+const reportPayload=(dataset,marker)=>({
+  ...fixturePayload,filter_options:undefined,
+  report:{key:dataset,label:dataset,basis:'period_activity',dimensions:['period','currency','supplier'],
+    columns:[{key:'document_number',label:'Documento'},{key:'balance_due',label:'Saldo'}]},
+  datasets:[...fixturePayload.datasets,{key:'supplier_bills',label:'Proveedores',dimensions:['period','currency','supplier'],basis:'period_activity'},
+    {key:'cash',label:'Caja',dimensions:['period','currency','supplier'],basis:'period_activity'}],
+  rows:[{document_number:marker,currency:'USD',balance_due:1050}],row_count:1
+});
+function pendingReports(){
+  const pending=[];
+  const h=executeReports({sessionToken:'fixture-token',fetchResponse:url=>new Promise(resolve=>pending.push({url,resolve}))});
+  const reply=async(index,dataset,marker,status=200)=>{
+    assert.ok(pending[index],'expected report request '+index);
+    pending[index].resolve({status,ok:status===200,json:async()=>status===200?reportPayload(dataset,marker):{error:'Temporary read failure'},headers:{get:()=>''}});
+    await settle();
+  };
+  return {...h,pending,reply};
+}
+async function recoveryCase(name,run){
+  try{await run();console.log('PASS '+name);}
+  catch(error){failures.push(name+': '+error.message);}
+}
+
+await recoveryCase('REPORT-01 a tab selected during refresh replaces the old response',async()=>{
+  const h=pendingReports();await h.reply(0,'sales','INITIAL');
+  void h.window.ExecutiveReports.refresh();
+  await h.window.ExecutiveReports.open('supplier_bills');
+  assert.match(h.nodes.get('datasetTabs').innerHTML,/data-dataset="supplier_bills" aria-selected="true"/);
+  await h.reply(1,'sales','OBSOLETE');
+  assert.equal(h.requests.length,3);
+  assert.match(h.requests[2],/dataset=supplier_bills/);
+  assert.doesNotMatch(h.nodes.get('reportTable').innerHTML,/OBSOLETE/);
+  assert.equal(h.nodes.get('reportTable').attributes.get('aria-busy'),'true');
+  await h.reply(2,'supplier_bills','SB-CURRENT');
+  assert.match(h.nodes.get('reportTable').innerHTML,/SB-CURRENT/);
+  assert.doesNotMatch(h.nodes.get('reportTable').innerHTML,/OBSOLETE/);
+  assert.equal(h.nodes.get('reportTable').attributes.get('aria-busy'),'false');
+});
+await recoveryCase('REPORT-02 several selections and invalidations collapse to the latest filters',async()=>{
+  const h=pendingReports();await h.reply(0,'sales','INITIAL');
+  void h.window.ExecutiveReports.refresh();
+  await h.window.ExecutiveReports.open('supplier_bills');
+  h.nodes.get('supplierId').value='supplier-current';
+  await h.window.ExecutiveReports.open('cash');
+  void h.window.ExecutiveReports.refresh();void h.window.ExecutiveReports.refresh();
+  await h.reply(1,'sales','STALE');
+  assert.equal(h.requests.length,3,'only one follow-up read for the pending changes');
+  const query=new URL(h.requests[2],'https://fixture.invalid').searchParams;
+  assert.equal(query.get('dataset'),'cash');assert.equal(query.get('supplier_id'),'supplier-current');
+  await h.reply(2,'cash','CURRENT-CASH');
+  assert.match(h.nodes.get('reportTable').innerHTML,/CURRENT-CASH/);
+  assert.equal(h.nodes.get('supplierId').value,'supplier-current');
+  assert.equal(h.requests.length,3);
+});
+await recoveryCase('REPORT-03 a discarded read failure cannot overwrite the new selection',async()=>{
+  const h=pendingReports();await h.reply(0,'sales','INITIAL');
+  void h.window.ExecutiveReports.refresh();await h.window.ExecutiveReports.open('supplier_bills');
+  await h.reply(1,'sales','',503);
+  assert.equal(h.requests.length,3);
+  assert.doesNotMatch(h.nodes.get('reportTable').innerHTML,/No se pudo/);
+  await h.reply(2,'supplier_bills','SB-RECOVERED');
+  assert.match(h.nodes.get('reportTable').innerHTML,/SB-RECOVERED/);
+  assert.equal(h.nodes.get('reportMessage').textContent,'');
+});
+await recoveryCase('REPORT-04 an invalidation arriving during the same dataset read is not lost',async()=>{
+  const h=pendingReports();await h.reply(0,'sales','INITIAL');
+  void h.window.ExecutiveReports.refresh();void h.window.ExecutiveReports.refresh();
+  await h.reply(1,'sales','OLD-TOTAL');
+  assert.equal(h.requests.length,3);assert.doesNotMatch(h.nodes.get('reportTable').innerHTML,/OLD-TOTAL/);
+  await h.reply(2,'sales','NEW-TOTAL');
+  assert.match(h.nodes.get('reportTable').innerHTML,/NEW-TOTAL/);
+  assert.equal(h.nodes.get('refreshReport').disabled,false);
+});
+await recoveryCase('REPORT-05 clearing a queued session never starts another authenticated read',async()=>{
+  const h=pendingReports();await h.reply(0,'sales','INITIAL');
+  void h.window.ExecutiveReports.refresh();await h.window.ExecutiveReports.open('supplier_bills');
+  h.setSession('');await h.reply(1,'sales','OLD-SESSION');
+  assert.equal(h.requests.length,2);assert.equal(h.nodes.get('refreshReport').disabled,false);
+  assert.doesNotMatch(h.nodes.get('reportTable').innerHTML,/OLD-SESSION/);
+});
+
+
+await recoveryCase('REPORT-06 a selection queued during CSV export loads afterward and preserves the filename',async()=>{
+  const h=pendingReports();await h.reply(0,'sales','INITIAL');
+  const exporting=h.nodes.get('exportReport').listeners.get('click')();
+  assert.match(h.requests[1],/dataset=sales/);assert.match(h.requests[1],/format=csv/);
+  await h.window.ExecutiveReports.open('supplier_bills');
+  h.pending[1].resolve({status:200,ok:true,headers:{get:()=>''},blob:async()=>new Blob(['csv'],{type:'text/csv'})});
+  await settle();
+  assert.equal(h.requests.length,3);assert.match(h.requests[2],/dataset=supplier_bills/);
+  assert.equal(h.downloads[0].download,'export-mca-sales.csv');
+  await h.reply(2,'supplier_bills','SB-AFTER-EXPORT');await exporting;
+  assert.match(h.nodes.get('reportTable').innerHTML,/SB-AFTER-EXPORT/);
+  assert.equal(h.nodes.get('exportReport').disabled,false);
+});
 
 if (failures.length) {
   console.error(`UX-7 Reports visual owner gate failed:\n${failures.map(failure => `- ${failure}`).join('\n')}`);
