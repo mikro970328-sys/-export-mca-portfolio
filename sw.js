@@ -34,7 +34,13 @@ self.addEventListener('activate',event=>{
 
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
-  event.respondWith(fetch(event.request).catch(()=>caches.match(event.request)));
+  // Business API reads have no offline cache. Let their caller handle a real
+  // network failure instead of passing an absent cached response to respondWith.
+  if(new URL(event.request.url).pathname.startsWith('/api/'))return;
+  event.respondWith(fetch(event.request).catch(async()=>{
+    const cached=await caches.match(event.request);
+    return cached||Response.error();
+  }));
 });
 
 self.addEventListener('push',event=>{

@@ -85,3 +85,16 @@ la confirmación y puede cerrarse. El POST conserva su identidad de reintento.
 La historia Direct Ship valida el valor de unidades por pallet antes del POST:
 la captura del run 35159648336 mostró 10, no los 84 que la prueba pretendía
 introducir; el ERP rechazó correctamente la medida inconsistente.
+
+## Error de red en el service worker
+
+Run 35160652902 completó WR-01/06 en WebKit, con saldos/auditoría correctos,
+pero registró errores de página al cortar la lectura: el service worker
+entregaba una respuesta nula cuando no existía una copia en caché.
+El owner sw.js deja las API de negocio al manejo de red del módulo y devuelve
+un error de red explícito si un recurso estático no tiene copia. Se conserva
+la caché de recursos, push y los controles de la historia; no se filtran errores
+de página para hacer pasar la prueba.
+
+Referencia del contrato de red:
+https://developer.mozilla.org/en-US/docs/Web/API/Response/error_static
