@@ -516,8 +516,112 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       expect(await f.report('cash')).toEqual(cashBeforeNoteReversal);
       evidence.creditNoteReversals={reversedNotes:5,concurrentStatuses:[200,400],retry:200,reader:403,originalInvoice:3360,originalCash:3240,remainingAR:120,physicalQuantity:810};
     });
+    const supplierAp=await navigate('payables');
+    let supplierAdvance,partialBillA,partialBillB,supplierFinalPayment,supplierCashBaseline;
+    const supplierReportValue=async(bill,label)=>{
+      const value=await reports.locator('#reportTable tbody tr').filter({hasText:bill.bill_number}).locator('[data-label="'+label+'"]').textContent();
+      return Number(value.replace(/[^0-9.-]/g,''));
+    };
+    const activeSupplierCash=async()=>Number((await f.one("select coalesce(sum(amount),0) total from supplier_payments where status='posted'")).total);
+    const supplierApplicationRows=()=>f.rows('select * from supplier_payment_applications where supplier_payment_id=$1 order by id',[supplierAdvance.id]);
+    const openSupplierAllocation=async()=>{
+      await supplierAp.locator('[data-entity="payments"]').click();
+      await supplierAp.locator('[data-payment-action="allocate"][data-payment-id="'+supplierAdvance.id+'"]').click();
+    };
+    const setSupplierAllocation=async(a,b)=>{
+      await supplierAp.locator('[data-allocation-bill="'+partialBillA.id+'"] [data-amount]').fill(a);
+      await supplierAp.locator('[data-allocation-bill="'+partialBillB.id+'"] [data-amount]').fill(b);
+    };
+    await step('DS-27 supplier advance before partial bills preserves the selected field and records cash once',async()=>{
+      await supplierAp.locator('[data-entity="bills"]').click();
+      const old=await f.one("select * from supplier_bills where purchase_order_id=$1 and status='posted'",[po.id]);
+      await supplierAp.locator('[data-bill-action="void"][data-bill-id="'+old.id+'"]').click();
+      await mutation('payables',()=>supplierAp.locator('#decisionAccept').click());await expect(supplierAp.locator('#decisionModal')).toBeHidden();
+      supplierCashBaseline=await f.report('cash');expect(await activeSupplierCash()).toBe(0);
+      const keepsField=await supplierAp.locator('#newAdvancePayment').evaluate(async button=>{
+        const doc=button.ownerDocument;button.click();const input=doc.getElementById('pReference');input.focus();
+        await new Promise(resolve=>doc.defaultView.requestAnimationFrame(resolve));return doc.activeElement===input;
+      });
+      expect(keepsField).toBe(true);await supplierAp.locator('#paymentModal [data-close="payment"]').first().click();
+      await supplierAp.locator('#newAdvancePayment').click();await supplierAp.locator('#pPO').selectOption(po.id);await supplierAp.locator('#pAmount').fill('1600');
+      await supplierAp.locator('#pReference').fill('QA-SUPPLIER-ADVANCE');await expect(supplierAp.locator('#pAmount')).toHaveValue('1600');
+      supplierAdvance=(await mutation('supplier-payments',()=>supplierAp.locator('#savePayment').click())).payment;
+      await expect(supplierAp.locator('#paymentModal')).toBeHidden();expect(Number(supplierAdvance.progress.unapplied_amount)).toBe(1600);
+      expect(await activeSupplierCash()).toBe(1600);expect((await f.report('cash')).row_count).toBe(supplierCashBaseline.row_count+1);
+      expect(Number((await f.one('select coalesce(sum(balance_due),0) amount from supplier_bill_financial_progress')).amount)).toBe(0);
+    });
+    await step('DS-28 partial supplier bills use displayed cents on either side of a rounding boundary',async()=>{
+      const make=async(rate,reference,invalidFirst=false)=>{
+        await supplierAp.locator('#newBill').click();await supplierAp.locator('#bPO').selectOption(po.id);
+        await supplierAp.locator('#bSupplierInvoice').fill(reference);await supplierAp.locator('[data-bill-line] [data-qty]').fill('420');
+        if(invalidFirst){
+          const before=await f.rows('select id from supplier_bills order by id');
+          await supplierAp.locator('[data-bill-line] [data-total]').fill('1050.001');
+          await mutation('payables',()=>supplierAp.locator('#saveBill').click(),400);await expect(supplierAp.locator('#billMsg')).toContainText('2 decimales');
+          expect(await f.rows('select id from supplier_bills order by id')).toEqual(before);
+        }
+        await supplierAp.locator('[data-bill-line] [data-cost]').fill(rate);
+        await expect(supplierAp.locator('[data-bill-line] [data-total]')).toHaveValue('1050');
+        await expect(supplierAp.locator('#billCalculatedTotal')).toContainText('USD 1,050.00');
+        const bill=(await mutation('payables',()=>supplierAp.locator('#saveBill').click())).bill;await expect(supplierAp.locator('#billModal')).toBeHidden();
+        await supplierAp.locator('[data-bill-action="post"][data-bill-id="'+bill.id+'"]').click();await mutation('payables',()=>supplierAp.locator('#decisionAccept').click());await expect(supplierAp.locator('#decisionModal')).toBeHidden();
+        expect(Number((await f.ap(bill)).bill_total)).toBe(1050);return bill;
+      };
+      partialBillA=await make('2.50000001','QA-PARTIAL-A',true);partialBillB=await make('2.49999999','QA-PARTIAL-B');
+      await reports.locator('[data-dataset="supplier_bills"]').click();
+      for(const bill of [partialBillA,partialBillB])await expect.poll(()=>supplierReportValue(bill,'AP actual'),{timeout:45_000}).toBe(1050);
+      expect(await activeSupplierCash()).toBe(1600);await shot('28-supplier-rounded-bills');
+    });
+    await step('DS-29 advance distributes across two partial bills and updates another operator without more cash',async()=>{
+      const cash=await f.report('cash');await openSupplierAllocation();await setSupplierAllocation('1000','500');
+      await mutation('supplier-payments',()=>supplierAp.locator('#saveAllocation').click());await expect(supplierAp.locator('#allocationModal')).toBeHidden();
+      await expect.poll(()=>supplierReportValue(partialBillA,'AP actual'),{timeout:45_000}).toBe(50);
+      await expect.poll(()=>supplierReportValue(partialBillB,'AP actual'),{timeout:45_000}).toBe(550);
+      expect(Number((await f.one('select unapplied_amount from supplier_payment_progress where supplier_payment_id=$1',[supplierAdvance.id])).unapplied_amount)).toBe(100);
+      expect(await f.report('cash')).toEqual(cash);
+    });
+    await step('DS-30 rejected over-allocation preserves prior rows before a valid redistribution',async()=>{
+      const apps=await supplierApplicationRows(),cash=await f.report('cash');await openSupplierAllocation();await setSupplierAllocation('1050','550.01');
+      await mutation('supplier-payments',()=>supplierAp.locator('#saveAllocation').click(),400);
+      await expect(supplierAp.locator('#allocationMsg')).not.toBeEmpty();expect(await supplierApplicationRows()).toEqual(apps);
+      await setSupplierAllocation('1050','550');await mutation('supplier-payments',()=>supplierAp.locator('#saveAllocation').click());await expect(supplierAp.locator('#allocationModal')).toBeHidden();
+      await expect.poll(()=>supplierReportValue(partialBillA,'AP actual'),{timeout:45_000}).toBe(0);
+      await expect.poll(()=>supplierReportValue(partialBillB,'AP actual'),{timeout:45_000}).toBe(500);
+      expect((await f.ap(partialBillA)).payment_status).toBe('paid');expect(await f.report('cash')).toEqual(cash);
+    });
+    await step('DS-31 paying the displayed remainder fully settles the supplier bill at cents',async()=>{
+      await supplierAp.locator('[data-entity="bills"]').click();
+      await supplierAp.locator('[data-bill-action="pay"][data-bill-id="'+partialBillB.id+'"]').click();
+      await expect(supplierAp.locator('#pAmount')).toHaveValue('500');await supplierAp.locator('#pAmount').fill('500.00');
+      supplierFinalPayment=(await mutation('supplier-payments',()=>supplierAp.locator('#savePayment').click())).payment;
+      await expect(supplierAp.locator('#paymentModal')).toBeHidden();await expect.poll(()=>supplierReportValue(partialBillB,'AP actual'),{timeout:45_000}).toBe(0);
+      expect((await f.ap(partialBillB)).payment_status).toBe('paid');expect(await activeSupplierCash()).toBe(2100);
+      expect(Number((await f.one('select recognized_unit_cost from purchase_order_item_merchandise_cost_basis where purchase_order_id=$1',[po.id])).recognized_unit_cost)).toBe(2.5);
+      expect(Number((await f.financial(creditedInvoice)).balance_due)).toBe(120);await reportShot('31-supplier-paid-report');
+    });
+    await step('DS-32 reversing the advance reopens both supplier balances and preserves application history',async()=>{
+      const apps=await supplierApplicationRows();
+      await supplierAp.locator('[data-payment-action="reverse"][data-payment-id="'+supplierAdvance.id+'"]').click();await supplierAp.locator('#rReason').fill('QA anticipo registrado por error, conservar aplicaciones históricas.');
+      await mutation('supplier-payments',()=>supplierAp.locator('#saveReverse').click());await expect(supplierAp.locator('#reverseModal')).toBeHidden();
+      await expect.poll(()=>supplierReportValue(partialBillA,'AP actual'),{timeout:45_000}).toBe(1050);
+      await expect.poll(()=>supplierReportValue(partialBillB,'AP actual'),{timeout:45_000}).toBe(550);
+      expect(await supplierApplicationRows()).toEqual(apps);expect(await activeSupplierCash()).toBe(500);
+      expect((await f.one('select status from supplier_payments where id=$1',[supplierAdvance.id])).status).toBe('reversed');
+    });
+    await step('DS-33 competing supplier payments respect one balance and deny the reader',async()=>{
+      const writer=await api.request('login',{method:'POST',body:{username:users.a.username,password:users.a.password}}),reader=await api.request('login',{method:'POST',body:{username:users.b.username,password:users.b.password}});
+      const body={action:'pay_bill',supplier_bill_id:partialBillB.id,amount:'550.00',reference:'QA competing final settlement'};
+      const results=await Promise.all([writer.body.token,master.body.token].map(token=>api.request('supplier-payments',{method:'POST',token,body})));
+      expect(results.map(r=>r.status).sort()).toEqual([200,400]);expect(results.find(r=>r.status===400).body.error).toMatch(/completamente pagada|supera/i);
+      expect((await api.request('supplier-payments',{method:'POST',token:reader.body.token,body})).status).toBe(403);
+      await expect.poll(()=>supplierReportValue(partialBillB,'AP actual'),{timeout:45_000}).toBe(0);
+      expect(Number((await f.ap(partialBillA)).balance_due)).toBe(1050);expect(await activeSupplierCash()).toBe(1050);
+      expect(Number((await f.one('select allocated_sales_quantity from direct_shipment_effective_allocations where id=$1',[direct.id])).allocated_sales_quantity)).toBe(810);
+      expect(Number((await f.financial(creditedInvoice)).balance_due)).toBe(120);
+      evidence.supplierVariants={advance:1600,partialBills:[1050,1050],initialDistribution:[1000,500],redistribution:[1050,550],displayedRemainderPaid:500,advanceReversed:true,concurrentStatuses:[200,400],reader:403,finalAP:1050,activeSupplierCash:1050,customerAR:120,physicalQuantity:810};
+    });
     expect(reportNavigations).toBe(reportNavBaseline);evidence.reportNavigations={initial:reportNavBaseline,final:reportNavigations};
-    expect(evidence.checkpoints).toHaveLength(26);
+    expect(evidence.checkpoints).toHaveLength(33);
     expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404||row.status>=500)).toEqual([]);
   } finally {
