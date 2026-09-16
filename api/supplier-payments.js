@@ -1,12 +1,16 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
 import { loadSupplierApCapabilityMaps, loadSupplierPaymentCapabilities } from './_supplier-ap-actions.js';
 
+import { supplierNumberText, isSupplierDecimal, hasSupplierCentPrecision } from './_supplier-amounts.js';
+
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
 const num = value => Number(value || 0);
 
 function translatedError(raw) {
   const messages = [
+    ['SUPPLIER_PAYMENT_APPLICATION_AMOUNT_PRECISION','Cada monto distribuido debe tener como máximo 2 decimales.'],
+    ['SUPPLIER_PAYMENT_AMOUNT_PRECISION','El monto del pago debe tener como máximo 2 decimales.'],
     ['PERMISSION_REQUIRED','No tienes permiso para ejecutar esta acción financiera.'],
     ['SUPPLIER_PAYMENT_PO_NOT_FOUND','Purchase Order no encontrada.'],
     ['SUPPLIER_PAYMENT_PO_NOT_PAYABLE','La Purchase Order debe estar emitida, confirmada o cerrada para registrar pagos.'],
@@ -45,9 +49,10 @@ function cleanApplications(applications) {
   if (!Array.isArray(applications)) throw new Error('La distribución del pago no es válida');
   return applications.map((row, index) => {
     const billId = text(row.supplier_bill_id,80);
-    const amount = text(row.amount,80);
+    const amount = supplierNumberText(row.amount);
     if (!billId) throw new Error(`Falta la factura en la distribución ${index + 1}`);
-    if (!amount || !Number.isFinite(Number(amount)) || Number(amount) <= 0) throw new Error(`Indica un monto válido en la distribución ${index + 1}`);
+    if (!isSupplierDecimal(amount) || Number(amount) <= 0) throw new Error(`Indica un monto válido en la distribución ${index + 1}`);
+    if (!hasSupplierCentPrecision(amount)) throw new Error('SUPPLIER_PAYMENT_APPLICATION_AMOUNT_PRECISION');
     return { supplier_bill_id:billId, amount };
   });
 }
@@ -122,30 +127,32 @@ export default async function handler(req, res) {
     if (action === 'pay_bill') {
       const billId = text(body.supplier_bill_id,80);
       if (!billId) throw new Error('Selecciona una factura de proveedor');
-      const amount = Number(body.amount || 0);
-      if (!Number.isFinite(amount) || !(amount > 0)) throw new Error('El monto del pago debe ser mayor que cero');
+      const amount = supplierNumberText(body.amount);
+      if (!isSupplierDecimal(amount) || !(Number(amount) > 0)) throw new Error('El monto del pago debe ser mayor que cero');
+      if (!hasSupplierCentPrecision(amount)) throw new Error('SUPPLIER_PAYMENT_AMOUNT_PRECISION');
       const result = await supabase('rpc/pay_supplier_bill_canonical', { method:'POST', body:{
         p_supplier_bill_id:billId,p_amount:amount,p_payment_date:text(body.payment_date,40) || null,p_method:text(body.method,100) || null,
         p_reference:text(body.reference,300) || null,p_notes:text(body.notes,2000) || null,p_actor:admin.admin_id || null
       }});
       const payment = rpcRow(result);
       if (!payment?.id) throw new Error('No se pudo registrar el pago de la factura');
-      await writeAudit(admin,'supplier_bill_paid','supplier_payment',payment.id,{ payment_number:payment.payment_number, supplier_bill_id:billId, purchase_order_id:payment.purchase_order_id, amount });
+      await writeAudit(admin,'supplier_bill_paid','supplier_payment',payment.id,{ payment_number:payment.payment_number, supplier_bill_id:billId, purchase_order_id:payment.purchase_order_id, amount:Number(amount) });
       return ok(res,{ payment:await paymentWithCapabilities(admin,payment) });
     }
 
     if (action === 'register') {
       const poId = text(body.purchase_order_id,80);
       if (!poId) throw new Error('Selecciona una Purchase Order');
-      const amount = Number(body.amount || 0);
-      if (!Number.isFinite(amount) || !(amount > 0)) throw new Error('El monto del pago debe ser mayor que cero');
+      const amount = supplierNumberText(body.amount);
+      if (!isSupplierDecimal(amount) || !(Number(amount) > 0)) throw new Error('El monto del pago debe ser mayor que cero');
+      if (!hasSupplierCentPrecision(amount)) throw new Error('SUPPLIER_PAYMENT_AMOUNT_PRECISION');
       const result = await supabase('rpc/register_supplier_payment', { method:'POST', body:{
         p_purchase_order_id:poId,p_amount:amount,p_payment_date:text(body.payment_date,40) || null,p_method:text(body.method,100) || null,
         p_reference:text(body.reference,300) || null,p_notes:text(body.notes,2000) || null,p_actor:admin.admin_id || null
       }});
       const payment = rpcRow(result);
       if (!payment?.id) throw new Error('No se pudo registrar el pago');
-      await writeAudit(admin,'supplier_payment_registered','supplier_payment',payment.id,{ payment_number:payment.payment_number, purchase_order_id:poId, amount });
+      await writeAudit(admin,'supplier_payment_registered','supplier_payment',payment.id,{ payment_number:payment.payment_number, purchase_order_id:poId, amount:Number(amount) });
       return ok(res,{ payment:await paymentWithCapabilities(admin,payment) });
     }
 

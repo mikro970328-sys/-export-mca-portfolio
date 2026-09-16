@@ -50,8 +50,8 @@ const workflow = read(files.workflow);
 for (const text of [
   '<body class="erp-module-page erp-module-payables" data-owner="payables.js">',
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
-  '/admin/payables.css?v=20260903-ux7payables1',
-  '/admin/payables.js?v=20260903-ux7payables1',
+  '/admin/payables.css?v=20260916-supplier1',
+  '/admin/payables.js?v=20260916-supplier1',
   '/admin/embedded-auto-refresh.js?v=20260909-live7',
   'class="module-hero payables-page-head"',
   'id="payablesLastUpdated"',
@@ -69,7 +69,7 @@ for (const text of [
 
 if ((html.match(/id="detailTraceability"/g) || []).length !== 1) failures.push('el HTML debe contener exactamente una sección canónica de Trazabilidad AP');
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260902-ux6b3');
-const ownerCssIndex = html.indexOf('/admin/payables.css?v=20260903-ux7payables1');
+const ownerCssIndex = html.indexOf('/admin/payables.css?v=20260916-supplier1');
 if (foundationIndex < 0 || ownerCssIndex < 0 || foundationIndex > ownerCssIndex) failures.push('la base visual compartida debe cargar antes de payables.css');
 
 forbid(html, /<style(?:\s|>)/i, 'payables.html conserva CSS incrustado');
@@ -210,6 +210,12 @@ class FakeElement {
   addEventListener(type, handler) { this.listeners.set(type, handler); }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
   focus() {}
+  contains(node) {
+    for (let current = node; current; current = current.parentElement) {
+      if (current === this) return true;
+    }
+    return false;
+  }
   querySelector() { return null; }
   closest() { return null; }
 }
@@ -354,7 +360,7 @@ for (const text of [
 ]) requireText(paymentsApi, text, `API canónica de pagos AP ${text}`);
 
 for (const text of ['supplier_bill_action_capabilities', 'supplier_payment_action_capabilities', "entry.required_permission='finance.write'"]) requireText(capabilityOwner, text, `capabilities AP ${text}`);
-requireText(erp, "loadScript('/admin/ap-traceability.js?v=20260903-ux7payables1', 'data-ap-traceability')", 'carga explícita de trazabilidad AP');
+requireText(erp, "loadScript('/admin/ap-traceability.js?v=20260916-supplier1', 'data-ap-traceability')", 'carga explícita de trazabilidad AP');
 requireText(operationalNavigation, "callEmbedded('payablesSection','PayablesModule.openBill'", 'navegación directa al owner PayablesModule');
 forbid(operationalNavigation, /CONTEXT_SECTIONS[^;]*payablesSection/, 'Cuentas por pagar sigue recibiendo el bridge operativo compartido');
 forbid(operationalNavigation, /openSupplierBill[^\n]*installBridge\('payablesSection'\)/, 'openSupplierBill todavía inyecta el bridge anterior');
