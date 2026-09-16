@@ -68,3 +68,15 @@ y deployment final antes de declarar la función publicada.
 Límites: navegación móvil emulada no equivale a iPhone físico; no certifica
 restauración de un backup de producción, ni persistencia del borrador después
 de cerrar/recargar la página.
+
+## Refresco interrumpido
+
+Run 35159648336: Chromium completó WR-01 a WR-06. WebKit recuperó el mismo WR
+tras offline y confirmación perdida, pero una lectura abortada dejó el formulario
+esperando después del guardado. El refresco confirmado ahora tiene un límite de
+12 segundos, cancela la lectura tardía y permite cerrar conservando el éxito.
+Las 36 verificaciones HTTP/SQL de ese head pasaron (run 35159648354).
+
+La historia Direct Ship valida el valor de unidades por pallet antes del POST:
+la captura de ese run mostró 10, no los 84 que la prueba pretendía introducir;
+el ERP rechazó correctamente la medida inconsistente sin enviar la compra.

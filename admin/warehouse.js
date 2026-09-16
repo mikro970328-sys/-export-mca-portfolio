@@ -159,14 +159,35 @@ function cancelReason(receipt){
   return 'La recepción ya no admite esta acción.';
 }
 
-async function load(){
-  const d=await api('/api/warehouse');
+async function load(signal){
+  const d=await api('/api/warehouse',{signal});
+  if(signal?.aborted)throw new Error('WAREHOUSE_REFRESH_CANCELLED');
   warehouses=d.warehouses||[];
   products=d.products||[];
   receipts=d.receipts||[];
   suppliers=d.suppliers||[];
   warehouseWriteAccess=d.write_access===true;
   renderAll();
+}
+
+async function refreshSavedReceipt(){
+  const controller=new AbortController();
+  let timer;
+  try{
+    // A confirmed receipt must remain usable even if the browser never settles
+    // a broken refresh. Abort and reject also prevent a late response rendering.
+    await Promise.race([
+      load(controller.signal),
+      new Promise((resolve,reject)=>{
+        timer=setTimeout(()=>{
+          reject(new Error('WAREHOUSE_REFRESH_TIMEOUT'));
+          controller.abort();
+        },12000);
+      })
+    ]);
+  }finally{
+    clearTimeout(timer);
+  }
 }
 
 function syncWriteControls(){
@@ -253,7 +274,7 @@ $('saveReceipt').onclick=async()=>{
     const cancelled=d.receipt.status==='cancelled';
     note('rMsg',d.receipt.receipt_number+(cancelled?' ya está anulada. No se añadió mercancía.':' registrada correctamente.'),true);
     try{
-      await load();
+      await refreshSavedReceipt();
       const savedRequestId=receiptRequestId;
       if(!cancelled)setTimeout(()=>{if(receiptRequestId===savedRequestId)closeReceipt();},450);
     }catch(error){

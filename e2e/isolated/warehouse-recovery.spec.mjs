@@ -69,11 +69,13 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
       const context=await browser.newContext({viewport:use.viewport,userAgent:use.userAgent,isMobile:use.isMobile,
         hasTouch:use.hasTouch,deviceScaleFactor:use.deviceScaleFactor,locale:'es-US',timezoneId:'America/New_York'});
       contexts.push(context);
-      const network={blockRefresh:false};
+      const network={blockRefresh:false,blockedRefreshes:0};
       await context.route('**/*',route=>{
         const request=route.request(),url=new URL(request.url());
         if(url.origin===api.base){
-          if(network.blockRefresh&&url.pathname==='/api/warehouse'&&request.method()==='GET')return route.abort('failed');
+          if(network.blockRefresh&&url.pathname==='/api/warehouse'&&request.method()==='GET'){
+            network.blockedRefreshes++;return route.abort('failed');
+          }
           return route.continue();
         }
         if(['data:','blob:','about:'].includes(url.protocol))return route.continue();
@@ -165,6 +167,8 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
       await open('QA-WR-REFRESH',5);a.network.blockRefresh=true;
       await warehouse.locator('#saveReceipt').click();
       await expect(warehouse.locator('#rMsg')).toContainText('ya está registrada');
+      expect(a.network.blockedRefreshes).toBeGreaterThan(0);
+      await expect(warehouse.locator('#newReceipt')).toBeEnabled();
       await expect(warehouse.locator('#saveReceipt')).toBeDisabled();
       await stockTotal(17);expect((await f.rows('select id from warehouse_receipts')).length).toBe(2);
       a.network.blockRefresh=false;await warehouse.locator('#closeReceipt').click();
