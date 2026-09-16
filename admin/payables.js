@@ -642,6 +642,12 @@
       billDraft = null;
       const confirmation = state.editingBillId ? 'Factura de proveedor actualizada correctamente.' : 'Borrador de factura de proveedor creado correctamente.';
       closeModal('bill', false);
+      if (!editing) {
+        state.entity = 'bills';
+        state.view = 'draft';
+        state.search = '';
+        $('search').value = '';
+      }
       await refresh();
       setPageMessage(confirmation, 'ok');
     } catch (error) {
