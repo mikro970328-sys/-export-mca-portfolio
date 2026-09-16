@@ -37,7 +37,7 @@ for(const text of [
   '<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">',
   '<link rel="stylesheet" href="/admin/warehouse.css?v=20260902-ux7warehouse1">',
   '<body class="erp-module-page erp-module-warehouse" data-owner="warehouse.js">',
-  '<script src="/admin/warehouse.js?v=20260902-ux7warehouse1" defer></script>',
+  '<script src="/admin/warehouse.js?v=20260916-receipt-recovery1" defer></script>',
   '<script src="/admin/embedded-auto-refresh.js?v=20260909-live7" defer></script>',
   'warehouse-copy-standalone',
   'warehouse-copy-embedded'
@@ -112,8 +112,8 @@ for(const text of [
   "loadWarehouseReceiptActionCapabilityMap(admin)",
   "rpc/cancel_warehouse_receipt_canonical",
   'const translated = translatedError(raw)',
-  'if (translated) return fail(res, 400, translated)',
-  "return fail(res, 500, 'No se pudo procesar la operación de almacén')"
+  "if (translated) return fail(res, raw.includes('PERMISSION_REQUIRED') ? 403 : raw.includes('WR_REQUEST_CONFLICT') ? 409 : 400, translated)",
+  "return fail(res, upstreamFailureStatus(error,500), 'No se pudo procesar la operación de almacén')"
 ])requireText(api,text,`boundary seguro de Almacén ${text}`);
 forbid(api,/return messages\.find\([^\n]+\|\| raw/,'API de Almacén vuelve a devolver fallos internos crudos');
 

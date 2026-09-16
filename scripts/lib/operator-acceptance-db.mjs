@@ -8,7 +8,8 @@ export const operatorAcceptanceMigrations = [
   '20260831005000_p17_session_audit_foundation.sql',
   '20260831005200_p17_access_control_atomic_audit.sql',
   '20260909125237_multiuser_live_sync.sql',
-  '20260909143701_live_sync_recovery.sql'
+  '20260909143701_live_sync_recovery.sql',
+  '20260916222925_manual_receipt_retry_integrity.sql'
 ];
 
 export async function applyOperatorAcceptanceSchema(connection) {
