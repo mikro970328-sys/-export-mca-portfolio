@@ -47,8 +47,6 @@ jobs:
       ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
       ERP_RESTORE_DATABASE_URL: postgres://qa_restore_admin:isolated-qa-only@127.0.0.1:5433/erp_operator_qa_restore
       ERP_BACKUP_DRILL: synthetic-only
-      ERP_QA_SOURCE_CONTAINER: ${{ job.services.source.id }}
-      ERP_QA_TARGET_CONTAINER: ${{ job.services.target.id }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -57,4 +55,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Backup and restore into another empty PostgreSQL service
+        env:
+          ERP_QA_SOURCE_CONTAINER: ${{ job.services.source.id }}
+          ERP_QA_TARGET_CONTAINER: ${{ job.services.target.id }}
         run: node scripts/check-backup-restore.mjs

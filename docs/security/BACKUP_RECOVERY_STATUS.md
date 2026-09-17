@@ -1,45 +1,78 @@
 # Estado de respaldo y recuperación
 
-Corte: 2026-09-16. Consulta de configuración y panel autenticado, de solo lectura.
+Corte: 2026-09-17 UTC. La confirmación de Pro sustituye el límite Free del corte
+anterior. El ensayo aislado y una restauración productiva son evidencias distintas.
 
-## Confirmado
+## Confirmado en la cuenta
 
-- Proyecto qflncyhdspuvtrxsqgbj ACTIVE_HEALTHY, PostgreSQL 17.6.1.147.
-- Organización Export MCA Tracking, swtsszwnkpzcpuzenlps, plan free.
-- El acceso mediante GitHub se completó con browserAuth; el panel del proyecto
-  mostró la organización, main Production y Scheduled backups. Ya no está
-  bloqueado por falta de inicio de sesión.
-- El panel dice expresamente que Free no incluye backups del proyecto; ofrece
-  Pro con hasta siete días de copias programadas. No hay inventario de copias
-  restaurables accesible en el plan actual. No afirmar que existe una copia.
-- URL observada del panel:
-  https://supabase.com/dashboard/project/qflncyhdspuvtrxsqgbj/database/backups/scheduled?method=github
-- Precio público revisado: Pro desde USD 25/mes, con siete días de backups de
-  base. El precio final depende de proyectos, cómputo y consumo.
-  https://supabase.com/pricing
-- La documentación recomienda exportación externa para free. Los backups de
-  base excluyen los objetos de Storage, que necesitan copia independiente.
+- Daniel comunicó que contrató Pro. La consulta autenticada de la organización
+  Export MCA Tracking, swtsszwnkpzcpuzenlps, devuelve plan pro.
+- Proyecto qflncyhdspuvtrxsqgbj ACTIVE_HEALTHY; PostgreSQL 17.6.1.147.
+- Inventario de solo lectura, 2026-09-17 02:16–02:18 UTC:
+  erp-documents privado: 2 objetos / 510171 bytes.
+  publication-images público: 1 objeto / 164256 bytes.
+  Total: 3 objetos / 674427 bytes.
+- Hay 2 documentos activos; ambos enlazan a objetos de Storage. No se encontraron
+  documentos activos sin objeto. Esto comprueba referencias, no bytes ni backups.
+- Pro incluye backups diarios de base con acceso a siete días. No incluye
+  el contenido de Storage: necesita copia independiente.
   https://supabase.com/docs/guides/platform/backups
 
-## Pendiente y decisión necesaria
+## Acceso al inventario administrado
 
-1. Elegir un destino privado ya disponible para exportar base y archivos, o
-   autorizar por separado un plan de respaldo administrado. No contratar planes
-   ni add-ons sin presupuesto/autorización. No asumir que Pro cubre Storage.
-2. Obtener acceso de exportación por un canal seguro. No pedir contraseñas,
-   connection strings ni claves por chat; no colocar datos en el repo público
-   ni en artifacts de Actions. No usar la base del ERP como único destino.
-3. Crear la copia y documentar fecha, tamaño, integridad y retención.
-4. Ensayar en destino aislado: esquema/migraciones, usuarios/permisos, conteos y
-   saldos, hashes de archivos y recorrido comercial; medir punto y tiempo
-   recuperados sin sustituir producción.
+La sesión nueva del panel volvió a mostrar login. El formulario seguro recibió
+la elección ChatGPT. La página de autenticación mostró una verificación humana
+de Cloudflare. No se intentó completarla sin autorización y no se cambió el
+método elegido por el usuario. Por ello aún no se acredita fecha, tamaño ni
+estado de una copia administrada concreta. Pro activo no sustituye esa prueba.
 
-## Límite de la evidencia
+Panel de destino:
+https://supabase.com/dashboard/project/qflncyhdspuvtrxsqgbj/database/backups/scheduled
 
-No se ha acreditado copia recuperable, última fecha, retención externa de
-documentos ni ensayo completo de restauración. La base saludable y las pruebas
-de QA no demuestran recuperación ante desastre. La funcionalidad publicada
-(#326/#327) y la restaurabilidad son resultados separados.
+## Ensayo de recuperación aislado — PR #330
 
-No se compraron planes, crearon proyectos facturables, exportaron datos
-comerciales ni restauró/reemplazó producción durante esta revisión.
+El nuevo workflow Backup Restoration Drill usa dos PostgreSQL 17.6 desechables.
+Carga el slice canónico de compras, ventas, inventario, logística, finanzas,
+usuarios y documentos con fixtures sintéticos. Exporta pg_dump nativo y roles
+sin contraseñas de PostgreSQL; los archivos se copian por separado.
+
+El ensayo valida hashes/tamaños antes de restaurar y rechaza una copia corrupta
+o incompleta. Cambia y apaga la fuente; recupera a partir del archivo guardado en
+el segundo servicio vacío. Compara datos, secuencias, esquema, funciones,
+restricciones, índices, RLS, permisos, vistas, triggers y roles. Comprueba saldos,
+verificadores de acceso de tres operadores, bytes documentales, identidad de
+reintento y una nueva operación válida. El workflow no publica dumps ni objetos.
+
+Resultado definitivo de CI y head exacto: ver PR #330.
+Esto ensaya la técnica con datos sintéticos. No restaura un backup real de
+Supabase ni certifica todo su esquema administrado, roles internos, Storage,
+configuración externa, secretos de Vercel, JWT, Twilio o ShipsGo.
+
+## Siguiente cierre operativo
+
+1. Desbloquear el acceso seguro al panel y registrar una copia real completada:
+   fecha UTC, retención, tipo y versión de PostgreSQL. No restaurar producción.
+2. Copiar los tres objetos a un destino privado durable independiente del
+   proyecto. Conservar bucket, key, tamaño y SHA-256 en un inventario privado.
+   Copiar todas las versiones necesarias y comprobar la lectura de cada copia.
+3. Definir una copia periódica y su retención. Una descarga puntual no constituye
+   un proceso automático. No usar el propio proyecto como único destino.
+4. Obtener una exportación segura de la base o preparar una restauración
+   administrada en un destino aislado. Pro no autoriza add-ons ni un segundo
+   proyecto de pago; concretar cualquier costo adicional antes de contratar.
+5. Ensayar con la copia real, cotejar migraciones, usuarios/permisos, conteos,
+   saldos, hashes de archivos y recorrido comercial. Medir RPO/RTO real.
+   La prueba sintética no proporciona un RTO productivo.
+
+No colocar datos comerciales ni secretos en el repositorio público o artifacts
+de Actions. No pedir connection strings, tokens ni contraseñas por chat. No usar
+el SQL de fixtures ni este workflow sobre producción o Preview.
+
+## Límite de cierre
+
+Pro verificado; inventario de Storage y referencias comprobados. Pendientes:
+copia administrada concreta, copia durable de objetos y restauración real
+aislada. No declarar el ERP completamente certificado por el cambio de plan.
+
+En esta revisión no se contrataron extras, crearon proyectos facturables,
+enviaron notificaciones reales ni alteraron datos comerciales.

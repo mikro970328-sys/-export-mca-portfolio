@@ -20,13 +20,14 @@ Publicado: `0e53afab6c6efd45966686f597e1b5c20b6aa5cb`; producción
 - La jornada comercial de 18 pasos, repetir compra, pagos/cobros y variantes
   financieras publicadas anteriormente siguen resueltos. No reconstruir módulos.
 
-**Pendiente concreto:** acreditar backup recuperable de base y archivos,
-inventario/fecha/retención y ensayo de restauración en destino aislado.
-Acceso autenticado al panel ya verificado: Supabase Free no incluye backups
-del proyecto. El pendiente no es iniciar sesión: elegir exportación a destino
-privado o cambio de plan autorizado, respaldar también Storage y probar la
-restauración. Leer security/BACKUP_RECOVERY_STATUS.md. No inventar cobertura
-ni declarar el ERP completamente certificado.
+**Pendiente concreto:** respaldos y recuperación. El 2026-09-17 se verificó
+Supabase Pro activo y proyecto saludable. Storage contiene 2 documentos privados
+y 1 imagen (674427 bytes); los 2 documentos activos enlazan correctamente.
+La sesión nueva del panel pide acceso y ChatGPT quedó en verificación humana:
+aún no se acredita una copia administrada concreta. PR #330 añade ensayo de
+restauración con dos PostgreSQL y datos sintéticos; no sustituye restaurar una
+copia real. Falta copiar objetos a destino privado durable, definir periodicidad
+y ensayar la copia real en aislamiento. Leer security/BACKUP_RECOVERY_STATUS.md.
 
 Continuar por recuperación, con escritorio prioritario. iPhone físico,
 BrowserStack, PWA instalada y push externo real siguen diferidos.
