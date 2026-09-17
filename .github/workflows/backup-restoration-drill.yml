@@ -1,0 +1,60 @@
+name: Backup Restoration Drill
+on:
+  pull_request:
+    paths:
+      - 'scripts/check-backup-restore.mjs'
+      - 'scripts/lib/*acceptance*.mjs'
+      - 'supabase/tests/fixtures/*acceptance*.sql'
+      - 'supabase/migrations/**'
+      - 'migrations/**'
+      - 'api/_lib.js'
+      - 'package*.json'
+      - '.github/workflows/backup-restoration-drill.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/check-backup-restore.mjs'
+      - '.github/workflows/backup-restoration-drill.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  restore-synthetic-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      source:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-qa-only
+          POSTGRES_DB: erp_operator_qa
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      target:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: qa_restore_admin
+          POSTGRES_PASSWORD: isolated-qa-only
+          POSTGRES_DB: erp_operator_qa_restore
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U qa_restore_admin"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
+      ERP_RESTORE_DATABASE_URL: postgres://qa_restore_admin:isolated-qa-only@127.0.0.1:5433/erp_operator_qa_restore
+      ERP_BACKUP_DRILL: synthetic-only
+      ERP_QA_SOURCE_CONTAINER: ${{ job.services.source.id }}
+      ERP_QA_TARGET_CONTAINER: ${{ job.services.target.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Backup and restore into another empty PostgreSQL service
+        run: node scripts/check-backup-restore.mjs
