@@ -1,3 +1,14 @@
+## 2026-09-17 · Exportación verificable de archivos preparada
+
+Se añade herramienta operativa de lectura y verificación offline de Storage,
+con enumeración paginada, revisión antes/después, SHA-256, cotejo de tamaño/eTag,
+permisos privados, marcador final y rechazo de destinos dentro de Git. Dieciséis
+pruebas sintéticas locales aprobadas. CI solo usa HTTP/archivos locales, sin
+claves ni artifacts. No se activa periodicidad ni se ejecuta copia real nueva.
+Procedimiento de restauración preparado con costos, aislamiento y cierre del
+proyecto temporal. Ver security/STORAGE_BACKUP_RUNBOOK.md y la PR para gates e
+integración final. Runtime, migraciones y datos comerciales sin cambios.
+
 ## 2026-09-17 · Copias reales comprobadas y archivos resguardados
 
 Acceso al panel mediante GitHub recuperado. Siete copias físicas COMPLETED,
