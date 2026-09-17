@@ -31,7 +31,7 @@ jobs:
           POSTGRES_DB: erp_operator_qa
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U postgres"
+          --health-cmd "pg_isready -U postgres -d erp_operator_qa"
           --health-interval 5s --health-timeout 5s --health-retries 10
       target:
         image: postgres:17.6
@@ -41,7 +41,7 @@ jobs:
           POSTGRES_DB: erp_operator_qa_restore
         ports: ['5433:5432']
         options: >-
-          --health-cmd "pg_isready -U qa_restore_admin"
+          --health-cmd "pg_isready -U qa_restore_admin -d erp_operator_qa_restore"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa

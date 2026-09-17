@@ -87,7 +87,8 @@ function verifyDocuments(docs, directory, manifest) {
     const bytes = fs.readFileSync(path.join(directory, record.name));
     assert.equal(bytes.length, Number(doc.file_size_bytes));
     assert.equal(sha(bytes), record.sha256, 'Restored object checksum mismatch');
-    assert.equal(sha(bytes), doc.content_sha256, 'Document metadata checksum mismatch');
+    if (doc.generated) assert.equal(sha(bytes), doc.content_sha256, 'Document metadata checksum mismatch');
+    else assert.equal(doc.content_sha256, null, 'Manual document metadata must retain its canonical shape');
   }
 }
 try {
@@ -103,7 +104,7 @@ try {
   await f.cost(so, {amount:50});
   const financialBefore = await f.financial(inv);
   const apBefore = await f.ap(bill);
-  const {rows:[ship]} = await source.query('select shipment_id from loads where id=$1', [load.id]);
+  const {rows:[ship]} = await source.query('select s.id as shipment_id,s.operation_id,s.bol_number from loads l join shipments s on s.id=l.shipment_id where l.id=$1', [load.id]);
   const files = [];
   for (const [i,type] of ['Packing List Cuba','Commercial Invoice Cuba'].entries()) {
     const bytes = Buffer.from('%PDF-1.4\nSynthetic recovery document ' + i + '\n%%EOF\n');
@@ -111,8 +112,14 @@ try {
     const key = 'recovery-qa/' + crypto.randomUUID() + '/documento ' + i + '.pdf';
     fs.writeFileSync(path.join(archive, member), bytes, {mode:0o600});
     files.push({name:member, bucket:'erp-documents', key, bytes:bytes.length, sha256:sha(bytes)});
-    await source.query("insert into documents(client_id,shipment_id,document_type,file_name,storage_bucket,storage_path,mime_type,file_size_bytes,content_sha256,uploaded_by_admin_id) values($1,$2,$3,$4,'erp-documents',$5,'application/pdf',$6,$7,$8)",
-      [f.client,ship.shipment_id,type,'synthetic-' + i + '.pdf',key,bytes.length,sha(bytes),users.master.id]);
+    const document = {client_id:f.client,shipment_id:ship.shipment_id,document_type:type,
+      file_name:'synthetic-' + i + '.pdf',storage_bucket:'erp-documents',storage_path:key,
+      mime_type:'application/pdf',file_size_bytes:bytes.length,uploaded_by_admin_id:users.master.id};
+    if (i === 0) Object.assign(document, {document_type:'Packing List',generated:true,
+      source_type:'load',source_id:load.id,load_id:load.id,operation_id:ship.operation_id,
+      bol_number:ship.bol_number,content_sha256:sha(bytes),generated_at:new Date().toISOString()});
+    await source.query('insert into documents(' + Object.keys(document).map(ident).join(',') +
+      ') values(' + Object.keys(document).map((_,j)=>'$' + (j+1)).join(',') + ')',Object.values(document));
   }
   const receiptRequest = crypto.randomUUID();
   const receiptPayload = {warehouse_id:f.warehouse,supplier_id:f.supplier,reference_number:'QA-RESTORE-REPLAY',
