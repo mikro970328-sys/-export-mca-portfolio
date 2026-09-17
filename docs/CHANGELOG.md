@@ -1,3 +1,13 @@
+## 2026-09-17 · Pro confirmado y ensayo de restauración
+
+Se verifica Pro activo y base saludable; inventario de tres objetos de Storage,
+dos documentos activos sin referencias faltantes. PR #330 incorpora un ensayo
+de pg_dump/roles/archivos a otra base PostgreSQL desechable, con la fuente
+apagada, hashes, datos, permisos y escrituras posteriores. Resultado exacto en
+la PR. Sin cambios de aplicación ni datos productivos. El inventario de backups
+del panel sigue pendiente del acceso; no se ha restaurado una copia real.
+Ver security/BACKUP_RECOVERY_STATUS.md.
+
 ## 2026-09-16 · Publicación de recuperación de recepciones
 
 PR #327 integrada en 0e53afab6c6efd45966686f597e1b5c20b6aa5cb; migración 20260916231419
