@@ -1,8 +1,8 @@
-## Estado vigente tras PR #327 — 2026-09-16
+## Estado vigente tras PR #330 — 2026-09-17
 
 Este corte sustituye los pendientes históricos que siguen debajo.
-Publicado: `0e53afab6c6efd45966686f597e1b5c20b6aa5cb`; producción
-`dpl_Cmwodra2TGpDukTwNySse2gmZvBr` READY en app.exportmca.com y admin.exportmca.com.
+Base publicada al iniciar esta revisión: `6500142d91f3577440f585110e845791f100aece`;
+producción `dpl_35YAk5Es95kk6iPGXcp7Wa2ZR2jN` READY en ambos dominios.
 
 - A-01 cerrado en #326: diagnósticos de notificaciones/historial proyectados
   sin exponer errores técnicos ni borrar la historia.
@@ -39,8 +39,10 @@ para el recurso adicional. Leer security/BACKUP_RECOVERY_STATUS.md.
 Continuar por recuperación, con escritorio prioritario. iPhone físico,
 BrowserStack, PWA instalada y push externo real siguen diferidos.
 Sin QA comercial en producción/Preview ni notificaciones reales.
-Evidencia final y comprobación pública de publicación:
+Evidencia funcional y publicación de #327:
 https://github.com/mikro970328-sys/-export-mca-portfolio/pull/327
+Evidencia de recuperación sintética y publicación de #330:
+https://github.com/mikro970328-sys/-export-mca-portfolio/pull/330
 
 ---
 

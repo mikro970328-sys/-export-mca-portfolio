@@ -97,7 +97,7 @@ pues el clonado físico puede iniciar trabajos externos incluidos en el backup.
 Los objetos de Storage y varias configuraciones externas no se clonan.
 [Restaurar a otro proyecto](https://supabase.com/docs/guides/platform/clone-project).
 
-La copia más reciente observada precede a estas seis versiones registradas hoy:
+La copia más reciente observada precede a estas seis versiones del catálogo actual:
 
 - 20260916144607 invoice_credit_settlement
 - 20260916174532 invoice_credit_note_reversal
