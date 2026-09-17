@@ -1,0 +1,28 @@
+name: Storage Backup Verification
+on:
+  pull_request:
+    paths:
+      - 'scripts/storage-backup.mjs'
+      - 'scripts/check-storage-backup.mjs'
+      - '.github/workflows/storage-backup-verification.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/storage-backup.mjs'
+      - 'scripts/check-storage-backup.mjs'
+      - '.github/workflows/storage-backup-verification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-storage-export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify read-only export and offline integrity with a local HTTP fixture
+        run: node --test scripts/check-storage-backup.mjs
+      # No credentials, schedules or uploaded artifacts. The real export is run privately.

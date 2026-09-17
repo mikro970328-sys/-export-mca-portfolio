@@ -1,3 +1,27 @@
+## Continuación de recuperación — 2026-09-17
+
+La base de esta continuación es la PR #331 ya publicada. No repetir como
+pendiente su copia manual de archivos ni confundirla con restauración de base.
+
+Se prepara `scripts/storage-backup.mjs`: exportación de lectura con paginación,
+inventario antes/después, verificación de bytes/hashes y comprobación offline.
+Dieciséis pruebas locales sintéticas aprobadas; CI, Preview e integración
+finales constarán en la PR. No toca APIs, UI, migraciones ni datos comerciales.
+No se ejecutó contra Storage real ni activa una agenda.
+
+Leer `security/STORAGE_BACKUP_RUNBOOK.md` y `security/BACKUP_RECOVERY_STATUS.md`.
+Pendiente real: conectar ejecutor/destino privado y acordar retención; obtener
+la autorización del costo adicional para el ensayo de restauración aislado.
+No se creó ningún recurso adicional. El ensayo sintético y la copia manual no
+certifican una restauración real completa ni RPO/RTO. No afirmar cerrada la
+recuperación. Mantener en privado los identificadores y evidencia del ensayo.
+
+Las funciones y auditoría ya cerradas en #326/#327 se conservan.
+Escritorio prioritario; iPhone físico, BrowserStack y push siguen diferidos.
+Sin QA comercial en producción/Preview ni notificaciones reales.
+
+---
+
 ## Estado vigente tras PR #330 — 2026-09-17
 
 Este corte sustituye los pendientes históricos que siguen debajo.

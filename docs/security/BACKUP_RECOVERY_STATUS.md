@@ -112,6 +112,16 @@ y, cuando corresponda, aplicar los cambios posteriores solo al destino aislado.
 
 ## Pendientes operativos
 
+Continuación del 17 de septiembre: `scripts/storage-backup.mjs` prepara una
+exportación repetible de los buckets elegidos y su verificación offline.
+Dieciséis pruebas locales sintéticas HTTP/archivos aprobadas; consultar la PR
+de esta continuación para CI y publicación. No se ejecutó contra Storage
+productivo ni se activó una tarea periódica. La copia privada de #331 sigue
+siendo la evidencia real disponible. Ver [procedimiento](STORAGE_BACKUP_RUNBOOK.md).
+
+La herramienta y el procedimiento general no contienen datos de producción.
+El ensayo real y la activación periódica conservan los pendientes indicados abajo.
+
 1. Autorizar y realizar una restauración real en un destino aislado, o preparar
    una exportación lógica segura. El plan Pro no autoriza recursos adicionales.
 2. Comparar migraciones, permisos, usuarios, conteos y saldos; reponer los objetos
