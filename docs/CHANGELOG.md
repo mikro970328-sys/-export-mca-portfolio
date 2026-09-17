@@ -1,3 +1,15 @@
+## 2026-09-17 · Copias reales comprobadas y archivos resguardados
+
+Acceso al panel mediante GitHub recuperado. Siete copias físicas COMPLETED,
+del 10 al 16 de septiembre; última 2026-09-16 11:48:13 UTC. Los tres objetos de
+Storage (674427 bytes) se descargaron y conservaron en un ZIP privado con
+inventario; checksum de origen y extracción/SHA-256 de 3/3 verificados.
+PR #330 ya integrada con 25 comprobaciones sintéticas aprobadas.
+La restauración real de base y la copia periódica de archivos siguen pendientes.
+Se registran seis versiones posteriores a la copia y la cotización del destino
+adicional; no se crearon recursos facturables ni se restauró producción.
+Ver security/BACKUP_RECOVERY_STATUS.md.
+
 ## 2026-09-17 · Pro confirmado y ensayo de restauración
 
 Se verifica Pro activo y base saludable; inventario de tres objetos de Storage,

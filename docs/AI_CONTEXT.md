@@ -20,14 +20,21 @@ Publicado: `0e53afab6c6efd45966686f597e1b5c20b6aa5cb`; producción
 - La jornada comercial de 18 pasos, repetir compra, pagos/cobros y variantes
   financieras publicadas anteriormente siguen resueltos. No reconstruir módulos.
 
-**Pendiente concreto:** respaldos y recuperación. El 2026-09-17 se verificó
-Supabase Pro activo y proyecto saludable. Storage contiene 2 documentos privados
-y 1 imagen (674427 bytes); los 2 documentos activos enlazan correctamente.
-La sesión nueva del panel pide acceso y ChatGPT quedó en verificación humana:
-aún no se acredita una copia administrada concreta. PR #330 añade ensayo de
-restauración con dos PostgreSQL y datos sintéticos; no sustituye restaurar una
-copia real. Falta copiar objetos a destino privado durable, definir periodicidad
-y ensayar la copia real en aislamiento. Leer security/BACKUP_RECOVERY_STATUS.md.
+**Recuperación verificada — 2026-09-17:** acceso al panel recuperado mediante
+GitHub, elegido por Daniel. Se ven 7 copias físicas COMPLETED del 10 al 16 de
+septiembre; la más reciente es 2026-09-16 11:48:13 UTC. Los 3 objetos actuales
+(674427 bytes) se descargaron, cotejaron contra los checksums de origen y
+guardaron en un ZIP privado independiente; extracción y SHA-256 de 3/3 aprobados.
+PR #330 está integrada: 25 comprobaciones sintéticas, 53 tablas y 120 filas.
+No confundir ese ensayo con la restauración real de la base.
+
+**Pendiente concreto:** copia periódica de Storage y ensayo de la base real en
+aislamiento. La copia más reciente precede a seis versiones de migración del
+16 de septiembre; comprobar el esquema restaurado y aplicar únicamente en el
+destino aislado lo que corresponda. El diálogo de clonado mostró $0, pero la
+cotización de Supabase para esta organización devuelve USD 10/mes por proyecto.
+No se creó un proyecto ni se inició una restauración: hace falta autorización
+para el recurso adicional. Leer security/BACKUP_RECOVERY_STATUS.md.
 
 Continuar por recuperación, con escritorio prioritario. iPhone físico,
 BrowserStack, PWA instalada y push externo real siguen diferidos.
