@@ -59,7 +59,8 @@ async function state(db) {
   }
   return {
     data, sequences,
-    columns:await rows("select table_name,column_name,ordinal_position,column_default,is_nullable,data_type,udt_name,numeric_precision,numeric_scale from information_schema.columns where table_schema='public' order by table_name,ordinal_position"),
+    // Logical dumps compact physical slots left by dropped columns; preserve visible order instead.
+    columns:await rows("select table_name,column_name,(row_number() over(partition by table_name order by ordinal_position))::int as column_position,column_default,is_nullable,data_type,udt_name,numeric_precision,numeric_scale from information_schema.columns where table_schema='public' order by table_name,ordinal_position"),
     relations:await rows("select c.relname,c.relkind,c.relrowsecurity,c.relforcerowsecurity,pg_get_userbyid(c.relowner) as owner,c.relacl::text from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' order by c.relname"),
     functions:await rows("select p.proname,pg_get_function_identity_arguments(p.oid) as args,pg_get_functiondef(p.oid) as definition,pg_get_userbyid(p.proowner) as owner,p.proacl::text from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind in ('f','p') order by p.proname,pg_get_function_identity_arguments(p.oid)"),
     constraints:await rows("select c.relname,k.conname,k.convalidated,pg_get_constraintdef(k.oid) as definition from pg_constraint k join pg_class c on c.oid=k.conrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' order by c.relname,k.conname"),
