@@ -1,1 +1,10 @@
-şë+ı¸§ı¶¬{®%Šwµß¯İzÿìµÚ.´ê^­«b¢yè¶—«š+myßî²¿ÛŠÛjÇºàÎzºè®‰â›­
+node_modules/
+playwright-report/
+test-results/
+browserstack-sdk.log
+browserstack.yml.bak
+.cache/
+.npm-cache/
+.pnpm/
+.wrangler-home/
+.wrangler/

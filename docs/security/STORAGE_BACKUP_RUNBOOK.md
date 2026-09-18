@@ -95,6 +95,23 @@ aprobación explícita antes de eliminar objetos históricos. La activación se
 considera completa únicamente después de crear R2, cargar secretos con Wrangler,
 desplegar, ejecutar una copia real y comprobar `COMPLETE` desde R2.
 
+### Activación verificada el 2026-09-18
+
+El Worker `export-mca-storage-backup` y el bucket privado
+`export-mca-private-backups` están activos con el horario `15 */6 * * *`. La
+primera ejecución real terminó a `2026-09-18T21:50:04.207Z`:
+
+- backup `20260918T215004207Z-bebf439d`;
+- 2 buckets, 3 objetos y 674427 bytes;
+- SHA-256 del manifiesto
+  `e4fb06f16d55c7e93c367298ba8a28de3d72fa2976e927204f71c125ab75b129`.
+
+La verificación posterior descargó de R2 `state/latest.json`, el manifiesto,
+`COMPLETE` y los tres miembros. Sus tamaños y SHA-256 coincidieron con el
+manifiesto. El endpoint autenticado `/health` devolvió `healthy: true` y el
+mismo conteo; sin token respondió 404. Los secretos permanecen en Cloudflare y
+no se guardaron en el repositorio.
+
 ## Ensayo de base real: acción preparada, sin ejecutar
 
 El operador identifica privadamente proyecto fuente y organización. El destino

@@ -65,10 +65,14 @@ async function sourceRequest(config, fetchFn, suffix, body) {
       method: body ? 'POST' : 'GET',
       headers: sourceHeaders(config.serviceKey),
       body: body ? JSON.stringify(body) : undefined,
-      redirect: 'error',
+      redirect: 'manual',
       signal: AbortSignal.timeout(60_000)
     });
-  } catch {
+  } catch (error) {
+    console.error('SOURCE_REQUEST_FAILED', {
+      name: error?.name || 'Error',
+      message: error?.message || 'Unknown fetch error'
+    });
     fail('SOURCE_REQUEST_FAILED');
   }
   if (!response.ok) {
@@ -268,7 +272,7 @@ async function restRequest(config, fetchFn, path, init = {}) {
   const response = await fetchFn(`https://${config.projectRef}.supabase.co/rest/v1/${path}`, {
     ...init,
     headers: { ...sourceHeaders(config.serviceKey), Prefer: 'resolution=ignore-duplicates,return=minimal', ...init.headers },
-    redirect: 'error',
+    redirect: 'manual',
     signal: AbortSignal.timeout(30_000)
   });
   if (!response.ok) fail(`ALERT_HTTP_${response.status}`);

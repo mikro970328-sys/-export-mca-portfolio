@@ -41,7 +41,8 @@ function fixture({ truncate = false, corruptR2 = false, inventoryChange = false,
   let downloads = 0;
   const fetchFn = async (input, init = {}) => {
     const url = new URL(input);
-    calls.push({ path: url.pathname, method: init.method || 'GET', body: init.body });
+    calls.push({ path: url.pathname, method: init.method || 'GET', body: init.body,
+      redirect: init.redirect });
     if (url.pathname === '/rest/v1/admin_users') return Response.json(users);
     if (url.pathname === '/rest/v1/admin_effective_permissions') return Response.json([]);
     if (url.pathname === '/rest/v1/notification_preferences') return Response.json([]);
@@ -105,6 +106,8 @@ test('copies both approved buckets, verifies R2 and writes COMPLETE before lates
   assert.ok(keys.includes(`${prefix}/manifest.json`));
   assert.ok(keys.includes(`${prefix}/COMPLETE`));
   assert.ok(keys.includes('state/latest.json'));
+  assert.ok(f.calls.length > 0);
+  assert.ok(f.calls.every(call => call.redirect === 'manual'));
 
   const skipped = await createBackup(f.env, { ...f, now: new Date('2026-09-18T12:15:00.000Z') });
   assert.equal(skipped.status, 'fresh');
