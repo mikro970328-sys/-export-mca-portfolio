@@ -4,12 +4,18 @@ on:
     paths:
       - 'scripts/storage-backup.mjs'
       - 'scripts/check-storage-backup.mjs'
+      - 'workers/storage-backup/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/storage-backup-verification.yml'
   push:
     branches: [main]
     paths:
       - 'scripts/storage-backup.mjs'
       - 'scripts/check-storage-backup.mjs'
+      - 'workers/storage-backup/**'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/storage-backup-verification.yml'
   workflow_dispatch:
 permissions:
@@ -23,6 +29,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
       - name: Verify read-only export and offline integrity with a local HTTP fixture
         run: node --test scripts/check-storage-backup.mjs
+      - name: Verify the scheduled R2 backup worker
+        run: npm run test:storage-backup-worker
+      - name: Validate the Wrangler bundle without deploying
+        run: npm run cf:backup:check
       # No credentials, schedules or uploaded artifacts. The real export is run privately.
