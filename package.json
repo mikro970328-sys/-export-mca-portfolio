@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "test:storage-backup-worker": "node --test workers/storage-backup/test/index.test.mjs",
+    "cf:backup:check": "wrangler deploy --dry-run --config workers/storage-backup/wrangler.jsonc",
+    "cf:backup:deploy": "wrangler deploy --config workers/storage-backup/wrangler.jsonc"
   },
   "engines": {
     "node": ">=20"
@@ -16,6 +19,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
-    "pg": "8.16.3"
+    "pg": "8.16.3",
+    "wrangler": "4.135.0"
   }
 }

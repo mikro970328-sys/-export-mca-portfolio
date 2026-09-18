@@ -75,19 +75,25 @@ La herramienta aún no se ejecutó contra Storage productivo. La copia manual
 verificada en PR #331 conserva su formato propio; no se afirma que este nuevo
 verificador pueda abrir aquel ZIP directamente.
 
-## Activación periódica pendiente
+## Activación periódica con Cloudflare R2
 
-Propuesta operativa para revisar: una copia diaria en un destino privado
-independiente del proyecto de Supabase; conservación de 30 copias diarias y 12
-mensuales. Hace falta confirmar el destino, configurar el ejecutor privado y
-sus credenciales existentes, y acordar retención antes de activar la tarea.
-El código no incorpora todavía esa agenda ni borrados por antigüedad.
+El componente `workers/storage-backup` prepara el destino y ejecutor propuestos.
+Usa un Worker con Cron Trigger y el binding privado `BACKUPS` hacia
+`export-mca-private-backups`. Revisa cada seis horas y crea como máximo una copia
+cada 20 horas. Copia únicamente `erp-documents` y `publication-images`, relee
+cada objeto desde R2, comprueba tamaño/SHA-256 y escribe `COMPLETE` y
+`state/latest.json` al final.
 
-El resultado exitoso debe incluir: inventario estable, verificación offline,
-confirmación de persistencia en el destino y fecha de la última copia válida.
-Un fallo debe conservar el respaldo anterior y avisar al operador por el canal
-interno que se configure; no enviar avisos a clientes. El destino y la alerta
-se consideran pendientes hasta probar una ejecución real.
+Los fallos crean un aviso interno `integration_failure` solo para administradores
+activos con permiso de notificaciones. El aviso pasa a crítico cuando la última
+copia válida supera 24 horas. Los endpoints de estado y ejecución manual exigen
+un secreto independiente de 32 bytes como mínimo y no devuelven rutas ni hashes.
+
+No se incorporó limpieza automática: el Worker conserva todas las copias y las
+ejecuciones parciales. La propuesta de 30 diarias y 12 mensuales necesita una
+aprobación explícita antes de eliminar objetos históricos. La activación se
+considera completa únicamente después de crear R2, cargar secretos con Wrangler,
+desplegar, ejecutar una copia real y comprobar `COMPLETE` desde R2.
 
 ## Ensayo de base real: acción preparada, sin ejecutar
 

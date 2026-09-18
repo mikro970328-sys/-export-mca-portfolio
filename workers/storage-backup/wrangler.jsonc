@@ -1,0 +1,30 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "export-mca-storage-backup",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-18",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
+  "triggers": {
+    "crons": ["15 */6 * * *"]
+  },
+  "r2_buckets": [
+    {
+      "binding": "BACKUPS",
+      "bucket_name": "export-mca-private-backups"
+    }
+  ],
+  "vars": {
+    "SOURCE_PROJECT_REF": "qflncyhdspuvtrxsqgbj",
+    "SOURCE_BUCKETS": "erp-documents,publication-images",
+    "MIN_BACKUP_INTERVAL_HOURS": "20",
+    "STALE_AFTER_HOURS": "24",
+    "MAX_OBJECT_BYTES": "52428800"
+  }
+}
