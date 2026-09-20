@@ -233,6 +233,7 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await sales.locator('#oClientPickerButton').click();
       await sales.locator(`[data-client-id="${f.client}"]`).click();
       await sales.locator('#oImporter').selectOption(f.importer);
+      await sales.locator('#oNationalization').selectOption('nationalized');
       await sales.locator('.lProduct').selectOption(f.product);
       await sales.locator('.lQty').fill('100');await sales.locator('.lTotal').fill('400');
       await mutation(a,'sales-order-ux',()=>sales.locator('#saveOrder').click());
