@@ -1,3 +1,22 @@
+## Cierre operativo de produccion - 2026-09-20
+
+La revision final de solo lectura confirma la publicacion principal de Vercel en
+estado `READY`, `admin.exportmca.com` mostrando el acceso del ERP y
+`app.exportmca.com` cargando el catalogo comercial. Supabase permanece
+`ACTIVE_HEALTHY`; hay 1 administrador activo, 1 iPhone con sesion push valida,
+0 entregas push pendientes, 0 fallidas en 24 horas y 0 webhooks fallidos en 24
+horas. La notificacion privada fue aceptada por el proveedor con HTTP 201, el
+propietario confirmo su recepcion en el iPhone y el aviso de prueba se retiro.
+
+La revision detecto tres timeouts transitorios del Dashboard en una misma carga.
+Esta entrega declara el RPC ejecutivo como lectura reintentable y limita esa
+recuperacion a operaciones marcadas expresamente como solo lectura; las
+escrituras siguen sin repetirse automaticamente. Pasan el contrato de reintentos,
+el owner del Dashboard, la validacion financiera, presentacion y 97 controles de
+errores publicos. No se modificaron datos comerciales ni el esquema remoto.
+
+---
+
 ## Cierre de recuperación real — 2026-09-18
 
 El backup físico de Supabase del `2026-09-18 11:34:24 UTC` se restauró en un
