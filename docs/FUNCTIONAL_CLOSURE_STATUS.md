@@ -1,3 +1,19 @@
+## Cierre operativo de produccion - 2026-09-20
+
+La revision final de solo lectura confirma Vercel `READY`, acceso administrativo,
+catalogo publico, Supabase `ACTIVE_HEALTHY` y entrega push real al iPhone. El
+propietario confirmo la recepcion; el aviso de prueba se marco leido y retirado.
+No quedan entregas push pendientes o fallidas ni webhooks fallidos en las ultimas
+24 horas.
+
+Se detectaron tres timeouts transitorios del Dashboard durante una misma carga.
+La correccion de esta entrega permite reintentar el RPC financiero unicamente al
+declararlo de solo lectura; no cambia el comportamiento de las escrituras. Los
+controles dirigidos de reintento, Dashboard, finanzas, presentacion y errores
+publicos pasan. No se crearon ventas, facturas, cobros ni otros movimientos.
+
+---
+
 ## Cierre de recuperación real — 2026-09-18
 
 El backup físico de Supabase del `2026-09-18 11:34:24 UTC` se restauró en un
