@@ -1,3 +1,25 @@
+## Cierre de recuperación real — 2026-09-18
+
+El backup físico de Supabase del `2026-09-18 11:34:24 UTC` se restauró en un
+proyecto aislado autorizado a USD 9.68/mes. La base quedó disponible en unos
+cinco minutos. Se compararon 75 tablas, esquema, permisos/RLS, funciones,
+migraciones, 1 usuario de Auth y metadatos de Storage. Las 70 tablas estables,
+incluidas todas las comerciales y financieras, coinciden exactamente; solo cinco
+tablas de estado operativo reflejan actividad posterior al punto de copia.
+
+La copia automática de Cloudflare R2 también se restauró: 2 buckets, 3 objetos y
+674427 bytes. Los tres archivos se descargaron nuevamente desde el destino y sus
+tamaños/SHA-256 coincidieron; los permisos temporales se retiraron después. RPO
+observado: aproximadamente 10 h 43 min para base y 28 min para archivos. RTO:
+unos 5 min para base y 1 h 32 min para completar la verificación integral manual.
+
+Producción, dominios y Vercel no se tocaron. El propietario confirmó la retirada
+y el proyecto temporal se eliminó irreversiblemente el 2026-09-20; Supabase
+muestra solo el ERP real `ACTIVE_HEALTHY`. Leer
+`security/BACKUP_RECOVERY_STATUS.md`.
+
+---
+
 ## Continuación de recuperación — 2026-09-17
 
 La base de esta continuación es la PR #331 ya publicada. No repetir como
