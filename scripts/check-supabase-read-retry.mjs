@@ -68,6 +68,38 @@ try {
   });
   assert.equal(calls, 1, 'una escritura no debe repetirse automáticamente');
 
+  warnings.length = 0;
+  calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return response(500, { code:'57014', message:'canceling statement due to statement timeout' }, { 'sb-request-id':'retry-statement-timeout' });
+    }
+    return response(200, { activity_by_currency:[] });
+  };
+  assert.deepEqual(await supabase('rpc/executive_dashboard_rollup', {
+    method:'POST',
+    readOnly:true,
+    body:{ p_start_date:null }
+  }), { activity_by_currency:[] });
+  assert.equal(calls, 2, 'un RPC declarado de solo lectura debe recuperarse del timeout transitorio');
+  assert.equal(warnings[0]?.details?.code, '57014');
+
+  warnings.length = 0;
+  calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    if (calls === 1) throw new Error('socket reset');
+    return response(200, { balances_by_currency:[] });
+  };
+  assert.deepEqual(await supabase('rpc/executive_dashboard_rollup', {
+    method:'POST',
+    readOnly:true,
+    body:{ p_start_date:null }
+  }), { balances_by_currency:[] });
+  assert.equal(calls, 2, 'un RPC declarado de solo lectura debe reintentar una falla de red');
+  assert.equal(warnings[0]?.details?.reason, 'network');
+
   calls = 0;
   globalThis.fetch = async () => {
     calls += 1;
