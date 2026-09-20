@@ -13,7 +13,7 @@ const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
 
 for(const text of [
-  '/admin/embedded-auto-refresh.js?v=20260920-speed1',
+  '/admin/embedded-auto-refresh.js?v=20260909-live7',
   '/admin/erp.js?v=20260905-accessflow1'
 ])requireText(shell,text,`shell ${text}`);
 
@@ -34,7 +34,7 @@ for(const text of [
 for(const text of [
   "const LIVE_SYNC_PATH = '/api/live-updates'",
   'function applyLiveSnapshot(payload)',
-  "queueExternalScopes(external,'multiuser-change')",
+  "queueExternalScopes(changed,'multiuser-change')",
   "window.addEventListener('export-mca:admin-ready'",
   "new CustomEvent('export-mca:external-change'"
 ])requireText(refresh,text,`sincronización multiusuario ${text}`);

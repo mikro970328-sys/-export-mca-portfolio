@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260920-speed1';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260909-live7';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -28,7 +28,6 @@
   const LIVE_SYNC_HIDDEN_MS = 15000;
   const LIVE_SYNC_MAX_BACKOFF_MS = 60000;
   const LIVE_SYNC_TIMEOUT_MS = 12000;
-  const LIVE_SYNC_LOCAL_ECHO_MS = 15000;
   const RELATED = {
     products: ['productsSection','purchasesSection','warehouseSection','inventorySection','loadsSection','salesSection','invoicesSection','reportsSection'],
     suppliers: ['suppliersSection','purchasesSection','warehouseSection','payablesSection','costsSection','reportsSection'],
@@ -109,7 +108,6 @@
   let liveVersions = null;
   let pendingExternalReason = 'live-change';
   const pendingExternalScopes = new Set();
-  const localMutationTimes = new Map();
 
   function normalizeMethod(input, init) {
     return String(init?.method || (input && typeof input === 'object' ? input.method : '') || 'GET').toUpperCase();
@@ -305,15 +303,8 @@
       !Object.hasOwn(liveVersions,scope)||liveVersions[scope]!==next[scope]
     );
     liveVersions=next;
-    const now=Date.now();
-    const external=changed.filter(scope=>{
-      const localAt=localMutationTimes.get(scope);
-      if(!localAt)return true;
-      localMutationTimes.delete(scope);
-      return now-localAt>LIVE_SYNC_LOCAL_ECHO_MS;
-    });
-    if(external.length)queueExternalScopes(external,'multiuser-change');
-    return external;
+    if(changed.length)queueExternalScopes(changed,'multiuser-change');
+    return changed;
   }
 
   async function requestLiveSnapshot(request) {
@@ -430,7 +421,6 @@
     livePollFailures=0;
     liveVersions=null;
     pendingExternalScopes.clear();
-    localMutationTimes.clear();
     clearTimeout(shellRefreshTimer);
     shellRefreshQueued=false;
     document.querySelectorAll('.app-section iframe').forEach(frame=>{
@@ -454,7 +444,6 @@
 
   function announceMutation(scope, sourceFrame) {
     if (!scope) return;
-    localMutationTimes.set(scope,Date.now());
     clearStaleOperationalContext(frameSectionId(sourceFrame));
     refreshSections(RELATED[scope] || [], sourceFrame, `mutation:${scope}`);
     if(sourceFrame)scheduleSourceRefresh(sourceFrame,scope);

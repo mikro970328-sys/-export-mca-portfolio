@@ -61,16 +61,13 @@ try {
     assert.equal(Number(success(await get('sales-order-ux',{mode:'pricing',sales_order_id:order.id})).items[0].entered_line_total),1200);
   });
   await test('API-03 sales compatibility endpoint preserves exact totals too',async()=>{
-    const created=success(await post('sales',{...body,lines:[{...line,ordered_quantity:840,ordered_pallets:28,units_per_pallet:30,unit_price:1.190476,line_total:1000}]})).order;
-    const order=success(await get('sales',{id:created.id})).order;
+    const order=success(await post('sales',{...body,lines:[{...line,ordered_quantity:840,ordered_pallets:28,units_per_pallet:30,unit_price:1.190476,line_total:1000}]})).order;
     assert.equal(Number(order.items[0].progress.line_total),1000);
-    success(await post('sales',{...body,action:'replace_plan',sales_order_id:order.id,lines:[{...line,line_total:450}]}));
-    const edited=success(await get('sales',{id:order.id})).order;
+    const edited=success(await post('sales',{...body,action:'replace_plan',sales_order_id:order.id,lines:[{...line,line_total:450}]})).order;
     assert.equal(Number(edited.items[0].progress.line_total),450);
     for(const line_total of [-1,'NaN','Infinity','invalid'])
       assert.equal((await post('sales',{...body,lines:[{...line,line_total}]})).status,400,`Invalid total ${line_total}`);
-    const unitOnlyCreated=success(await post('sales',body)).order;
-    const unitOnly=success(await get('sales',{id:unitOnlyCreated.id})).order;
+    const unitOnly=success(await post('sales',body)).order;
     assert.equal(Number(unitOnly.items[0].progress.line_total),400);
   });
   await test('API-04 sale, load, reservation, container and dispatch return updated state',async()=>{

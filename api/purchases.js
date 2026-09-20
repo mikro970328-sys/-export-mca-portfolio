@@ -114,25 +114,25 @@ export default async function handler(req,res){
       const result=await supabase('rpc/create_purchase_order_plan',{method:'POST',body:{p_supplier_id:text(body.supplier_id,80)||null,p_lines:cleanLines(body.lines),p_warehouse_id:text(body.warehouse_id,80)||null,p_order_date:text(body.order_date,40)||null,p_expected_at:text(body.expected_at,80)||null,p_currency:text(body.currency,10).toUpperCase()||'USD',p_supplier_reference:text(body.supplier_reference,250)||null,p_notes:text(body.notes,2000)||null,p_actor:admin.admin_id||null}});
       const order=rpcRow(result);if(!order?.id)throw new Error('No se pudo crear la Purchase Order');
       await writeAudit(admin,'purchase_order_created','purchase_order',order.id,{po_number:order.po_number,supplier_id:order.supplier_id});
-      return ok(res,{order});
+      return ok(res,{order:(await listOrders(admin)).find(item=>item.id===order.id)||order});
     }
     if(action==='replace_plan'){
       const orderId=text(body.purchase_order_id,80);if(!orderId)throw new Error('Falta la Purchase Order');
       const result=await supabase('rpc/replace_purchase_order_plan',{method:'POST',body:{p_purchase_order_id:orderId,p_supplier_id:text(body.supplier_id,80)||null,p_lines:cleanLines(body.lines),p_warehouse_id:text(body.warehouse_id,80)||null,p_order_date:text(body.order_date,40)||null,p_expected_at:text(body.expected_at,80)||null,p_currency:text(body.currency,10).toUpperCase()||'USD',p_supplier_reference:text(body.supplier_reference,250)||null,p_notes:text(body.notes,2000)||null}});
       const order=rpcRow(result);await writeAudit(admin,'purchase_order_updated','purchase_order',orderId,{po_number:order?.po_number||null});
-      return ok(res,{order});
+      return ok(res,{order:(await listOrders(admin)).find(item=>item.id===orderId)||order});
     }
     if(['issue','confirm','cancel','close'].includes(action)){
       const orderId=text(body.purchase_order_id,80);if(!orderId)throw new Error('Falta la Purchase Order');
       const result=await supabase('rpc/transition_purchase_order',{method:'POST',body:{p_purchase_order_id:orderId,p_action:action}}),order=rpcRow(result);
       await writeAudit(admin,`purchase_order_${action}`,'purchase_order',orderId,{po_number:order?.po_number||null});
-      return ok(res,{order});
+      return ok(res,{order:(await listOrders(admin)).find(item=>item.id===orderId)||order});
     }
     if(action==='receive'){
       const result=await supabase('rpc/receive_purchase_order_lines',{method:'POST',body:{p_warehouse_id:text(body.warehouse_id,80)||null,p_lines:cleanReceiptLines(body.lines),p_received_at:text(body.received_at,80)||null,p_truck_reference:text(body.truck_reference,250)||null,p_driver_name:text(body.driver_name,250)||null,p_reference_number:text(body.reference_number,500)||null,p_notes:text(body.notes,2000)||null,p_allow_over_receipt:body.allow_over_receipt===true,p_actor:admin.admin_id||null}}),receipt=rpcRow(result);
       if(!receipt?.id)throw new Error('No se pudo registrar la recepción');
       await writeAudit(admin,'purchase_order_received','warehouse_receipt',receipt.id,{receipt_number:receipt.receipt_number,reference_number:receipt.reference_number});
-      return ok(res,{receipt});
+      return ok(res,{receipt,orders:await listOrders(admin)});
     }
     return fail(res,400,'Acción de Compras no válida');
   }catch(error){const raw=String(error.message||'No se pudo procesar Compras'),failure=translatedError(raw);console.error('[purchases]',error);return fail(res,failure.status,failure.message,{code:failure.code});}

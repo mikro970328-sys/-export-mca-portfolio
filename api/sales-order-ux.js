@@ -109,16 +109,15 @@ async function saveOrder(body, admin) {
     p_requested_at:text(body.requested_at,80) || null,
     p_currency:text(body.currency,10).toUpperCase() || 'USD',
     p_customer_reference:text(body.customer_reference,250) || null,
-    p_notes:text(body.notes,2000) || null,
-    p_nationalization_status:text(body.nationalization_status,40) || null
+    p_notes:text(body.notes,2000) || null
   };
   let result;
   let orderId = text(body.sales_order_id,80);
   if (action === 'create_plan') {
-    result = await supabase('rpc/create_sales_order_plan_with_nationalization', { method:'POST', body:{ ...common, p_actor:admin.admin_id || null } });
+    result = await supabase('rpc/create_sales_order_plan', { method:'POST', body:{ ...common, p_actor:admin.admin_id || null } });
   } else {
     if (!orderId) throw new Error('Falta la Sales Order');
-    result = await supabase('rpc/replace_sales_order_plan_with_nationalization', { method:'POST', body:{ p_sales_order_id:orderId, ...common } });
+    result = await supabase('rpc/replace_sales_order_plan', { method:'POST', body:{ p_sales_order_id:orderId, ...common } });
   }
   const order = rpcRow(result);
   if (!order?.id) throw new Error('No se pudo guardar la Sales Order');
@@ -140,7 +139,6 @@ function translatedError(raw) {
     ['SO_IMPORTER_INACTIVE','El importador está inactivo.'],
     ['SO_CLIENT_IMPORTER_MISMATCH','Ese importador no está asociado al cliente seleccionado.'],
     ['SO_CURRENCY_INVALID','La moneda debe tener un código de 3 letras.'],
-    ['SO_NATIONALIZATION_STATUS_INVALID','Selecciona si la mercancía está nacionalizada o no nacionalizada.'],
     ['SO_HAS_NO_ITEMS','Agrega al menos una línea a la Sales Order.'],
     ['SO_PRODUCT_NOT_FOUND','Uno de los productos no existe.'],
     ['SO_PRODUCT_INACTIVE','Uno de los productos está inactivo.'],

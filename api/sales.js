@@ -4,7 +4,7 @@ import { loadSalesActionCapabilityMap, loadSalesWriteAccess } from './_sales-act
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
 
-const SO_SELECT = 'id,so_number,client_id,importer_id,order_date,requested_at,currency,customer_reference,nationalization_status,status,notes,created_by,created_at,updated_at,client:clients(id,name,company,mipyme_name,active),importer:importers(id,name,active)';
+const SO_SELECT = 'id,so_number,client_id,importer_id,order_date,requested_at,currency,customer_reference,status,notes,created_by,created_at,updated_at,client:clients(id,name,company,mipyme_name,active),importer:importers(id,name,active)';
 
 async function listOrders(admin, writableOverride = null) {
   const [orders, progress, items, itemProgress, allocations, capabilityMap] = await Promise.all([
@@ -84,7 +84,6 @@ function translatedError(raw) {
     ['SO_IMPORTER_INACTIVE','El importador está inactivo.'],
     ['SO_CLIENT_IMPORTER_MISMATCH','Ese importador no está asociado al cliente seleccionado.'],
     ['SO_CURRENCY_INVALID','La moneda debe tener un código de 3 letras.'],
-    ['SO_NATIONALIZATION_STATUS_INVALID','Selecciona si la mercancía está nacionalizada o no nacionalizada.'],
     ['SO_HAS_NO_ITEMS','Agrega al menos una línea a la Sales Order.'],
     ['SO_PRODUCT_NOT_FOUND','Uno de los productos no existe.'],
     ['SO_PRODUCT_INACTIVE','Uno de los productos está inactivo.'],
@@ -132,7 +131,7 @@ export default async function handler(req, res) {
     const action = text(body.action, 60).toLowerCase();
 
     if (action === 'create_plan') {
-      const result = await supabase('rpc/create_sales_order_plan_with_nationalization', { method:'POST', body:{
+      const result = await supabase('rpc/create_sales_order_plan', { method:'POST', body:{
         p_client_id:text(body.client_id,80) || null,
         p_lines:cleanLines(body.lines),
         p_importer_id:text(body.importer_id,80) || null,
@@ -141,19 +140,18 @@ export default async function handler(req, res) {
         p_currency:text(body.currency,10).toUpperCase() || 'USD',
         p_customer_reference:text(body.customer_reference,250) || null,
         p_notes:text(body.notes,2000) || null,
-        p_actor:admin.admin_id || null,
-        p_nationalization_status:text(body.nationalization_status,40) || null
+        p_actor:admin.admin_id || null
       }});
       const order = rpcRow(result);
       if (!order?.id) throw new Error('No se pudo crear la Sales Order');
       await writeAudit(admin,'sales_order_created','sales_order',order.id,{ so_number:order.so_number, client_id:order.client_id });
-      return ok(res,{ order });
+      return ok(res,{ order:(await listOrders(admin, true)).find(item => item.id === order.id) || order });
     }
 
     if (action === 'replace_plan') {
       const orderId = text(body.sales_order_id,80);
       if (!orderId) throw new Error('Falta la Sales Order');
-      const result = await supabase('rpc/replace_sales_order_plan_with_nationalization', { method:'POST', body:{
+      const result = await supabase('rpc/replace_sales_order_plan', { method:'POST', body:{
         p_sales_order_id:orderId,
         p_client_id:text(body.client_id,80) || null,
         p_lines:cleanLines(body.lines),
@@ -162,12 +160,11 @@ export default async function handler(req, res) {
         p_requested_at:text(body.requested_at,80) || null,
         p_currency:text(body.currency,10).toUpperCase() || 'USD',
         p_customer_reference:text(body.customer_reference,250) || null,
-        p_notes:text(body.notes,2000) || null,
-        p_nationalization_status:text(body.nationalization_status,40) || null
+        p_notes:text(body.notes,2000) || null
       }});
       const order = rpcRow(result);
       await writeAudit(admin,'sales_order_updated','sales_order',orderId,{ so_number:order?.so_number || null });
-      return ok(res,{ order });
+      return ok(res,{ order:(await listOrders(admin, true)).find(item => item.id === orderId) || order });
     }
 
     if (['confirm','cancel','close'].includes(action)) {
@@ -176,7 +173,7 @@ export default async function handler(req, res) {
       const result = await supabase('rpc/transition_sales_order', { method:'POST', body:{ p_sales_order_id:orderId, p_action:action } });
       const order = rpcRow(result);
       await writeAudit(admin,`sales_order_${action}`,'sales_order',orderId,{ so_number:order?.so_number || null });
-      return ok(res,{ order });
+      return ok(res,{ order:(await listOrders(admin, true)).find(item => item.id === orderId) || order });
     }
 
     return fail(res,400,'Acción de Ventas no válida');

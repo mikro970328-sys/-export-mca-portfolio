@@ -45,7 +45,7 @@ for (const text of [
   'const LIVE_SYNC_VISIBLE_MS = 4000',
   'const LIVE_SYNC_HIDDEN_MS = 15000',
   'function applyLiveSnapshot(payload)',
-  "queueExternalScopes(external,'multiuser-change')",
+  "queueExternalScopes(changed,'multiuser-change')",
   "window.TasksWorkspace?.load?.()",
   "window.OperationalAlertCenter?.load?.()",
   "window.WorkersModule?.load?.()",
@@ -59,7 +59,7 @@ if (/SUPABASE_(?:SERVICE_ROLE|SECRET|ANON|PUBLISHABLE)|createClient\s*\(/.test(r
 
 for (const name of fs.readdirSync('admin').filter(name => name.endsWith('.html'))) {
   const html = read(`admin/${name}`);
-  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260920-speed1')) {
+  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260909-live7')) {
     failures.push(`admin/${name}: conserva una versión anterior del runtime de sincronización`);
   }
 }
@@ -210,13 +210,6 @@ modalOpen=false;
 live.queueExternalScopes([], 'modal-closed-test');
 await new Promise(resolve=>setTimeout(resolve,220));
 assert.equal(coreRefreshes,2,'el cambio aplazado debe aplicarse al cerrar el formulario');
-
-live.announceMutation('sales',null);
-await new Promise(resolve=>setTimeout(resolve,220));
-assert.equal(coreRefreshes,3,'un cambio local debe reconciliarse una sola vez');
-assert.equal([...live.applyLiveSnapshot({versions:{tasks:1,products:1,sales:1}})].join(','),'','el eco del cambio local no debe disparar otra recarga');
-await new Promise(resolve=>setTimeout(resolve,220));
-assert.equal(coreRefreshes,3,'el cambio local no debe recargarse por segunda vez');
 
 if (failures.length) {
   console.error('Multiuser live sync check failed:\n'+failures.map(item=>`- ${item}`).join('\n'));

@@ -24,12 +24,8 @@ function invoiceCreationCapability(summary,financeWritable){
 async function workspaceAccess(admin){if(admin.role==='master_admin')return{documentsReadable:true,financeReadable:true,financeWritable:true,salesWritable:true};const context=await loadAdminAccessContext(admin.admin_id),permissions=new Set(context.permissions||[]);return{documentsReadable:permissions.has('documents.read'),financeReadable:permissions.has('finance.read'),financeWritable:permissions.has('finance.write'),salesWritable:permissions.has('sales.write')};}
 
 async function workspace(salesOrderId,{documentsReadable=false,financeReadable=false,financeWritable=false,salesCapabilities={actions:{}},invoiceCapabilityMap=new Map()}={}){
-  const [summaryRows,orderRows]=await Promise.all([
-    rows('sales_order_workspace_summary',`?select=*&sales_order_id=eq.${salesOrderId}&limit=1`),
-    rows('sales_orders',`?select=id,nationalization_status&id=eq.${salesOrderId}&limit=1`)
-  ]);
-  const normalizedSummary=normalizeSummary(summaryRows[0]||null);if(!normalizedSummary)return null;
-  const authoritativeSummary={...normalizedSummary,nationalization_status:orderRows[0]?.nationalization_status||null};
+  const summaryRows=await rows('sales_order_workspace_summary',`?select=*&sales_order_id=eq.${salesOrderId}&limit=1`);
+  const authoritativeSummary=normalizeSummary(summaryRows[0]||null);if(!authoritativeSummary)return null;
   const [itemRows,itemProgress,itemInvoiceProgress,logistics,invoices,invoiceFinancial]=await Promise.all([
     rows('sales_order_items',`?select=id,sales_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_price,entered_line_total,notes,created_at,updated_at,product:products(id,sku,name,brand,category,unit,package_format,default_units_per_pallet)&sales_order_id=eq.${salesOrderId}&order=created_at.asc&limit=5000`),
     rows('sales_order_item_progress',`?select=*&sales_order_id=eq.${salesOrderId}&order=sales_order_item_id.asc&limit=5000`),
