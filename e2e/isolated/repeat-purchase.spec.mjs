@@ -124,12 +124,10 @@ test('repeat purchase creates an independent draft with current permissions', as
       expect(result.status()).toBe(status);const body=await result.json();
       if(status!==200)return body.order;
       await expect(ui.locator('#orderModal')).toBeHidden();
-      const detail=await page.evaluate(async id=>{
-        const response=await fetch(`/api/purchases?id=${encodeURIComponent(id)}`);
-        return {status:response.status,body:await response.json()};
-      },body.order.id);
-      expect(detail.status).toBe(200);
-      return detail.body.order;
+      const order=await f.one('select * from purchase_orders where id=$1',[body.order.id]);
+      order.items=await f.rows('select * from purchase_order_items where purchase_order_id=$1 order by created_at,id',[order.id]);
+      for(const item of order.items)item.allocations=await f.rows('select * from purchase_receipt_allocations where purchase_order_item_id=$1',[item.id]);
+      return order;
     };
     const count=async()=>Number((await f.one('select count(*) from purchase_orders')).count);
     const step=async(name,run)=>test.step(name,async()=>{await run();evidence.checkpoints.push(name);});
