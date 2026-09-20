@@ -240,9 +240,10 @@ function parseSupabaseError(text) {
   }
 }
 
-function retryableSupabaseReadFailure(method, status, errorDetails = {}) {
-  if (!['GET', 'HEAD'].includes(String(method || '').toUpperCase())) return false;
+function retryableSupabaseReadFailure(retrySafe, status, errorDetails = {}) {
+  if (!retrySafe) return false;
   if (SUPABASE_READ_RETRY_STATUSES.has(Number(status))) return true;
+  if (Number(status) === 500 && errorDetails.code === '57014') return true;
   return Number(status) === 401
     && errorDetails.code === 'PGRST303'
     && /issued at future/i.test(errorDetails.message);
@@ -270,11 +271,12 @@ export function upstreamFailureStatus(error, fallback = 400) {
   return error?.retryable === true ? 503 : fallback;
 }
 
-export async function supabase(path, { method = 'GET', body, query = '', prefer } = {}) {
+export async function supabase(path, { method = 'GET', body, query = '', prefer, readOnly = false } = {}) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('SUPABASE_CONFIG_MISSING');
   const normalizedMethod = String(method || 'GET').toUpperCase();
+  const retrySafe = readOnly === true || ['GET', 'HEAD'].includes(normalizedMethod);
   const requestUrl = `${url}/rest/v1/${path}${query}`;
   const request = {
     method:normalizedMethod,
@@ -294,7 +296,7 @@ export async function supabase(path, { method = 'GET', body, query = '', prefer 
       response = await fetch(requestUrl, request);
       text = await response.text();
     } catch (cause) {
-      const retryable = ['GET', 'HEAD'].includes(normalizedMethod);
+      const retryable = retrySafe;
       if (retryable && attempt < SUPABASE_READ_MAX_ATTEMPTS) {
         const delayMs = retryDelay(attempt);
         console.warn('SUPABASE_READ_RETRY', { path, attempt, reason:'network', delay_ms:delayMs });
@@ -317,7 +319,7 @@ export async function supabase(path, { method = 'GET', body, query = '', prefer 
     if (response.ok) return parsed;
 
     const details = parseSupabaseError(text);
-    const retryable = retryableSupabaseReadFailure(normalizedMethod, response.status, details);
+    const retryable = retryableSupabaseReadFailure(retrySafe, response.status, details);
     const error = supabaseError(response.status, text, response, retryable);
     if (!retryable || attempt >= SUPABASE_READ_MAX_ATTEMPTS) throw error;
 

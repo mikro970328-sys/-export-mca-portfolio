@@ -46,6 +46,7 @@ export async function loadExecutiveDashboard(query = {}) {
   const filters = parseExecutiveFilters(query);
   const result = await supabase('rpc/executive_dashboard_rollup', {
     method:'POST',
+    readOnly:true,
     body:{
       p_start_date:filters.start_date,
       p_end_date:filters.end_date,
