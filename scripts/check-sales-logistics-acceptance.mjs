@@ -249,6 +249,29 @@ try {
     const sh=await shipment();
     await rejects(dispatchDirectSql,[sh.id],'DIRECT_SHIPMENT_HAS_NO_ALLOCATIONS');
   });
+  await test('DS-05 quick Direct Ship derives sale and purchase balances automatically',async()=>{
+    const so=await sale({lines:[{...baseLine,ordered_quantity:150,ordered_pallets:15}]}),po=await purchase({direct:true});
+    const first=(await one('select assign_sales_order_item_direct_ship($1,$2) as result',[so.items[0].id,po.item.id])).result;
+    assert.equal(n(first.allocated_quantity),100);
+    assert.equal(n(first.allocated_pallets),10);
+    assert.equal(n((await one('select * from sales_order_supply_item_progress where sales_order_item_id=$1',[so.items[0].id])).unplanned_quantity),50);
+    await rejects('select assign_sales_order_item_direct_ship($1,$2)',[so.items[0].id,po.item.id],'SUPPLY_QUICK_DIRECT_NO_PURCHASE_BALANCE');
+    const secondPo=await purchase({direct:true});
+    const second=(await one('select assign_sales_order_item_direct_ship($1,$2) as result',[so.items[0].id,secondPo.item.id])).result;
+    assert.equal(n(second.allocated_quantity),50);
+    assert.equal(n(second.allocated_pallets),5);
+    await rejects('select assign_sales_order_item_direct_ship($1,$2)',[so.items[0].id,secondPo.item.id],'SUPPLY_QUICK_DIRECT_NO_SALE_BALANCE');
+  });
+  await test('DS-06 existing Direct Ship container receives the full pending balance automatically',async()=>{
+    const so=await sale(),po=await purchase({direct:true}),sh=await shipment();
+    const prepared=(await one('select assign_sales_order_item_direct_ship($1,$2) as result',[so.items[0].id,po.item.id])).result;
+    const linked=(await one('select assign_procurement_to_direct_shipment($1,$2) as result',[prepared.procurement_allocation_id,sh.id])).result;
+    assert.equal(n(linked.allocated_sales_quantity),100);
+    assert.equal(n(linked.allocated_purchase_quantity),100);
+    assert.equal(n(linked.allocated_sales_pallets),10);
+    assert.equal(n(linked.allocated_purchase_pallets),10);
+    await rejects('select assign_procurement_to_direct_shipment($1,$2)',[prepared.procurement_allocation_id,sh.id],'SUPPLY_QUICK_DIRECT_NO_ALLOCATION_BALANCE');
+  });
   await test('DOC-01 official current documents resolve pending customs requirements',async()=>{
     const sh=await shipment(); await db.query("update shipments set departure_date='2026-09-09' where id=$1",[sh.id]);
     assert.deepEqual((await readiness(sh.id)).missing_documents,['Packing List Cuba','Commercial Invoice Cuba']);

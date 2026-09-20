@@ -14,7 +14,7 @@
   padding-bottom:30px;
 }
 
-.erp-module-purchases .purchases-page-head {
+.erp-module-page.erp-module-purchases .purchases-page-head {
   isolation:isolate;
   align-items:center;
   min-height:190px;
@@ -46,7 +46,14 @@
 }
 
 .erp-module-purchases .purchases-page-kicker {
-  color:#ffb27d;
+  display:inline-flex;
+  width:fit-content;
+  border:1px solid #ffd0b0;
+  border-radius:6px;
+  padding:5px 8px;
+  background:#fff1e8;
+  color:#7c2f08;
+  font-weight:700;
 }
 
 .erp-module-purchases .purchases-page-head h1 {

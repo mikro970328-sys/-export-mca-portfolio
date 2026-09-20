@@ -15,6 +15,7 @@ const workspace=read('admin/sales-workspace.js');
 const salesApi=read('api/sales.js');
 const orderApi=read('api/sales-order-ux.js');
 const loadsApi=read('api/sales-loads.js');
+const migration=read('supabase/migrations/20260920113000_sales_nationalization_and_quick_direct.sql');
 const cleanup=read('scripts/check-ux6-presentation-cleanup.mjs');
 const workflow=read('.github/workflows/ux6-sales-explicit-owner.yml');
 const failures=[];
@@ -28,9 +29,9 @@ requireText(html,'/admin/sales-workspace.css?v=20260902-ux7sales1','CSS del work
 requireText(html,'/admin/sales-supply-workspace.css?v=20260902-ux7sales1','CSS de abastecimiento versionado');
 requireText(html,'/admin/sales-customer-finance.css?v=20260902-ux7sales1','CSS financiero versionado');
 for(const asset of [
-  '/admin/sales.js?v=20260904-directflow1',
-  '/admin/sales-order-ux.js?v=20260902-ux7sales1',
-  '/admin/sales-workspace.js?v=20260916-payment1',
+  '/admin/sales.js?v=20260920-speed1',
+  '/admin/sales-order-ux.js?v=20260920-speed1',
+  '/admin/sales-workspace.js?v=20260920-speed1',
   '/admin/sales-existing-load-link-v2.js?v=20260902-ux6owner1'
 ])requireText(html,asset,`asset revisado ${asset}`);
 requireText(html,'<body class="erp-module-page erp-module-sales" data-owner="sales.js">','owner canónico de Ventas');
@@ -38,6 +39,7 @@ requireText(html,'id="salesAccessNote"','estado de solo lectura');
 requireText(html,'id="salesListTitle"','jerarquía del listado');
 requireText(html,'aria-pressed="true"','estado accesible de filtros');
 requireText(html,'role="status" aria-live="polite"','feedback accesible');
+requireText(html,'id="oNationalization"','selector de mercancía nacionalizada');
 forbid(html,/\sstyle=/i,'sales.html conserva estilos inline');
 forbid(html,/<style(?:\s|>)/i,'sales.html conserva CSS incrustado');
 forbid(html,/purchases\.css/i,'Ventas vuelve a depender de la presentación de Compras');
@@ -83,6 +85,7 @@ for(const token of [
   'function onOrderOpen()',
   'mountLine:decorateLine',
   'onOrderOpen,',
+  'nationalization_status:nationalizationStatus',
   'select.hidden = true',
   "button.setAttribute('aria-haspopup','dialog')",
   "owner:'sales-order-ux.js'"
@@ -122,9 +125,11 @@ for(const token of [
   "requireCapability(capabilities, 'allocate_load')",
   "rpc/link_existing_load_to_sales_order",
   "rpc/create_load_from_sales_order",
-  "rpc/create_sales_order_plan",
-  "rpc/replace_sales_order_plan"
+  "rpc/create_sales_order_plan_with_nationalization",
+  "rpc/replace_sales_order_plan_with_nationalization"
 ])requireText(`${salesApi}\n${orderApi}\n${loadsApi}`,token,`contrato canónico ${token}`);
+for(const token of ['nationalization_status','sales_orders_nationalization_status_check','create_sales_order_plan_with_nationalization','replace_sales_order_plan_with_nationalization'])requireText(migration,token,`migración de nacionalización ${token}`);
+forbid(salesApi,/return ok\(res,\{ order:\(await listOrders/,'Ventas reconstruye toda la lista después de guardar');
 
 for(const token of ['style\\.textContent','unallocated_','allocate_load canónico','error.message crudo'])requireText(cleanup,token,`gate común ${token}`);
 for(const token of [

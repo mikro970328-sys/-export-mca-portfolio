@@ -25,6 +25,7 @@ for(const text of [
 ]) requireText(api,text,`backend seguro ${text}`);
 forbid(api,/\?\.[1]\]\|\|raw|\|\|\s*raw\s*;/,'Purchases API no puede devolver errores internos crudos');
 forbid(api,/fail\(res,400,translatedError\(raw\)\)/,'Purchases API no puede clasificar todo error inesperado como 400');
+forbid(api,/return ok\(res,\{(?:order|receipt)[\s\S]{0,80}await listOrders/,'Compras reconstruye toda la lista después de guardar');
 
 for(const text of [
   'SAFE_PURCHASE_ERROR_PATTERNS',
@@ -92,6 +93,7 @@ for(const text of [
   '@media(max-width:650px)',
   '@media(max-width:430px)'
 ]) requireText(css,text,`CSS ${text}`);
+for(const text of ['background:#fff1e8','color:#7c2f08'])requireText(css,text,`contraste del encabezado ${text}`);
 forbid(css,/@import|!important|font-family\s*:\s*Arial|linear-gradient/i,'CSS de Compras conserva una dependencia o sobrescritura visual legacy');
 
 for(const text of [
@@ -106,14 +108,14 @@ for(const text of [
   'id="purchaseDecisionCancel"',
   'id="purchaseDecisionAccept"',
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
-  '/admin/purchases.css?v=20260904-directflow1',
+  '/admin/purchases.css?v=20260920-speed1',
   '/admin/purchases.js?v=20260914-repeat1',
-  '/admin/embedded-auto-refresh.js?v=20260909-live7'
+  '/admin/embedded-auto-refresh.js?v=20260920-speed1'
 ]) requireText(html,text,`HTML ${text}`);
 forbid(html,/\sstyle\s*=/i,'Compras conserva estilos inline');
 forbid(html,/purchases-(?:master-refresh|product-catalog)\.js/,'Compras vuelve a cargar un script complementario retirado');
 const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260902-ux6b3');
-const ownerCssIndex=html.indexOf('/admin/purchases.css?v=20260904-directflow1');
+const ownerCssIndex=html.indexOf('/admin/purchases.css?v=20260920-speed1');
 if(foundationIndex<0||ownerCssIndex<0||foundationIndex>ownerCssIndex)failures.push('la base visual debe cargar antes del CSS propietario de Compras');
 
 for(const file of detachedConsumers){

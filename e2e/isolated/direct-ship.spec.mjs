@@ -157,6 +157,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await sales.locator('[data-view="all"]').click();await sales.locator('#newOrder').click();
       await sales.locator('#oClientPickerButton').click();await sales.locator(`[data-client-id="${f.client}"]`).click();
       await sales.locator('#oImporter').selectOption(f.importer);
+      await sales.locator('#oNationalization').selectOption('not_nationalized');
       await sales.locator('.lProduct').selectOption(f.product);await sales.locator('.lQty').fill('840');
       await sales.locator('.lPallets').fill('10');await sales.locator('.lUpp').fill('84');await sales.locator('.lTotal').fill('3360');
       await mutation('sales-order-ux',()=>sales.locator('#saveOrder').click());
@@ -177,8 +178,6 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await sales.locator('[data-supply-action="quick-direct"]').click();
       const poItem=await f.one('select id from purchase_order_items where purchase_order_id=$1',[po.id]);
       await sales.locator('#quickDirectPo').selectOption(poItem.id);
-      await sales.locator('#quickDirectSalesPallets').fill('10');
-      await sales.locator('#quickDirectPurchasePallets').fill('10');
       await mutation('sales-supply',()=>sales.locator('#salesSupplyFormSave').click());
       await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();
       await expect(sales.locator('#salesSupplyBody')).toContainText('Paso 1 listo');
@@ -219,9 +218,6 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       expect((await f.rows('select id from shipments')).length).toBe(1);
       await sales.locator('[data-supply-action="link-direct"]').click();
       await sales.locator('#supplyDirectShipment').selectOption(shipment.id);
-      await sales.locator('#supplyDirectSalesQty').fill('840');await sales.locator('#supplyDirectPurchaseQty').fill('840');
-      await sales.locator('#supplyDirectSalesPallets').fill(String(procurement.allocated_sales_pallets));
-      await sales.locator('#supplyDirectPurchasePallets').fill(String(procurement.allocated_purchase_pallets));
       await mutation('sales-supply',()=>sales.locator('#salesSupplyFormSave').click());
       await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();
       direct=await f.one('select * from direct_shipment_allocations');
