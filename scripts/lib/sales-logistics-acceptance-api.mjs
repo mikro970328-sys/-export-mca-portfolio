@@ -6,7 +6,7 @@ import { ok, fail, readJson, upstreamFailureStatus } from '../../api/_lib.js';
 // transport substituted. No JWT, network, Storage or audit-delivery certification.
 export function salesLogisticsAcceptanceApi(db) {
   const calls=[], audits=[], errors=[], users=new Map(), modules={};
-  const rpcNames=new Set(['create_sales_order_plan','replace_sales_order_plan','transition_sales_order',
+  const rpcNames=new Set(['create_sales_order_plan','replace_sales_order_plan','create_sales_order_plan_with_nationalization','replace_sales_order_plan_with_nationalization','transition_sales_order',
     'create_load_from_sales_order','sales_order_linkable_existing_loads','link_existing_load_to_sales_order',
     'create_load_plan','replace_load_plan_canonical','execute_load_action','create_load_shipment_canonical',
     'assign_load_shipment_canonical','mark_direct_shipment_dispatched']);

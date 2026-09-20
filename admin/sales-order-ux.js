@@ -403,11 +403,14 @@
       if (edit && edit?.capabilities?.actions?.edit?.allowed !== true) throw new Error('Esta Sales Order ya no admite edición.');
       const clientId = byId('oClient')?.value || '';
       if (!clientId) throw new Error('Selecciona un cliente.');
+      const nationalizationStatus = byId('oNationalization')?.value || '';
+      if (!nationalizationStatus) throw new Error('Selecciona si la mercancía está nacionalizada o no nacionalizada.');
       const body = {
         action:edit ? 'replace_plan' : 'create_plan',
         sales_order_id:edit?.id || null,
         client_id:clientId,
         importer_id:byId('oImporter')?.value || null,
+        nationalization_status:nationalizationStatus,
         order_date:byId('oDate')?.value || null,
         requested_at:toIso(byId('oRequested')?.value),
         currency:byId('oCurrency')?.value || 'USD',

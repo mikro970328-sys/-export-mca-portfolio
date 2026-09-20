@@ -17,6 +17,8 @@ const errors={
   SUPPLY_PLAN_EXCEEDS_ORDER_QUANTITY:'La cantidad planificada supera la cantidad vendida.',SUPPLY_PLAN_EXCEEDS_ORDER_PALLETS:'Los pallets planificados superan los pallets de la venta.',SUPPLY_DIRECT_CONFLICTS_WITH_LOAD:'La cantidad ya asignada a Cargue no deja saldo suficiente para ese Direct Ship.',SUPPLY_DIRECT_PALLETS_CONFLICT_WITH_LOAD:'Los pallets ya asignados a Cargue no dejan saldo suficiente para ese Direct Ship.',
   SUPPLY_PLAN_CONTEXT_LOCKED_BY_PROCUREMENT:'Desvincula primero las compras relacionadas antes de cambiar la ruta o el almacén.',SUPPLY_PLAN_BELOW_PROCUREMENT_QUANTITY:'La cantidad planificada no puede quedar por debajo de lo ya vinculado a compras.',SUPPLY_PLAN_BELOW_PROCUREMENT_PALLETS:'Los pallets planificados no pueden quedar por debajo de lo ya vinculado a compras.',SUPPLY_PLAN_NOT_PURCHASE:'Esta ruta se abastece desde inventario y no necesita vincular una compra.',
   SUPPLY_PO_CANCELLED:'No se puede usar una orden de compra cancelada.',SUPPLY_PRODUCT_MISMATCH:'La compra seleccionada corresponde a otro producto.',SUPPLY_PO_WAREHOUSE_MISMATCH:'La compra corresponde a otro almacén.',SUPPLY_WAREHOUSE_PO_REQUIRED:'Para una ruta de almacén, selecciona una compra destinada a ese almacén.',SUPPLY_DIRECT_PO_HAS_WAREHOUSE:'Para envío directo, la compra debe tener destino Direct Ship y no un almacén.',SUPPLY_PROCUREMENT_EXCEEDS_PLAN:'La compra vinculada supera lo planificado para esta ruta.',SUPPLY_PROCUREMENT_EXCEEDS_PLAN_PALLETS:'Los pallets vinculados superan los pallets planificados para esta ruta.',SUPPLY_PROCUREMENT_EXCEEDS_PO:'La cantidad asignada supera la cantidad disponible de esa línea de compra.',SUPPLY_PROCUREMENT_EXCEEDS_PO_PALLETS:'Los pallets asignados superan los pallets disponibles de esa línea de compra.',
+  SUPPLY_QUICK_DIRECT_PO_NOT_CONFIRMED:'La compra Direct Ship debe estar confirmada antes de asignarla.',SUPPLY_QUICK_DIRECT_NO_SALE_BALANCE:'Esta mercancía de la venta ya está completamente asignada.',SUPPLY_QUICK_DIRECT_NO_PURCHASE_BALANCE:'La compra elegida ya no tiene saldo disponible para esta mercancía.',
+  SUPPLY_QUICK_DIRECT_NO_ALLOCATION_BALANCE:'Esta mercancía ya está completamente asignada a un contenedor Direct Ship.',
   SUPPLY_PROCUREMENT_CONTEXT_LOCKED_BY_DIRECT_SHIPMENT:'No se puede cambiar la compra porque ya existen contenedores directos vinculados.',SUPPLY_PROCUREMENT_BELOW_DIRECT_SALES_QUANTITY:'La cantidad de venta no puede quedar por debajo de lo ya asignado a contenedores.',SUPPLY_PROCUREMENT_BELOW_DIRECT_PURCHASE_QUANTITY:'La cantidad de compra no puede quedar por debajo de lo ya asignado a contenedores.',
   DIRECT_SHIPMENT_REQUIRES_DIRECT_PURCHASE:'Este contenedor solo puede vincularse a una compra marcada como Direct Ship.',DIRECT_SHIPMENT_SALE_NOT_CONFIRMED:'La venta ya no está disponible para un envío directo.',DIRECT_SHIPMENT_PO_NOT_CONFIRMED:'La orden de compra debe estar confirmada antes de asignar un contenedor directo.',DIRECT_SHIPMENT_HAS_LOAD:'Ese contenedor ya pertenece a un Cargue y no puede usarse como envío directo.',DIRECT_SHIPMENT_CLIENT_MISMATCH:'El contenedor pertenece a otro cliente.',DIRECT_SHIPMENT_IMPORTER_MISMATCH:'La importadora del contenedor no coincide con la venta.',DIRECT_SHIPMENT_MIXED_COMMERCIAL_CONTEXT:'No se pueden mezclar clientes o importadoras diferentes dentro de este contenedor.',DIRECT_SHIPMENT_EXCEEDS_PROCUREMENT_SALES:'La cantidad de venta asignada al contenedor supera lo vinculado a la compra.',DIRECT_SHIPMENT_EXCEEDS_PROCUREMENT_PURCHASE:'La cantidad de compra asignada al contenedor supera lo vinculado a la compra.',DIRECT_SHIPMENT_ALREADY_DISPATCHED:'Ese contenedor Direct Ship ya fue despachado y su contenido quedó bloqueado.'
 };
@@ -27,28 +29,34 @@ async function loadSupply(salesOrderId){
   const order=orders[0];if(!order)throw new Error('SALES_ORDER_NOT_FOUND');
   const items=await supabase('sales_order_items',{query:`?select=id,sales_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_price,entered_line_total,notes&sales_order_id=eq.${encodeURIComponent(salesOrderId)}&order=created_at.asc&limit=5000`})||[];
   const itemIds=items.map(row=>row.id),productIds=[...new Set(items.map(row=>row.product_id).filter(Boolean))];
-  const [progressRows,productRows,warehouseRows]=await Promise.all([
+  const [progressRows,productRows,warehouseRows,plans,poItems,clientShipments]=await Promise.all([
     supabase('sales_order_supply_item_progress',{query:`?select=*&sales_order_id=eq.${encodeURIComponent(salesOrderId)}&limit=5000`}),
     productIds.length?supabase('products',{query:`?select=id,sku,name,brand,unit,active&id=${inFilter(productIds)}&limit=5000`}):[],
-    supabase('warehouses',{query:'?select=id,code,name,city,country,address,active&active=eq.true&order=name.asc&limit=5000'})
+    supabase('warehouses',{query:'?select=id,code,name,city,country,address,active&active=eq.true&order=name.asc&limit=5000'}),
+    itemIds.length?supabase('sales_supply_plan_lines',{query:`?select=*&sales_order_item_id=${inFilter(itemIds)}&order=created_at.asc&limit=5000`}):[],
+    productIds.length?supabase('purchase_order_items',{query:`?select=id,purchase_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_cost,currency&product_id=${inFilter(productIds)}&limit=5000`}):[],
+    supabase('shipments',{query:`?select=id,container_number,client_id,importer_id,active,operational_status,last_status,carrier,booking_number,bol_number,departure_date,delivered_at&client_id=eq.${encodeURIComponent(order.client_id)}&limit=5000`})
   ]);
-  const plans=itemIds.length?await supabase('sales_supply_plan_lines',{query:`?select=*&sales_order_item_id=${inFilter(itemIds)}&order=created_at.asc&limit=5000`})||[]:[];
   const planIds=plans.map(row=>row.id);
-  const procurements=planIds.length?await supabase('sales_procurement_allocations',{query:`?select=*&supply_plan_line_id=${inFilter(planIds)}&order=created_at.asc&limit=5000`})||[]:[];
-  const procurementIds=procurements.map(row=>row.id);
-  const directRows=procurementIds.length?await supabase('direct_shipment_allocations',{query:`?select=*&sales_procurement_allocation_id=${inFilter(procurementIds)}&order=created_at.asc&limit=5000`})||[]:[];
-  const poItems=productIds.length?await supabase('purchase_order_items',{query:`?select=id,purchase_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_cost,currency&product_id=${inFilter(productIds)}&limit=5000`})||[]:[];
   const poIds=[...new Set(poItems.map(row=>row.purchase_order_id).filter(Boolean))];
-  const pos=poIds.length?await supabase('purchase_orders',{query:`?select=id,po_number,supplier_id,warehouse_id,status,order_date,expected_at,currency&id=${inFilter(poIds)}&limit=5000`})||[]:[];
-  const supplierIds=[...new Set(pos.map(row=>row.supplier_id).filter(Boolean))];
-  const suppliers=supplierIds.length?await supabase('suppliers',{query:`?select=id,name,legal_name,active&id=${inFilter(supplierIds)}&limit=5000`})||[]:[];
-  const directShipmentIds=[...new Set(directRows.map(row=>row.shipment_id).filter(Boolean))];
-  const clientShipments=await supabase('shipments',{query:`?select=id,container_number,client_id,importer_id,active,operational_status,last_status,carrier,booking_number,bol_number,departure_date,delivered_at&client_id=eq.${encodeURIComponent(order.client_id)}&limit=5000`})||[];
   const clientShipmentIds=clientShipments.map(row=>row.id);
-  const activeLoads=clientShipmentIds.length?await supabase('loads',{query:`?select=id,shipment_id,status&shipment_id=${inFilter(clientShipmentIds)}&status=neq.cancelled&limit=5000`})||[]:[];
-  const dispatched=directShipmentIds.length?await supabase('direct_shipment_dispatches',{query:`?select=shipment_id,dispatched_at,dispatched_by,notes,created_at&shipment_id=${inFilter(directShipmentIds)}&limit=5000`})||[]:[];
+  const [procurements,pos,activeLoads]=await Promise.all([
+    planIds.length?supabase('sales_procurement_allocations',{query:`?select=*&supply_plan_line_id=${inFilter(planIds)}&order=created_at.asc&limit=5000`}):[],
+    poIds.length?supabase('purchase_orders',{query:`?select=id,po_number,supplier_id,warehouse_id,status,order_date,expected_at,currency&id=${inFilter(poIds)}&limit=5000`}):[],
+    clientShipmentIds.length?supabase('loads',{query:`?select=id,shipment_id,status&shipment_id=${inFilter(clientShipmentIds)}&status=neq.cancelled&limit=5000`}):[]
+  ]);
+  const procurementIds=procurements.map(row=>row.id);
+  const supplierIds=[...new Set(pos.map(row=>row.supplier_id).filter(Boolean))];
+  const [directRows,suppliers]=await Promise.all([
+    procurementIds.length?supabase('direct_shipment_allocations',{query:`?select=*&sales_procurement_allocation_id=${inFilter(procurementIds)}&order=created_at.asc&limit=5000`}):[],
+    supplierIds.length?supabase('suppliers',{query:`?select=id,name,legal_name,active&id=${inFilter(supplierIds)}&limit=5000`}):[]
+  ]);
+  const directShipmentIds=[...new Set(directRows.map(row=>row.shipment_id).filter(Boolean))];
   const missingIds=directShipmentIds.filter(id=>!clientShipments.some(row=>row.id===id));
-  const historicalShipments=missingIds.length?await supabase('shipments',{query:`?select=id,container_number,client_id,importer_id,active,operational_status,last_status,carrier,booking_number,bol_number,departure_date,delivered_at&id=${inFilter(missingIds)}&limit=5000`})||[]:[];
+  const [dispatched,historicalShipments]=await Promise.all([
+    directShipmentIds.length?supabase('direct_shipment_dispatches',{query:`?select=shipment_id,dispatched_at,dispatched_by,notes,created_at&shipment_id=${inFilter(directShipmentIds)}&limit=5000`}):[],
+    missingIds.length?supabase('shipments',{query:`?select=id,container_number,client_id,importer_id,active,operational_status,last_status,carrier,booking_number,bol_number,departure_date,delivered_at&id=${inFilter(missingIds)}&limit=5000`}):[]
+  ]);
 
   const progressBy=indexBy(progressRows||[],'sales_order_item_id'),productBy=indexBy(productRows||[]),plansBy=groupBy(plans,'sales_order_item_id'),procBy=groupBy(procurements,'supply_plan_line_id'),directBy=groupBy(directRows,'sales_procurement_allocation_id'),poItemBy=indexBy(poItems),poBy=indexBy(pos),supplierBy=indexBy(suppliers),shipmentBy=indexBy([...clientShipments,...historicalShipments]),dispatchBy=indexBy(dispatched,'shipment_id');
   const purchaseOptions=poItems.map(poItem=>{const po=poBy.get(poItem.purchase_order_id);if(!po||po.status==='cancelled')return null;return {...poItem,purchase_order:{...po,supplier:supplierBy.get(po.supplier_id)||null},compatible_methods:po.warehouse_id?['purchase_warehouse']:['purchase_direct']};}).filter(Boolean);
@@ -73,19 +81,11 @@ export default async function handler(req,res){
     }
     if(action==='quick_direct'){
       const salesOrderItemId=uuid(body.sales_order_item_id,'SALES_ORDER_ITEM_ID'),poItemId=uuid(body.purchase_order_item_id,'PURCHASE_ORDER_ITEM_ID');
-      const salesQty=qty(body.allocated_sales_quantity,'ALLOCATED_SALES_QUANTITY'),salesPallets=pallets(body.allocated_sales_pallets),purchaseQty=qty(body.allocated_purchase_quantity,'ALLOCATED_PURCHASE_QUANTITY'),purchasePallets=pallets(body.allocated_purchase_pallets);
-      let plan=null;
-      try{
-        const plans=await supabase('sales_supply_plan_lines',{method:'POST',body:{sales_order_item_id:salesOrderItemId,supply_method:'purchase_direct',warehouse_id:null,planned_quantity:salesQty,planned_pallets:salesPallets,notes:note(body.notes),created_by:admin.admin_id},prefer:'return=representation'})||[];
-        plan=plans[0];if(!plan?.id)throw new Error('SUPPLY_QUICK_DIRECT_PLAN_FAILED');
-        const rows=await supabase('sales_procurement_allocations',{method:'POST',body:{supply_plan_line_id:plan.id,purchase_order_item_id:poItemId,allocated_sales_quantity:salesQty,allocated_sales_pallets:salesPallets,allocated_purchase_quantity:purchaseQty,allocated_purchase_pallets:purchasePallets,notes:note(body.notes),created_by:admin.admin_id},prefer:'return=representation'})||[];
-        if(!rows[0]?.id)throw new Error('SUPPLY_QUICK_DIRECT_LINK_FAILED');
-        await writeAudit(admin,'direct_supply_prepared','sales_order_item',salesOrderItemId,{plan_id:plan.id,procurement_allocation_id:rows[0].id,purchase_order_item_id:poItemId});
-        return ok(res,{plan,record:rows[0]});
-      }catch(error){
-        if(plan?.id)try{await supabase('sales_supply_plan_lines',{method:'DELETE',query:`?id=eq.${plan.id}`});}catch(cleanupError){console.error('[sales-supply-quick-direct-cleanup]',cleanupError);}
-        throw error;
-      }
+      const result=await supabase('rpc/assign_sales_order_item_direct_ship',{method:'POST',body:{p_sales_order_item_id:salesOrderItemId,p_purchase_order_item_id:poItemId,p_actor:admin.admin_id||null}});
+      const record=Array.isArray(result)?result[0]:result;
+      if(!record?.plan_id||!record?.procurement_allocation_id)throw new Error('SUPPLY_QUICK_DIRECT_LINK_FAILED');
+      await writeAudit(admin,'direct_supply_prepared','sales_order_item',salesOrderItemId,{plan_id:record.plan_id,procurement_allocation_id:record.procurement_allocation_id,purchase_order_item_id:poItemId,allocated_quantity:record.allocated_quantity,allocated_pallets:record.allocated_pallets});
+      return ok(res,{record});
     }
     if(action==='update_plan'){
       const planId=uuid(body.plan_id,'PLAN_ID'),patch={};
@@ -101,6 +101,14 @@ export default async function handler(req,res){
       const procurementId=uuid(body.procurement_allocation_id,'PROCUREMENT_ID'),patch={};if(body.allocated_sales_quantity!==undefined)patch.allocated_sales_quantity=qty(body.allocated_sales_quantity,'ALLOCATED_SALES_QUANTITY');if(body.allocated_sales_pallets!==undefined)patch.allocated_sales_pallets=pallets(body.allocated_sales_pallets);if(body.allocated_purchase_quantity!==undefined)patch.allocated_purchase_quantity=qty(body.allocated_purchase_quantity,'ALLOCATED_PURCHASE_QUANTITY');if(body.allocated_purchase_pallets!==undefined)patch.allocated_purchase_pallets=pallets(body.allocated_purchase_pallets);if(body.notes!==undefined)patch.notes=note(body.notes);if(!Object.keys(patch).length)return fail(res,400,'No hay cambios para guardar.');const rows=await supabase('sales_procurement_allocations',{method:'PATCH',query:`?id=eq.${procurementId}`,body:patch,prefer:'return=representation'})||[];if(!rows[0])return fail(res,404,'Relación de compra no encontrada.');await writeAudit(admin,'sales_procurement_updated','sales_procurement_allocation',procurementId,{fields:Object.keys(patch)});return ok(res,{record:rows[0]});
     }
     if(action==='unlink_purchase'){const procurementId=uuid(body.procurement_allocation_id,'PROCUREMENT_ID'),rows=await supabase('sales_procurement_allocations',{method:'DELETE',query:`?id=eq.${procurementId}`,prefer:'return=representation'})||[];if(!rows[0])return fail(res,404,'Relación de compra no encontrada.');await writeAudit(admin,'sales_procurement_unlinked','sales_procurement_allocation',procurementId,{purchase_order_item_id:rows[0].purchase_order_item_id});return ok(res,{deleted:true});}
+    if(action==='quick_link_direct_shipment'){
+      const procurementId=uuid(body.procurement_allocation_id,'PROCUREMENT_ID'),shipmentId=uuid(body.shipment_id,'SHIPMENT_ID');
+      const result=await supabase('rpc/assign_procurement_to_direct_shipment',{method:'POST',body:{p_sales_procurement_allocation_id:procurementId,p_shipment_id:shipmentId,p_actor:admin.admin_id||null}});
+      const record=Array.isArray(result)?result[0]:result;
+      if(!record?.direct_shipment_allocation_id)throw new Error('SUPPLY_QUICK_DIRECT_SHIPMENT_LINK_FAILED');
+      await writeAudit(admin,'direct_shipment_linked','shipment',shipmentId,{direct_shipment_allocation_id:record.direct_shipment_allocation_id,procurement_allocation_id:procurementId,automatic_balance:true});
+      return ok(res,{record});
+    }
     if(action==='link_direct_shipment'){
       const procurementId=uuid(body.procurement_allocation_id,'PROCUREMENT_ID'),shipmentId=uuid(body.shipment_id,'SHIPMENT_ID');const rows=await supabase('direct_shipment_allocations',{method:'POST',body:{sales_procurement_allocation_id:procurementId,shipment_id:shipmentId,allocated_sales_quantity:qty(body.allocated_sales_quantity,'ALLOCATED_SALES_QUANTITY'),allocated_sales_pallets:pallets(body.allocated_sales_pallets),allocated_purchase_quantity:qty(body.allocated_purchase_quantity,'ALLOCATED_PURCHASE_QUANTITY'),allocated_purchase_pallets:pallets(body.allocated_purchase_pallets),notes:note(body.notes),created_by:admin.admin_id},prefer:'return=representation'})||[];await writeAudit(admin,'direct_shipment_linked','shipment',shipmentId,{direct_shipment_allocation_id:rows[0]?.id||null,procurement_allocation_id:procurementId});return ok(res,{record:rows[0]||null});
     }
