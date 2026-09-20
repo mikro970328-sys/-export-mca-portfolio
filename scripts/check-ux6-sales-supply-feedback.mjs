@@ -59,7 +59,7 @@ for(const text of [
 ])requireText(css,text,`presentación dedicada ${text}`);
 
 requireText(html,'/admin/sales-supply-workspace.css?v=20260902-ux7sales1','revisión del CSS de Abastecimiento');
-requireText(html,'/admin/sales-supply-workspace.js?v=20260920-directvisible1','revisión del JS de Asignar mercancía');
+requireText(html,'/admin/sales-supply-workspace.js?v=20260910-directcorrect1','revisión del JS de Asignar mercancía');
 
 for(const text of [
   "const errors={",

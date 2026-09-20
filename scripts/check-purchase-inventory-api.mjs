@@ -23,7 +23,12 @@ try {
   const product=(await one("insert into products(sku,name,unit,default_units_per_pallet) values('QA-API','QA boxes','cajas',10) returning id")).id;
   const body={action:'create_plan',supplier_id:supplier,warehouse_id:warehouse,lines:[{product_id:product,ordered_quantity:100,ordered_pallets:10,units_per_pallet:10,line_total:250}]};
   const post=(data,admin=master)=>api.request('purchases',{method:'POST',body:data,admin});
-  async function purchase(){const result=await post(body);assert.equal(result.status,200,JSON.stringify(result.body));return result.body.order;}
+  async function purchase(){
+    const result=await post(body);assert.equal(result.status,200,JSON.stringify(result.body));
+    const read=await api.request('purchases',{admin:master,query:{id:result.body.order.id}});
+    assert.equal(read.status,200,JSON.stringify(read.body));
+    return read.body.order;
+  }
   async function confirmed(){const po=await purchase();for(const action of ['issue','confirm'])assert.equal((await post({action,purchase_order_id:po.id})).status,200);return po;}
   const receiveBody=(po,flag=false)=>({action:'receive',warehouse_id:warehouse,allow_over_receipt:flag,lines:[{purchase_order_item_id:po.items[0].id,received_quantity:120,received_pallets:12,lot_number:'QA-API-LOT'}]});
 
@@ -38,8 +43,10 @@ try {
     assert.equal(Number(po.items[0].entered_line_total),250);
     const result=await post({...body,action:'replace_plan',purchase_order_id:po.id,lines:[{...body.lines[0],id:po.items[0].id,line_total:300}]});
     assert.equal(result.status,200);
-    assert.equal(result.body.order.items[0].id,po.items[0].id);
-    assert.equal(Number(result.body.order.items[0].entered_line_total),300);
+    const read=await api.request('purchases',{admin:master,query:{id:po.id}});
+    assert.equal(read.status,200,JSON.stringify(read.body));
+    assert.equal(read.body.order.items[0].id,po.items[0].id);
+    assert.equal(Number(read.body.order.items[0].entered_line_total),300);
   });
   await test('API-03 capabilities distinguish procurement from receiving permission',async()=>{
     const po=await confirmed();
