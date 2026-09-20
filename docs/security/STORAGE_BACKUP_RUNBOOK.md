@@ -1,8 +1,9 @@
 # Copia verificable de Storage y ensayo real de recuperación
 
-Preparación: 2026-09-17. Owner operativo: `scripts/storage-backup.mjs`.
-Este cambio prepara la copia repetible; no activa una tarea periódica ni crea
-un proyecto. El ensayo sintético de PostgreSQL sigue en `check-backup-restore.mjs`.
+Actualizado: 2026-09-18. Owner local: `scripts/storage-backup.mjs`; owner remoto:
+`workers/storage-backup`. La copia periódica en Cloudflare R2 y el ensayo real en
+un proyecto temporal ya se ejecutaron. El ensayo sintético de PostgreSQL sigue
+en `check-backup-restore.mjs` como evidencia complementaria.
 
 ## Uso y alcance
 
@@ -71,9 +72,9 @@ objetos ausentes, cambio de inventario/visibilidad, redirección sin reenviar la
 clave, paths maliciosos, symlinks, carpeta existente y bloqueo de CI público.
 El workflow `Storage Backup Verification` no tiene claves ni uploads.
 
-La herramienta aún no se ejecutó contra Storage productivo. La copia manual
-verificada en PR #331 conserva su formato propio; no se afirma que este nuevo
-verificador pueda abrir aquel ZIP directamente.
+El exportador local aún no se ejecutó contra Storage productivo. El Worker remoto
+sí ejecutó y verificó una copia real en R2. La copia manual de PR #331 conserva
+su formato propio; no se afirma que el verificador local abra aquel ZIP.
 
 ## Activación periódica con Cloudflare R2
 
@@ -112,7 +113,22 @@ manifiesto. El endpoint autenticado `/health` devolvió `healthy: true` y el
 mismo conteo; sin token respondió 404. Los secretos permanecen en Cloudflare y
 no se guardaron en el repositorio.
 
-## Ensayo de base real: acción preparada, sin ejecutar
+## Ensayo de base real: verificado el 2026-09-18
+
+El procedimiento se ejecutó contra una copia física real en un proyecto aislado.
+La base quedó `ACTIVE_HEALTHY` en aproximadamente cinco minutos y se verificaron
+75 tablas, esquema, permisos/RLS, funciones, migraciones, Auth y Storage. Después
+se repusieron desde R2 los 3 objetos, 674427 bytes, y se descargaron nuevamente:
+3/3 tamaños y SHA-256 coincidieron. Las políticas temporales de recuperación se
+limitaron a las tres rutas y se eliminaron al terminar.
+
+El RPO observado fue de aproximadamente 10 h 43 min para la base y 28 min para
+Storage. El RTO observado fue de unos 5 min para la base y 1 h 32 min para la
+recuperación integral manual. El proyecto temporal tenía una cotización de
+USD 9.68/mes y se eliminó irreversiblemente el 2026-09-20 con confirmación del
+propietario.
+
+### Procedimiento para futuras repeticiones
 
 El operador identifica privadamente proyecto fuente y organización. El destino
 es un nuevo proyecto temporal en la misma organización y región, creado mediante
@@ -157,8 +173,9 @@ Pasos cuando esté autorizado el recurso:
 9. Finalizar el uso del proyecto temporal y obtener confirmación de su retirada
    irreversible. Revalidar que el ERP continúa apuntando al proyecto original.
 
-Guardar el preflight y los resultados reales en un destino privado. La
-restauración real, el RPO/RTO real y la periodicidad siguen sin certificar.
+Guardar el preflight y los resultados reales en un destino privado. La ejecución
+del 2026-09-18 certifica ese punto concreto; futuras copias requieren su propia
+prueba y la retirada de cada destino temporal necesita confirmación explícita.
 
 Fuentes oficiales consultadas:
 - [StorageFileApi: paginación y descarga](https://github.com/supabase/storage-js/blob/master/src/packages/StorageFileApi.ts).
