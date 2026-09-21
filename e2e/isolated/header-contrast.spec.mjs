@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { JSDOM } from 'jsdom';
@@ -45,6 +45,13 @@ async function openFixture(page, html) {
   });
   await page.goto('https://erp-visual.invalid/');
   expect(unexpected, 'fixture must never contact an API or external asset').toEqual([]);
+}
+
+async function evidence(info, name, body, contentType) {
+  const path = info.outputPath(`${name}.${contentType === 'image/png' ? 'png' : 'json'}`);
+  mkdirSync(info.outputDir, {recursive:true});
+  writeFileSync(path, body);
+  await info.attach(name, {path, contentType});
 }
 
 // Contrast from real computed styles, alpha-composited through ancestors.
@@ -102,14 +109,14 @@ for (const module of modules) {
     await openFixture(page, isolatedHtml(read(`admin/${module}.html`)));
     const hero = page.locator('.module-hero');
     await expect(hero.locator('h1')).toBeVisible();
-    const rows = await contrasts(hero.locator('h1, p, [class*="kicker"], button:not(:disabled), a, strong, .inventory-hero-state div > span, .reports-hero-state span:not(.reports-live-dot)'));
+    const rows = await contrasts(hero.locator('h1, p, [class*="kicker"], button:not(:disabled), a, strong, .inventory-hero-state div > span, .reports-hero-state span:not(.reports-live-dot), .costs-hero-state span:not(.costs-live-dot)'));
+    await evidence(info, `${module}-contrast`, JSON.stringify(rows, null, 2), 'application/json');
+    await evidence(info, `${module}-header`, await hero.screenshot(), 'image/png');
     expect(rows.length).toBeGreaterThanOrEqual(3);
     expect(rows.filter(row => row.ratio < 4.5), 'header text requires at least 4.5:1').toEqual([]);
     const box = await hero.boundingBox();
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize().width + 1);
-    await info.attach(`${module}-contrast`, {body:JSON.stringify(rows, null, 2), contentType:'application/json'});
-    await info.attach(`${module}-header`, {body:await hero.screenshot(), contentType:'image/png'});
   });
 }
 
@@ -125,7 +132,7 @@ test('header contrast: navigation icons and mobile menu', async ({ page }, info)
     const rows = await contrasts(menu.locator('svg'));
     expect(rows).toHaveLength(1);
     expect(rows[0].ratio).toBeGreaterThanOrEqual(3);
-    await info.attach('mobile-menu', {body:await page.locator('.topbar').screenshot(), contentType:'image/png'});
+    await evidence(info, 'mobile-menu', await page.locator('.topbar').screenshot(), 'image/png');
     await menu.click();
     await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);
   }
@@ -133,11 +140,11 @@ test('header contrast: navigation icons and mobile menu', async ({ page }, info)
   const closedGroups = await page.locator('.nav-group:not(.hidden):not(.open)').evaluateAll(groups => groups.map(group => group.dataset.navGroup));
   for (const group of closedGroups) await page.locator(`[data-nav-group="${group}"] > .nav-group-btn`).click();
   const rows = await contrasts(page.locator('.sidebar svg[data-icon-tone], .executive-op-icon-svg'));
+  await evidence(info, 'navigation-contrast', JSON.stringify(rows, null, 2), 'application/json');
+  await evidence(info, 'navigation', await page.screenshot(), 'image/png');
   expect(rows.length).toBeGreaterThanOrEqual(20);
   expect(rows.filter(row => row.ratio < 3), 'meaningful icon outlines require at least 3:1').toEqual([]);
   const fills = await page.locator('.executive-op-icon-svg .ui-icon-tone').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).fill));
   expect(fills.length).toBeGreaterThan(5);
   expect(fills.every(fill => fill !== 'none')).toBe(true);
-  await info.attach('navigation-contrast', {body:JSON.stringify(rows, null, 2), contentType:'application/json'});
-  await info.attach('navigation', {body:await page.screenshot(), contentType:'image/png'});
 });

@@ -103,7 +103,7 @@ for(const text of [
   'id="costDecisionCancel"',
   'id="costDecisionAccept"',
   '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
-  '/admin/costs.css?v=20260903-ux7costs1',
+  '/admin/costs.css?v=20260921-ux8contrast1',
   '/admin/costs.js?v=20260903-ux7costs1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ]) requireText(html,text,`HTML ${text}`);

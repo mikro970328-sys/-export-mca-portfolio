@@ -26,6 +26,10 @@
   max-width:790px;
 }
 
+.erp-module-costs .costs-page-kicker{
+  color:#b34b08;
+}
+
 .erp-module-costs .costs-hero-actions{
   display:flex;
   align-items:center;

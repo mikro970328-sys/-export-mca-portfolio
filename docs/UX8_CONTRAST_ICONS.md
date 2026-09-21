@@ -11,6 +11,8 @@ captura de Ventas en iPhone con el título blanco sobre una tarjeta blanca.
   que cada owner posterior aplique conjuntamente su fondo y tipografía.
 - El botón móvil de la cabecera recibe el tratamiento claro de los demás
   controles superiores; su icono vuelve a ser azul oscuro sobre blanco.
+- La revisión en ambos navegadores detectó además el rótulo naranja de Costos
+  a 3.69:1 sobre blanco. Su owner usa ahora un naranja oscuro de 5.35:1.
 - Las 31 geometrías SVG aprobadas se integran en `ui-icon-system.js`, con plano
   suave, trazo de 1.7 y paletas para fondos claros/oscuros. Dashboard conserva
   sus tamaños pero comparte la clase y el estilo canónicos. Se completan los
