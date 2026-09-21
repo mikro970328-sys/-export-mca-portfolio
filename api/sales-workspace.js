@@ -1,6 +1,7 @@
 import { authorizeAdmin, fail, loadAdminAccessContext, ok, supabase } from './_lib.js';
 import { loadSalesActionCapabilities } from './_sales-actions.js';
 import { loadInvoiceFinanceCapabilityMaps } from './_invoice-actions.js';
+import { loadCostChargeCapabilityMap } from './_cost-actions.js';
 
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const text=(value,max=2000)=>String(value??'').trim().slice(0,max);
@@ -17,13 +18,14 @@ function normalizeSummary(row){if(!row)return null;if(!row.billing_currency_comp
 function financialSummary(summary,financeReadable){if(!summary||financeReadable)return summary;const restricted={...summary};for(const field of FINANCIAL_SUMMARY_FIELDS)delete restricted[field];return restricted;}
 function mergeItems(items,fulfillmentProgress,invoiceProgress){const fulfillmentById=new Map(fulfillmentProgress.map(row=>[String(row.sales_order_item_id),row])),invoiceById=new Map(invoiceProgress.map(row=>[String(row.sales_order_item_id),row]));return items.map(item=>({...item,fulfillment:fulfillmentById.get(String(item.id))||null,invoicing:invoiceById.get(String(item.id))||null}));}
 function mergeInvoices(invoices,financialProgress,invoiceItems,capabilityMap=new Map()){const financialById=new Map(financialProgress.map(row=>[String(row.invoice_id),row])),itemsByInvoice=new Map();for(const item of invoiceItems){const key=String(item.invoice_id);if(!itemsByInvoice.has(key))itemsByInvoice.set(key,[]);itemsByInvoice.get(key).push(item);}return invoices.map(invoice=>({...invoice,financial:financialById.get(String(invoice.id))||null,items:itemsByInvoice.get(String(invoice.id))||[],capabilities:capabilityMap.get(invoice.id)||{actions:{}}}));}
+function mergeCostAllocations(allocations,capabilityMap=new Map()){return allocations.map(row=>({...row,cost_charge:row.cost_charge?{...row.cost_charge,capabilities:capabilityMap.get(String(row.cost_charge.id))||{actions:{}}}:null}));}
 function invoiceCreationCapability(summary,financeWritable){
   const reason=!financeWritable?'FINANCE_WRITE_REQUIRED':!['confirmed','closed'].includes(summary?.commercial_status)?'INVOICE_SO_NOT_BILLABLE':!(Number(summary?.available_to_invoice_value)>0)?'INVOICE_NO_AVAILABLE_VALUE':null;
   return {allowed:reason===null,reason};
 }
 async function workspaceAccess(admin){if(admin.role==='master_admin')return{documentsReadable:true,financeReadable:true,financeWritable:true,salesWritable:true};const context=await loadAdminAccessContext(admin.admin_id),permissions=new Set(context.permissions||[]);return{documentsReadable:permissions.has('documents.read'),financeReadable:permissions.has('finance.read'),financeWritable:permissions.has('finance.write'),salesWritable:permissions.has('sales.write')};}
 
-async function workspace(salesOrderId,{documentsReadable=false,financeReadable=false,financeWritable=false,salesCapabilities={actions:{}},invoiceCapabilityMap=new Map()}={}){
+async function workspace(salesOrderId,{documentsReadable=false,financeReadable=false,financeWritable=false,salesCapabilities={actions:{}},invoiceCapabilityMap=new Map(),costCapabilityMap=new Map()}={}){
   const [summaryRows,orderRows]=await Promise.all([
     rows('sales_order_workspace_summary',`?select=*&sales_order_id=eq.${salesOrderId}&limit=1`),
     rows('sales_orders',`?select=id,nationalization_status&id=eq.${salesOrderId}&limit=1`)
@@ -56,7 +58,7 @@ async function workspace(salesOrderId,{documentsReadable=false,financeReadable=f
     logistics,
     capabilities:salesCapabilities,
     billing:{capabilities:{create_invoice:invoiceCreationCapability(authoritativeSummary,financeWritable)},invoices:mergeInvoices(invoices,invoiceFinancial,invoiceItems,invoiceCapabilityMap),invoice_payments:invoicePayments,contextual_operation_payments:contextualOperationPayments},
-    costs:{allocations:financeReadable?directCosts:[]},
+    costs:{allocations:financeReadable?mergeCostAllocations(directCosts,costCapabilityMap):[]},
     document_access:{read:documentsReadable},
     document_readiness:documentReadiness,
     documents:customsDocuments,
@@ -70,11 +72,12 @@ export default async function handler(req,res){
     const salesOrderId=requiredUuid(req.query?.sales_order_id||req.query?.id);
     const access=await workspaceAccess(admin);
     const financeWritable=access.financeReadable&&access.financeWritable;
-    const [salesCapabilities,invoiceCapabilityBundle]=await Promise.all([
+    const [salesCapabilities,invoiceCapabilityBundle,costCapabilityBundle]=await Promise.all([
       loadSalesActionCapabilities(admin,salesOrderId,access.salesWritable),
-      loadInvoiceFinanceCapabilityMaps(admin,financeWritable)
+      loadInvoiceFinanceCapabilityMaps(admin,financeWritable),
+      access.financeReadable?loadCostChargeCapabilityMap(admin):Promise.resolve({map:new Map()})
     ]);
-    const data=await workspace(salesOrderId,{...access,financeWritable,salesCapabilities,invoiceCapabilityMap:invoiceCapabilityBundle.invoice_capabilities});
+    const data=await workspace(salesOrderId,{...access,financeWritable,salesCapabilities,invoiceCapabilityMap:invoiceCapabilityBundle.invoice_capabilities,costCapabilityMap:costCapabilityBundle.map});
     if(!data)return fail(res,404,'Sales Order no encontrada');
     return ok(res,{workspace:data});
   }
