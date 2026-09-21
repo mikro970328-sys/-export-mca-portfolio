@@ -59,9 +59,9 @@ for(const text of [
 ])requireText(ui,text,`UI Compras ${text}`);
 
 for(const text of [
-  '/admin/purchases.css?v=20260920-speed1',
-  '/admin/purchases.js?v=20260914-repeat1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed1'
+  '/admin/purchases.css?v=20260920-directsale1',
+  '/admin/purchases.js?v=20260920-directsale1',
+  '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ])requireText(html,text,`cache de Compras ${text}`);
 
 if(failures.length){

@@ -262,6 +262,35 @@ try {
     assert.equal(n(second.allocated_pallets),5);
     await rejects('select assign_sales_order_item_direct_ship($1,$2)',[so.items[0].id,secondPo.item.id],'SUPPLY_QUICK_DIRECT_NO_SALE_BALANCE');
   });
+  await test('DS-07 a confirmed Direct Ship purchase creates one fully linked sale without repeated quantities',async()=>{
+    const po=await purchase({direct:true});
+    const created=(await one(`select create_direct_sale_from_purchase_order(
+      p_purchase_order_id=>$1,p_client_id=>$2,p_line_totals=>$3::jsonb,
+      p_importer_id=>$4,p_currency=>'USD',p_customer_reference=>'QA direct sale',
+      p_nationalization_status=>'not_nationalized') as result`,
+      [po.id,client,JSON.stringify([{purchase_order_item_id:po.item.id,line_total:725}]),importer])).result;
+    const so=await one('select * from sales_orders where id=$1',[created.sales_order_id]);
+    const item=await one('select * from sales_order_items where sales_order_id=$1',[so.id]);
+    const allocation=await one(`select spa.* from sales_procurement_allocations spa
+      join sales_supply_plan_lines spl on spl.id=spa.supply_plan_line_id
+      where spl.sales_order_item_id=$1`,[item.id]);
+    assert.equal(so.status,'confirmed');assert.equal(so.client_id,client);
+    assert.equal(so.nationalization_status,'not_nationalized');assert.equal(n(item.ordered_quantity),n(po.item.ordered_quantity));
+    assert.equal(n(item.entered_line_total),725);assert.equal(n(allocation.allocated_sales_quantity),n(po.item.ordered_quantity));
+    assert.equal(allocation.purchase_order_item_id,po.item.id);assert.equal((await rows('select * from warehouse_receipts')).length,0);
+    await rejects(`select create_direct_sale_from_purchase_order(
+      p_purchase_order_id=>$1,p_client_id=>$2,p_line_totals=>$3::jsonb,p_importer_id=>$4)`,
+      [po.id,client,JSON.stringify([{purchase_order_item_id:po.item.id,line_total:800}]),importer],'DIRECT_SALE_PO_ALREADY_LINKED');
+  });
+  await test('DS-08 an existing Direct Ship route links the compatible purchase balance automatically',async()=>{
+    const so=await sale(),po=await purchase({direct:true});
+    const plan=await one(planSql,[so.items[0].id,100,10]);
+    const linked=(await one('select assign_sales_supply_plan_direct_purchase($1,$2) as result',[plan.id,po.item.id])).result;
+    const allocation=await one('select * from sales_procurement_allocations where id=$1',[linked.procurement_allocation_id]);
+    assert.equal(n(allocation.allocated_sales_quantity),100);assert.equal(n(allocation.allocated_purchase_quantity),100);
+    assert.equal(n(allocation.allocated_sales_pallets),10);assert.equal(n(allocation.allocated_purchase_pallets),10);
+    await rejects('select assign_sales_supply_plan_direct_purchase($1,$2)',[plan.id,po.item.id],'SUPPLY_QUICK_DIRECT_NO_SALE_BALANCE');
+  });
   await test('DS-06 existing Direct Ship container receives the full pending balance automatically',async()=>{
     const so=await sale(),po=await purchase({direct:true}),sh=await shipment();
     const prepared=(await one('select assign_sales_order_item_direct_ship($1,$2) as result',[so.items[0].id,po.item.id])).result;

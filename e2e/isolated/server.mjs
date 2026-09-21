@@ -6,6 +6,7 @@ import { startOperatorApi } from '../../scripts/lib/operator-acceptance-http.mjs
 export const root = fileURLToPath(new URL('../../', import.meta.url));
 const routeNames = ['products','suppliers','purchases','warehouse','inventory','loads','sales',
   'payables','supplier-payments','costs','profitability','reports','ap-links','publications',
+  'purchase-direct-sale',
   'sales-order-ux','sales-workspace','sales-loads','sales-supply','customer-advances',
   'proformas','shipment-document-readiness','shipments','clients','importers','operational-links',
   'direct-shipment-dispatch','shipment-documents','tasks','notification-inbox','push-subscriptions',

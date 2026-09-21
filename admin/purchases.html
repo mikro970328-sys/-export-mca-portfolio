@@ -6,7 +6,7 @@
 <title>Compras · Export MCA</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">
-<link rel="stylesheet" href="/admin/purchases.css?v=20260920-speed1">
+<link rel="stylesheet" href="/admin/purchases.css?v=20260920-directsale1">
 <link rel="stylesheet" href="/admin/form-drafts.css?v=20260909-drafts1">
 </head>
 <body class="erp-module-page erp-module-purchases" data-owner="purchases.js">
@@ -78,6 +78,22 @@
   </div>
 </div>
 
+<div id="directSaleModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="directSaleTitle">
+  <div class="dialog purchase-direct-sale-dialog">
+    <div class="dialog-head">
+      <div><span class="purchases-dialog-kicker">Venta desde la compra</span><h2 id="directSaleTitle">Crear venta Direct Ship</h2><div id="directSaleSubtitle" class="muted"></div></div>
+      <button class="btn purchases-close-button" type="button" data-close="directSale" aria-label="Cerrar venta Direct Ship">✕</button>
+    </div>
+    <div class="purchase-destination-help direct" role="note">La mercancía y sus cantidades se copiarán completas desde esta compra. Solo define a quién se vende y su precio.</div>
+    <div class="grid3"><div><label>Cliente *</label><select id="dsClient"></select></div><div><label>Importador</label><select id="dsImporter"></select></div><div><label>Mercancía *</label><select id="dsNationalization"><option value="not_nationalized">No nacionalizada</option><option value="nationalized">Nacionalizada</option></select></div></div>
+    <div class="grid"><div><label>Moneda *</label><input id="dsCurrency" maxlength="3" value="USD"></div><div><label>Referencia del cliente</label><input id="dsReference" maxlength="250"></div></div>
+    <div class="purchase-form-section-head"><div><b>Precio de venta</b><div class="muted">Las cantidades son informativas y no se vuelven a escribir.</div></div></div>
+    <div id="directSaleLines" class="purchase-direct-sale-lines"></div>
+    <div class="actions purchase-modal-actions"><button class="btn" type="button" data-close="directSale">Cancelar</button><button id="saveDirectSale" class="btn orange" type="button">Crear y vincular venta</button></div>
+    <div id="directSaleMsg" class="msg" role="status" aria-live="polite"></div>
+  </div>
+</div>
+
 <div id="receiveModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="receiveTitle">
   <div class="dialog purchase-receive-dialog">
     <div class="dialog-head"><div><span class="purchases-dialog-kicker">Entrada física al almacén</span><h2 id="receiveTitle">Recibir PO</h2><div class="muted">Esta acción crea un WR real y actualiza el progreso físico de la orden.</div></div><button class="btn purchases-close-button" type="button" data-close="receive" aria-label="Cerrar recepción">✕</button></div>
@@ -112,7 +128,7 @@
 </div>
 
 <script src="/admin/form-drafts.js?v=20260909-drafts1"></script>
-<script src="/admin/purchases.js?v=20260914-repeat1"></script>
-<script src="/admin/embedded-auto-refresh.js?v=20260920-speed1"></script>
+<script src="/admin/purchases.js?v=20260920-directsale1"></script>
+<script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
 </body>
 </html>

@@ -78,6 +78,8 @@ forbid(workspace,/byId\(['"]detailModal['"]\)\.classList\.add\(['"]hidden['"]\);
 for(const text of [
   "order?.capabilities?.actions?.edit?.allowed !== true",
   "order?.capabilities?.actions?.[action]?.allowed !== true",
+  "await refresh();",
+  "order = getOrder(salesOrderId);",
   "order?.capabilities?.actions?.allocate_load?.allowed !== true",
   "owner:'sales-controller.js'"
 ]) requireText(controller,text,`controller canónico ${text}`);
@@ -95,7 +97,7 @@ requireText(foundation,'.erp-module-page button:focus-visible','foco accesible d
 for(const asset of [
   '/admin/sales-workspace.css?v=20260902-ux7sales1',
   '/admin/sales-workspace.js?v=20260920-speed1',
-  '/admin/sales-controller.js?v=20260901-ux6owner1'
+  '/admin/sales-controller.js?v=20260920-freshcaps1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 
 for(const gate of [profitabilityGate,cubaGate]){

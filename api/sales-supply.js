@@ -13,7 +13,7 @@ const groupBy=(rows,key)=>{const map=new Map();for(const row of rows||[]){const 
 const errors={
   SALES_ORDER_ID_INVALID:'Venta inválida.',SALES_ORDER_ITEM_ID_INVALID:'Producto de venta inválido.',PLAN_ID_INVALID:'Plan de abastecimiento inválido.',PROCUREMENT_ID_INVALID:'Relación de compra inválida.',PURCHASE_ORDER_ITEM_ID_INVALID:'Línea de compra inválida.',SHIPMENT_ID_INVALID:'Contenedor inválido.',
   PLANNED_QUANTITY_INVALID:'La cantidad planificada debe ser mayor que cero.',ALLOCATED_SALES_QUANTITY_INVALID:'La cantidad aplicada a la venta debe ser mayor que cero.',ALLOCATED_PURCHASE_QUANTITY_INVALID:'La cantidad aplicada de la compra debe ser mayor que cero.',PALLETS_INVALID:'Los pallets no pueden ser negativos.',
-  SUPPLY_SO_NOT_CONFIRMED:'La venta debe estar confirmada antes de planificar su abastecimiento.',SUPPLY_WAREHOUSE_REQUIRED:'Selecciona el almacén para esta ruta de abastecimiento.',SUPPLY_DIRECT_WAREHOUSE_FORBIDDEN:'Un envío directo no debe pasar por un almacén.',SUPPLY_WAREHOUSE_INACTIVE:'El almacén seleccionado no está activo.',
+  SUPPLY_SO_NOT_CONFIRMED:'La venta debe estar confirmada antes de planificar su abastecimiento.',SUPPLY_PLAN_NOT_FOUND:'La ruta de abastecimiento ya no está disponible.',SUPPLY_PLAN_NOT_DIRECT:'Esta ruta no corresponde a Direct Ship.',SUPPLY_WAREHOUSE_REQUIRED:'Selecciona el almacén para esta ruta de abastecimiento.',SUPPLY_DIRECT_WAREHOUSE_FORBIDDEN:'Un envío directo no debe pasar por un almacén.',SUPPLY_WAREHOUSE_INACTIVE:'El almacén seleccionado no está activo.',
   SUPPLY_PLAN_EXCEEDS_ORDER_QUANTITY:'La cantidad planificada supera la cantidad vendida.',SUPPLY_PLAN_EXCEEDS_ORDER_PALLETS:'Los pallets planificados superan los pallets de la venta.',SUPPLY_DIRECT_CONFLICTS_WITH_LOAD:'La cantidad ya asignada a Cargue no deja saldo suficiente para ese Direct Ship.',SUPPLY_DIRECT_PALLETS_CONFLICT_WITH_LOAD:'Los pallets ya asignados a Cargue no dejan saldo suficiente para ese Direct Ship.',
   SUPPLY_PLAN_CONTEXT_LOCKED_BY_PROCUREMENT:'Desvincula primero las compras relacionadas antes de cambiar la ruta o el almacén.',SUPPLY_PLAN_BELOW_PROCUREMENT_QUANTITY:'La cantidad planificada no puede quedar por debajo de lo ya vinculado a compras.',SUPPLY_PLAN_BELOW_PROCUREMENT_PALLETS:'Los pallets planificados no pueden quedar por debajo de lo ya vinculado a compras.',SUPPLY_PLAN_NOT_PURCHASE:'Esta ruta se abastece desde inventario y no necesita vincular una compra.',
   SUPPLY_PO_CANCELLED:'No se puede usar una orden de compra cancelada.',SUPPLY_PRODUCT_MISMATCH:'La compra seleccionada corresponde a otro producto.',SUPPLY_PO_WAREHOUSE_MISMATCH:'La compra corresponde a otro almacén.',SUPPLY_WAREHOUSE_PO_REQUIRED:'Para una ruta de almacén, selecciona una compra destinada a ese almacén.',SUPPLY_DIRECT_PO_HAS_WAREHOUSE:'Para envío directo, la compra debe tener destino Direct Ship y no un almacén.',SUPPLY_PROCUREMENT_EXCEEDS_PLAN:'La compra vinculada supera lo planificado para esta ruta.',SUPPLY_PROCUREMENT_EXCEEDS_PLAN_PALLETS:'Los pallets vinculados superan los pallets planificados para esta ruta.',SUPPLY_PROCUREMENT_EXCEEDS_PO:'La cantidad asignada supera la cantidad disponible de esa línea de compra.',SUPPLY_PROCUREMENT_EXCEEDS_PO_PALLETS:'Los pallets asignados superan los pallets disponibles de esa línea de compra.',
@@ -85,6 +85,14 @@ export default async function handler(req,res){
       const record=Array.isArray(result)?result[0]:result;
       if(!record?.plan_id||!record?.procurement_allocation_id)throw new Error('SUPPLY_QUICK_DIRECT_LINK_FAILED');
       await writeAudit(admin,'direct_supply_prepared','sales_order_item',salesOrderItemId,{plan_id:record.plan_id,procurement_allocation_id:record.procurement_allocation_id,purchase_order_item_id:poItemId,allocated_quantity:record.allocated_quantity,allocated_pallets:record.allocated_pallets});
+      return ok(res,{record});
+    }
+    if(action==='quick_link_direct_purchase'){
+      const planId=uuid(body.supply_plan_line_id,'PLAN_ID'),poItemId=uuid(body.purchase_order_item_id,'PURCHASE_ORDER_ITEM_ID');
+      const result=await supabase('rpc/assign_sales_supply_plan_direct_purchase',{method:'POST',body:{p_supply_plan_line_id:planId,p_purchase_order_item_id:poItemId,p_actor:admin.admin_id||null}});
+      const record=Array.isArray(result)?result[0]:result;
+      if(!record?.procurement_allocation_id)throw new Error('SUPPLY_QUICK_DIRECT_LINK_FAILED');
+      await writeAudit(admin,'direct_supply_purchase_linked','sales_supply_plan_line',planId,{procurement_allocation_id:record.procurement_allocation_id,purchase_order_item_id:poItemId,allocated_quantity:record.allocated_quantity,automatic:true});
       return ok(res,{record});
     }
     if(action==='update_plan'){

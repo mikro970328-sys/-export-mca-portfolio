@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260920-speed1';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260920-speed3';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -24,9 +24,9 @@
   const WRITE_METHODS = new Set(['POST','PUT','PATCH','DELETE']);
   const LAST_MUTATION_KEY = 'export_mca_last_mutation';
   const LIVE_SYNC_PATH = '/api/live-updates';
-  const LIVE_SYNC_VISIBLE_MS = 4000;
-  const LIVE_SYNC_HIDDEN_MS = 15000;
-  const LIVE_SYNC_MAX_BACKOFF_MS = 60000;
+  const LIVE_SYNC_VISIBLE_MS = 10000;
+  const LIVE_SYNC_HIDDEN_MS = 120000;
+  const LIVE_SYNC_MAX_BACKOFF_MS = 300000;
   const LIVE_SYNC_TIMEOUT_MS = 12000;
   const LIVE_SYNC_LOCAL_ECHO_MS = 15000;
   const RELATED = {

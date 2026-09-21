@@ -4,13 +4,14 @@ const text=(value,max=2000)=>String(value??'').trim().slice(0,max);
 const rpcRow=value=>Array.isArray(value)?(value[0]||null):(value||null);
 const PO_SELECT='id,po_number,supplier_id,warehouse_id,order_date,expected_at,currency,supplier_reference,status,notes,created_by,created_at,updated_at,supplier:suppliers(id,name,legal_name,country,active),warehouse:warehouses(id,code,name,city,country,active)';
 
-function permissionAwareCapabilities(raw,access){
+function permissionAwareCapabilities(raw,access,order){
   const state=raw&&typeof raw==='object'?JSON.parse(JSON.stringify(raw)):{actions:{}};
   const actions=state.actions&&typeof state.actions==='object'?state.actions:{};
   const permissionSet=new Set(access?.permissions||[]);
   const master=access?.master===true;
   const procurementWritable=master||permissionSet.has('procurement.write');
   const warehouseWritable=master||permissionSet.has('warehouse.write');
+  const salesWritable=master||permissionSet.has('sales.write');
   for(const [key,entry] of Object.entries(actions)){
     if(!entry||typeof entry!=='object')continue;
     const required=key.startsWith('receive_')?'warehouse.write':'procurement.write';
@@ -22,6 +23,9 @@ function permissionAwareCapabilities(raw,access){
   // Repeating opens a new plan; it never changes the source purchase's state.
   actions.repeat={allowed:procurementWritable,business_allowed:true,
     required_permission:'procurement.write',reason:procurementWritable?null:'PERMISSION_REQUIRED'};
+  const directSaleAllowed=salesWritable&&order?.warehouse_id==null&&order?.status==='confirmed';
+  actions.create_direct_sale={allowed:directSaleAllowed,business_allowed:order?.warehouse_id==null&&order?.status==='confirmed',
+    required_permission:'sales.write',reason:directSaleAllowed?null:!salesWritable?'PERMISSION_REQUIRED':'PO_NOT_CONFIRMED_DIRECT'};
   state.actions=actions;
   return state;
 }
@@ -38,7 +42,7 @@ async function listOrders(admin){
     supabase('purchase_order_action_capabilities',{query:'?select=purchase_order_id,capabilities&limit=1000'})
   ]);
   const progressByPo=new Map((progress||[]).map(row=>[row.purchase_order_id,row]));
-  const capabilitiesByPo=new Map((capabilities||[]).map(row=>[row.purchase_order_id,permissionAwareCapabilities(row.capabilities,access)]));
+  const rawCapabilitiesByPo=new Map((capabilities||[]).map(row=>[row.purchase_order_id,row.capabilities]));
   const allocationsByItem=new Map();
   for(const allocation of allocations||[]){
     if(!allocationsByItem.has(allocation.purchase_order_item_id))allocationsByItem.set(allocation.purchase_order_item_id,[]);
@@ -50,7 +54,7 @@ async function listOrders(admin){
     if(!itemsByPo.has(item.purchase_order_id))itemsByPo.set(item.purchase_order_id,[]);
     itemsByPo.get(item.purchase_order_id).push(normalized);
   }
-  return (orders||[]).map(order=>({...order,progress:progressByPo.get(order.id)||null,capabilities:capabilitiesByPo.get(order.id)||{actions:{}},items:itemsByPo.get(order.id)||[]}));
+  return (orders||[]).map(order=>({...order,progress:progressByPo.get(order.id)||null,capabilities:permissionAwareCapabilities(rawCapabilitiesByPo.get(order.id),access,order),items:itemsByPo.get(order.id)||[]}));
 }
 
 async function bootstrap(admin){

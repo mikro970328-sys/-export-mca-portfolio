@@ -698,3 +698,39 @@
     grid-template-columns:1fr;
   }
 }
+
+.erp-module-purchases .purchase-direct-sale-dialog {
+  width:min(920px,calc(100vw - 32px));
+}
+
+.erp-module-purchases .purchase-direct-sale-lines {
+  display:grid;
+  gap:10px;
+  margin-top:10px;
+}
+
+.erp-module-purchases .purchase-direct-sale-line {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(180px,240px);
+  gap:16px;
+  align-items:end;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:14px;
+  background:#fff;
+}
+
+.erp-module-purchases .purchase-direct-sale-product {
+  min-width:0;
+}
+
+.erp-module-purchases .purchase-direct-sale-product b,
+.erp-module-purchases .purchase-direct-sale-product span {
+  display:block;
+}
+
+@media(max-width:650px) {
+  .erp-module-purchases .purchase-direct-sale-line {
+    grid-template-columns:1fr;
+  }
+}
