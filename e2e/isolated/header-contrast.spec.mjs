@@ -130,7 +130,8 @@ test('header contrast: navigation icons and mobile menu', async ({ page }, info)
     await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);
   }
   // Expand real groups through their normal controls, retaining owner hydration.
-  for (const button of await page.locator('.nav-group:not(.hidden):not(.open) > .nav-group-btn').all()) await button.click();
+  const closedGroups = await page.locator('.nav-group:not(.hidden):not(.open)').evaluateAll(groups => groups.map(group => group.dataset.navGroup));
+  for (const group of closedGroups) await page.locator(`[data-nav-group="${group}"] > .nav-group-btn`).click();
   const rows = await contrasts(page.locator('.sidebar svg[data-icon-tone], .executive-op-icon-svg'));
   expect(rows.length).toBeGreaterThanOrEqual(20);
   expect(rows.filter(row => row.ratio < 3), 'meaningful icon outlines require at least 3:1').toEqual([]);
