@@ -179,7 +179,8 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await sales.locator(`[data-supply-order="${so.id}"]`).click();
       await expect(sales.locator('#salesSupplyModal')).toBeVisible();
       await expect(sales.locator('#salesSupplyBody')).toContainText('Paso 1 listo');
-      await expect(sales.locator('#salesSupplyBody')).toContainText('Mercancía asignada automáticamente');
+      await expect(sales.locator('#salesSupplyBody')).toContainText(`Asignada a ${so.so_number} · QA finance customer`);
+      await expect(sales.locator('[data-supply-action="link-purchase"]')).toHaveCount(0);
       await expect(sales.locator(`[data-supply-action="edit-purchase"][data-proc-id="${procurement.id}"]`)).toHaveCount(0);
     });
     await step('DS-05 register and link the Direct Ship container',async()=>{

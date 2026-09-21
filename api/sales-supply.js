@@ -9,6 +9,29 @@ const note=value=>String(value??'').trim().slice(0,2000)||null;
 const inFilter=values=>`in.(${values.join(',')})`;
 const indexBy=(rows,key='id')=>new Map((rows||[]).map(row=>[row[key],row]));
 const groupBy=(rows,key)=>{const map=new Map();for(const row of rows||[]){const value=row[key];if(!map.has(value))map.set(value,[]);map.get(value).push(row);}return map;};
+const one=value=>Array.isArray(value)?value[0]||null:value||null;
+const clientName=client=>client?.name||client?.company||client?.mipyme_name||'Cliente';
+
+export function buildPurchaseOptions(poItems,pos,suppliers,purchaseUsageRows){
+  const poBy=indexBy(pos),supplierBy=indexBy(suppliers),usageBy=groupBy(purchaseUsageRows,'purchase_order_item_id');
+  return (poItems||[]).map(poItem=>{
+    const po=poBy.get(poItem.purchase_order_id);if(!po||po.status==='cancelled')return null;
+    const activeUsage=(usageBy.get(poItem.id)||[]).map(row=>{
+      const plan=one(row.supply_plan_line),salesItem=one(plan?.sales_order_item),salesOrder=one(salesItem?.sales_order);
+      return salesOrder&&salesOrder.status!=='cancelled'?{row,salesOrder}:null;
+    }).filter(Boolean);
+    const assignmentsBy=new Map();
+    for(const {row,salesOrder} of activeUsage){
+      const current=assignmentsBy.get(salesOrder.id)||{sales_order_id:salesOrder.id,so_number:salesOrder.so_number,client_id:salesOrder.client_id,client_name:clientName(one(salesOrder.client)),allocated_quantity:0,allocated_pallets:0};
+      current.allocated_quantity+=Number(row.allocated_purchase_quantity||0);current.allocated_pallets+=Number(row.allocated_purchase_pallets||0);assignmentsBy.set(salesOrder.id,current);
+    }
+    const allocatedQuantity=activeUsage.reduce((sum,{row})=>sum+Number(row.allocated_purchase_quantity||0),0);
+    const allocatedPallets=activeUsage.reduce((sum,{row})=>sum+Number(row.allocated_purchase_pallets||0),0);
+    const remainingQuantity=Math.max(0,Number(poItem.ordered_quantity||0)-allocatedQuantity);
+    const remainingPallets=Math.max(0,Number(poItem.ordered_pallets||0)-allocatedPallets);
+    return {...poItem,purchase_order:{...po,supplier:supplierBy.get(po.supplier_id)||null},compatible_methods:po.warehouse_id?['purchase_warehouse']:['purchase_direct'],allocated_quantity:allocatedQuantity,allocated_pallets:allocatedPallets,remaining_quantity:remainingQuantity,remaining_pallets:remainingPallets,fully_allocated:remainingQuantity<=0,assignments:[...assignmentsBy.values()]};
+  }).filter(Boolean);
+}
 
 const errors={
   SALES_ORDER_ID_INVALID:'Venta inválida.',SALES_ORDER_ITEM_ID_INVALID:'Producto de venta inválido.',PLAN_ID_INVALID:'Plan de abastecimiento inválido.',PROCUREMENT_ID_INVALID:'Relación de compra inválida.',PURCHASE_ORDER_ITEM_ID_INVALID:'Línea de compra inválida.',SHIPMENT_ID_INVALID:'Contenedor inválido.',
@@ -25,7 +48,7 @@ const errors={
 function friendly(error){const raw=String(error?.message||error||'');const key=Object.keys(errors).find(code=>raw.includes(code));if(key)return errors[key];if(raw.includes('23503'))return 'No se puede eliminar porque el registro ya tiene relaciones activas.';if(raw.includes('23505'))return 'Esa relación ya existe.';return raw.includes('SALES_ORDER_NOT_FOUND')?'Venta no encontrada.':'No se pudo actualizar el abastecimiento.';}
 
 async function loadSupply(salesOrderId){
-  const orders=await supabase('sales_orders',{query:`?select=id,so_number,status,client_id,importer_id,currency,order_date,requested_at&id=eq.${encodeURIComponent(salesOrderId)}&limit=1`})||[];
+  const orders=await supabase('sales_orders',{query:`?select=id,so_number,status,client_id,importer_id,currency,order_date,requested_at,client:clients(id,name,company,mipyme_name)&id=eq.${encodeURIComponent(salesOrderId)}&limit=1`})||[];
   const order=orders[0];if(!order)throw new Error('SALES_ORDER_NOT_FOUND');
   const items=await supabase('sales_order_items',{query:`?select=id,sales_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_price,entered_line_total,notes&sales_order_id=eq.${encodeURIComponent(salesOrderId)}&order=created_at.asc&limit=5000`})||[];
   const itemIds=items.map(row=>row.id),productIds=[...new Set(items.map(row=>row.product_id).filter(Boolean))];
@@ -40,10 +63,11 @@ async function loadSupply(salesOrderId){
   const planIds=plans.map(row=>row.id);
   const poIds=[...new Set(poItems.map(row=>row.purchase_order_id).filter(Boolean))];
   const clientShipmentIds=clientShipments.map(row=>row.id);
-  const [procurements,pos,activeLoads]=await Promise.all([
+  const [procurements,pos,activeLoads,purchaseUsageRows]=await Promise.all([
     planIds.length?supabase('sales_procurement_allocations',{query:`?select=*&supply_plan_line_id=${inFilter(planIds)}&order=created_at.asc&limit=5000`}):[],
     poIds.length?supabase('purchase_orders',{query:`?select=id,po_number,supplier_id,warehouse_id,status,order_date,expected_at,currency&id=${inFilter(poIds)}&limit=5000`}):[],
-    clientShipmentIds.length?supabase('loads',{query:`?select=id,shipment_id,status&shipment_id=${inFilter(clientShipmentIds)}&status=neq.cancelled&limit=5000`}):[]
+    clientShipmentIds.length?supabase('loads',{query:`?select=id,shipment_id,status&shipment_id=${inFilter(clientShipmentIds)}&status=neq.cancelled&limit=5000`}):[],
+    poItems.length?supabase('sales_procurement_allocations',{query:`?select=id,purchase_order_item_id,allocated_purchase_quantity,allocated_purchase_pallets,supply_plan_line:sales_supply_plan_lines(id,sales_order_item:sales_order_items(id,sales_order:sales_orders(id,so_number,status,client_id,client:clients(id,name,company,mipyme_name))))&purchase_order_item_id=${inFilter(poItems.map(row=>row.id))}&limit=5000`}):[]
   ]);
   const procurementIds=procurements.map(row=>row.id);
   const supplierIds=[...new Set(pos.map(row=>row.supplier_id).filter(Boolean))];
@@ -59,7 +83,7 @@ async function loadSupply(salesOrderId){
   ]);
 
   const progressBy=indexBy(progressRows||[],'sales_order_item_id'),productBy=indexBy(productRows||[]),plansBy=groupBy(plans,'sales_order_item_id'),procBy=groupBy(procurements,'supply_plan_line_id'),directBy=groupBy(directRows,'sales_procurement_allocation_id'),poItemBy=indexBy(poItems),poBy=indexBy(pos),supplierBy=indexBy(suppliers),shipmentBy=indexBy([...clientShipments,...historicalShipments]),dispatchBy=indexBy(dispatched,'shipment_id');
-  const purchaseOptions=poItems.map(poItem=>{const po=poBy.get(poItem.purchase_order_id);if(!po||po.status==='cancelled')return null;return {...poItem,purchase_order:{...po,supplier:supplierBy.get(po.supplier_id)||null},compatible_methods:po.warehouse_id?['purchase_warehouse']:['purchase_direct']};}).filter(Boolean);
+  const purchaseOptions=buildPurchaseOptions(poItems,pos,suppliers,purchaseUsageRows||[]);
   const loadShipmentIds=new Set(activeLoads.map(row=>row.shipment_id));
   const dispatchedShipmentIds=new Set(dispatched.map(row=>row.shipment_id));
   const directOptions=clientShipments.filter(shipment=>shipment.active&&!loadShipmentIds.has(shipment.id)&&!dispatchedShipmentIds.has(shipment.id)&&(shipment.importer_id==null||shipment.importer_id===order.importer_id));
