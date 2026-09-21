@@ -32,6 +32,36 @@ permissions:
   contents: read
 
 jobs:
+  header-contrast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium-desktop, webkit-mobile]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            e2e/isolated/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
+      - name: Install browser engines
+        working-directory: e2e/isolated
+        run: npx playwright install --with-deps chromium webkit
+      - name: Computed header and icon contrast without business data
+        working-directory: e2e/isolated
+        run: npm test -- header-contrast.spec.mjs --project=${{ matrix.project }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: header-contrast-${{ matrix.project }}
+          path: e2e/isolated/test-results/
+          retention-days: 14
   isolated-browser:
     runs-on: ubuntu-latest
     timeout-minutes: 12

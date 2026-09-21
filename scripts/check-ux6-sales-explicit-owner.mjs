@@ -22,7 +22,7 @@ const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
 const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
-requireText(html,'/admin/embedded-foundation.css?v=20260902-ux6b3','base visual compartida');
+requireText(html,'/admin/embedded-foundation.css?v=20260921-ux8contrast1','base visual compartida');
 requireText(html,'/admin/sales.css?v=20260902-ux7sales1','CSS dedicado y versionado');
 requireText(html,'/admin/sales-order-ux.css?v=20260902-ux7sales1','CSS del editor versionado');
 requireText(html,'/admin/sales-workspace.css?v=20260902-ux7sales1','CSS del workspace versionado');
@@ -44,7 +44,7 @@ forbid(html,/\sstyle=/i,'sales.html conserva estilos inline');
 forbid(html,/<style(?:\s|>)/i,'sales.html conserva CSS incrustado');
 forbid(html,/purchases\.css/i,'Ventas vuelve a depender de la presentación de Compras');
 
-const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260902-ux6b3');
+const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260921-ux8contrast1');
 const ownerCssIndex=html.indexOf('/admin/sales.css?v=20260902-ux7sales1');
 if(foundationIndex<0||ownerCssIndex<0||foundationIndex>ownerCssIndex)failures.push('la base visual debe cargar antes de sales.css');
 

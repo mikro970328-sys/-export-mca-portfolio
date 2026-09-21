@@ -144,7 +144,7 @@
   });
 
   const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260905-accessflow1', 'data-access-control-style');
-  const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260903-ux7icons2', 'data-ui-icon-system');
+  const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260921-ux8contrast1', 'data-ui-icon-system');
 
   const accessCan = permission => window.ExportMcaAccessControl?.can?.(permission) !== false;
 
@@ -236,7 +236,7 @@
       authenticatedShellReady = true;
 
       if (accessCan('dashboard.read')) {
-        await loadStylesheet('/admin/dashboard-executive.css?v=20260921-ux8clarity1', 'data-dashboard-executive-style');
+        await loadStylesheet('/admin/dashboard-executive.css?v=20260921-ux8contrast1', 'data-dashboard-executive-style');
         await loadScript('/admin/dashboard-operational-state.js?v=20260921-ux8clarity1', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
 const foundationPath='admin/embedded-foundation.css';
-const foundationRef='/admin/embedded-foundation.css?v=20260902-ux6b3';
+const foundationRef='/admin/embedded-foundation.css?v=20260921-ux8contrast1';
 const modules={
   sales:'admin/sales.html',
   purchases:'admin/purchases.html',

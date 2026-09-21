@@ -1,3 +1,11 @@
+## 2026-09-21 · Contraste de cabeceras e iconos preparados
+
+Corrección del selector compartido que imponía fondo blanco a Ventas/Compras y
+del icono demasiado claro del menú móvil. Integración de 31 SVG con paletas para
+fondos claros y oscuros; se completan tres etiquetas de navegación sin icono.
+Prueba de contraste en 12 cabeceras con HTML/CSS reales, sin scripts comerciales.
+CI y vista previa constan en la PR. Ver `UX8_CONTRAST_ICONS.md`.
+
 ## 2026-09-21 · Inicio y navegación UX8 aprobados para publicación
 
 Prioridades arriba, resumen financiero por moneda con detalle desplegable,

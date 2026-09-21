@@ -43,6 +43,7 @@ for (const width of [1280,390]) {
     await loaded;
     check(`${width}: owners mount without JS errors`,()=>assert.deepEqual(errors,[]));
     check('dashboard initial render',()=>assert.ok(document.querySelector('.executive-dashboard')));
+    check('every rebuilt navigation entry has its semantic icon',()=>assert.deepEqual(all('.sidebar-nav [data-icon-missing]').map(node=>node.closest('[data-nav-label]').dataset.navLabel),[]));
     const originalNodes = all('.sidebar-nav [data-section]');
     const originalGroups = all('.nav-group').map(group=>[group,group.classList.contains('open')]);
     const savedGroups = window.localStorage.getItem('export_mca_nav_groups');

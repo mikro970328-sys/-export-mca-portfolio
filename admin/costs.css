@@ -26,6 +26,10 @@
   max-width:790px;
 }
 
+.erp-module-costs .costs-page-kicker{
+  color:#b34b08;
+}
+
 .erp-module-costs .costs-hero-actions{
   display:flex;
   align-items:center;
@@ -58,7 +62,7 @@
 
 .erp-module-costs .costs-hero-state span:not(.costs-live-dot){
   overflow:hidden;
-  color:var(--muted);
+  color:var(--muted-strong);
   font-size:10px;
   text-overflow:ellipsis;
   white-space:nowrap;

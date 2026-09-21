@@ -34,7 +34,7 @@ for(const token of [
 if(/warehouseSection[\s\S]{0,300}addEventListener\(['"]load['"]/.test(shell))failures.push('navigation-shell no puede mutar Almacén después de cargar el iframe');
 
 for(const text of [
-  '<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260902-ux6b3">',
+  '<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260921-ux8contrast1">',
   '<link rel="stylesheet" href="/admin/warehouse.css?v=20260902-ux7warehouse1">',
   '<body class="erp-module-page erp-module-warehouse" data-owner="warehouse.js">',
   '<script src="/admin/warehouse.js?v=20260916-receipt-recovery1" defer></script>',
@@ -45,7 +45,7 @@ for(const text of [
 forbid(html,/<style(?:\s|>)/i,'warehouse.html conserva una hoja de estilos embebida');
 forbid(html,/\sstyle\s*=/i,'warehouse.html conserva estilos inline');
 forbid(html,/warehouse-embedded\.js/,'warehouse.html vuelve a cargar el owner compensatorio retirado');
-const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260902-ux6b3');
+const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260921-ux8contrast1');
 const ownerCssIndex=html.indexOf('/admin/warehouse.css?v=20260902-ux7warehouse1');
 if(ownerCssIndex<0||foundationIndex<0||foundationIndex>ownerCssIndex)failures.push('la base visual compartida debe cargar antes de warehouse.css');
 

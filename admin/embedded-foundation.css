@@ -81,8 +81,9 @@ body.erp-module-page{
   padding:0;
 }
 
-.erp-module-page .module-hero,
-.erp-module-page .head.module-hero{
+/* The base and the later module owner use the same specificity. Adding .head
+   here overrode dark module backgrounds while leaving their text white. */
+.erp-module-page .module-hero{
   position:relative;
   display:flex;
   align-items:flex-end;
