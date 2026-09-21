@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const read=file=>fs.readFileSync(file,'utf8');
 const migration=read('supabase/migrations/20260901184000_ux6_cost_charge_action_capabilities.sql');
+const revisionMigration=read('supabase/migrations/20260921211500_posted_cost_charge_revision.sql');
 const fixture=read('supabase/tests/ux6_cost_charge_actions.sql');
 const helper=read('api/_cost-actions.js');
 const api=read('api/costs.js');
@@ -32,6 +33,16 @@ for(const text of [
 ]) requireText(migration,text,`owner DB ${text}`);
 
 for(const text of [
+  'function public.revise_posted_cost_charge',
+  "'revise'",
+  'COST_CHARGE_NOT_POSTED',
+  'COST_CHARGE_REVISION_SINGLE_ALLOCATION_REQUIRED',
+  'public.create_posted_cost_charge',
+  'public.void_cost_charge_canonical',
+  'grant execute on function public.revise_posted_cost_charge'
+]) requireText(revisionMigration,text,`corrección contabilizada ${text}`);
+
+for(const text of [
   "from './_invoice-actions.js'",
   'loadFinanceWriteAccess',
   'cost_charge_action_capabilities',
@@ -49,6 +60,7 @@ for(const text of [
   "'rpc/replace_cost_charge_canonical'",
   "'rpc/post_cost_charge_canonical'",
   "'rpc/void_cost_charge_canonical'",
+  "'rpc/revise_posted_cost_charge'",
   "supabase('shipments', { query:'?select=id,container_number,operation_id&order=id.desc&limit=3000' })",
   'COST_ERROR_TRANSLATIONS',
   'SAFE_COST_INPUT_PATTERNS',
@@ -119,9 +131,13 @@ for(const text of [
   'UX6_COST_PARTIAL_POST_FORBIDDEN',
   'UX6_COST_ALLOCATED_POST_EXPECTED',
   'UX6_COST_POSTED_VOID_EXPECTED',
+  'UX6_COST_POSTED_REVISION_EXPECTED',
+  'UX6_COST_REVISION_REPLACEMENT_EXPECTED',
+  'UX6_COST_REVISION_ALLOCATION_EXPECTED',
   'UX6_COST_REPEAT_VOID_FORBIDDEN',
   'cost_charge_fixture_residue',
-  'cost_allocation_fixture_residue'
+  'cost_allocation_fixture_residue',
+  'cost_revision_fixture_residue'
 ]) requireText(fixture,text,`fixture reversible ${text}`);
 
 if(failures.length){
