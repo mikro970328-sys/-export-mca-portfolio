@@ -23,7 +23,7 @@ for(const text of [
   'financialSummary(authoritativeSummary,financeReadable)',
   'financial_access:{read:financeReadable,write:financeWritable}',
   '!financeReadable?Promise.resolve([])',
-  'costs:{allocations:financeReadable?directCosts:[]}'
+  'costs:{allocations:financeReadable?mergeCostAllocations(directCosts,costCapabilityMap):[]}'
 ]) requireText('backend permission contract',api,text);
 requireText('sales access remains available',api,"authorizeAdmin(req,res,'sales.read')");
 
@@ -35,7 +35,7 @@ for(const text of [
   'COGS, gastos directos y márgenes requieren permiso de Finanzas.',
   "financialWritable()?'<button class=\"btn orange\" data-ws-action=\"new_cost\">+ Agregar gasto</button>':''",
   "if(action==='new_cost'){if(!financialWritable())throw new Error('No tienes permiso para registrar gastos.')",
-  "function openCostModal(){if(!financialWritable())throw new Error('No tienes permiso para registrar gastos.')",
+  "function openCostModal(costChargeId=''){if(!financialWritable())throw new Error('No tienes permiso para registrar gastos.')",
   "async function saveCost(){if(!financialWritable())throw new Error('No tienes permiso para registrar gastos.')"
 ]) requireText('frontend permission contract',ui,text);
 
