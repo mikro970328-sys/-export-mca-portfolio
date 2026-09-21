@@ -13,9 +13,10 @@ const migration=read('supabase/migrations/20260830053000_p1_direct_shipment_disp
 const correctionMigration=read('supabase/migrations/20260910123500_direct_ship_quantity_corrections.sql');
 const quickDirectMigration=read('supabase/migrations/20260920113000_sales_nationalization_and_quick_direct.sql');
 const directSaleMigration=read('supabase/migrations/20260920213000_direct_sale_from_purchase.sql');
+const {buildPurchaseOptions}=await import('../api/sales-supply.js');
 
 assert(html.includes('/admin/sales-supply-workspace.css?v=20260902-ux7sales1'),'Ventas no carga CSS de abastecimiento versionado');
-assert(html.includes('/admin/sales-supply-workspace.js?v=20260920-direct2'),'Ventas no carga Asignar mercancía versionado');
+assert(html.includes('/admin/sales-supply-workspace.js?v=20260921-balance1'),'Ventas no carga Asignar mercancía versionado');
 assert(html.includes('id="openSupplyWorkspace"'),'Ventas no expone acceso a Abastecimiento');
 assert(html.includes('Asignar mercancía'),'Ventas no muestra el acceso para asignar mercancía');
 assert(salesUi.includes('data-supply-order'),'La lista de Ventas no expone Asignar mercancía');
@@ -29,6 +30,7 @@ assert(ui.includes('El ERP asignará automáticamente el saldo disponible y sus 
 assert(ui.includes("action:'quick_link_direct_purchase'"),'Una ruta Direct Ship existente no vincula la compra automáticamente');
 assert(ui.includes('No tienes que escribir cantidades.'),'La ruta Direct Ship existente no explica que las cantidades son automáticas');
 assert(ui.includes("plan.supply_method==='purchase_direct'?'':"),'Direct Ship todavía expone el botón para cambiar cantidades');
+for(const required of ['purchaseAvailable(row)','remaining_quantity','Compra asignada','Asignada a ${order.so_number','No hay compras con saldo disponible'])assert(ui.includes(required),`Falta protección visual de compras asignadas: ${required}`);
 for(const removed of ['quickDirectSalesQty','quickDirectSalesPallets','quickDirectPurchaseQty','quickDirectPurchasePallets','quickDirectNotes'])assert(!ui.includes(removed),`Direct Ship todavía pide el campo redundante ${removed}`);
 for(const removed of ['supplyDirectSalesQty','supplyDirectSalesPallets','supplyDirectPurchaseQty','supplyDirectPurchasePallets','supplyDirectNotes'])assert(!ui.includes(removed),`El contenedor Direct Ship todavía pide el campo redundante ${removed}`);
 assert(ui.includes('No se aplica conversión automática')||ui.includes('sin conversión automática'),'La UI debe declarar que no inventa conversiones de unidad');
@@ -38,6 +40,7 @@ for(const required of ['sales_supply_plan_lines','sales_procurement_allocations'
 assert(api.includes('rpc/assign_sales_order_item_direct_ship'),'API Direct Ship no usa la asignación atómica automática');
 assert(api.includes('rpc/assign_procurement_to_direct_shipment'),'API de contenedor Direct Ship no usa el saldo automático');
 assert(api.includes('rpc/assign_sales_supply_plan_direct_purchase'),'API de ruta Direct Ship no usa el vínculo automático');
+for(const required of ['purchaseUsageRows','fully_allocated','remaining_quantity','sales_order:sales_orders','client:clients'])assert(api.includes(required),`API no expone el saldo/asignación de compras: ${required}`);
 assert(!api.includes('warehouses(id,code,name,location'),'API vuelve a consultar warehouses.location inexistente');
 assert(!api.includes('unit_price,currency'),'API vuelve a consultar sales_order_items.currency inexistente');
 
@@ -47,5 +50,18 @@ for(const required of ['direct_shipment_dispatches','SO_ALLOCATION_CONFLICTS_WIT
 for(const required of ['direct_shipment_quantity_corrections','correct_direct_shipment_quantity','direct_shipment_effective_allocations','planned_sales_quantity','latest_correction_reason'])assert(correctionMigration.includes(required),`Migration de corrección Direct Ship incompleta: ${required}`);
 for(const required of ['assign_sales_order_item_direct_ship','assign_procurement_to_direct_shipment','SUPPLY_QUICK_DIRECT_NO_SALE_BALANCE','SUPPLY_QUICK_DIRECT_NO_PURCHASE_BALANCE','SUPPLY_QUICK_DIRECT_NO_ALLOCATION_BALANCE','grant execute on function public.assign_sales_order_item_direct_ship','grant execute on function public.assign_procurement_to_direct_shipment'])assert(quickDirectMigration.includes(required),`Migration de asignación rápida incompleta: ${required}`);
 for(const required of ['assign_sales_supply_plan_direct_purchase','create_direct_sale_from_purchase_order','DIRECT_SALE_PO_ALREADY_LINKED','grant execute on function public.assign_sales_supply_plan_direct_purchase'])assert(directSaleMigration.includes(required),`Migration Direct Ship desde compra incompleta: ${required}`);
+
+const purchaseOptions=buildPurchaseOptions(
+  [{id:'poi-1',purchase_order_id:'po-1',ordered_quantity:100,ordered_pallets:10,unit:'DOCENAS'}],
+  [{id:'po-1',po_number:'PO-0005',supplier_id:'supplier-1',warehouse_id:null,status:'confirmed'}],
+  [{id:'supplier-1',name:'Eggs Unlimited LLC'}],
+  [
+    {purchase_order_item_id:'poi-1',allocated_purchase_quantity:100,allocated_purchase_pallets:10,supply_plan_line:{sales_order_item:{sales_order:{id:'so-1',so_number:'SO-0002',status:'confirmed',client_id:'client-1',client:{name:'Cliente de prueba'}}}}},
+    {purchase_order_item_id:'poi-1',allocated_purchase_quantity:25,allocated_purchase_pallets:2,supply_plan_line:{sales_order_item:{sales_order:{id:'so-cancelled',so_number:'SO-0001',status:'cancelled',client_id:'client-2',client:{name:'Venta cancelada'}}}}}
+  ]
+);
+assert(purchaseOptions[0].fully_allocated===true&&purchaseOptions[0].remaining_quantity===0,'Una compra consumida debe quedar sin saldo');
+assert(purchaseOptions[0].assignments.length===1&&purchaseOptions[0].assignments[0].so_number==='SO-0002','La compra debe indicar la venta activa asignada');
+assert(purchaseOptions[0].assignments[0].client_name==='Cliente de prueba','La compra debe indicar el cliente asignado');
 
 console.log('Sales supply workspace checks passed');
