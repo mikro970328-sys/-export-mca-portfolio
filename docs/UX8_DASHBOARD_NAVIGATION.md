@@ -3,6 +3,14 @@
 Fecha: 2026-09-21. Rama: `feat/ux8-dashboard-navigation-clarity`.
 Base: `f60115e` (main, mejoras de Direct Ship incluidas).
 
+## Aceptación y publicación
+
+Daniel abrió la vista previa de Vercel correspondiente a `06012e9`, confirmó
+«ya la vi» y autorizó publicarla el 2026-09-21. La aceptación visual es del
+usuario; no se presenta como una certificación automatizada de navegadores.
+La solicitud de integración de esta rama registra los resultados definitivos de
+CI, el commit integrado y la verificación del despliegue de producción.
+
 ## Alcance
 
 - Inicio muestra «Requiere atención» y actividad reciente antes del catálogo de
@@ -46,8 +54,10 @@ no se eliminaron validaciones. El workflow visual incorpora el nuevo gate DOM.
 ## Límites y siguiente paso
 
 La apertura del fixture local en el navegador de esta sesión fue rechazada por
-su política de URL. No se eludió la restricción. **Revisión visual, teclado real,
-Chrome/Safari y dispositivo móvil real: pendientes.** No hay capturas verificadas.
+su política de URL. No se eludió la restricción. La vista previa remota fue
+revisada y aprobada por Daniel. **Certificación automatizada de teclado real,
+Chrome/Safari y dispositivo móvil real: no realizada en esta entrega.** No hay
+capturas verificadas del agente.
 
 El fixture reproducible `scripts/preview-ux8-dashboard-navigation.mjs` genera
 JSON con HTML de escritorio/móvil usando assets locales. Su harness está en
@@ -57,8 +67,10 @@ en un entorno que autorice esos archivos, pero no fue aprobado visualmente aquí
 
 No se ha ejecutado aceptación de API/base de datos ni el flujo comercial completo
 en esta entrega. No se modificaron backend, esquema, datos, credenciales,
-permisos de cuentas ni notificaciones. No se integró ni publicó en producción.
+permisos de cuentas ni notificaciones. La publicación está autorizada; su
+resultado y evidencia definitivos se registran en la solicitud de integración.
 
-Antes de integrar: revisar visualmente desktop/móvil, contrastar un Dashboard
-real autorizado de solo lectura y completar los gates del commit en CI. Un
-Preview no es base de datos aislada: no crear operaciones comerciales de prueba.
+La revisión del usuario está completada. Antes de integrar se completan los
+gates del commit en CI, y después se verifica el dominio y los assets publicados.
+Un Preview no es base de datos aislada: no crear operaciones comerciales de
+prueba.

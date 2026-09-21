@@ -1,11 +1,13 @@
-## UX8 en rama de trabajo — 2026-09-21
+## UX8 aprobado para publicación — 2026-09-21
 
 Inicio y navegación preparados en `feat/ux8-dashboard-navigation-clarity`, desde
 `f60115e`: prioridades primero, detalle financiero/filtros desplegables y búsqueda
 de secciones respetando permisos. 88 comprobaciones DOM y 22 gates existentes
-aprobados. Revisión visual pendiente por restricción del navegador local. No se
-integró en main ni se publicó en producción; sin cambios de backend ni datos.
-Ver `UX8_DASHBOARD_NAVIGATION.md` para alcance y límites de la verificación.
+aprobados. Daniel revisó la vista previa remota de `06012e9` y autorizó la
+publicación. La solicitud de integración de esta rama registra los gates de CI,
+el commit integrado y el despliegue definitivo. Sin cambios de backend ni datos.
+Ver `UX8_DASHBOARD_NAVIGATION.md` para alcance y límites de la verificación;
+la aceptación visual del usuario no es una certificación de navegadores reales.
 
 ---
 
