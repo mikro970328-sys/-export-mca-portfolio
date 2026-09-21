@@ -29,10 +29,14 @@
   }
 
   async function transition(salesOrderId, action) {
-    const order = getOrder(salesOrderId);
+    let order = getOrder(salesOrderId);
     if (!order) throw new Error('Venta no encontrada.');
     if (order?.capabilities?.actions?.[action]?.allowed !== true) {
-      throw new Error('La acción ya no está disponible para esta venta.');
+      await refresh();
+      order = getOrder(salesOrderId);
+      if (order?.capabilities?.actions?.[action]?.allowed !== true) {
+        throw new Error('La acción ya no está disponible para esta venta.');
+      }
     }
     await api('/api/sales', {
       method:'POST',
