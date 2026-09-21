@@ -62,7 +62,7 @@
 
 .erp-module-costs .costs-hero-state span:not(.costs-live-dot){
   overflow:hidden;
-  color:var(--muted);
+  color:var(--muted-strong);
   font-size:10px;
   text-overflow:ellipsis;
   white-space:nowrap;
