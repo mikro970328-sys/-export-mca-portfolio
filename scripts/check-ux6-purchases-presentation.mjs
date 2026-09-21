@@ -110,7 +110,7 @@ for(const text of [
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/purchases.css?v=20260920-directsale1',
   '/admin/purchases.js?v=20260920-directsale1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed2'
+  '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ]) requireText(html,text,`HTML ${text}`);
 forbid(html,/\sstyle\s*=/i,'Compras conserva estilos inline');
 forbid(html,/purchases-(?:master-refresh|product-catalog)\.js/,'Compras vuelve a cargar un script complementario retirado');

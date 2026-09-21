@@ -52,7 +52,7 @@ for (const text of [
   '/admin/embedded-foundation.css?v=20260902-ux6b3',
   '/admin/payables.css?v=20260903-ux7payables1',
   '/admin/payables.js?v=20260916-supplier-retry1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed2',
+  '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero payables-page-head"',
   'id="payablesLastUpdated"',
   'id="metrics" class="metrics payables-metrics"',

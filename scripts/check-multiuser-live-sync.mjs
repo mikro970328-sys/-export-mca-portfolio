@@ -42,7 +42,7 @@ for (const text of [
 
 for (const text of [
   "const LIVE_SYNC_PATH = '/api/live-updates'",
-  'const LIVE_SYNC_VISIBLE_MS = 15000',
+  'const LIVE_SYNC_VISIBLE_MS = 10000',
   'const LIVE_SYNC_HIDDEN_MS = 120000',
   'function applyLiveSnapshot(payload)',
   "queueExternalScopes(external,'multiuser-change')",
@@ -59,7 +59,7 @@ if (/SUPABASE_(?:SERVICE_ROLE|SECRET|ANON|PUBLISHABLE)|createClient\s*\(/.test(r
 
 for (const name of fs.readdirSync('admin').filter(name => name.endsWith('.html'))) {
   const html = read(`admin/${name}`);
-  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260920-speed2')) {
+  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260920-speed3')) {
     failures.push(`admin/${name}: conserva una versión anterior del runtime de sincronización`);
   }
 }

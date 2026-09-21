@@ -61,7 +61,7 @@ for(const text of [
 for(const text of [
   '/admin/purchases.css?v=20260920-directsale1',
   '/admin/purchases.js?v=20260920-directsale1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed2'
+  '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ])requireText(html,text,`cache de Compras ${text}`);
 
 if(failures.length){

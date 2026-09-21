@@ -93,15 +93,15 @@ await first.live.pollLiveState();
 await second.live.pollLiveState();
 assert.equal(first.counters.tasks+second.counters.tasks,0,'baseline must not trigger passive refreshes');
 shared.tasks=1;
-await first.clock.advance(15200);
-await second.clock.advance(15200);
+await first.clock.advance(10200);
+await second.clock.advance(10200);
 assert.equal(first.counters.tasks,1,'dialogs inside hidden overlays must not block live updates');
 assert.equal(second.counters.tasks,1);
 await first.clock.advance(12000);
 assert.equal(first.counters.tasks,1,'unchanged versions must settle without refresh loops');
 second.modal(true);
 shared.tasks=2;
-await second.clock.advance(15200);
+await second.clock.advance(10200);
 assert.equal(second.counters.tasks,1,'external changes must wait for the editor');
 second.modal(false);
 await second.clock.advance(200);
@@ -109,7 +109,7 @@ assert.equal(second.counters.tasks,2,'closing the editor applies the pending cha
 for(const visibility of ['hidden','collapse']){
   second.modal(true,visibility);
   shared.tasks+=1;
-  await second.clock.advance(15200);
+  await second.clock.advance(10200);
   assert.equal(second.counters.tasks,shared.tasks,'CSS-hidden dialogs must not block updates');
 }
 second.modal(false);
@@ -126,12 +126,12 @@ for(const hungBody of [false,true]){
   assert.equal(await pending,false,'hung response must time out');
   assert.equal(h.calls.length,1);
   assert.equal(h.calls[0].options.signal.aborted,true);
-  assert(h.clock.pending().includes(30000),'retry backs off after timeout');
+  assert(h.clock.pending().includes(20000),'retry backs off after timeout');
   h.transport(async()=>response({tasks:0}));
-  await h.clock.advance(30000);
+  await h.clock.advance(20000);
   assert.equal(h.calls.length,2,'polling resumes without reloading');
   assert.equal(h.statuses.at(-1).status,'connected');
-  assert(h.clock.pending().includes(15000),'success resets retry delay');
+  assert(h.clock.pending().includes(10000),'success resets retry delay');
   h.live.stopLiveSync();
 }
 
@@ -141,14 +141,14 @@ recovery.transport(async()=>response({},503));
 await recovery.live.pollLiveState();
 assert.equal(recovery.statuses.at(-1).status,'retrying');
 recovery.transport(async()=>response({tasks:1,products:0}));
-await recovery.clock.advance(30200);
+await recovery.clock.advance(20200);
 assert.equal(recovery.counters.tasks,1,'connection failure must preserve previous versions');
 for(const versions of [[],{}, {tasks:true},{tasks:-1},{tasks:null},{tasks:[1]}]){
   recovery.transport(async()=>({status:200,ok:true,json:async()=>({versions})}));
   await recovery.live.pollLiveState();
   assert.equal(recovery.statuses.at(-1).status,'retrying','invalid payload must not reset baseline');
   recovery.transport(async()=>response({tasks:1,products:0}));
-  await recovery.clock.advance(30200);
+  await recovery.clock.advance(20200);
   assert.equal(recovery.counters.tasks,1,'valid unchanged response after malformed data stays quiet');
 }
 recovery.doc.hidden=true;

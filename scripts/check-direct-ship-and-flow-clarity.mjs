@@ -27,7 +27,7 @@ for(const text of [
   'Direct Ship al cliente (sin WR)',
   'id="oDestinationHelp"',
   '/admin/purchases.js?v=20260920-directsale1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed2'
+  '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ])requireText(purchasesHtml,text,`Compras ${text}`);
 
 for(const text of [
@@ -64,7 +64,7 @@ for(const text of ['create_direct_sale_from_purchase_order','assign_sales_supply
 for(const text of [
   'Asignar mercancía',
   '/admin/sales.js?v=20260920-speed1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed2'
+  '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ])requireText(salesHtml,text,`ruta visible desde Ventas ${text}`);
 for(const text of [
   'data-supply-order=',
@@ -95,7 +95,7 @@ for(const text of [
   'Cada WR recibido suma mercancía a Existencias',
   'un Direct Ship no pasa por esta etapa',
   'Registrar entrada WR',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed2'
+  '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ])requireText(warehouseHtml,text,`Recepciones ${text}`);
 
 for(const text of [
@@ -103,7 +103,7 @@ for(const text of [
   '<h1 id="inventoryPageTitle">Existencias</h1>',
   'Aquí no registras entradas',
   'un Direct Ship tampoco aparece como stock propio',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed2'
+  '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ])requireText(inventoryHtml,text,`Existencias ${text}`);
 
 for(const text of [

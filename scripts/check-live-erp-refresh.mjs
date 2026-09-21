@@ -13,7 +13,7 @@ const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
 
 for(const text of [
-  '/admin/embedded-auto-refresh.js?v=20260920-speed2',
+  '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   '/admin/erp.js?v=20260905-accessflow1'
 ])requireText(shell,text,`shell ${text}`);
 
