@@ -77,7 +77,7 @@ async function contrasts(locator) {
         if (char === ',' && depth === 0) { result.push(value.slice(start, i)); start = i + 1; }
       });
       result.push(value.slice(start));
-      return result.reverse();
+      return result.reverse().map(layer => layer.trim());
     };
     return elements.filter(element => element.getClientRects().length && getComputedStyle(element).visibility === 'visible').map(element => {
       const chain = [];
