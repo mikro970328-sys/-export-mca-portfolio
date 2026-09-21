@@ -31,7 +31,7 @@ for(const text of [
   "permissionSet.has('warehouse.write')",
   "admin?.role==='master_admin'",
   "supabase('purchase_order_action_capabilities'",
-  'capabilities:capabilitiesByPo.get(order.id)',
+  'capabilities:permissionAwareCapabilities(rawCapabilitiesByPo.get(order.id),access,order)',
   "key.startsWith('receive_')?'warehouse.write':'procurement.write'"
 ])requireText('API capability contract',api,text);
 forbid('API capability contract',api,/\bhasPermission\s*\(/,'no debe depender de un helper hasPermission paralelo/inexistente');

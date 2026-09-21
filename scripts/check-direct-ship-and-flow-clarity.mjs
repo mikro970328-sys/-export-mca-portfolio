@@ -5,6 +5,7 @@ const purchasesHtml=read('admin/purchases.html');
 const purchasesJs=read('admin/purchases.js');
 const purchasesCss=read('admin/purchases.css');
 const purchasesApi=read('api/purchases.js');
+const directSaleApi=read('api/purchase-direct-sale.js');
 const salesHtml=read('admin/sales.html');
 const salesJs=read('admin/sales.js');
 const salesSupply=read('admin/sales-supply-workspace.js');
@@ -16,6 +17,7 @@ const inventoryHtml=read('admin/inventory.html');
 const refresh=read('admin/embedded-auto-refresh.js');
 const migration=read('supabase/migrations/20260904013221_purchase_direct_ship_no_wr.sql');
 const supplyConsistencyMigration=read('supabase/migrations/20260904013835_purchase_destination_supply_consistency.sql');
+const directSaleMigration=read('supabase/migrations/20260920213000_direct_sale_from_purchase.sql');
 const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
 
@@ -24,8 +26,8 @@ for(const text of [
   'Recibir en mi almacén',
   'Direct Ship al cliente (sin WR)',
   'id="oDestinationHelp"',
-  '/admin/purchases.js?v=20260914-repeat1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed1'
+  '/admin/purchases.js?v=20260920-directsale1',
+  '/admin/embedded-auto-refresh.js?v=20260920-speed2'
 ])requireText(purchasesHtml,text,`Compras ${text}`);
 
 for(const text of [
@@ -35,8 +37,19 @@ for(const text of [
   'Ventas → Asignar mercancía',
   'Direct Ship · sin WR',
   'No entra a inventario',
-  'No se creará un WR.'
+  'No se creará un WR.',
+  'function openDirectSale(order)',
+  'Crear venta Direct Ship',
+  'Precio total de venta',
+  '/api/purchase-direct-sale',
+  'line_totals:lineTotals'
 ])requireText(purchasesJs,text,`flujo Direct Ship en Compras ${text}`);
+for(const text of [
+  'id="directSaleModal"',
+  'Las cantidades son informativas y no se vuelven a escribir.',
+  'id="dsNationalization"',
+  'id="saveDirectSale"'
+])requireText(purchasesHtml,text,`venta directa desde Compras ${text}`);
 
 for(const text of [
   '.purchase-destination-help',
@@ -45,11 +58,13 @@ for(const text of [
 ])requireText(purchasesCss,text,`presentación de destino ${text}`);
 
 requireText(purchasesApi,'PO_DIRECT_SHIP_NO_WR','mensaje seguro para una PO Direct Ship');
+for(const text of ['sales.write','rpc/create_direct_sale_from_purchase_order','p_line_totals:cleanLineTotals','direct_sale_created_from_purchase'])requireText(directSaleApi,text,`API de venta desde compra ${text}`);
+for(const text of ['create_direct_sale_from_purchase_order','assign_sales_supply_plan_direct_purchase','DIRECT_SALE_PO_ALREADY_LINKED','grant execute on function public.create_direct_sale_from_purchase_order','revoke all on function public.create_direct_sale_from_purchase_order'])requireText(directSaleMigration,text,`operación atómica compra a venta ${text}`);
 
 for(const text of [
   'Asignar mercancía',
   '/admin/sales.js?v=20260920-speed1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed1'
+  '/admin/embedded-auto-refresh.js?v=20260920-speed2'
 ])requireText(salesHtml,text,`ruta visible desde Ventas ${text}`);
 for(const text of [
   'data-supply-order=',
@@ -80,7 +95,7 @@ for(const text of [
   'Cada WR recibido suma mercancía a Existencias',
   'un Direct Ship no pasa por esta etapa',
   'Registrar entrada WR',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed1'
+  '/admin/embedded-auto-refresh.js?v=20260920-speed2'
 ])requireText(warehouseHtml,text,`Recepciones ${text}`);
 
 for(const text of [
@@ -88,7 +103,7 @@ for(const text of [
   '<h1 id="inventoryPageTitle">Existencias</h1>',
   'Aquí no registras entradas',
   'un Direct Ship tampoco aparece como stock propio',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed1'
+  '/admin/embedded-auto-refresh.js?v=20260920-speed2'
 ])requireText(inventoryHtml,text,`Existencias ${text}`);
 
 for(const text of [

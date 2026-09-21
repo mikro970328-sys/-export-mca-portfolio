@@ -42,7 +42,7 @@ try {
   const loadAction=(load,action)=>post('loads',{load_id:load.id,action});
 
   await test('API-01 anonymous and read-only writes never reach SQL',async()=>{
-    for(const name of ['sales','sales-order-ux','sales-loads','loads','direct-shipment-dispatch']) {
+    for(const name of ['sales','sales-order-ux','sales-loads','loads','direct-shipment-dispatch','purchase-direct-sale']) {
       const before=api.calls.length;
       assert.equal((await api.request(name,{method:'POST',body})).status,401);
       assert.equal((await post(name,body,reader)).status,403);
@@ -150,6 +150,22 @@ try {
     const link=await post('loads',{action:'assign_existing_container',load_id:load.id,shipment_id:sh.id});
     assert.equal(link.status,400); assert.match(link.body.error,/cliente|importadora/);
     assert.equal(Number(success(await get('sales',{id:so.id})).order.items[0].progress.planned_quantity),100);
+  });
+  await test('API-11 a Direct Ship purchase creates and links its sale through the real handler',async()=>{
+    const po=await one('select * from create_purchase_order_plan(p_supplier_id=>$1,p_lines=>$2::jsonb,p_warehouse_id=>null)',[supplier,JSON.stringify([{...line,unit_cost:2.5}])]);
+    for(const action of ['issue','confirm'])await one('select * from transition_purchase_order($1,$2)',[po.id,action]);
+    const item=await one('select * from purchase_order_items where purchase_order_id=$1',[po.id]);
+    const options=success(await get('purchase-direct-sale',{purchase_order_id:po.id}));
+    assert.equal(options.clients.some(row=>row.id===client),true);
+    const created=success(await post('purchase-direct-sale',{purchase_order_id:po.id,client_id:client,currency:'USD',nationalization_status:'not_nationalized',line_totals:[{purchase_order_item_id:item.id,line_total:650}]}));
+    assert.match(created.sale.so_number,/^SO-/);assert.equal(created.sale.status,'confirmed');assert.equal(created.sale.linked_lines,1);
+    const allocation=await one(`select spa.* from sales_procurement_allocations spa
+      join sales_supply_plan_lines spl on spl.id=spa.supply_plan_line_id
+      join sales_order_items soi on soi.id=spl.sales_order_item_id
+      where soi.sales_order_id=$1`,[created.sale.sales_order_id]);
+    assert.equal(allocation.purchase_order_item_id,item.id);assert.equal(Number(allocation.allocated_purchase_quantity),100);
+    const duplicate=await post('purchase-direct-sale',{purchase_order_id:po.id,client_id:client,currency:'USD',nationalization_status:'not_nationalized',line_totals:[{purchase_order_item_id:item.id,line_total:700}]});
+    assert.equal(duplicate.status,400);assert.match(duplicate.body.error,/ya está relacionada/);
   });
   for(const table of ['sales_orders','purchase_orders','warehouse_receipts','loads','shipments','inventory_movements'])assert.equal(Number((await one(`select count(*) as n from ${table}`)).n),0,`${table}: no business residue`);
   console.log(`Sales/logistics API acceptance: ${passed} passed, ${failures.length} failed; real handlers and SQL, simulated auth/transport/audit.`);

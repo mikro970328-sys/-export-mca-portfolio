@@ -152,38 +152,33 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await expect(purchases.locator(`[data-receive-order="${po.id}"]`)).toHaveCount(0);
     });
 
-    const sales=await navigate('sales');
-    await step('DS-03 create and confirm sale for 840',async()=>{
-      await sales.locator('[data-view="all"]').click();await sales.locator('#newOrder').click();
-      await sales.locator('#oClientPickerButton').click();await sales.locator(`[data-client-id="${f.client}"]`).click();
-      await sales.locator('#oImporter').selectOption(f.importer);
-      await sales.locator('#oNationalization').selectOption('not_nationalized');
-      await sales.locator('.lProduct').selectOption(f.product);await sales.locator('.lQty').fill('840');
-      await sales.locator('.lPallets').fill('10');await sales.locator('.lUpp').fill('84');await sales.locator('.lTotal').fill('3360');
-      await mutation('sales-order-ux',()=>sales.locator('#saveOrder').click());
-      await expect(sales.locator('#orderModal')).toBeHidden();
+    await step('DS-03 create the complete linked sale from the confirmed purchase',async()=>{
+      await purchases.locator(`[data-direct-sale-order="${po.id}"]`).click();
+      await expect(purchases.locator('#directSaleModal')).toBeVisible();
+      await purchases.locator('#dsClient').selectOption(f.client);
+      await purchases.locator('#dsImporter').selectOption(f.importer);
+      await purchases.locator('#dsNationalization').selectOption('not_nationalized');
+      await purchases.locator('.dsLineTotal').fill('3360');
+      await shot('03-direct-sale-from-purchase');
+      await mutation('purchase-direct-sale',()=>purchases.locator('#saveDirectSale').click());
+      await expect(purchases.locator('#directSaleModal')).toBeHidden();
       so=await f.one('select * from sales_orders');evidence.documents.sale=so.so_number;
       const item=await f.one('select ordered_quantity,ordered_pallets from sales_order_items');
       expect(Number(item.ordered_quantity)).toBe(840);expect(Number(item.ordered_pallets)).toBe(10);
       evidence.saleQuantities=item;
-      await sales.locator(`[data-view-order="${so.id}"]`).click();
-      await sales.locator('[data-ws-action="confirm"]').first().click();
-      await mutation('sales',()=>sales.locator('[data-sales-workspace-accept]').click());
-      await expect(sales.locator('#detailSubtitle')).toContainText('Confirmada');
-    });
-    await step('DS-04 choose confirmed Direct Ship purchase from the sale',async()=>{
-      await sales.locator('[data-close="detail"]').click();
-      await sales.locator(`[data-supply-order="${so.id}"]`).click();
-      await expect(sales.locator('#salesSupplyModal')).toBeVisible();
-      await sales.locator('[data-supply-action="quick-direct"]').click();
-      const poItem=await f.one('select id from purchase_order_items where purchase_order_id=$1',[po.id]);
-      await sales.locator('#quickDirectPo').selectOption(poItem.id);
-      await mutation('sales-supply',()=>sales.locator('#salesSupplyFormSave').click());
-      await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();
-      await expect(sales.locator('#salesSupplyBody')).toContainText('Paso 1 listo');
+      expect(so.status).toBe('confirmed');expect(so.nationalization_status).toBe('not_nationalized');
       procurement=await f.one('select * from sales_procurement_allocations');
       expect(Number(procurement.allocated_sales_quantity)).toBe(840);
       expect(Number(procurement.allocated_purchase_quantity)).toBe(840);
+    });
+    const sales=await navigate('sales');
+    await step('DS-04 the sale shows the purchase already linked with automatic quantities',async()=>{
+      await sales.locator('[data-view="all"]').click();
+      await sales.locator(`[data-supply-order="${so.id}"]`).click();
+      await expect(sales.locator('#salesSupplyModal')).toBeVisible();
+      await expect(sales.locator('#salesSupplyBody')).toContainText('Paso 1 listo');
+      await expect(sales.locator('#salesSupplyBody')).toContainText('Mercancía asignada automáticamente');
+      await expect(sales.locator(`[data-supply-action="edit-purchase"][data-proc-id="${procurement.id}"]`)).toHaveCount(0);
     });
     await step('DS-05 register and link the Direct Ship container',async()=>{
       await sales.locator('[data-supply-action="new-direct"]').click();
@@ -264,16 +259,14 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     await expect.poll(()=>reportNumber('COGS reconocido'),{timeout:45_000}).toBe(2100);
     const reportNavBaseline=reportNavigations;
     const reportShot=async name=>{const path=info.outputPath(`${name}.png`);await observer.screenshot({path,timeout:5000});await info.attach(name,{path,contentType:'image/png'});};
-    await step('DS-10 raw dispatched allocation remains protected',async()=>{
+    await step('DS-10 Direct Ship never exposes manual purchase-link quantities',async()=>{
       await expect(sales.locator('[data-supply-action="unlink-direct"]')).toHaveCount(0);
       await expect(sales.locator('[data-supply-action="dispatch-direct"]')).toHaveCount(0);
-      await sales.locator(`[data-supply-action="edit-purchase"][data-proc-id="${procurement.id}"]`).click();
-      await sales.locator('#supplySalesQty').fill('839');
-      await mutation('sales-supply',()=>sales.locator('#salesSupplyFormSave').click(),400);
-      await expect(sales.locator('#salesSupplyFormMsg')).toContainText('no puede quedar por debajo');
+      await expect(sales.locator(`[data-supply-action="edit-purchase"][data-proc-id="${procurement.id}"]`)).toHaveCount(0);
+      await expect(sales.locator('#supplySalesQty')).toHaveCount(0);
+      await expect(sales.locator('#supplyPurchaseQty')).toHaveCount(0);
       expect(Number((await f.one('select allocated_sales_quantity from sales_procurement_allocations')).allocated_sales_quantity)).toBe(840);
       expect(Number((await f.one('select allocated_sales_quantity from direct_shipment_allocations')).allocated_sales_quantity)).toBe(840);
-      await sales.locator('[data-supply-form-close]').last().click();
     });
     await step('DS-11 correct actual physical shipment from 840 to 810',async()=>{
       await expect(sales.locator(`[data-supply-action="correct-direct"][data-direct-id="${direct.id}"]`)).toBeVisible();

@@ -9,7 +9,7 @@ export function salesLogisticsAcceptanceApi(db) {
   const rpcNames=new Set(['create_sales_order_plan','replace_sales_order_plan','create_sales_order_plan_with_nationalization','replace_sales_order_plan_with_nationalization','transition_sales_order',
     'create_load_from_sales_order','sales_order_linkable_existing_loads','link_existing_load_to_sales_order',
     'create_load_plan','replace_load_plan_canonical','execute_load_action','create_load_shipment_canonical',
-    'assign_load_shipment_canonical','mark_direct_shipment_dispatched']);
+    'assign_load_shipment_canonical','mark_direct_shipment_dispatched','create_direct_sale_from_purchase_order']);
   const readTables=new Set(['clients','importers','client_importers','products','warehouses','shipments',
     'sales_order_progress','sales_order_item_progress','sales_order_action_capabilities',
     'inventory_source_balances','inventory_summary','load_action_capabilities','load_traceability_sources',
@@ -28,7 +28,9 @@ export function salesLogisticsAcceptanceApi(db) {
     await db.exec('savepoint api_rpc');
     try {
       const result=await db.query(`select * from ${name}(${entries.map(([key],i)=>`${key}=>$${i+1}`).join(',')})`,entries.map(([,v])=>Array.isArray(v)?JSON.stringify(v):v));
-      await db.exec('release savepoint api_rpc'); return result.rows;
+      await db.exec('release savepoint api_rpc');
+      if(name==='create_direct_sale_from_purchase_order')return result.rows[0]?.[name]||null;
+      return result.rows;
     } catch(error) { await db.exec('rollback to savepoint api_rpc; release savepoint api_rpc'); throw error; }
   }
   const lib={ok,fail,readJson,upstreamFailureStatus,
@@ -61,7 +63,7 @@ export function salesLogisticsAcceptanceApi(db) {
       return result.slice(offset,offset+limit);
     }
   };
-  const allowed=new Set(['_sales-actions','_load-actions','_load-plan-availability','sales','sales-order-ux','sales-loads','loads','direct-shipment-dispatch','shipment-document-readiness']);
+  const allowed=new Set(['_sales-actions','_load-actions','_load-plan-availability','sales','sales-order-ux','sales-loads','loads','direct-shipment-dispatch','shipment-document-readiness','purchase-direct-sale']);
   function module(name) {
     if(modules[name])return modules[name];
     if(!allowed.has(name))throw Error(`Unsupported test module ${name}`);
