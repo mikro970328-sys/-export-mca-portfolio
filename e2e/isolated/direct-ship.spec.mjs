@@ -153,7 +153,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     });
 
     await step('DS-03 create the complete linked sale from the confirmed purchase',async()=>{
+      const options=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/purchase-direct-sale'&&r.request().method()==='GET');
       await purchases.locator(`[data-direct-sale-order="${po.id}"]`).click();
+      expect((await options).status()).toBe(200);
       await expect(purchases.locator('#directSaleModal')).toBeVisible();
       await purchases.locator('#dsClient').selectOption(f.client);
       await purchases.locator('#dsImporter').selectOption(f.importer);
