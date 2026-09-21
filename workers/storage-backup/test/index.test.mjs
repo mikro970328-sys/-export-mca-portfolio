@@ -145,10 +145,17 @@ test('rejects a source inventory that changes while the backup is running', asyn
   assert.ok(!keys.some(key => key.endsWith('/COMPLETE')));
 });
 
-test('health and manual execution require the private status token', async () => {
+test('health and manual execution require the private status token', async t => {
   const f = fixture();
+  // The backup timestamp and health age must use the same synthetic clock.
+  // Comparing this dated fixture with the wall clock made the test expire.
+  let now = f.now.getTime();
+  t.mock.method(Date, 'now', () => now);
   const hidden = await handleRequest(new Request('https://worker.example/health'), f.env, f);
   assert.equal(hidden.status, 404);
+  const hiddenRun = await handleRequest(new Request('https://worker.example/run', { method: 'POST' }), f.env, f);
+  assert.equal(hiddenRun.status, 404);
+  assert.equal(f.calls.length, 0);
   const headers = { Authorization: `Bearer ${f.env.STATUS_TOKEN}` };
   const run = await handleRequest(new Request('https://worker.example/run', { method: 'POST', headers }), f.env, f);
   assert.equal(run.status, 201);
@@ -157,4 +164,11 @@ test('health and manual execution require the private status token', async () =>
   const body = await health.json();
   assert.equal(body.healthy, true);
   assert.equal(body.objects, 2);
+  assert.equal(body.ageHours, 0);
+
+  now += 25 * 3_600_000;
+  const stale = await handleRequest(new Request('https://worker.example/health', { headers }), f.env, f);
+  const staleBody = await stale.json();
+  assert.equal(staleBody.healthy, false);
+  assert.equal(staleBody.ageHours, 25);
 });
