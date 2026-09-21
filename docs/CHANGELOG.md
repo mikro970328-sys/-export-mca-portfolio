@@ -1,3 +1,12 @@
+## 2026-09-21 · Inicio y navegación UX8 preparados, sin publicar
+
+Prioridades arriba, resumen financiero por moneda con detalle desplegable,
+filtros compactos que conservan su estado al actualizar y búsqueda de secciones
+sin alterar permisos. Contexto de sección y marcado de navegación activa.
+88 comprobaciones DOM y 22 gates existentes aprobados; revisión visual pendiente
+por restricción del navegador. Sin cambios de backend, esquema ni datos reales.
+Ver `UX8_DASHBOARD_NAVIGATION.md`. Figma no es necesario para editar el ERP.
+
 ## 2026-09-17 · Exportación verificable de archivos preparada
 
 Se añade herramienta operativa de lectura y verificación offline de Storage,

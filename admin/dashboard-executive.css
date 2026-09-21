@@ -1,6 +1,6 @@
 .executive-dashboard{
   display:grid;
-  gap:24px;
+  gap:20px;
 }
 
 .executive-intro{
@@ -10,14 +10,14 @@
   align-items:center;
   justify-content:space-between;
   gap:24px;
-  min-height:166px;
-  padding:30px 32px;
+  min-height:128px;
+  padding:24px 28px;
   border:1px solid rgba(255,255,255,.08);
   border-radius:22px;
   background:
     radial-gradient(circle at 82% 18%,rgba(244,122,32,.22),transparent 30%),
     linear-gradient(125deg,var(--navy-strong),var(--navy-soft));
-  box-shadow:0 22px 46px rgba(7,23,45,.18);
+  box-shadow:var(--shadow-sm);
 }
 
 .executive-intro::after{
@@ -47,7 +47,7 @@
 .executive-intro h1{
   margin:0;
   color:#fff;
-  font-size:34px;
+  font-size:30px;
   line-height:1.18;
   letter-spacing:-.04em;
 }
@@ -89,6 +89,7 @@
 .executive-live small{margin-top:2px;color:#c0cee0;font-size:10px}
 
 .executive-filter-card,.executive-section{
+  min-width:0;
   padding:23px;
   border:1px solid var(--line);
   border-radius:var(--radius-lg);
@@ -119,6 +120,22 @@
 
 .executive-filter-actions{display:flex;gap:7px;flex-wrap:wrap}
 .executive-filter-actions button,.executive-section-head button{min-height:38px;padding:8px 12px;font-size:12px}
+
+.executive-disclosure>summary{
+  min-height:44px;
+  cursor:pointer;
+  color:var(--navy);
+  font-size:14px;
+  font-weight:800;
+  border-radius:6px;
+  padding:10px 0;
+}
+.executive-disclosure>summary::marker{color:var(--orange-strong)}
+.executive-disclosure>summary small{margin-left:12px;color:var(--muted);font-size:11px;font-weight:500}
+.executive-disclosure>summary:focus-visible{outline:2px solid var(--orange-strong);outline-offset:4px}
+.executive-filter-card{padding-top:12px;padding-bottom:12px}
+.executive-filter-card[open]>.executive-filter-head{margin-top:12px}
+.executive-finance-detail{margin-top:14px;border-top:1px solid var(--line)}
 
 .executive-filters{
   display:grid;
@@ -170,12 +187,12 @@
 
 .executive-op-card{
   position:relative;
-  min-height:142px;
+  min-height:118px;
   display:flex;
   flex-direction:column;
   align-items:flex-start;
   justify-content:flex-start;
-  padding:16px;
+  padding:14px;
   border:1px solid var(--line);
   border-radius:13px;
   background:#fff;
@@ -222,7 +239,7 @@
 
 .executive-op-card>strong{
   display:block;
-  margin-top:13px;
+  margin-top:10px;
   color:var(--navy);
   font-size:29px;
   font-weight:800;
@@ -234,8 +251,8 @@
 
 .executive-priority-grid{
   display:grid;
-  grid-template-columns:minmax(300px,.78fr) minmax(420px,1.22fr);
-  gap:24px;
+  grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);
+  gap:20px;
   align-items:stretch;
 }
 
@@ -366,7 +383,7 @@
 @media(max-width:1240px){
   .executive-filters{grid-template-columns:repeat(3,1fr)}
   .executive-ops-grid{grid-template-columns:repeat(4,1fr)}
-  .executive-finance-grid{grid-template-columns:repeat(3,1fr)}
+  .executive-finance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
 @media(max-width:980px){
@@ -376,13 +393,16 @@
 
 @media(max-width:760px){
   .executive-dashboard{gap:15px}
-  .executive-intro{align-items:flex-start;min-height:146px;padding:24px}
+  .executive-intro{align-items:flex-start;flex-direction:column;gap:16px;min-height:0;padding:24px}
   .executive-intro h1{font-size:28px}
   .executive-intro p{font-size:12px}
   .executive-live{min-width:0;padding:9px}
-  .executive-live div{display:none}
+  .executive-live div{display:block}
   .executive-filter-card,.executive-section{padding:16px;border-radius:14px}
   .executive-filter-head,.executive-section-head{gap:10px}
+  .executive-section-head{flex-wrap:wrap}
+  .executive-filter-head{flex-direction:column}
+  .executive-disclosure>summary small{display:block;margin:5px 0 0 16px;line-height:1.5}
   .executive-filters{grid-template-columns:1fr 1fr}
   .executive-ops-grid{grid-template-columns:1fr 1fr}
   .executive-finance-grid{grid-template-columns:1fr 1fr}
@@ -396,7 +416,7 @@
   .executive-intro p{max-width:290px}
   .executive-filters,.executive-finance-grid{grid-template-columns:1fr}
   .executive-ops-grid{gap:8px}
-  .executive-op-card{min-height:126px;padding:13px}
+  .executive-op-card{min-height:116px;padding:13px}
   .executive-op-head{font-size:10px}
   .executive-op-card>strong{font-size:24px}
   .executive-filter-basis{display:grid}

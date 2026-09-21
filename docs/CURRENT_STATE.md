@@ -1,3 +1,14 @@
+## UX8 en rama de trabajo — 2026-09-21
+
+Inicio y navegación preparados en `feat/ux8-dashboard-navigation-clarity`, desde
+`f60115e`: prioridades primero, detalle financiero/filtros desplegables y búsqueda
+de secciones respetando permisos. 88 comprobaciones DOM y 22 gates existentes
+aprobados. Revisión visual pendiente por restricción del navegador local. No se
+integró en main ni se publicó en producción; sin cambios de backend ni datos.
+Ver `UX8_DASHBOARD_NAVIGATION.md` para alcance y límites de la verificación.
+
+---
+
 ## Cierre operativo de produccion - 2026-09-20
 
 La revision final de solo lectura confirma la publicacion principal de Vercel en
