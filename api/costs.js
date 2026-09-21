@@ -12,6 +12,8 @@ const COST_ERROR_TRANSLATIONS = [
     ['COST_CHARGE_ACTOR_INVALID','El administrador no está activo.'],
     ['COST_CHARGE_NOT_FOUND','Cargo de costo no encontrado.'],
     ['COST_CHARGE_NOT_DRAFT','Solo un cargo en borrador puede modificarse.'],
+    ['COST_CHARGE_NOT_POSTED','Solo se pueden corregir gastos contabilizados.'],
+    ['COST_CHARGE_REVISION_SINGLE_ALLOCATION_REQUIRED','Este gasto tiene varias distribuciones y debe corregirse desde Costos.'],
     ['COST_CHARGE_CATEGORY_INVALID','Categoría de costo no válida.'],
     ['COST_CHARGE_STAGE_INVALID','Etapa de costo no válida.'],
     ['COST_CHARGE_AMOUNT_INVALID','El monto del cargo debe ser mayor que cero.'],
@@ -151,7 +153,7 @@ export default async function handler(req, res) {
     const action = text(body.action, 60).toLowerCase();
     const actor = admin.admin_id || null;
 
-    if (action === 'create' || action === 'replace' || action === 'create_posted') {
+    if (action === 'create' || action === 'replace' || action === 'create_posted' || action === 'revise_posted') {
       const category = text(body.category, 60).toLowerCase();
       const stage = text(body.stage, 60).toLowerCase();
       const amount = Number(body.amount);
@@ -164,11 +166,13 @@ export default async function handler(req, res) {
 
       const rpc = action === 'replace'
         ? 'rpc/replace_cost_charge_canonical'
-        : action === 'create_posted'
-          ? 'rpc/create_posted_cost_charge'
-          : 'rpc/create_cost_charge';
+        : action === 'revise_posted'
+          ? 'rpc/revise_posted_cost_charge'
+          : action === 'create_posted'
+            ? 'rpc/create_posted_cost_charge'
+            : 'rpc/create_cost_charge';
       const payload = {
-        ...(action === 'replace' ? { p_cost_charge_id:text(body.cost_charge_id, 80) } : {}),
+        ...(['replace','revise_posted'].includes(action) ? { p_cost_charge_id:text(body.cost_charge_id, 80) } : {}),
         p_category:category,
         p_stage:stage,
         p_amount:amount,
@@ -180,11 +184,13 @@ export default async function handler(req, res) {
         p_allocations:allocations,
         p_actor:actor
       };
-      if (action === 'replace' && !payload.p_cost_charge_id) throw new Error('Falta el cargo a modificar');
+      if (['replace','revise_posted'].includes(action) && !payload.p_cost_charge_id) throw new Error('Falta el cargo a modificar');
       const result = rpcRow(await supabase(rpc, { method:'POST', body:payload }));
       if (!result?.id) throw new Error('No se pudo guardar el cargo');
       const auditAction = action === 'replace'
         ? 'cost_charge_updated'
+        : action === 'revise_posted'
+          ? 'cost_charge_revised'
         : action === 'create_posted'
           ? 'cost_charge_created_and_posted'
           : 'cost_charge_created';
@@ -194,7 +200,8 @@ export default async function handler(req, res) {
         stage,
         amount,
         currency,
-        status:result.status || null
+        status:result.status || null,
+        replaces_cost_charge_id:action === 'revise_posted' ? payload.p_cost_charge_id : null
       });
       return ok(res, { charge:result });
     }
