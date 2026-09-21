@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="es" class="auth-pending">
+<head>
+<script>
+(() => {
+  const root = document.documentElement;
+  try {
+    const hasSession = Boolean(localStorage.getItem('export_mca_token'));
+    root.classList.replace('auth-pending', hasSession ? 'auth-session' : 'auth-login');
+  } catch {
+    root.classList.replace('auth-pending', 'auth-login');
+  }
+})();
+</script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Export MCA Logistics Platform</title>
+<meta name="description" content="Plataforma segura de gestión logística y exportaciones de Export MCA LLC">
+<link rel="icon" href="/logo.png">
+<meta name="theme-color" content="#09182e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MCA ERP">
+<link rel="manifest" href="/admin/manifest.webmanifest?v=4">
+<link rel="apple-touch-icon" sizes="180x180" href="/admin/apple-touch-icon.png?v=2">
+<link rel="stylesheet" href="/admin/platform-theme.css?v=20260909-viewport1">
+<link rel="stylesheet" href="/admin/navigation-shell.css?v=20260909-viewport1">
+<link rel="stylesheet" href="/admin/form-drafts.css?v=20260909-drafts1">
+<link rel="stylesheet" href="/admin/native-workspace-foundation.css?v=20260902-ux6c1" data-native-workspace-foundation>
+</head><body>
+<div id="loginPage" class="login-page"><div id="loginCard" class="card login-card"><img class="login-logo" src="/logo.png" alt="Export MCA LLC"><h1 class="login-title">Export MCA ERP</h1><div class="login-sub">Operaciones, logística y finanzas en un solo lugar</div><label for="username">Usuario</label><input id="username" autocomplete="username"><label for="password">Contraseña</label><input id="password" type="password" autocomplete="current-password"><div class="login-submit"><button id="login">Iniciar sesión</button></div><div id="loginMsg" class="msg" aria-live="polite"></div><div class="login-footer">© 2026 Export MCA LLC · Plataforma empresarial</div></div></div>
+<div id="appShell" class="hidden">
+<aside id="sidebar" class="sidebar"><div class="sidebar-head"><div class="sidebar-brand"><img class="sidebar-brand-mark" src="/admin/apple-touch-icon.png?v=2" alt=""><div class="sidebar-brand-copy"><div class="brand-title">Export MCA</div><div class="brand-sub">Gestión empresarial</div></div></div><button id="sidebarToggle" class="menu-btn" type="button" aria-label="Contraer menú lateral" title="Contraer menú lateral"></button></div><nav class="sidebar-nav" aria-label="Navegación principal">
+<button class="nav-item active" type="button" data-section="dashboardSection" data-nav-label="Inicio"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Inicio</span></button>
+<div class="nav-group open" data-nav-group="operations"><button class="nav-group-btn" type="button" data-nav-label="Operaciones" aria-expanded="true"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Operaciones</span><span class="nav-chevron" aria-hidden="true"></span></button><div class="submenu"><button type="button" data-section="clientsSection" data-nav-label="Clientes"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Clientes</span></button><button type="button" data-section="registerContainerSection" data-nav-label="Registrar contenedor"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Registrar contenedor</span></button><button type="button" data-section="containersSection" data-nav-label="Tracking"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Tracking</span></button></div></div>
+<button class="nav-item" type="button" data-section="publicationsSection" data-nav-label="Publicaciones comerciales"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Publicaciones comerciales</span></button>
+<button class="nav-item" type="button" data-section="notificationsSection" data-nav-label="Notificaciones"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Notificaciones</span></button>
+<button class="nav-item" type="button" data-section="workersSection" data-nav-label="Trabajadores"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Trabajadores</span></button>
+<div id="adminNav" class="nav-group hidden" data-nav-group="administration"><button class="nav-group-btn" type="button" data-nav-label="Administración" aria-expanded="false"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Administración</span><span class="nav-chevron" aria-hidden="true"></span></button><div class="submenu"><button type="button" data-section="adminsSection" data-nav-label="Administradores"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Administradores</span></button></div></div>
+</nav><div class="sidebar-foot"><div class="sidebar-user"><div id="currentUser" class="sidebar-user-name"></div><div id="currentRole" class="muted sidebar-user-role"></div></div><button id="logout" class="danger sidebar-foot-action" type="button" data-nav-label="Cerrar sesión"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Cerrar sesión</span></button><div class="platform-version">© 2026 Export MCA LLC<br>Version 1.0</div></div></aside>
+<div id="mobileOverlay" class="mobile-overlay"></div><div class="main-shell"><header class="topbar"><div class="topbar-leading"><button id="mobileMenuBtn" class="menu-btn mobile-menu" type="button" aria-label="Abrir menú lateral" aria-expanded="false"></button><div class="topbar-heading"><span class="topbar-eyebrow">Centro de operaciones</span><b id="pageTitle">Inicio</b></div></div><div class="topbar-actions"><button id="refresh">Actualizar</button><button id="exportCsv">Exportar CSV</button></div></header><main>
+<section id="dashboardSection" class="app-section"></section>
+<section id="clientsSection" class="app-section hidden">
+  <div class="clients-workspace native-workspace-shell">
+    <header class="clients-hero native-workspace-hero">
+      <div class="clients-hero-copy native-workspace-heading">
+        <span class="clients-kicker native-workspace-kicker">Relaciones comerciales</span>
+        <h2>Clientes</h2>
+        <p>Organiza contactos, empresas, importadoras y cada interacción comercial desde una sola vista.</p>
+      </div>
+      <div class="clients-summary native-workspace-summary" aria-label="Resumen de clientes">
+        <div class="clients-summary-card native-workspace-summary-card"><strong id="clientTotal">0</strong><span>Clientes</span></div>
+        <div class="clients-summary-card native-workspace-summary-card"><strong id="clientWelcomed">0</strong><span>Con bienvenida</span></div>
+        <div class="clients-summary-card native-workspace-summary-card"><strong id="clientCompanies">0</strong><span>Empresas y MIPYMES</span></div>
+      </div>
+    </header>
+
+    <div id="clientsReadOnlyNote" class="clients-readonly" role="note" hidden>
+      <span class="clients-readonly-icon" aria-hidden="true">i</span>
+      <span>Puedes consultar la cartera y su historial. Crear, editar o eliminar clientes requiere permiso de gestión comercial.</span>
+    </div>
+    <div id="clientMsg" class="clients-message" role="status" aria-live="polite"></div>
+
+    <div id="clientsLayout" class="clients-layout">
+      <aside id="clientCreatePanel" class="clients-create-panel" aria-labelledby="clientCreateTitle">
+        <div class="clients-panel-head">
+          <span class="clients-eyebrow">Nuevo contacto</span>
+          <h3 id="clientCreateTitle">Agregar cliente</h3>
+          <p>Registra los datos esenciales. La bienvenida se envía después desde las acciones del cliente.</p>
+        </div>
+        <form id="clientCreateForm" class="clients-form">
+          <div class="clients-field">
+            <label for="clientName">Nombre completo <span aria-hidden="true">*</span></label>
+            <input id="clientName" placeholder="Nombre y apellidos" autocomplete="name" required>
+          </div>
+          <div class="clients-form-grid">
+            <div class="clients-field">
+              <label for="clientCompany">Empresa</label>
+              <input id="clientCompany" placeholder="Empresa o negocio" autocomplete="organization">
+            </div>
+            <div class="clients-field">
+              <label for="clientMipyme">Nombre de la MIPYME</label>
+              <input id="clientMipyme" placeholder="Opcional">
+            </div>
+          </div>
+          <div class="clients-field">
+            <label for="clientImporters">Importadoras cubanas</label>
+            <input id="clientImporters" placeholder="Ej. Cítricos Caribe, Quimimport">
+            <span class="client-importer-help">Puedes registrar varias separadas por comas.</span>
+          </div>
+          <div class="clients-form-grid">
+            <div class="clients-field">
+              <label for="clientPhone">WhatsApp <span aria-hidden="true">*</span></label>
+              <input id="clientPhone" placeholder="+5351234567" autocomplete="tel" inputmode="tel" required>
+            </div>
+            <div class="clients-field">
+              <label for="clientEmail">Correo</label>
+              <input id="clientEmail" type="email" placeholder="cliente@empresa.com" autocomplete="email">
+            </div>
+          </div>
+          <button id="saveClient" class="clients-primary" type="submit">Guardar cliente</button>
+        </form>
+      </aside>
+
+      <section class="clients-directory" aria-labelledby="clientsDirectoryTitle">
+        <div class="clients-directory-head">
+          <div>
+            <span class="clients-eyebrow">Cartera comercial</span>
+            <h3 id="clientsDirectoryTitle">Clientes registrados</h3>
+            <p>Consulta cada ficha, su bienvenida y el historial de la relación.</p>
+          </div>
+          <div class="clients-search-wrap">
+            <label class="clients-visually-hidden" for="clientSearch">Buscar clientes</label>
+            <span class="clients-search-icon" aria-hidden="true">⌕</span>
+            <input id="clientSearch" type="search" placeholder="Buscar nombre, empresa o contacto" autocomplete="off">
+          </div>
+        </div>
+        <div id="clients" class="clients-list" aria-live="polite">
+          <div class="clients-loading" role="status"><span class="clients-spinner" aria-hidden="true"></span>Cargando clientes…</div>
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
+<section id="registerContainerSection" class="app-section hidden tracking-registration-section" data-owner="containers-module.js" aria-labelledby="registerContainerTitle">
+  <div class="tracking-register-workspace">
+    <header class="tracking-hero tracking-register-hero">
+      <div class="tracking-hero-copy">
+        <span class="tracking-kicker">Operaciones · Salida logística</span>
+        <h2 id="registerContainerTitle">Registrar contenedor</h2>
+        <p>Crea la referencia operativa inicial. Cliente, importadora y documentos de transporte pueden completarse cuando estén confirmados.</p>
+      </div>
+      <div class="tracking-hero-state" aria-label="Requisito del registro">
+        <span class="tracking-live-dot" aria-hidden="true"></span>
+        <div><strong>Registro manual</strong><span>Solo el número de contenedor es obligatorio</span></div>
+      </div>
+    </header>
+
+    <div id="shipmentMsg" class="tracking-feedback" role="status" aria-live="polite"></div>
+
+    <div class="tracking-registration-layout">
+      <aside class="registration-guide" aria-labelledby="registrationGuideTitle">
+        <span class="tracking-eyebrow">Antes de guardar</span>
+        <h3 id="registrationGuideTitle">Un registro listo para continuar</h3>
+        <p>El contenedor permanecerá dentro del ERP y podrá relacionarse con Cargues, clientes, documentos Cuba y su historial.</p>
+        <ol class="registration-guide-steps">
+          <li><span>1</span><div><strong>Identifica la operación</strong><small>Usa cuatro letras y siete números.</small></div></li>
+          <li><span>2</span><div><strong>Agrega lo confirmado</strong><small>No inventes booking, B/L ni fechas.</small></div></li>
+          <li><span>3</span><div><strong>Continúa en Tracking</strong><small>Las acciones dependerán del estado y tus permisos.</small></div></li>
+        </ol>
+        <div class="registration-guide-note"><strong>Sin comprador todavía</strong><span>Puedes dejar el cliente vacío y asignarlo después.</span></div>
+      </aside>
+
+      <form id="shipmentRegistrationForm" class="registration-form-panel" novalidate>
+        <header class="tracking-panel-head">
+          <div><span class="tracking-eyebrow">Nuevo registro</span><h3>Datos del contenedor</h3><p>Completa únicamente la información real disponible.</p></div>
+          <span class="registration-required">* Obligatorio</span>
+        </header>
+
+        <section class="registration-block" aria-labelledby="registrationAssignmentTitle">
+          <div class="registration-block-head"><span class="registration-step">1</span><div><h4 id="registrationAssignmentTitle">Asignación comercial</h4><p>Comprador e importadora vinculados a esta salida.</p></div></div>
+          <div class="registration-fields">
+            <label class="tracking-field" for="shipmentClient"><span>Cliente</span><select id="shipmentClient"><option value="">Sin cliente / Disponible para venta</option></select><small>Puedes asignarlo posteriormente.</small></label>
+            <label class="tracking-field" for="shipmentImporter"><span>Importadora cubana</span><input id="shipmentImporter" list="shipmentImporterOptions" placeholder="Ej. Cítricos Caribe, Quimimport"><datalist id="shipmentImporterOptions"></datalist><small>Importadora concreta de este contenedor; no depende de las registradas para el cliente.</small></label>
+          </div>
+        </section>
+
+        <section class="registration-block" aria-labelledby="registrationTransportTitle">
+          <div class="registration-block-head"><span class="registration-step">2</span><div><h4 id="registrationTransportTitle">Identificación y transporte</h4><p>Referencias que permiten localizar la operación marítima.</p></div></div>
+          <div class="registration-fields">
+            <label class="tracking-field registration-field-full" for="shipmentContainer"><span>Número de contenedor *</span><input id="shipmentContainer" placeholder="ABCD1234567" maxlength="11" autocomplete="off" inputmode="text" required><small id="registrationContainerHelp" class="registration-container-help">Formato requerido: 4 letras + 7 números. Ejemplo: ABCD1234567.</small></label>
+            <label class="tracking-field" for="shipmentBooking"><span>Booking</span><input id="shipmentBooking" autocomplete="off"></label>
+            <label class="tracking-field" for="shipmentBol"><span>B/L</span><input id="shipmentBol" autocomplete="off"></label>
+            <label class="tracking-field" for="shipmentCarrier"><span>Naviera</span><input id="shipmentCarrier" placeholder="Crowley" autocomplete="organization"></label>
+            <label class="tracking-field" for="shipmentDepartureDate"><span>Fecha de salida</span><input id="shipmentDepartureDate" type="date"><small>Fecha manual indicada por Export MCA.</small></label>
+          </div>
+        </section>
+
+        <section class="registration-block" aria-labelledby="registrationCargoTitle">
+          <div class="registration-block-head"><span class="registration-step">3</span><div><h4 id="registrationCargoTitle">Mercancía</h4><p>Descripción comercial y cantidad transportada.</p></div></div>
+          <div class="registration-fields registration-cargo-fields">
+            <label class="tracking-field registration-field-full" for="shipmentProduct"><span>Producto</span><input id="shipmentProduct" placeholder="Paneles solares, aceite, huevos…" autocomplete="off"></label>
+            <label class="tracking-field" for="shipmentQuantity"><span>Cantidad</span><input id="shipmentQuantity" type="number" min="0" step="0.001" inputmode="decimal"></label>
+            <label class="tracking-field" for="shipmentQuantityUnit"><span>Unidad</span><input id="shipmentQuantityUnit" placeholder="paneles, cajas, galones, unidades" autocomplete="off"></label>
+          </div>
+        </section>
+
+        <footer class="registration-actions">
+          <div id="registrationReadiness" class="registration-readiness"><span class="registration-readiness-dot" aria-hidden="true"></span><span>Completa el número de contenedor para continuar</span></div>
+          <div class="registration-action-buttons"><button id="resetShipmentForm" class="alt" type="button">Limpiar</button><button id="saveShipment" class="tracking-primary" type="submit">Guardar contenedor</button></div>
+        </footer>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section id="containersSection" class="app-section hidden tracking-section" data-owner="containers-module.js" aria-labelledby="trackingTitle">
+  <div class="tracking-workspace">
+    <header class="tracking-hero">
+      <div class="tracking-hero-copy">
+        <span class="tracking-kicker">Operaciones · Visibilidad logística</span>
+        <h2 id="trackingTitle">Tracking</h2>
+        <p>Controla cada contenedor, sus hitos, la relación con Cargues y la documentación oficial preparada para Cuba.</p>
+      </div>
+      <div class="tracking-hero-actions">
+        <div class="tracking-hero-state" aria-label="Estado del módulo"><span class="tracking-live-dot" aria-hidden="true"></span><div><strong>Seguimiento ERP</strong><span id="trackingLastUpdated">Preparando operaciones…</span></div></div>
+        <button id="trackingRegisterShortcut" class="tracking-primary" type="button" hidden>Registrar contenedor</button>
+      </div>
+    </header>
+
+    <section class="tracking-metrics" aria-label="Resumen de contenedores" aria-live="polite">
+      <article><span>Registrados</span><strong id="trackingTotalCount">—</strong><small>Total de operaciones</small></article>
+      <article><span>Activos</span><strong id="trackingActiveCount">—</strong><small>En seguimiento</small></article>
+      <article><span>Cargados</span><strong id="trackingLoadedCount">—</strong><small>Cargue completo o Direct Ship despachado</small></article>
+      <article><span>Docs READY</span><strong id="trackingDocumentsReadyCount">—</strong><small>Documentación Cuba completa</small></article>
+      <article><span>Docs pendientes</span><strong id="trackingDocumentsPendingCount">—</strong><small>Contenedores que requieren atención</small></article>
+    </section>
+
+    <div id="trackingFeedback" class="tracking-feedback" role="status" aria-live="polite"></div>
+
+    <section class="tracking-panel tracking-filter-panel" aria-labelledby="trackingFiltersTitle">
+      <header class="tracking-panel-head">
+        <div><span class="tracking-eyebrow">Consulta operativa</span><h3 id="trackingFiltersTitle">Buscar y filtrar</h3><p>Localiza por contenedor, cliente, importadora, producto, booking o B/L.</p></div>
+        <button id="trackingClearFilters" class="alt" type="button">Limpiar filtros</button>
+      </header>
+      <div class="tracking-filter-controls">
+        <label class="tracking-search" for="shipmentSearch"><span class="tracking-search-icon" aria-hidden="true">⌕</span><span class="tracking-visually-hidden">Buscar contenedores</span><input id="shipmentSearch" type="search" placeholder="Buscar contenedor, cliente, producto o documento" autocomplete="off"></label>
+        <div class="tracking-tabs" role="group" aria-label="Filtrar contenedores por estado">
+          <button class="active" type="button" data-container-filter="active" aria-pressed="true">Activos</button>
+          <button type="button" data-container-filter="delivered" aria-pressed="false">Entregados</button>
+          <button type="button" data-container-filter="all" aria-pressed="false">Todos</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="tracking-panel tracking-list-panel" aria-labelledby="trackingListTitle">
+      <header class="tracking-panel-head tracking-list-head"><div><span class="tracking-eyebrow">Operaciones marítimas</span><h3 id="trackingListTitle">Contenedores</h3><p>Abre un registro para consultar su origen, documentos Cuba, historial y acciones habilitadas.</p></div><span id="trackingResultCount" class="tracking-result-count">Consultando…</span></header>
+      <div id="shipments" class="tracking-results" aria-live="polite"><div class="tracking-loading" role="status"><span aria-hidden="true"></span>Consultando contenedores…</div></div>
+    </section>
+  </div>
+</section>
+<section id="publicationsSection" class="app-section hidden"><iframe class="embedded-workspace-frame" src="/admin/publications.html?embedded=1" title="Publicaciones comerciales"></iframe></section>
+<section id="notificationsSection" class="app-section hidden"></section>
+<section id="workersSection" class="app-section hidden" aria-live="polite"></section>
+<section id="adminsSection" class="app-section hidden" aria-live="polite"></section>
+</main></div></div>
+<div id="modal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="modalTitle">Historial</h2><button id="closeModal" class="alt">Cerrar</button></div><div id="modalBody"></div></div></div>
+<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260905-accessflow1"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed2"></script>
+</body></html>
