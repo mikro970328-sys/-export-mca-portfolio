@@ -42,7 +42,10 @@ const expectedLabels = Object.freeze({
   'Operaciones': 'operations',
   'Compras': 'purchases',
   'Almacén': 'warehouse',
+  'Recepciones (WR)': 'warehouse',
   'Inventario': 'inventory',
+  'Existencias': 'inventory',
+  'Logística': 'container',
   'Cargues': 'loads',
   'Tracking': 'tracking',
   'Registrar contenedor': 'containerAdd',
@@ -81,7 +84,7 @@ forbid(files.icons, /https?:\/\/|<img\b|@font-face|font-family/i, 'El owner de i
 
 for (const fragment of [
   '.ui-icon-svg{',
-  'stroke-width:1.8',
+  'stroke-width:1.7',
   '.nav-icon .ui-icon-svg{width:20px;height:20px}',
   '.nav-group-btn .nav-icon .ui-icon-svg{width:21px;height:21px}',
   '.nav-chevron .ui-icon-svg{width:15px;height:15px}',
@@ -130,12 +133,12 @@ for (const fragment of [
 ]) requireText(files.dashboard, fragment, 'iconografía semántica del Dashboard');
 
 for (const fragment of [
-  '/admin/navigation-shell.css?v=20260921-ux8clarity1',
-  '/admin/erp.js?v=20260921-ux8clarity1'
+  '/admin/navigation-shell.css?v=20260921-ux8contrast1',
+  '/admin/erp.js?v=20260921-ux8contrast1'
 ]) requireText(files.index, fragment, 'revisión de caché del shell');
 
 for (const fragment of [
-  "loadScript('/admin/ui-icon-system.js?v=20260903-ux7icons2', 'data-ui-icon-system')",
+  "loadScript('/admin/ui-icon-system.js?v=20260921-ux8contrast1', 'data-ui-icon-system')",
   "loadScript('/admin/navigation-shell.js?v=20260921-ux8clarity1', 'data-navigation-shell')",
   "loadScript('/admin/tasks-workspace.js?v=20260916-taskdialog1', 'data-tasks-workspace')",
   "loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration')",

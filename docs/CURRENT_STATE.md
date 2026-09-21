@@ -1,3 +1,14 @@
+## Contraste e iconos en revisión — 2026-09-21
+
+Desde la PR #341 ya publicada (`cdcdbaa`), se corrige la cabecera blanca con
+texto claro de Ventas/Compras y el botón del menú móvil. Se integran los SVG
+aprobados en navegación e Inicio. La rama `fix/ux8-header-contrast-icons` incluye
+comprobaciones de contraste de las 12 cabeceras, en Chromium y WebKit móvil,
+sin acceso a datos reales. Resultados y Preview definitivos en la PR.
+Ver `UX8_CONTRAST_ICONS.md`. No hay cambios de funciones de negocio ni esquema.
+
+---
+
 ## UX8 aprobado para publicación — 2026-09-21
 
 Inicio y navegación preparados en `feat/ux8-dashboard-navigation-clarity`, desde

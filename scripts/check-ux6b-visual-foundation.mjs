@@ -32,7 +32,7 @@ const dashboardCss=read(files.dashboardCss);
 const dashboardJs=read(files.dashboardJs);
 
 const themeRef='/admin/platform-theme.css?v=20260909-viewport1';
-const navigationRef='/admin/navigation-shell.css?v=20260921-ux8clarity1';
+const navigationRef='/admin/navigation-shell.css?v=20260921-ux8contrast1';
 for(const ref of [themeRef,navigationRef])requireText(index,ref,ref);
 requireText(index,'<meta name="theme-color" content="#09182e">','color del navegador');
 requireText(index,'/admin/manifest.webmanifest?v=4','manifest versionado');
@@ -100,7 +100,7 @@ for(const text of [
   '@media(prefers-reduced-motion:reduce)'
 ])requireText(dashboardCss,text,`presentación dashboard ${text}`);
 
-requireText(erp,"loadStylesheet('/admin/dashboard-executive.css?v=20260921-ux8clarity1'",'CSS versionado de dashboard');
+requireText(erp,"loadStylesheet('/admin/dashboard-executive.css?v=20260921-ux8contrast1'",'CSS versionado de dashboard');
 requireText(erp,"loadScript('/admin/dashboard-operational-state.js?v=20260921-ux8clarity1'",'owner versionado de dashboard');
 forbid(erp,/data-platform-theme|data-navigation-shell-style/,'erp.js no debe volver a cargar tarde la base visual estática');
 forbid(navigationJs,/\sstyle\s*=/i,'navigation-shell.js vuelve a crear iframes con estilos inline');
