@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vercel dev",
+    "test:dashboard-navigation": "node scripts/check-ux8-dashboard-navigation.mjs",
     "test:storage-backup-worker": "node --test workers/storage-backup/test/index.test.mjs",
     "cf:backup:check": "wrangler deploy --dry-run --config workers/storage-backup/wrangler.jsonc",
     "cf:backup:deploy": "wrangler deploy --config workers/storage-backup/wrangler.jsonc"
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
+    "jsdom": "26.1.0",
     "pg": "8.16.3",
     "wrangler": "4.135.0"
   }

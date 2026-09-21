@@ -6,6 +6,7 @@
   const DESKTOP_QUERY = '(min-width:901px)';
   const COLLAPSE_KEY = 'export_mca_sidebar_collapsed';
   const GROUP_STATE_KEY = 'export_mca_nav_groups';
+  let searchGroupState = null;
 
   const EMBEDDED_SECTIONS = [
     { id:'warehouseSection', label:'Recepciones (WR)', src:'/admin/warehouse.html?embedded=1&v=20260904-flowclarity1' },
@@ -197,6 +198,52 @@
       setGroupOpen(group, typeof saved === 'boolean' ? saved : defaultOpen, false);
     });
     syncActiveGroup(true);
+    filterNavigation();
+  }
+
+  function normalizeSearch(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').trim();
+  }
+
+  function filterNavigation() {
+    const nav = document.querySelector('.sidebar-nav');
+    if (!nav) return;
+    const query = normalizeSearch(byId('navigationSearch')?.value);
+    const groups = [...nav.querySelectorAll('.nav-group')];
+    if (query && !searchGroupState) searchGroupState = new Map(groups.map(group => [group, group.classList.contains('open')]));
+    let matches = 0;
+    nav.querySelectorAll('[data-section]').forEach(button => {
+      const group = button.closest('.nav-group');
+      const allowed = !button.hidden && !button.disabled && !button.classList.contains('hidden') && !group?.classList.contains('hidden') && window.ExportMcaAccessControl?.sectionAllowed?.(button.dataset.section) !== false;
+      const label = `${button.dataset.navLabel || button.textContent} ${group?.querySelector('.nav-group-btn')?.dataset.navLabel || ''}`;
+      const match = allowed && query.split(/\s+/).every(term => normalizeSearch(label).includes(term));
+      // Search owns only this class; permission visibility remains with AccessControl.
+      button.classList.toggle('nav-search-miss', Boolean(query) && !match);
+      if (match) matches++;
+    });
+    groups.forEach(group => {
+      const hasMatch = [...group.querySelectorAll('[data-section]')].some(button => !button.classList.contains('hidden') && !button.classList.contains('nav-search-miss'));
+      group.classList.toggle('nav-search-miss', Boolean(query) && !hasMatch);
+      if (query && hasMatch) setGroupOpen(group, true, false);
+      else if (!query && searchGroupState?.has(group)) setGroupOpen(group, searchGroupState.get(group), false);
+    });
+    if (!query) {
+      searchGroupState = null;
+      syncActiveGroup(true);
+    }
+    const status = byId('navigationSearchStatus');
+    if (status) {
+      status.hidden = !query;
+      status.textContent = query ? (matches ? `${matches} sección(es) disponible(s)` : 'No hay secciones disponibles con ese nombre.') : '';
+    }
+    const clear = byId('navigationSearchClear');
+    if (clear) clear.hidden = !query;
+  }
+
+  function clearNavigationSearch() {
+    const input = byId('navigationSearch');
+    if (input) input.value = '';
+    filterNavigation();
   }
 
   function setDesktopCollapsed(collapsed, persist = true) {
@@ -205,6 +252,7 @@
       return;
     }
     const next = Boolean(collapsed);
+    if (next) clearNavigationSearch();
     document.body.classList.toggle('sidebar-collapsed', next);
     const toggle = byId('sidebarToggle');
     if (toggle) {
@@ -260,6 +308,13 @@
   }
 
   function syncActiveGroup(openActive = false) {
+    const activeButton = document.querySelector('.sidebar-nav [data-section].active');
+    document.querySelectorAll('.sidebar-nav [data-section]').forEach(button => {
+      if (button === activeButton) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    });
+    const context = byId('pageContext');
+    if (context) context.textContent = NAV_GROUPS.find(group => group.sections.includes(activeButton?.dataset.section))?.label || 'Centro de operaciones';
     document.querySelectorAll('.nav-group').forEach(group => {
       const active = Boolean(group.querySelector('.submenu [data-section].active'));
       group.classList.toggle('has-active-section', active);
@@ -291,7 +346,13 @@
   }
 
   function handleKeydown(event) {
-    if (event.key === 'Escape') closeMobileMenu();
+    if (event.key !== 'Escape') return;
+    if (event.target === byId('navigationSearch') && event.target.value) {
+      event.preventDefault();
+      clearNavigationSearch();
+      return;
+    }
+    closeMobileMenu();
   }
 
   function handleViewportChange() {
@@ -316,6 +377,12 @@
     initializeGroups();
     initializeDesktopState();
     restoreSavedEmbeddedSection();
+    byId('navigationSearch')?.addEventListener('input', filterNavigation);
+    byId('navigationSearch')?.addEventListener('focus', filterNavigation);
+    byId('navigationSearchClear')?.addEventListener('click', () => {
+      clearNavigationSearch();
+      byId('navigationSearch')?.focus();
+    });
     document.addEventListener('click', handleClick);
     document.addEventListener('keydown', handleKeydown);
     window.addEventListener('resize', handleViewportChange);
@@ -325,6 +392,7 @@
       initializeDesktopState();
     });
     window.addEventListener('export-mca:section-changed', event => {
+      if (event.detail?.source !== 'startup') clearNavigationSearch();
       syncActiveGroup(true);
       // Initial route restoration is not a user navigation. Keep an already
       // opened menu while startup selects the permitted section behind it.

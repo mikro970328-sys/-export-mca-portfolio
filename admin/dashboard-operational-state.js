@@ -6,6 +6,7 @@
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const state = { data:null, loading:false, filters:{ start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:'' } };
+  const disclosures = new Map();
   let greetingTimer=null;
 
   const number = value => new Intl.NumberFormat('es-US',{maximumFractionDigits:2}).format(Number(value || 0));
@@ -80,7 +81,7 @@
   function dashboardIntro(data) {
     return `<header class="executive-intro">
       <div><span class="executive-kicker">Resumen del negocio</span><h1 id="dashboardGreeting">${esc(greetingForHour())}, ${esc(operatorName())}</h1><p>Revisa el estado de la operación y atiende primero lo que necesita una decisión.</p></div>
-      <div class="executive-live"><span aria-hidden="true"></span><div><b>Datos actualizados</b><small>${esc(dateLabel(data.generated_at))}</small></div></div>
+      <div class="executive-live"><span aria-hidden="true"></span><div><b>Última actualización</b><small>${esc(dateLabel(data.generated_at))}</small></div></div>
     </header>`;
   }
 
@@ -96,12 +97,22 @@
     return (rows||[]).map(row=>`<option value="${esc(row.id)}">${esc(labeler(row))}</option>`).join('');
   }
 
+  function rememberDisclosures() {
+    document.querySelectorAll('#dashboardSection [data-dashboard-detail]').forEach(node=>disclosures.set(node.dataset.dashboardDetail,node.open));
+  }
+
+  function disclosureAttribute(key,defaultOpen=false) {
+    return (disclosures.has(key)?disclosures.get(key):defaultOpen)?' open':'';
+  }
+
   function filterBar(data) {
     const options=data.filter_options||{};
     const selected=state.filters;
     const capabilities=options.capabilities||{};
-    return `<section class="executive-filter-card">
-      <div class="executive-filter-head"><div><span class="executive-section-kicker">Vista personalizada</span><h2>Filtros del panel</h2><p>Consulta actividad por período sin mezclar monedas ni alterar los saldos actuales.</p></div><div class="executive-filter-actions"><button type="button" class="alt" id="dashboardResetFilters">Limpiar</button><button type="button" class="orange" id="dashboardApplyFilters">Aplicar filtros</button></div></div>
+    const activeFilters=Object.values(selected).filter(Boolean).length;
+    return `<details class="executive-filter-card executive-disclosure" data-dashboard-detail="filters"${disclosureAttribute('filters',activeFilters>0)}>
+      <summary><span>Filtros del panel</span><small>${activeFilters?`${activeFilters} filtro(s) activo(s)`:'Sin filtros'} · ${esc(currentPeriodLabel(data.executive))}${selected.currency?` · ${esc(selected.currency)}`:''}</small></summary>
+      <div class="executive-filter-head"><p>Consulta actividad por período sin mezclar monedas ni alterar los saldos actuales.</p><div class="executive-filter-actions"><button type="button" class="alt" id="dashboardResetFilters">Limpiar</button><button type="button" class="orange" id="dashboardApplyFilters">Aplicar filtros</button></div></div>
       <div class="executive-filters">
         <label>Desde<input id="dashboardStartDate" type="date" value="${esc(selected.start_date)}"></label>
         <label>Hasta<input id="dashboardEndDate" type="date" value="${esc(selected.end_date)}"></label>
@@ -111,7 +122,7 @@
         ${capabilities.products?`<label>Producto<select id="dashboardProduct"><option value="">Todos</option>${optionRows(options.products,row=>[row.sku,row.name,row.brand].filter(Boolean).join(' · '))}</select></label>`:''}
       </div>
       <div class="executive-filter-basis"><span>Período: <b>${esc(currentPeriodLabel(data.executive))}</b></span><span>Saldos de cuentas: <b>actuales</b></span><span>Conversión de moneda: <b>no aplicada</b></span></div>
-    </section>`;
+    </details>`;
   }
 
   function metricCard(label,value,detail='',tone='') {
@@ -137,21 +148,26 @@
         <div class="executive-currency-head"><div><span>Moneda</span><h3>${esc(currency)}</h3></div><div class="executive-snapshot-chip">Sin conversión de moneda</div></div>
         <div class="executive-finance-grid">
           ${metricCard('Ventas emitidas',money(a.issued_sales,currency),`${integer(a.issued_invoice_count)} factura(s)`)}
+          ${metricCard('Flujo neto de caja',money(a.net_cash_flow,currency),'Incluye anticipos y reembolsos registrados',Number(a.net_cash_flow||0)<0?'negative':'positive')}
+          ${metricCard('Cuentas por cobrar',money(b.ar_balance,currency),`${integer(b.open_ar_invoice_count)} factura(s) abierta(s) · ${integer(b.overdue_ar_count)} vencida(s)`)}
+          ${metricCard('Cuentas por pagar',money(b.ap_balance,currency),`${integer(b.open_ap_bill_count)} cuenta(s) abierta(s) · ${integer(b.overdue_ap_count)} vencida(s)`)}
+        </div>
+        <details class="executive-disclosure executive-finance-detail" data-dashboard-detail="${esc(`finance:${currency}`)}"${disclosureAttribute(`finance:${currency}`)}>
+          <summary><span>Detalle financiero · ${esc(currency)}</span><small>Ventas, compras y rentabilidad</small></summary>
+          <div class="executive-finance-grid">
           ${metricCard('Ventas confirmadas',money(a.booked_sales_order_value,currency),`${integer(a.so_confirmed_count)} venta(s) confirmada(s)`)}
           ${metricCard('Compras comprometidas',money(a.po_committed_value,currency),`${integer(a.po_committed_count)} compra(s) comprometida(s)`)}
           ${metricCard('Cobrado',money(a.cash_collected,currency),`${integer(a.customer_payment_count)} cobro(s) · ${integer(a.customer_advance_count)} anticipo(s)`,'positive')}
           ${metricCard('Pagado',money(a.cash_paid,currency),`${integer(a.supplier_payment_count)} pago(s) · ${integer(Number(a.customer_advance_refund_count||0)+Number(a.invoice_credit_refund_count||0))} reembolso(s)`)}
-          ${metricCard('Flujo neto de caja',money(a.net_cash_flow,currency),'Incluye anticipos y reembolsos registrados',Number(a.net_cash_flow||0)<0?'negative':'positive')}
-          ${metricCard('Cuentas por cobrar',money(b.ar_balance,currency),`${integer(b.open_ar_invoice_count)} factura(s) abierta(s) · ${integer(b.overdue_ar_count)} vencida(s)`)}
-          ${metricCard('Cuentas por pagar',money(b.ap_balance,currency),`${integer(b.open_ap_bill_count)} cuenta(s) abierta(s) · ${integer(b.overdue_ap_count)} vencida(s)`)}
           ${metricCard('Costo de ventas reconocido',marginReady?money(a.recognized_cogs,currency):'No disponible',marginDetail)}
           ${metricCard('Margen bruto',marginReady?money(a.gross_margin,currency):'No disponible',marginDetail,marginReady&&Number(a.gross_margin||0)<0?'negative':'')}
           ${metricCard('Contribución',contributionReady?money(a.contribution_margin,currency):'No disponible',contributionDetail,contributionReady&&Number(a.contribution_margin||0)<0?'negative':'')}
           ${metricCard('Costos directos elegibles',contributionReady?money(a.contribution_direct_cost,currency):'No disponible',contributionDetail)}
-        </div>
+          </div>
+        </details>
       </article>`;
     }).join('');
-    return `<section class="executive-section"><div class="executive-section-head"><div><h3>Finanzas por moneda</h3><p>Los importes nunca se suman entre monedas.</p></div><button type="button" class="alt" data-dashboard-open="costs">Costos y rentabilidad</button></div><div class="executive-currency-list">${panels}</div></section>`;
+    return `<section class="executive-section"><div class="executive-section-head"><div><h3>Finanzas por moneda</h3><p>Actividad del período seleccionado y saldos actuales. Los importes nunca se suman entre monedas.</p></div><button type="button" class="alt" data-dashboard-open="costs">Costos y rentabilidad</button></div><div class="executive-currency-list">${panels}</div></section>`;
   }
 
   function operationalSummary(data) {
@@ -198,6 +214,7 @@
   }
 
   function renderDashboard(data) {
+    rememberDisclosures();
     state.data=data;
     window.__lastDashboardPayload=data;
     const section=$('dashboardSection');
@@ -212,7 +229,7 @@
       supplier_id:period.supplier_id||'',
       product_id:period.product_id||''
     };
-    section.innerHTML=`<div class="executive-dashboard">${dashboardIntro(data)}${operationalSummary(data)}<div class="executive-priority-grid">${exceptionsPanel(data)}${activityPanel(data)}</div>${filterBar(data)}${financeByCurrency(data)}<div class="executive-generated">Actualizado ${esc(dateLabel(data.generated_at))} · Datos financieros consolidados por la plataforma.</div></div>`;
+    section.innerHTML=`<div class="executive-dashboard">${dashboardIntro(data)}<div class="executive-priority-grid">${exceptionsPanel(data)}${activityPanel(data)}</div>${operationalSummary(data)}${filterBar(data)}${financeByCurrency(data)}<div class="executive-generated">Actualizado ${esc(dateLabel(data.generated_at))} · Datos financieros consolidados por la plataforma.</div></div>`;
     restoreSelect('dashboardClient',state.filters.client_id);
     restoreSelect('dashboardSupplier',state.filters.supplier_id);
     restoreSelect('dashboardProduct',state.filters.product_id);
@@ -239,6 +256,7 @@
   }
 
   function renderError() {
+    rememberDisclosures();
     const section=$('dashboardSection');
     if(!section)return;
     section.innerHTML='<section class="executive-section executive-state executive-state-error"><div><h3>Dashboard temporalmente no disponible</h3><p>No pudimos actualizar los indicadores en este momento. El resto del ERP sigue disponible desde el menú.</p></div><button type="button" class="alt" id="dashboardRetry">Reintentar</button></section>';

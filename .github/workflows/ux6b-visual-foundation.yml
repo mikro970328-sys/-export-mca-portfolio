@@ -16,6 +16,11 @@ on:
       - 'scripts/check-ux6b-visual-foundation.mjs'
       - 'scripts/check-ux6-shell-ownership.mjs'
       - 'scripts/check-executive-dashboard.mjs'
+      - 'scripts/check-ux8-dashboard-navigation.mjs'
+      - 'scripts/preview-ux8-dashboard-navigation.mjs'
+      - 'scripts/lib/ux8-browser-harness.js'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/ux6b-visual-foundation.yml'
   workflow_dispatch:
 
@@ -31,6 +36,8 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate the UX-7 shell visual owner
         run: node scripts/check-ux6b-visual-foundation.mjs
+      - name: Validate isolated Dashboard and navigation interactions
+        run: npm run test:dashboard-navigation
       - name: Preserve shell and dashboard owners
         run: |
           node scripts/check-ux6-shell-ownership.mjs

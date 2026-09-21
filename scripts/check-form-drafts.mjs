@@ -75,7 +75,7 @@ function requireAssetOrder(html, moduleAsset, label) {
   requireText(html, '/admin/form-drafts.css?v=20260909-drafts1', `CSS de borradores en ${label}`);
 }
 
-requireAssetOrder(source.index, '/admin/erp.js?v=20260905-accessflow1', 'admin/index.html');
+requireAssetOrder(source.index, '/admin/erp.js?v=20260921-ux8clarity1', 'admin/index.html');
 requireAssetOrder(source.productsHtml, '/admin/products.js?', 'productos');
 requireAssetOrder(source.suppliersHtml, '/admin/suppliers.js?', 'proveedores');
 requireAssetOrder(source.publicationsHtml, '/admin/publications.js?', 'publicaciones');
