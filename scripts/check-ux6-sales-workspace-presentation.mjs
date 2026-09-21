@@ -45,6 +45,8 @@ for(const text of [
   'function saleAllowed(key)',
   'function invoiceCapability(invoice,key)',
   'function invoiceAllowed(invoice,key)',
+  'function costCapability(row,key)',
+  'function costAllowed(row,key)',
   'SAFE_WORKSPACE_ERROR_PATTERNS',
   'function safeWorkspaceMessage(error,fallback',
   'function workspaceDecision({title,copy,accept=',
@@ -64,6 +66,8 @@ for(const text of [
   'SALES_WORKSPACE_INVOICE_CREATE_FAILED',
   'SALES_WORKSPACE_PAYMENT_FAILED',
   'SALES_WORKSPACE_COST_FAILED',
+  "data-ws-action=\"edit_cost\"",
+  "action:editingId?'revise_posted':'create_posted'",
   "owner:'sales-workspace.js'"
 ]) requireText(workspace,text,`presentación ${text}`);
 
@@ -96,7 +100,7 @@ requireText(foundation,'.erp-module-page button:focus-visible','foco accesible d
 
 for(const asset of [
   '/admin/sales-workspace.css?v=20260902-ux7sales1',
-  '/admin/sales-workspace.js?v=20260920-speed1',
+  '/admin/sales-workspace.js?v=20260921-costedit1',
   '/admin/sales-controller.js?v=20260920-freshcaps1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 
