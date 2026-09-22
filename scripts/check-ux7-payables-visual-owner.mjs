@@ -50,7 +50,7 @@ const workflow = read(files.workflow);
 for (const text of [
   '<body class="erp-module-page erp-module-payables" data-owner="payables.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/payables.css?v=20260922-figma1',
+  '/admin/payables.css?v=20260922-figma2',
   '/admin/payables.js?v=20260916-supplier-retry1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero payables-page-head"',
@@ -69,7 +69,7 @@ for (const text of [
 
 if ((html.match(/id="detailTraceability"/g) || []).length !== 1) failures.push('el HTML debe contener exactamente una sección canónica de Trazabilidad AP');
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerCssIndex = html.indexOf('/admin/payables.css?v=20260922-figma1');
+const ownerCssIndex = html.indexOf('/admin/payables.css?v=20260922-figma2');
 if (foundationIndex < 0 || ownerCssIndex < 0 || foundationIndex > ownerCssIndex) failures.push('la base visual compartida debe cargar antes de payables.css');
 
 forbid(html, /<style(?:\s|>)/i, 'payables.html conserva CSS incrustado');

@@ -93,7 +93,7 @@ for(const text of [
   '@media(max-width:650px)',
   '@media(max-width:430px)'
 ]) requireText(css,text,`CSS ${text}`);
-for(const text of ['background:#fff1e8','color:#7c2f08'])requireText(css,text,`contraste del encabezado ${text}`);
+for(const text of ['background:#fff1e8','color:var(--orange-strong)'])requireText(css,text,`contraste del encabezado ${text}`);
 forbid(css,/@import|!important|font-family\s*:\s*Arial|linear-gradient/i,'CSS de Compras conserva una dependencia o sobrescritura visual legacy');
 
 for(const text of [

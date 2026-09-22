@@ -21,7 +21,7 @@ if(!failures.length){
   const ux5=read('scripts/check-ux5-supplier-ap-actions.mjs');
   const workflow=read('.github/workflows/ux6-payables-presentation.yml');
 
-  requireText(html,'/admin/payables.css?v=20260922-figma1','Payables HTML owner CSS');
+  requireText(html,'/admin/payables.css?v=20260922-figma2','Payables HTML owner CSS');
   requireText(html,'id="newAdvancePayment"','Payables HTML anticipo explícito');
   requireText(html,'id="pOpenBalanceHint"','Payables HTML ayuda de saldo');
   requireText(html,'role="status"','Payables HTML feedback accesible');

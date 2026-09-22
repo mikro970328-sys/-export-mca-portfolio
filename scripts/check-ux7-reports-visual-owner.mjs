@@ -40,7 +40,7 @@ const workflow = read(files.workflow);
 [
   '<body class="erp-module-page erp-module-reports" data-owner="reports.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/reports.css?v=20260922-figma1',
+  '/admin/reports.css?v=20260922-figma2',
   '/admin/reports.js?v=20260916-queue1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero reports-page-head"',
@@ -69,7 +69,7 @@ const workflow = read(files.workflow);
 ].forEach(value => requireText(html,value,`HTML canónico ${value}`));
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerStylesIndex = html.indexOf('/admin/reports.css?v=20260922-figma1');
+const ownerStylesIndex = html.indexOf('/admin/reports.css?v=20260922-figma2');
 if (foundationIndex < 0 || ownerStylesIndex < 0 || foundationIndex > ownerStylesIndex) {
   failures.push('la base visual compartida debe cargar antes de reports.css');
 }

@@ -59,11 +59,17 @@ servicios. Esta entrega se prepara para revisión visual antes de publicar.
 - Navegación y Dashboard: 90 comprobaciones DOM aprobadas.
 - Gates de presentación de módulos, acceso, iconos, borradores y propiedad
   frontend: aprobados en el entorno local.
-- Pruebas Chromium/WebKit y capturas: preparadas, pendientes de ejecución.
-- La revisión automática rechazó la subida a la rama pública incluso después
-  de comprobar que es el repositorio conectado a `admin.exportmca.com`.
-  Requiere autorización explícita para publicar código en ese repositorio.
-- No hay rama remota, PR, despliegue de Preview ni publicación de esta versión.
+- Rama publicada con autorización explícita del usuario en el repositorio
+  público. PR #345; Preview disponible. Producción todavía pendiente.
+- Primera ejecución Chromium/WebKit: las pruebas aisladas de Ventas pasan;
+  contraste detectó botones secundarios blancos en cuatro cabeceras.
+  Se corrigen en sus owners CSS, incluidos hover y texto de acciones primarias.
+- Gate de Compras actualizado al token naranja aprobado, sin cambiar el
+  umbral de contraste ni sus contratos funcionales.
+- Direct Ship abre ahora el menú de acciones de Ventas por su control visible;
+  navegación comercial observa aria-expanded para abrir grupos. La entrada
+  numérica móvil se escribe y verifica antes y después de perder el foco.
+- Correcciones pendientes de nueva ejecución de CI y revisión visual final.
 - `scripts/preview-figma-sales.mjs` genera una demostración privada portable
   de Inicio y Ventas, con estilos y fuente incrustados. Se verifican sus
   documentos anidados, render DOM, apertura del formulario, ausencia de

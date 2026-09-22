@@ -121,27 +121,29 @@
 
 .erp-module-page.erp-module-reports .reports-action-row .btn {
   min-width:0;
-  border-color:rgba(255,255,255,.24);
-  background:rgba(255,255,255,.1);
-  color:#fff;
+  border-color:var(--line-strong);
+  background:var(--surface);
+  color:var(--text);
   box-shadow:none;
 }
 
 .erp-module-page.erp-module-reports .reports-action-row .reports-export {
   border-color:var(--reports-action);
   background:var(--reports-action);
+  color:#fff;
   box-shadow:0 12px 26px rgba(0,0,0,.2);
 }
 
 .erp-module-page.erp-module-reports .reports-action-row .btn:not(:disabled):hover {
-  border-color:rgba(255,255,255,.42);
-  background:rgba(255,255,255,.16);
-  color:#fff;
+  border-color:var(--line-strong);
+  background:var(--surface-soft);
+  color:var(--text);
 }
 
 .erp-module-page.erp-module-reports .reports-action-row .reports-export:not(:disabled):hover {
   border-color:var(--reports-action-hover);
   background:var(--reports-action-hover);
+  color:#fff;
 }
 
 .erp-module-reports .reports-feedback {

@@ -121,26 +121,28 @@
 
 .erp-module-page.erp-module-payables .payables-primary-actions .btn {
   min-height:42px;
-  border-color:rgba(255,255,255,.26);
-  background:rgba(255,255,255,.1);
-  color:#fff;
+  border-color:var(--line-strong);
+  background:var(--surface);
+  color:var(--text);
 }
 
 .erp-module-page.erp-module-payables .payables-primary-actions .btn:not(:disabled):hover {
-  border-color:rgba(255,255,255,.42);
-  background:rgba(255,255,255,.17);
-  color:#fff;
+  border-color:var(--line-strong);
+  background:var(--surface-soft);
+  color:var(--text);
 }
 
 .erp-module-page.erp-module-payables .payables-primary-actions .btn.orange {
   border-color:var(--payables-action);
   background:var(--payables-action);
+  color:#fff;
   box-shadow:0 10px 24px rgba(0,0,0,.2);
 }
 
 .erp-module-page.erp-module-payables .payables-primary-actions .btn.orange:not(:disabled):hover {
   border-color:var(--payables-action-hover);
   background:var(--payables-action-hover);
+  color:#fff;
 }
 
 .payables-feedback {
