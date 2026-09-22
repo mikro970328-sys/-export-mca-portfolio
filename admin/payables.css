@@ -23,12 +23,12 @@
 .erp-module-payables .payables-page-head {
   isolation:isolate;
   align-items:center;
-  min-height:204px;
+  min-height:128px;
   overflow:hidden;
   border:0;
   padding:30px 32px;
-  background:var(--payables-hero);
-  box-shadow:0 20px 48px rgba(9,24,46,.18);
+  background:var(--surface);
+  box-shadow:none;
 }
 
 .erp-module-payables .payables-page-head::before {
@@ -37,7 +37,7 @@
 }
 
 .erp-module-payables .payables-page-head::after {
-  content:"";
+  content:none;
   position:absolute;
   z-index:-1;
   right:-80px;
@@ -53,17 +53,17 @@
 }
 
 .erp-module-payables .payables-page-kicker {
-  color:#ffb27d;
+  color:var(--orange-strong);
 }
 
 .erp-module-payables .payables-page-head h1 {
-  color:#fff;
+  color:var(--text);
   font-size:clamp(30px,4vw,42px);
 }
 
 .erp-module-payables .payables-page-head p {
   max-width:720px;
-  color:#cbd7e6;
+  color:var(--muted);
   font-size:14px;
 }
 
@@ -81,11 +81,11 @@
   min-height:58px;
   align-items:center;
   gap:11px;
-  border:1px solid rgba(255,255,255,.18);
+  border:1px solid var(--line);
   border-radius:13px;
   padding:11px 14px;
-  background:rgba(255,255,255,.08);
-  color:#fff;
+  background:var(--surface-soft);
+  color:var(--text);
 }
 
 .payables-hero-state strong,
@@ -99,7 +99,7 @@
 
 .payables-hero-state span:not(.payables-live-dot) {
   margin-top:2px;
-  color:#cbd7e6;
+  color:var(--muted);
   font-size:10px;
 }
 
@@ -121,26 +121,28 @@
 
 .erp-module-page.erp-module-payables .payables-primary-actions .btn {
   min-height:42px;
-  border-color:rgba(255,255,255,.26);
-  background:rgba(255,255,255,.1);
-  color:#fff;
+  border-color:var(--line-strong);
+  background:var(--surface);
+  color:var(--text);
 }
 
 .erp-module-page.erp-module-payables .payables-primary-actions .btn:not(:disabled):hover {
-  border-color:rgba(255,255,255,.42);
-  background:rgba(255,255,255,.17);
-  color:#fff;
+  border-color:var(--line-strong);
+  background:var(--surface-soft);
+  color:var(--text);
 }
 
 .erp-module-page.erp-module-payables .payables-primary-actions .btn.orange {
   border-color:var(--payables-action);
   background:var(--payables-action);
+  color:#fff;
   box-shadow:0 10px 24px rgba(0,0,0,.2);
 }
 
 .erp-module-page.erp-module-payables .payables-primary-actions .btn.orange:not(:disabled):hover {
   border-color:var(--payables-action-hover);
   background:var(--payables-action-hover);
+  color:#fff;
 }
 
 .payables-feedback {

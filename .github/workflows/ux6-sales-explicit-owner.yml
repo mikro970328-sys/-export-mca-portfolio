@@ -18,6 +18,9 @@ on:
       - 'api/sales-loads.js'
       - 'scripts/check-ux6-presentation-cleanup.mjs'
       - 'scripts/check-ux6-sales-explicit-owner.mjs'
+      - 'scripts/check-figma-sales.mjs'
+      - 'scripts/lib/figma-sales-fixture.mjs'
+      - 'admin/fonts/**'
       - '.github/workflows/ux6-sales-explicit-owner.yml'
   workflow_dispatch:
 
@@ -32,7 +35,9 @@ jobs:
       - name: Install runtime dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate explicit Sales owner
-        run: node scripts/check-ux6-sales-explicit-owner.mjs
+        run: |
+          node scripts/check-ux6-sales-explicit-owner.mjs
+          node scripts/check-figma-sales.mjs
       - name: Validate canonical Sales actions
         run: node scripts/check-ux5-sales-actions.mjs
       - name: Validate Sales workspace

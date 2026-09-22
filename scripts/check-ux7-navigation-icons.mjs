@@ -133,8 +133,8 @@ for (const fragment of [
 ]) requireText(files.dashboard, fragment, 'iconografía semántica del Dashboard');
 
 for (const fragment of [
-  '/admin/navigation-shell.css?v=20260921-ux8contrast1',
-  '/admin/erp.js?v=20260921-ux8contrast1'
+  '/admin/navigation-shell.css?v=20260922-figma1',
+  '/admin/erp.js?v=20260922-figma1'
 ]) requireText(files.index, fragment, 'revisión de caché del shell');
 
 for (const fragment of [
@@ -142,7 +142,7 @@ for (const fragment of [
   "loadScript('/admin/navigation-shell.js?v=20260921-ux8clarity1', 'data-navigation-shell')",
   "loadScript('/admin/tasks-workspace.js?v=20260916-taskdialog1', 'data-tasks-workspace')",
   "loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration')",
-  "loadStylesheet('/admin/operational-alert-center.css?v=20260903-ux7alerts1', 'data-operational-alert-center-style')",
+  "loadStylesheet('/admin/operational-alert-center.css?v=20260922-figma1', 'data-operational-alert-center-style')",
   "loadScript('/admin/operational-alert-center.js?v=20260903-ux7alerts1', 'data-operational-alert-center')",
   "loadStylesheet('/admin/notification-inbox.css?v=20260903-ux7icons2', 'data-notification-inbox-style')",
   "loadScript('/admin/notification-inbox.js?v=20260903-b10push1', 'data-notification-inbox')",
@@ -153,7 +153,7 @@ const iconReady = files.loader.indexOf('await iconSystemPromise;');
 const shellReveal = files.loader.indexOf('revealAdminShell();');
 if (iconReady < 0 || shellReveal < 0 || iconReady > shellReveal) failures.push('El shell autenticado puede mostrarse antes de que sus iconos estén listos.');
 
-requireText(files.serviceWorker, "const CACHE='export-mca-shell-v5'", 'renovación del caché PWA');
+requireText(files.serviceWorker, "const CACHE='export-mca-shell-v6'", 'renovación del caché PWA');
 requireText(files.alertCss, '.alert-bell>.ui-icon-svg', 'geometría canónica de la campana superior');
 requireText(files.inboxCss, '.notification-inbox-bell>.ui-icon-svg', 'geometría canónica de la campana del Inbox');
 

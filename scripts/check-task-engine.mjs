@@ -96,7 +96,7 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))) {
 
   for(const required of [
     "accessCan('tasks.read')",
-    '/admin/tasks-workspace.css?v=20260903-ux7tasks1',
+    '/admin/tasks-workspace.css?v=20260922-figma1',
     '/admin/tasks-workspace.js?v=20260916-taskdialog1',
     '/admin/tasks-navigation.js?v=20260830-p4',
     '/admin/navigation-shell.js?v=20260921-ux8clarity1',

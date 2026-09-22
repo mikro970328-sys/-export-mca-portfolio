@@ -7,8 +7,8 @@
   "scope": "/admin/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#f5f7fb",
-  "theme_color": "#09182e",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "/admin/app-icon-192.svg",

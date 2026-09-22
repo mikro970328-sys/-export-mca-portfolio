@@ -115,9 +115,11 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
         await page.locator('#mobileMenuBtn').click();
         await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);
       }
-      if (!await button.isVisible()) {
-        const group=button.locator('xpath=ancestor::*[contains(concat(" ",normalize-space(@class)," ")," nav-group ")]');
-        await group.locator('.nav-group-btn').click();
+      const group=button.locator('xpath=ancestor::*[contains(concat(" ",normalize-space(@class)," ")," nav-group ")]');
+      if (await group.count()) {
+        const toggle=group.locator('.nav-group-btn');
+        if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded','true');
       }
       await button.click();
       await expect(page.locator(`#${name}Section`)).toBeVisible();

@@ -144,7 +144,7 @@ requireText(styles,'body.access-notifications-readonly [data-alert-action]:not([
 forbid(styles,/@import|font-family\s*:\s*Arial|linear-gradient/i,'access-control.css conserva importación tardía o estética legacy');
 
 [
-  "/admin/access-control.css?v=20260905-accessflow1",
+  "/admin/access-control.css?v=20260922-figma1",
   "/admin/access-control-administration.js?v=20260916-tasksnav1",
   'await window.ExportMcaAccessControl.initialize()'
 ].forEach(value => requireText(loader,value,`loader canónico ${value}`));

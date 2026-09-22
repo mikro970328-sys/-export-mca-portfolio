@@ -127,7 +127,7 @@ requireText(styles,'overflow-x:hidden;','protección contra desbordamiento del o
 forbid(styles,/@import|font-family\s*:\s*Arial|(?:linear|radial)-gradient/i,'tasks-workspace.css conserva importación tardía o estética legacy');
 
 [
-  "/admin/tasks-workspace.css?v=20260903-ux7tasks1",
+  "/admin/tasks-workspace.css?v=20260922-figma1",
   "/admin/tasks-workspace.js?v=20260916-taskdialog1"
 ].forEach(value=>requireText(loader,value,`loader canónico ${value}`));
 

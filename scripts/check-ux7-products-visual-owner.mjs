@@ -39,8 +39,8 @@ const workflow = read(files.workflow);
 
 [
   '<body class="erp-module-page erp-module-products" data-owner="products.js">',
-  '/admin/embedded-foundation.css?v=20260921-ux8contrast1',
-  '/admin/products.css?v=20260903-ux7products1',
+  '/admin/embedded-foundation.css?v=20260922-figma1',
+  '/admin/products.css?v=20260922-figma2',
   '/admin/products.js?v=20260903-ux7products1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero products-page-head"',
@@ -68,8 +68,8 @@ const workflow = read(files.workflow);
   'aria-live="polite"'
 ].forEach(value => requireText(html,value,`HTML canónico ${value}`));
 
-const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260921-ux8contrast1');
-const ownerStylesIndex = html.indexOf('/admin/products.css?v=20260903-ux7products1');
+const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
+const ownerStylesIndex = html.indexOf('/admin/products.css?v=20260922-figma2');
 if (foundationIndex < 0 || ownerStylesIndex < 0 || foundationIndex > ownerStylesIndex) {
   failures.push('la base visual compartida debe cargar antes de products.css');
 }

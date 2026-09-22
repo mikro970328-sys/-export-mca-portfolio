@@ -129,7 +129,10 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await purchases.locator('.lProduct').selectOption(f.product);
       await purchases.locator('.lQty').fill('840');
       await purchases.locator('.lPallets').fill('10');
-      await purchases.locator('.lUpp').fill('84');
+      await purchases.locator('.lUpp').click();
+      await purchases.locator('.lUpp').fill('');
+      await purchases.locator('.lUpp').pressSequentially('84');
+      await expect(purchases.locator('.lUpp')).toHaveValue('84');
       await purchases.locator('.lUpp').press('Tab');
       await expect(purchases.locator('.lUpp')).toHaveValue('84');
       await expect(purchases.locator('.lMeasurementHelp')).not.toHaveClass(/is-error/);
@@ -176,7 +179,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     const sales=await navigate('sales');
     await step('DS-04 the sale shows the purchase already linked with automatic quantities',async()=>{
       await sales.locator('[data-view="all"]').click();
-      await sales.locator(`[data-supply-order="${so.id}"]`).click();
+      const supplyAction=sales.locator(`[data-supply-order="${so.id}"]`);
+      await supplyAction.locator('xpath=ancestor::details').locator('summary').click();
+      await supplyAction.click();
       await expect(sales.locator('#salesSupplyModal')).toBeVisible();
       await expect(sales.locator('#salesSupplyBody')).toContainText('Paso 1 listo');
       await expect(sales.locator('#salesSupplyBody')).toContainText(`Asignada a ${so.so_number} · QA finance customer`);

@@ -17,11 +17,11 @@
 .erp-module-page.erp-module-purchases .purchases-page-head {
   isolation:isolate;
   align-items:center;
-  min-height:190px;
+  min-height:128px;
   border:0;
   padding:30px 32px;
-  background:var(--purchases-hero);
-  box-shadow:0 20px 48px rgba(9,24,46,.18);
+  background:var(--surface);
+  box-shadow:none;
 }
 
 .erp-module-purchases .purchases-page-head::before {
@@ -30,7 +30,7 @@
 }
 
 .erp-module-purchases .purchases-page-head::after {
-  content:"";
+  content:none;
   position:absolute;
   z-index:-1;
   right:-72px;
@@ -52,18 +52,18 @@
   border-radius:6px;
   padding:5px 8px;
   background:#fff1e8;
-  color:#7c2f08;
+  color:var(--orange-strong);
   font-weight:700;
 }
 
 .erp-module-purchases .purchases-page-head h1 {
-  color:#fff;
+  color:var(--text);
   font-size:clamp(30px,4vw,42px);
 }
 
 .erp-module-purchases .purchases-page-head p {
   max-width:690px;
-  color:#cbd7e6;
+  color:var(--muted);
   font-size:14px;
 }
 

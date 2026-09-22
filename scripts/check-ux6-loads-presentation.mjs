@@ -14,7 +14,7 @@ const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.
 const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
 for(const text of [
-  '/admin/loads.css?v=20260904-loadflow1',
+  '/admin/loads.css?v=20260922-figma1',
   '/admin/loads.js?v=20260909-loadcard1',
   'id="pageMsg"',
   'role="status"',

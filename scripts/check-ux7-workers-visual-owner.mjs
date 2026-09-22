@@ -142,7 +142,7 @@ const workersMarkup=workersStart>=0&&workersEnd>workersStart?index.slice(workers
 forbid(workersMarkup,/workers-(?:shell|head|command|panel)|workerCreateForm/,'index.html duplica presentación del owner de Trabajadores');
 forbid(index,/<script[^>]+src=["']\/admin\/workers-module\.js/i,'index.html carga estáticamente el owner de Trabajadores');
 
-const cssRef="/admin/workers-module.css?v=20260903-ux7workers1";
+const cssRef="/admin/workers-module.css?v=20260922-figma1";
 const jsRef="/admin/workers-module.js?v=20260903-ux7workers1";
 const cssIndex=loader.indexOf(cssRef);
 const jsIndex=loader.indexOf(jsRef);

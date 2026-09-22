@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
 const foundationPath='admin/embedded-foundation.css';
-const foundationRef='/admin/embedded-foundation.css?v=20260921-ux8contrast1';
+const foundationRef='/admin/embedded-foundation.css?v=20260922-figma1';
 const modules={
   sales:'admin/sales.html',
   purchases:'admin/purchases.html',
@@ -20,8 +20,8 @@ for(const file of Object.values(modules))if(!fs.existsSync(file))failures.push(`
 
 const css=read(foundationPath);
 for(const text of [
-  '--navy-strong:#09182e',
-  '--orange:#f97316',
+  '--navy-strong:#20211f',
+  '--orange:#b54708',
   '--surface:#ffffff',
   '--font-sans:Inter,ui-sans-serif',
   'body.erp-module-page',

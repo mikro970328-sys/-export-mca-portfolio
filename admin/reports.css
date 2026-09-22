@@ -21,12 +21,12 @@
 .erp-module-reports .reports-page-head {
   isolation:isolate;
   min-width:0;
-  min-height:194px;
+  min-height:128px;
   align-items:center;
   border:0;
   padding:30px 32px;
-  background:var(--reports-hero);
-  box-shadow:0 20px 48px rgba(9,24,46,.18);
+  background:var(--surface);
+  box-shadow:none;
 }
 
 .erp-module-reports .reports-page-head::before {
@@ -35,7 +35,7 @@
 }
 
 .erp-module-reports .reports-page-head::after {
-  content:"";
+  content:none;
   position:absolute;
   z-index:-1;
   right:-74px;
@@ -51,17 +51,17 @@
 }
 
 .erp-module-reports .reports-page-kicker {
-  color:#ffb27d;
+  color:var(--orange-strong);
 }
 
 .erp-module-reports .reports-page-head h1 {
-  color:#fff;
+  color:var(--text);
   font-size:clamp(30px,4vw,42px);
 }
 
 .erp-module-reports .reports-page-head p {
   max-width:730px;
-  color:#cbd7e6;
+  color:var(--muted);
   font-size:14px;
 }
 
@@ -78,11 +78,11 @@
   min-height:58px;
   align-items:center;
   gap:11px;
-  border:1px solid rgba(255,255,255,.18);
+  border:1px solid var(--line);
   border-radius:13px;
   padding:11px 14px;
-  background:rgba(255,255,255,.08);
-  color:#fff;
+  background:var(--surface-soft);
+  color:var(--text);
 }
 
 .erp-module-reports .reports-hero-state > div {
@@ -97,7 +97,7 @@
 .erp-module-reports .reports-hero-state span:not(.reports-live-dot) {
   overflow:hidden;
   margin-top:2px;
-  color:#cbd7e6;
+  color:var(--muted);
   font-size:10px;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -121,27 +121,29 @@
 
 .erp-module-page.erp-module-reports .reports-action-row .btn {
   min-width:0;
-  border-color:rgba(255,255,255,.24);
-  background:rgba(255,255,255,.1);
-  color:#fff;
+  border-color:var(--line-strong);
+  background:var(--surface);
+  color:var(--text);
   box-shadow:none;
 }
 
 .erp-module-page.erp-module-reports .reports-action-row .reports-export {
   border-color:var(--reports-action);
   background:var(--reports-action);
+  color:#fff;
   box-shadow:0 12px 26px rgba(0,0,0,.2);
 }
 
 .erp-module-page.erp-module-reports .reports-action-row .btn:not(:disabled):hover {
-  border-color:rgba(255,255,255,.42);
-  background:rgba(255,255,255,.16);
-  color:#fff;
+  border-color:var(--line-strong);
+  background:var(--surface-soft);
+  color:var(--text);
 }
 
 .erp-module-page.erp-module-reports .reports-action-row .reports-export:not(:disabled):hover {
   border-color:var(--reports-action-hover);
   background:var(--reports-action-hover);
+  color:#fff;
 }
 
 .erp-module-reports .reports-feedback {

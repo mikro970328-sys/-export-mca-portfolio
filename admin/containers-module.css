@@ -43,18 +43,18 @@
   align-items:flex-end;
   justify-content:space-between;
   gap:28px;
-  min-height:190px;
+  min-height:128px;
   padding:clamp(28px,4vw,46px);
   overflow:hidden;
-  border:1px solid rgba(255,255,255,.08);
+  border:1px solid var(--line);
   border-radius:24px;
-  background:var(--tracking-navy);
-  box-shadow:0 22px 54px rgba(7,23,45,.18);
-  color:#fff;
+  background:var(--surface);
+  box-shadow:none;
+  color:var(--text);
 }
 
 .tracking-hero::before{
-  content:"";
+  content:none;
   position:absolute;
   z-index:-1;
   top:-90px;
@@ -73,7 +73,7 @@
 .tracking-eyebrow{
   display:block;
   margin-bottom:9px;
-  color:#f4a261;
+  color:var(--orange-strong);
   font-size:11px;
   font-weight:850;
   letter-spacing:.11em;
@@ -82,7 +82,7 @@
 
 .tracking-hero h2{
   margin:0;
-  color:#fff;
+  color:var(--text);
   font-size:clamp(30px,4vw,48px);
   line-height:1.03;
   letter-spacing:-.035em;
@@ -91,7 +91,7 @@
 .tracking-hero p{
   max-width:720px;
   margin:14px 0 0;
-  color:#c7d3e2;
+  color:var(--muted);
   font-size:15px;
   line-height:1.65;
 }
@@ -108,9 +108,9 @@
   gap:11px;
   min-width:236px;
   padding:13px 15px;
-  border:1px solid rgba(255,255,255,.15);
+  border:1px solid var(--line);
   border-radius:14px;
-  background:rgba(255,255,255,.06);
+  background:var(--surface-soft);
 }
 
 .tracking-hero-state strong,
@@ -119,13 +119,13 @@
 }
 
 .tracking-hero-state strong{
-  color:#fff;
+  color:var(--text);
   font-size:13px;
 }
 
 .tracking-hero-state div > span{
   margin-top:3px;
-  color:#b9c7d8;
+  color:var(--muted);
   font-size:11px;
 }
 

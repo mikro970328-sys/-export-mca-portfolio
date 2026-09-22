@@ -18,11 +18,11 @@
 .erp-module-inventory .inventory-page-head {
   isolation:isolate;
   align-items:center;
-  min-height:190px;
+  min-height:128px;
   border:0;
   padding:30px 32px;
-  background:var(--inventory-hero);
-  box-shadow:0 20px 48px rgba(9,24,46,.18);
+  background:var(--surface);
+  box-shadow:none;
 }
 
 .erp-module-inventory .inventory-page-head::before {
@@ -31,7 +31,7 @@
 }
 
 .erp-module-inventory .inventory-page-head::after {
-  content:"";
+  content:none;
   position:absolute;
   z-index:-1;
   right:-74px;
@@ -47,17 +47,17 @@
 }
 
 .erp-module-inventory .inventory-page-kicker {
-  color:#ffb27d;
+  color:var(--orange-strong);
 }
 
 .erp-module-inventory .inventory-page-head h1 {
-  color:#fff;
+  color:var(--text);
   font-size:clamp(30px,4vw,42px);
 }
 
 .erp-module-inventory .inventory-page-head p {
   max-width:710px;
-  color:#cbd7e6;
+  color:var(--muted);
   font-size:14px;
 }
 
@@ -66,11 +66,11 @@
   align-items:center;
   gap:11px;
   min-width:230px;
-  border:1px solid rgba(255,255,255,.16);
+  border:1px solid var(--line);
   border-radius:14px;
   padding:13px 15px;
-  background:rgba(255,255,255,.08);
-  color:#fff;
+  background:var(--surface-soft);
+  color:var(--text);
 }
 
 .erp-module-inventory .inventory-hero-state-dot {
@@ -94,7 +94,7 @@
 
 .erp-module-inventory .inventory-hero-state div > span {
   margin-top:2px;
-  color:#b9c8da;
+  color:var(--muted);
   font-size:10px;
 }
 

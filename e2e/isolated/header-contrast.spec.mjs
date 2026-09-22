@@ -8,6 +8,7 @@ import { JSDOM } from 'jsdom';
 // with all business scripts removed. No credentials, server or database.
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const read = path => readFileSync(`${root}${path}`, 'utf8');
+const font = readFileSync(`${root}admin/fonts/InterVariable.woff2`).toString('base64');
 const modules = ['sales', 'purchases', 'warehouse', 'inventory', 'loads', 'publications', 'suppliers', 'products', 'invoices', 'payables', 'costs', 'reports'];
 const shellScripts = ['scripts/lib/ux8-browser-harness.js', 'admin/ui-icon-system.js', 'admin/dashboard-operational-state.js', 'admin/navigation-shell.js'];
 
@@ -18,12 +19,12 @@ function isolatedHtml(html, scripts = []) {
   doc.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
     const path = new URL(link.getAttribute('href'), 'https://erp-visual.invalid/').pathname.slice(1);
     const style = doc.createElement('style');
-    style.textContent = read(path);
+    style.textContent = read(path).replaceAll('/admin/fonts/InterVariable.woff2', `data:font/woff2;base64,${font}`);
     link.replaceWith(style);
   });
   const csp = doc.createElement('meta');
   csp.httpEquiv = 'Content-Security-Policy';
-  csp.content = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:";
+  csp.content = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:";
   doc.head.prepend(csp);
   if (doc.body.classList.contains('erp-module-warehouse')) doc.body.classList.add('warehouse-embedded');
   for (const path of scripts) {
@@ -44,6 +45,7 @@ async function openFixture(page, html) {
     return route.abort();
   });
   await page.goto('https://erp-visual.invalid/');
+  await page.evaluate(()=>document.fonts.ready);
   expect(unexpected, 'fixture must never contact an API or external asset').toEqual([]);
 }
 

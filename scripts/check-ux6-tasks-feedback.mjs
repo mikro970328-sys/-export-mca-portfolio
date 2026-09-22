@@ -49,9 +49,9 @@ for(const text of [
   '@media(max-width:480px)'
 ])requireText(css,text,`presentación de Tareas ${text}`);
 
-requireText(loader,"/admin/tasks-workspace.css?v=20260903-ux7tasks1",'revisión del CSS de Tareas');
+requireText(loader,"/admin/tasks-workspace.css?v=20260922-figma1",'revisión del CSS de Tareas');
 requireText(loader,"/admin/tasks-workspace.js?v=20260916-taskdialog1",'revisión del JS de Tareas');
-requireText(index,'/admin/erp.js?v=20260921-ux8contrast1','revisión del loader ERP');
+requireText(index,'/admin/erp.js?v=20260922-figma1','revisión del loader ERP');
 
 for(const text of [
   "authorizeAdmin(req,res,'tasks.read')",

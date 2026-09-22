@@ -143,7 +143,7 @@
     else document.head.appendChild(link);
   });
 
-  const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260905-accessflow1', 'data-access-control-style');
+  const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260922-figma1', 'data-access-control-style');
   const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260921-ux8contrast1', 'data-ui-icon-system');
 
   const accessCan = permission => window.ExportMcaAccessControl?.can?.(permission) !== false;
@@ -184,13 +184,13 @@
 
     if (accessCan('clients.read')) {
       tasks.push(
-        loadStylesheet('/admin/clients-module.css?v=20260902-ux7clients1', 'data-clients-module-style')
+        loadStylesheet('/admin/clients-module.css?v=20260922-figma1', 'data-clients-module-style')
           .then(() => loadScript('/admin/clients-module.js?v=20260902-ux7clients1', 'data-clients-module'))
       );
     }
     if (accessCan('administration.workers.read')) {
       tasks.push(
-        loadStylesheet('/admin/workers-module.css?v=20260903-ux7workers1', 'data-workers-module-style')
+        loadStylesheet('/admin/workers-module.css?v=20260922-figma1', 'data-workers-module-style')
           .then(() => loadScript('/admin/workers-module.js?v=20260903-ux7workers1', 'data-workers-module'))
       );
     }
@@ -198,7 +198,7 @@
       tasks.push(loadScript('/admin/module-export-controls.js', 'data-module-export-controls'));
     }
     if (accessCan('notifications.read')) {
-      let alertChain = loadStylesheet('/admin/operational-alert-center.css?v=20260903-ux7alerts1', 'data-operational-alert-center-style')
+      let alertChain = loadStylesheet('/admin/operational-alert-center.css?v=20260922-figma1', 'data-operational-alert-center-style')
         .then(() => loadScript('/admin/operational-alert-center.js?v=20260903-ux7alerts1', 'data-operational-alert-center'));
       if (accessCan('notifications.manage')) {
         alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260903-b10push1', 'data-alert-phase2-stability'));
@@ -236,11 +236,11 @@
       authenticatedShellReady = true;
 
       if (accessCan('dashboard.read')) {
-        await loadStylesheet('/admin/dashboard-executive.css?v=20260921-ux8contrast1', 'data-dashboard-executive-style');
+        await loadStylesheet('/admin/dashboard-executive.css?v=20260922-figma1', 'data-dashboard-executive-style');
         await loadScript('/admin/dashboard-operational-state.js?v=20260921-ux8clarity1', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
-        await loadStylesheet('/admin/containers-module.css?v=20260904-owner-tracking1', 'data-containers-module-style');
+        await loadStylesheet('/admin/containers-module.css?v=20260922-figma1', 'data-containers-module-style');
         await loadScript('/admin/containers-module.js?v=20260916-deleterecovery1', 'data-containers-module');
       }
       if (accessCan('logistics.write')) {
@@ -248,12 +248,12 @@
         await loadScript('/admin/shipment-editor.js?v=20260903-ux7tracking2', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
-      await loadStylesheet('/admin/account-administration.css?v=20260903-ux7account1', 'data-account-administration-style');
+      await loadStylesheet('/admin/account-administration.css?v=20260922-figma1', 'data-account-administration-style');
       await loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration');
       await loadScript('/admin/navigation-shell.js?v=20260921-ux8clarity1', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {
-        await loadStylesheet('/admin/tasks-workspace.css?v=20260903-ux7tasks1', 'data-tasks-workspace-style');
+        await loadStylesheet('/admin/tasks-workspace.css?v=20260922-figma1', 'data-tasks-workspace-style');
         await loadScript('/admin/tasks-workspace.js?v=20260916-taskdialog1', 'data-tasks-workspace');
         await loadScript('/admin/tasks-navigation.js?v=20260830-p4', 'data-tasks-navigation');
         if (accessCan('tasks.manage')) {
