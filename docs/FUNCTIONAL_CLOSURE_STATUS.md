@@ -1,3 +1,26 @@
+## Ajustes visuales y móviles publicados — 2026-09-22
+
+El diseño blanco aprobado en Figma se publicó mediante PR #345. La corrección
+posterior de PR #346 resuelve el recorte inferior del detalle de Ventas y
+habilita la edición de gastos contabilizados cuando sus capabilities lo
+permiten, con conservación del historial. Los borradores y permisos mantienen
+sus rutas existentes. No hubo cambios de esquema ni movimientos de prueba en
+producción.
+
+Producción verificada: `86b2c9af7093491473ac5c60f6593985f82bac71`, Vercel
+`dpl_CCpGqjKofVHST5EdC2Ez1enqvfxk` READY. Los archivos CSS/JS servidos en
+`admin.exportmca.com` coinciden con el código probado y los HTML referencian
+sus nuevas versiones. PR #346 aprobó 18 workflows y 20 jobs de navegador.
+
+Pendiente acotado: confirmación del propietario en su iPhone físico con las
+barras de Safari y teclado abierto. Las pruebas Chromium/WebKit aprobaron el
+recorrido de desplazamiento y apertura del editor; no equivalen a esa prueba
+física. La renovación específica de tabla/formulario en Figma corresponde a
+Ventas; no declarar rediseñados todos los formularios del ERP. Leer
+`FIGMA_WHITE_ERP.md` para alcance y evidencia.
+
+---
+
 ## Cierre operativo de produccion - 2026-09-20
 
 La revision final de solo lectura confirma Vercel `READY`, acceso administrativo,

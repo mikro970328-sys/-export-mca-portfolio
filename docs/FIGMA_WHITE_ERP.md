@@ -53,25 +53,41 @@ operaciones de prueba allí. Las pruebas sintéticas nunca contactan esos
 servicios. Esta entrega se prepara para revisión visual antes de publicar.
 
 
-### Estado local de revisión
+### Estado publicado — 2026-09-22
 
-- `scripts/check-figma-sales.mjs`: 31 comprobaciones DOM aprobadas.
-- Navegación y Dashboard: 90 comprobaciones DOM aprobadas.
-- Gates de presentación de módulos, acceso, iconos, borradores y propiedad
-  frontend: aprobados en el entorno local.
-- Rama publicada con autorización explícita del usuario en el repositorio
-  público. PR #345; Preview disponible. Producción todavía pendiente.
-- Primera ejecución Chromium/WebKit: las pruebas aisladas de Ventas pasan;
-  contraste detectó botones secundarios blancos en cuatro cabeceras.
-  Se corrigen en sus owners CSS, incluidos hover y texto de acciones primarias.
-- Gate de Compras actualizado al token naranja aprobado, sin cambiar el
-  umbral de contraste ni sus contratos funcionales.
-- Direct Ship abre ahora el menú de acciones de Ventas por su control visible;
-  navegación comercial observa aria-expanded para abrir grupos. La entrada
-  numérica móvil se escribe y verifica antes y después de perder el foco.
-- Correcciones pendientes de nueva ejecución de CI y revisión visual final.
-- `scripts/preview-figma-sales.mjs` genera una demostración privada portable
-  de Inicio y Ventas, con estilos y fuente incrustados. Se verifican sus
-  documentos anidados, render DOM, apertura del formulario, ausencia de
-  recursos externos y guardado desactivado. No sustituye la revisión visual
-  en un navegador.
+- Diseño aprobado de Figma integrado en PR #345 y publicado en producción,
+  commit `785e7e8798599392edea97481bd2a06329d2a4ca`.
+  Pasaron 57 workflows, incluidos los recorridos aislados de navegador.
+- Contraste de las acciones secundarias corregido en cuatro cabeceras;
+  contratos funcionales y umbrales de contraste conservados.
+- Corrección posterior del detalle móvil y edición de gastos en PR #346,
+  commit de producción `86b2c9af7093491473ac5c60f6593985f82bac71`.
+  Vercel `dpl_CCpGqjKofVHST5EdC2Ez1enqvfxk` confirmado READY/production.
+- El detalle de Ventas desplaza su contenido completo. El módulo Costos
+  ofrece Editar cuando el backend permite `revise` y guarda mediante
+  `revise_posted`, conservando el historial. Los borradores mantienen `replace`.
+- PR #346: 18 workflows aprobados; los 20 jobs de Browser Operator Acceptance
+  terminaron correctamente. Las suites visuales aprobaron 18 pruebas cada una
+  en Chromium y WebKit, incluidas pantallas de 390×500 y 1440×700,
+  acceso al último evento, apertura/cancelación del editor y permisos de lectura.
+- Guardado del owner Costos comprobado adicionalmente con DOM y respuestas
+  sintéticas: acción de corrección/borrador, importe y asignación preservados;
+  edición denegada oculta. No se modificaron registros comerciales reales.
+- HTTP 200 y contenido exacto de los archivos desplegados comprobados en
+  `admin.exportmca.com`: `sales-workspace.css?v=20260922-scroll1` y
+  `costs.js?v=20260922-costedit2`; ambos HTML referencian esas versiones.
+
+### Alcance y comprobación pendiente
+
+La prueba WebKit móvil no equivale a una prueba en el iPhone físico del
+propietario. Falta su confirmación del comportamiento con las barras reales
+de Safari y el teclado abierto. No declarar ese recorrido físico certificado.
+
+Esta entrega completa la renovación de lista/formulario de Ventas y aplica
+la base blanca compartida. No acredita un rediseño completo en Figma de los
+formularios específicos de todos los módulos. Sus estructuras actuales y
+funciones se conservan.
+
+`scripts/preview-figma-sales.mjs` sigue ofreciendo una demostración portable
+con datos ficticios y guardado desactivado. Las pruebas comerciales se hacen
+en aislamiento; las Preview conectadas a producción no son bases de prueba.

@@ -304,12 +304,12 @@
     const costedReceipts = receipts.filter(row => row.cost_coverage !== 'incomplete_allocation' && row.recognized_merchandise_cost != null).length;
     const costedLoads = loads.filter(row => row.cost_coverage !== 'incomplete_allocation' && row.recognized_merchandise_cogs != null).length;
     $('metrics').innerHTML = [
-      ['Cargos activos', posted, 'Contabilizados y vigentes', 'cost-metric-active'],
+      ['Gastos activos', posted, 'Contabilizados y vigentes', 'cost-metric-active'],
       ['Borradores', drafts, 'Pendientes de contabilizar', 'cost-metric-drafts'],
       ['Sin asignar', incomplete, 'Requieren distribución', 'cost-metric-pending'],
       ['Recepciones', costedReceipts, 'Con costo reconocido', 'cost-metric-receipts'],
       ['Cargues', costedLoads, 'Con costo de mercancía', 'cost-metric-loads']
-    ].map(values => metric(...values)).join('');
+    ].map(values => metric(...values)).join('') + '<p class="cost-metrics-context">' + esc(costedReceipts) + ' recepciones · ' + esc(costedLoads) + ' Cargues con costo</p>';
   }
 
   const supplierName = id => {
@@ -360,7 +360,7 @@
   function statusPill(value) {
     if (value === 'posted') return '<span class="pill ok">Contabilizado</span>';
     if (value === 'void') return '<span class="pill off">Anulado</span>';
-    return '<span class="pill warn">Borrador</span>';
+    return '<span class="pill off">Borrador</span>';
   }
 
   function coveragePill(value) {
@@ -373,56 +373,44 @@
     const actions = [
       '<button class="btn" type="button" data-detail="' + esc(charge.id) + '">Ver detalle</button>'
     ];
-    if ((actionAllowed(charge, 'edit') || actionAllowed(charge, 'revise'))) {
-      actions.push('<button class="btn" type="button" ' + attribute + 'edit="' + esc(charge.id) + '">Editar</button>');
-    }
+    const edit = (actionAllowed(charge, 'edit') || actionAllowed(charge, 'revise'))
+      ? '<button class="btn cost-edit" type="button" ' + attribute + 'edit="' + esc(charge.id) + '">Editar gasto</button>' : '';
     if (actionAllowed(charge, 'post')) {
       actions.push('<button class="btn primary" type="button" ' + attribute + 'post="' + esc(charge.id) + '">Contabilizar</button>');
     }
     if (actionAllowed(charge, 'void')) {
       actions.push('<button class="btn danger" type="button" ' + attribute + 'void="' + esc(charge.id) + '">Anular</button>');
     }
-    return actions.join('');
+    return edit + '<details class="cost-actions-menu"><summary aria-label="Más opciones para ' + esc(charge.cost_number || 'este gasto') + '">Más</summary><div class="cost-actions-options">' + actions.join('') + '</div></details>';
   }
 
   function renderCharges() {
     const rows = state.charges.filter(chargeMatches);
     if (!rows.length) {
       return emptyState(
-        state.search ? 'Sin resultados' : 'Sin cargos registrados',
-        state.search ? 'Ajusta la búsqueda para consultar otros cargos.' : 'Los cargos aparecerán aquí cuando existan registros financieros.'
+        state.search ? 'Sin resultados' : 'Sin gastos registrados',
+        state.search ? 'Ajusta la búsqueda para consultar otros gastos.' : 'Los gastos que registres aparecerán aquí.'
       );
     }
     const records = rows.map(charge => {
       const progress = charge.progress || {};
-      const allocations = (charge.allocations || []).map(row => {
-        const target = allocationTarget(row);
-        const targetType = targetTypes.find(([id]) => id === target.key)?.[1] || 'Objetivo';
-        return [
-          '<div class="cost-allocation">',
-          '<div class="cost-allocation-label">Distribución</div>',
-          '<div><b>', esc(target.label), '</b><div class="small">', esc(targetType), ' · ', esc(basisLabel(row.basis)),
-          row.notes ? ' · ' + esc(row.notes) : '', '</div></div>',
-          '<div class="money-strong">', esc(money(row.amount, charge.currency)), '</div>',
-          '<div>', esc(stageLabel(charge.stage)), '</div><div></div><div></div></div>'
-        ].join('');
-      }).join('');
+      const allocations = charge.allocations || [];
+      const destination = allocations.length === 1 ? allocationTarget(allocations[0]).label : allocations.length ? allocations.length + ' destinos' : 'Sin asignar';
       return [
         '<article class="cost-record"><div class="cost-row">',
-        '<div><div class="cost-title">', esc(charge.cost_number || 'Cargo'), '</div><div class="cost-sub">', esc(date(charge.incurred_date)), '</div></div>',
-        '<div><b>', esc(categoryLabel(charge.category)), '</b><div class="cost-sub">', esc(stageLabel(charge.stage)),
+        '<div class="cost-identity"><div class="cost-title">', esc(charge.cost_number || 'Gasto'), '</div><div class="cost-sub">', esc(date(charge.incurred_date)), '</div></div>',
+        '<div class="cost-concept"><b>', esc(categoryLabel(charge.category)), '</b><div class="cost-sub">', esc(stageLabel(charge.stage)),
         charge.supplier_id ? ' · ' + esc(supplierName(charge.supplier_id)) : '', '</div></div>',
-        '<div>', statusPill(charge.status), '<div class="cost-sub">', esc(allocationLabel(progress.allocation_status)), '</div></div>',
-        '<div><div class="money-strong">', esc(money(charge.amount, charge.currency)), '</div><div class="cost-sub">Asignado ', esc(money(progress.allocated_amount, charge.currency)), '</div></div>',
-        '<div><b>', esc(charge.reference || 'Sin referencia'), '</b><div class="cost-sub">', esc(charge.notes || 'Sin notas'), '</div></div>',
+        '<div class="cost-amount"><div class="money-strong">', esc(money(charge.amount, charge.currency)), '</div><div class="cost-sub">Asignado ', esc(money(progress.allocated_amount, charge.currency)), '</div></div>',
+        '<div class="cost-status">', statusPill(charge.status), '</div>',
+        '<div class="cost-destination"><b>', esc(destination), '</b><div class="cost-sub">', esc(charge.reference || allocationLabel(progress.allocation_status)), '</div></div>',
         '<div class="cost-row-actions">', renderChargeActions(charge), '</div></div>',
-        allocations ? '<div class="cost-allocations">' + allocations + '</div>' : '<div class="cost-no-allocation">Sin distribución registrada.</div>',
         '</article>'
       ].join('');
     }).join('');
     return [
       '<div class="costs-table-wrap"><div class="costs-table-head" aria-hidden="true">',
-      '<span>Cargo</span><span>Concepto</span><span>Estado</span><span>Importe</span><span>Referencia</span><span>Acciones</span>',
+      '<span>Gasto</span><span>Concepto</span><span>Importe</span><span>Estado</span><span>Distribución</span><span class="costs-visually-hidden">Acciones</span>',
       '</div><div class="cost-list">', records, '</div></div>'
     ].join('');
   }
@@ -697,7 +685,7 @@
   }
 
   function resultLabel(count) {
-    if (state.view === 'charges') return count + (count === 1 ? ' cargo' : ' cargos');
+    if (state.view === 'charges') return count + (count === 1 ? ' gasto' : ' gastos');
     if (state.view === 'landed') return count + (count === 1 ? ' recepción' : ' recepciones');
     if (state.view === 'cogs') return count + (count === 1 ? ' Cargue' : ' Cargues');
     return state.profitabilityLoading && !state.profitabilityLoaded ? 'Consultando…' : count + (count === 1 ? ' resultado' : ' resultados');
@@ -715,6 +703,7 @@
       button.setAttribute('aria-pressed', String(active));
     });
     $('costsResultCount').textContent = resultLabel(resultCount());
+    $('costsListTitle').textContent = ({ charges: 'Gastos registrados', landed: 'Costo recibido', cogs: 'Costo de Cargues', profitability: 'Rentabilidad' })[state.view];
     if (state.view === 'landed') $('content').innerHTML = renderLanded();
     else if (state.view === 'cogs') $('content').innerHTML = renderCogs();
     else if (state.view === 'profitability') $('content').innerHTML = renderProfitability();
@@ -819,25 +808,41 @@
     const selected = row[type] || '';
     return [
       '<div class="allocation-line" data-allocation-line>',
-      '<div><label>Tipo</label><select data-target-type>',
+      '<div><label>Tipo de destino *</label><select data-target-type aria-label="Tipo de destino">',
       targetTypes.map(([id, label]) => '<option value="' + esc(id) + '"' + (id === type ? ' selected' : '') + '>' + esc(label) + '</option>').join(''),
-      '</select></div><div><label>Objetivo</label><select data-target-id>', targetOptions(type, selected), '</select></div>',
-      '<div><label>Monto</label><input data-amount type="number" min="0" step="0.01" inputmode="decimal" value="', esc(row.amount ?? ''), '"></div>',
-      '<div><label>Base</label><select data-basis>',
+      '</select></div><div><label>Destino *</label><select data-target-id aria-label="Destino">', targetOptions(type, selected), '</select></div>',
+      '<div><label>Monto asignado *</label><input data-amount aria-label="Monto asignado" type="number" min="0" step="0.01" inputmode="decimal" value="', esc(row.amount ?? ''), '"></div>',
+      '<div><label>Base</label><select data-basis aria-label="Base de distribución">',
       bases.map(([id, label]) => '<option value="' + esc(id) + '"' + (id === (row.basis || 'manual') ? ' selected' : '') + '>' + esc(label) + '</option>').join(''),
-      '</select></div><div><label>Nota</label><input data-note value="', esc(row.notes || ''), '"></div>',
-      '<div class="actions"><button class="btn danger" type="button" data-remove-allocation>Quitar</button></div></div>'
+      '</select></div><div class="allocation-note"><label>Nota de distribución</label><input data-note aria-label="Nota de distribución" maxlength="2000" value="', esc(row.notes || ''), '"></div>',
+      '<div class="actions allocation-remove"><button class="btn" type="button" data-remove-allocation aria-label="Quitar esta línea de distribución">Quitar línea</button></div></div>'
     ].join('');
   }
 
   function addAllocation(row = {}) {
     $('allocationEditor').insertAdjacentHTML('beforeend', allocationLine(row));
+    renderAllocationPreview();
+  }
+
+  // Form preview only; recognition and posting remain authoritative in the API.
+  function renderAllocationPreview() {
+    const amount = num($('cAmount').value);
+    const assigned = [...document.querySelectorAll('#allocationEditor [data-amount]')].reduce((sum, input) => sum + num(input.value), 0);
+    const remainder = Math.round((amount - assigned) * 100) / 100;
+    const currency = $('cCurrency').value.trim().toUpperCase() || 'USD';
+    $('chargeTotalPreview').textContent = money(amount, currency);
+    $('allocationPreview').textContent = 'Total asignado: ' + money(assigned, currency) + ' · ' + (remainder < 0 ? 'Exceso asignado: ' : 'Sin asignar: ') + money(Math.abs(remainder), currency);
+    $('allocationPreview').classList.toggle('overallocated', remainder < 0);
   }
 
   function resetChargeForm(charge = null) {
     fillSelects();
     state.editingId = charge?.id || null;
-    $('chargeTitle').textContent = charge ? 'Editar ' + charge.cost_number : 'Nuevo cargo';
+    $('chargeTitle').textContent = charge ? 'Editar ' + charge.cost_number : 'Nuevo gasto';
+    $('chargeHelp').textContent = charge && actionAllowed(charge, 'revise')
+      ? 'Corrige los datos y conserva el registro anterior en el historial.'
+      : 'Registra el gasto y distribúyelo al 100% antes de contabilizar.';
+    $('saveCharge').textContent = charge ? 'Guardar cambios' : 'Guardar gasto';
     $('cCategory').value = charge?.category || 'domestic_trucking';
     $('cStage').value = charge?.stage || 'inbound';
     $('cDate').value = String(charge?.incurred_date || localDateToday()).slice(0, 10);
@@ -912,7 +917,7 @@
       });
       setModal('chargeModal', false);
       await refresh();
-      setPageMessage(revising ? 'Gasto corregido. El registro anterior se conserva en el historial.' : editingId ? 'Cargo actualizado correctamente.' : 'Cargo creado correctamente.', 'good');
+      setPageMessage(revising ? 'Gasto corregido. El registro anterior se conserva en el historial.' : editingId ? 'Gasto actualizado correctamente.' : 'Gasto creado correctamente.', 'good');
     } catch (error) {
       const value = reportCostError('save', error, 'No se pudo guardar el cargo. Revisa los datos e intenta nuevamente.');
       message('chargeMsg', value);
@@ -932,6 +937,7 @@
       const label = targetTypes.find(([key]) => key === target.key)?.[1] || 'Objetivo';
       return [
         '<div class="detail-item"><div><b>', esc(target.label), '</b><div class="small">', esc(label), ' · ', esc(basisLabel(row.basis)),
+        row.notes ? ' · ' + esc(row.notes) : '',
         '</div></div><div class="money-strong">', esc(money(row.amount, charge.currency)), '</div></div>'
       ].join('');
     }).join('');
@@ -942,6 +948,7 @@
       '<div><b>Sin asignar</b>', esc(money(progress.unallocated_amount, charge.currency)), '</div>',
       '<div><b>Fecha</b>', esc(date(charge.incurred_date)), '</div></div>',
       '<div class="small">Proveedor: ', esc(supplierName(charge.supplier_id)), ' · Referencia: ', esc(charge.reference || '—'), '</div>',
+      charge.notes ? '<p class="cost-detail-notes">' + esc(charge.notes) + '</p>' : '',
       '<div class="detail-items">', allocations || emptyState('Sin distribución', 'Este cargo no tiene líneas de distribución.', true), '</div>'
     ].join('');
     const actions = [];
@@ -1167,6 +1174,7 @@
     $('newCharge')?.addEventListener('click', openCreate);
     $('addAllocation')?.addEventListener('click', () => addAllocation());
     $('saveCharge')?.addEventListener('click', saveCharge);
+    $('chargeModal')?.addEventListener('input', renderAllocationPreview);
     $('refresh')?.addEventListener('click', () => {
       $('refresh').disabled = true;
       refresh().catch(error => {
@@ -1211,6 +1219,7 @@
       const remove = event.target.closest?.('[data-remove-allocation]');
       if (remove) {
         remove.closest('[data-allocation-line]')?.remove();
+        renderAllocationPreview();
         return;
       }
       const detail = event.target.closest?.('[data-detail]');
@@ -1272,6 +1281,12 @@
 
     document.addEventListener('keydown', event => {
       if (event.key !== 'Escape') return;
+      const menu = event.target.closest?.('.cost-actions-menu[open]');
+      if (menu) {
+        menu.open = false;
+        menu.querySelector('summary')?.focus();
+        return;
+      }
       if (!$('costDecisionModal').classList.contains('hidden')) closeCostDecision(false);
       else if (!$('profitTraceModal').classList.contains('hidden')) closeTrace();
       else if (!$('detailModal').classList.contains('hidden')) setModal('detailModal', false);
