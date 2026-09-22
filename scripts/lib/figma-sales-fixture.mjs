@@ -65,7 +65,7 @@ export function salesFixture({ writable = true, workspace = false } = {}) {
       }else throw Error('Fixture blocks network');
       return {ok:true,status:200,json:async()=>data};
     };`;
-  for (const code of [harness, read('admin/sales.js'), read('admin/sales-order-ux.js'), ...(workspace?[read('admin/sales-workspace.js')]:[])]) {
+  for (const code of [harness, read('admin/sales.js'), read('admin/sales-order-ux.js'), ...(workspace?[read('admin/sales-workspace.js'),read('admin/sales-controller.js')]:[])]) {
     const script=doc.createElement('script');
     script.textContent=code.replaceAll('</script','<\\/script');
     doc.body.append(script);
