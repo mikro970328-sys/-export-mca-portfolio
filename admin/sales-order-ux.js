@@ -85,6 +85,7 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.id = 'oClientPickerButton';
+    select.parentElement.querySelector('label')?.setAttribute('for', button.id);
     button.className = 'client-picker-button';
     button.setAttribute('aria-haspopup','dialog');
     button.setAttribute('aria-controls','clientPickerModal');
@@ -197,13 +198,21 @@
     if (!price || !qty || !pallets || !upp || !product) return;
 
     const priceLabel = price.closest('div')?.querySelector('label');
-    if (priceLabel) priceLabel.textContent = 'Precio unitario';
+    if (priceLabel) priceLabel.textContent = 'Precio unitario *';
     const secondGrid = price.closest('.grid3');
     if (secondGrid) secondGrid.classList.add('sales-price-grid');
     const totalWrap = document.createElement('div');
-    totalWrap.innerHTML = '<label>Total venta</label><input class="lTotal" type="number" min="0" step="0.01" placeholder="Total de esta línea"><div class="pricing-hint">Usa unitario o total.</div>';
+    totalWrap.innerHTML = `<label for="${price.id}-total">Total de línea</label><input id="${price.id}-total" class="lTotal" type="number" min="0" step="0.01" placeholder="0.00"><div class="pricing-hint">Usa unitario o total.</div>`;
     price.closest('div').insertAdjacentElement('afterend', totalWrap);
     const total = totalWrap.querySelector('.lTotal');
+    const modeWrap = document.createElement('div');
+    modeWrap.innerHTML = `<label for="${price.id}-mode">Calcular usando</label><select id="${price.id}-mode" class="lPriceMode"><option value="unit">Precio unitario</option><option value="total">Total de línea</option></select>`;
+    secondGrid?.prepend(modeWrap);
+    modeWrap.querySelector('select').addEventListener('change', event => {
+      line.dataset.priceMode = event.target.value;
+      syncPricing(line, line.dataset.priceMode);
+      window.SalesOrderDrafts?.touch?.();
+    });
 
     const stock = document.createElement('div');
     stock.className = 'sales-stock';
@@ -266,6 +275,8 @@
   }
 
   function syncPricing(line, mode) {
+    const modeSelect = line.querySelector('.lPriceMode');
+    if (modeSelect && mode) modeSelect.value = mode;
     const qty = num(line.querySelector('.lQty')?.value);
     const price = line.querySelector('.lPrice');
     const total = line.querySelector('.lTotal');
@@ -327,7 +338,7 @@
     const box = document.createElement('div');
     box.id = 'salesOrderTotalPreview';
     box.className = 'sales-total-preview';
-    box.innerHTML = '<div><span>Total de la Sales Order</span><b>USD 0.00</b></div>';
+    box.innerHTML = '<div><span>Total de venta</span><b>USD 0.00</b></div>';
     lines.insertAdjacentElement('afterend',box);
   }
 

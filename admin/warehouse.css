@@ -18,11 +18,11 @@
 .erp-module-warehouse .warehouse-page-head {
   isolation:isolate;
   align-items:center;
-  min-height:190px;
+  min-height:128px;
   border:0;
   padding:30px 32px;
-  background:var(--warehouse-hero);
-  box-shadow:0 20px 48px rgba(9,24,46,.18);
+  background:var(--surface);
+  box-shadow:none;
 }
 
 .erp-module-warehouse .warehouse-page-head::before {
@@ -31,7 +31,7 @@
 }
 
 .erp-module-warehouse .warehouse-page-head::after {
-  content:"";
+  content:none;
   position:absolute;
   z-index:-1;
   right:-72px;
@@ -47,17 +47,17 @@
 }
 
 .erp-module-warehouse .warehouse-page-kicker {
-  color:#ffb27d;
+  color:var(--orange-strong);
 }
 
 .erp-module-warehouse .warehouse-page-head h1 {
-  color:#fff;
+  color:var(--text);
   font-size:clamp(30px,4vw,42px);
 }
 
 .erp-module-warehouse .warehouse-page-head p {
   max-width:700px;
-  color:#cbd7e6;
+  color:var(--muted);
   font-size:14px;
 }
 

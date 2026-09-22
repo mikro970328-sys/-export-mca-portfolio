@@ -4,9 +4,9 @@
   justify-content:space-between;
   gap:12px;
   width:100%;
-  min-height:42px;
+  min-height:44px;
   border:1px solid var(--line-strong);
-  border-radius:10px;
+  border-radius:8px;
   padding:10px 12px;
   background:#fff;
   color:var(--text);
@@ -20,8 +20,8 @@
   color:var(--text);
 }
 
-.client-picker-button strong{font-size:12px}
-.client-picker-button span{color:var(--muted);font-size:10px}
+.client-picker-button strong{font-size:14px}
+.client-picker-button span{color:var(--muted);font-size:12px}
 .erp-module-sales .client-picker-dialog{width:min(900px,100%)}
 
 .erp-module-sales .client-picker-search{
@@ -77,10 +77,10 @@
 
 .sales-stock{
   margin-top:12px;
-  border:1px solid #cfe0f5;
+  border:1px solid var(--line);
   border-radius:var(--radius-md);
   padding:12px;
-  background:var(--info-soft);
+  background:var(--surface-soft);
 }
 
 .sales-stock-head{
@@ -114,7 +114,7 @@
   display:grid;
   grid-template-columns:minmax(170px,1.4fr) repeat(3,minmax(100px,.7fr));
   gap:8px;
-  border-top:1px solid #d8e4f2;
+  border-top:1px solid var(--line);
   padding-top:7px;
   font-size:10px;
 }
@@ -132,47 +132,22 @@
 .sales-stock-note{
   margin-top:8px;
   color:var(--muted-strong);
-  font-size:9px;
+  font-size:12px;
 }
 
 .erp-module-sales .grid3.sales-price-grid{
-  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-columns:repeat(3,minmax(0,1fr));
 }
 
-.sales-total-preview{
-  display:flex;
-  justify-content:flex-end;
-  margin-top:14px;
-}
-
-.sales-total-preview > div{
-  min-width:230px;
-  border:1px solid var(--line);
-  border-radius:var(--radius-md);
-  padding:12px 14px;
-  background:var(--surface-soft);
-}
-
-.sales-total-preview span{
-  display:block;
-  color:var(--muted);
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:.05em;
-  text-transform:uppercase;
-}
-
-.sales-total-preview b{
-  display:block;
-  margin-top:4px;
-  color:var(--navy-strong);
-  font-size:22px;
-}
+.sales-total-preview{margin:0}
+.sales-total-preview > div{display:flex;flex-direction:column-reverse;gap:4px}
+.sales-total-preview span{color:var(--muted);font-size:12px;line-height:18px}
+.sales-total-preview b{color:var(--text);font-size:32px;font-weight:600;line-height:40px;letter-spacing:-.8px}
 
 .pricing-hint{
   margin-top:5px;
   color:var(--muted);
-  font-size:9px;
+  font-size:12px;
 }
 
 .pricing-hint.active{color:var(--ok);font-weight:750}

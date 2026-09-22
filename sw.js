@@ -1,4 +1,4 @@
-const CACHE='export-mca-shell-v5';
+const CACHE='export-mca-shell-v6';
 const CORE=['/logo.png','/admin/pwa.html','/app/pwa.html','/admin/manifest.webmanifest','/app/manifest.webmanifest','/admin/apple-touch-icon.png','/admin/app-icon-192.svg','/admin/app-icon-512.svg'];
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

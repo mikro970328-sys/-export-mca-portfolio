@@ -23,11 +23,11 @@
 .erp-module-invoices .invoices-page-head {
   isolation:isolate;
   align-items:center;
-  min-height:194px;
+  min-height:128px;
   border:0;
   padding:30px 32px;
-  background:var(--invoices-hero);
-  box-shadow:0 20px 48px rgba(9,24,46,.18);
+  background:var(--surface);
+  box-shadow:none;
 }
 
 .erp-module-invoices .invoices-page-head::before {
@@ -36,7 +36,7 @@
 }
 
 .erp-module-invoices .invoices-page-head::after {
-  content:"";
+  content:none;
   position:absolute;
   z-index:-1;
   right:-80px;
@@ -52,17 +52,17 @@
 }
 
 .erp-module-invoices .invoices-page-kicker {
-  color:#ffb27d;
+  color:var(--orange-strong);
 }
 
 .erp-module-invoices .invoices-page-head h1 {
-  color:#fff;
+  color:var(--text);
   font-size:clamp(30px,4vw,42px);
 }
 
 .erp-module-invoices .invoices-page-head p {
   max-width:710px;
-  color:#cbd7e6;
+  color:var(--muted);
   font-size:14px;
 }
 
@@ -79,11 +79,11 @@
   min-height:58px;
   align-items:center;
   gap:11px;
-  border:1px solid rgba(255,255,255,.18);
+  border:1px solid var(--line);
   border-radius:13px;
   padding:11px 14px;
-  background:rgba(255,255,255,.08);
-  color:#fff;
+  background:var(--surface-soft);
+  color:var(--text);
 }
 
 .invoices-hero-state strong,
@@ -97,7 +97,7 @@
 
 .invoices-hero-state span:not(.invoices-live-dot) {
   margin-top:2px;
-  color:#cbd7e6;
+  color:var(--muted);
   font-size:10px;
 }
 

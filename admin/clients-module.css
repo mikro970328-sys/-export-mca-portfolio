@@ -4,12 +4,12 @@
 
 #clientsSection .clients-hero.native-workspace-hero {
   align-items:center;
-  min-height:190px;
+  min-height:128px;
   padding:30px 32px;
-  border-color:#152d4d;
-  background:#07172d;
-  color:#fff;
-  box-shadow:0 20px 48px rgba(7,23,45,.18);
+  border-color:var(--line);
+  background:var(--surface);
+  color:var(--text);
+  box-shadow:none;
 }
 
 #clientsSection .clients-hero.native-workspace-hero::before {
@@ -23,18 +23,18 @@
 
 #clientsSection .clients-kicker.native-workspace-kicker {
   margin-bottom:8px;
-  color:#ffb077;
+  color:var(--orange-strong);
 }
 
 #clientsSection .clients-hero h2 {
-  color:#fff;
+  color:var(--text);
   font-size:clamp(30px,4vw,42px);
 }
 
 #clientsSection .clients-hero p {
   max-width:650px;
   margin-top:10px;
-  color:#d6e0ec;
+  color:var(--muted);
   font-size:14px;
 }
 
@@ -46,17 +46,17 @@
 #clientsSection .clients-summary-card.native-workspace-summary-card {
   min-height:100px;
   padding:18px;
-  border-color:#2c4361;
-  background:#10243f;
+  border-color:var(--line);
+  background:var(--surface-soft);
 }
 
 #clientsSection .clients-summary-card strong {
-  color:#fff;
+  color:var(--text);
   font-size:30px;
 }
 
 #clientsSection .clients-summary-card span {
-  color:#bfcddd;
+  color:var(--muted);
   font-size:11px;
   line-height:1.35;
 }

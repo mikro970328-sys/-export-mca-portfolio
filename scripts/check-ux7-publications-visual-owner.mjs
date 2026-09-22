@@ -33,8 +33,8 @@ const imageApi = read(files.imageApi);
 const workflow = read(files.workflow);
 
 for (const text of [
-  '<link rel="stylesheet" href="/admin/publications.css?v=20260902-ux7publications1">',
-  '<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260921-ux8contrast1">',
+  '<link rel="stylesheet" href="/admin/publications.css?v=20260922-figma1">',
+  '<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">',
   '<body class="erp-module-page erp-module-publications" data-owner="publications.js">',
   '<script src="/admin/publications.js?v=20260902-ux7publications2" defer></script>',
   'class="metrics publications-metrics"',
@@ -45,8 +45,8 @@ for (const text of [
   'rel="noopener"'
 ]) requireText(html, text, `HTML canónico ${text}`);
 
-const ownerCssIndex = html.indexOf('/admin/publications.css?v=20260902-ux7publications1');
-const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260921-ux8contrast1');
+const ownerCssIndex = html.indexOf('/admin/publications.css?v=20260922-figma1');
+const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
 if (ownerCssIndex < 0 || foundationIndex < 0 || foundationIndex > ownerCssIndex) {
   failures.push('la base visual compartida debe cargar antes de publications.css');
 }

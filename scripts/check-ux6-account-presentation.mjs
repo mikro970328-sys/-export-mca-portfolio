@@ -20,7 +20,7 @@ for(const selector of ['.account-layout','.account-security-form','.account-secu
 requireText(css,'@media(max-width:720px)','responsive móvil');
 requireText(css,':focus-visible','foco accesible');
 
-const styleLoad="loadStylesheet('/admin/account-administration.css?v=20260903-ux7account1', 'data-account-administration-style')";
+const styleLoad="loadStylesheet('/admin/account-administration.css?v=20260922-figma1', 'data-account-administration-style')";
 const scriptLoad="loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration')";
 requireText(erp,styleLoad,'carga stylesheet de cuenta');
 requireText(erp,scriptLoad,'carga JavaScript de cuenta');

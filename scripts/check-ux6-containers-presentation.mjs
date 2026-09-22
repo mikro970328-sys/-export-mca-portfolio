@@ -39,7 +39,7 @@ for(const text of [
   ':focus-visible'
 ]) requireText(css,text,`selector CSS ${text}`);
 
-const styleLoad="loadStylesheet('/admin/containers-module.css?v=20260904-owner-tracking1', 'data-containers-module-style')";
+const styleLoad="loadStylesheet('/admin/containers-module.css?v=20260922-figma1', 'data-containers-module-style')";
 const scriptLoad="loadScript('/admin/containers-module.js?v=20260916-deleterecovery1', 'data-containers-module')";
 requireText(erp,styleLoad,'carga stylesheet de Contenedores');
 requireText(erp,scriptLoad,'carga JavaScript de Contenedores');

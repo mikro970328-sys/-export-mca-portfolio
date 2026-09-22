@@ -46,7 +46,7 @@ const workflow = read(files.workflow);
 
 [
   '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
-  '/admin/embedded-foundation.css?v=20260921-ux8contrast1',
+  '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/costs.css?v=20260921-ux8contrast1',
   '/admin/costs.js?v=20260903-ux7costs1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
@@ -67,7 +67,7 @@ const workflow = read(files.workflow);
   'aria-live="polite"'
 ].forEach(value => requireText(html, value, 'HTML canónico ' + value));
 
-const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260921-ux8contrast1');
+const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
 const ownerStylesIndex = html.indexOf('/admin/costs.css?v=20260921-ux8contrast1');
 if (foundationIndex < 0 || ownerStylesIndex < 0 || foundationIndex > ownerStylesIndex) {
   failures.push('la base visual compartida debe cargar antes de costs.css');

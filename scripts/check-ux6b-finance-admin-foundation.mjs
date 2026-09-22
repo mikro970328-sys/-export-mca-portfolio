@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
 const foundationPath='admin/embedded-foundation.css';
-const foundationRef='/admin/embedded-foundation.css?v=20260921-ux8contrast1';
+const foundationRef='/admin/embedded-foundation.css?v=20260922-figma1';
 const modules={
   invoices:'admin/invoices.html',
   payables:'admin/payables.html',

@@ -31,16 +31,16 @@ const navigationJs=read(files.navigationJs);
 const dashboardCss=read(files.dashboardCss);
 const dashboardJs=read(files.dashboardJs);
 
-const themeRef='/admin/platform-theme.css?v=20260909-viewport1';
-const navigationRef='/admin/navigation-shell.css?v=20260921-ux8contrast1';
+const themeRef='/admin/platform-theme.css?v=20260922-figma1';
+const navigationRef='/admin/navigation-shell.css?v=20260922-figma1';
 for(const ref of [themeRef,navigationRef])requireText(index,ref,ref);
-requireText(index,'<meta name="theme-color" content="#09182e">','color del navegador');
-requireText(index,'/admin/manifest.webmanifest?v=4','manifest versionado');
-requireText(pwa,'<meta name="theme-color" content="#09182e">','color PWA');
-requireText(pwa,'/admin/manifest.webmanifest?v=4','manifest PWA versionado');
-requireText(manifest,'"background_color": "#f5f7fb"','fondo del manifest');
-requireText(manifest,'"theme_color": "#09182e"','tema del manifest');
-requireText(serviceWorker,"const CACHE='export-mca-shell-v5'",'caché PWA renovado');
+requireText(index,'<meta name="theme-color" content="#ffffff">','color del navegador');
+requireText(index,'/admin/manifest.webmanifest?v=5','manifest versionado');
+requireText(pwa,'<meta name="theme-color" content="#ffffff">','color PWA');
+requireText(pwa,'/admin/manifest.webmanifest?v=5','manifest PWA versionado');
+requireText(manifest,'"background_color": "#ffffff"','fondo del manifest');
+requireText(manifest,'"theme_color": "#ffffff"','tema del manifest');
+requireText(serviceWorker,"const CACHE='export-mca-shell-v6'",'caché PWA renovado');
 const themeIndex=index.indexOf(themeRef);
 const navigationIndex=index.indexOf(navigationRef);
 const headEnd=index.indexOf('</head>');
@@ -68,7 +68,7 @@ for(const text of [
 ])requireText(theme,text,`sistema visual ${text}`);
 
 for(const text of [
-  '--sidebar-expanded:272px',
+  '--sidebar-expanded:248px',
   '--sidebar-collapsed:80px',
   'position:fixed',
   '.sidebar-nav .nav-group.open>.submenu',
@@ -95,12 +95,12 @@ for(const text of [
   '.executive-ops-grid',
   '.executive-finance-grid',
   '.executive-state-error',
-  'linear-gradient(125deg,var(--navy-strong),var(--navy-soft))',
+  'background:var(--surface)',
   '@media(max-width:520px)',
   '@media(prefers-reduced-motion:reduce)'
 ])requireText(dashboardCss,text,`presentación dashboard ${text}`);
 
-requireText(erp,"loadStylesheet('/admin/dashboard-executive.css?v=20260921-ux8contrast1'",'CSS versionado de dashboard');
+requireText(erp,"loadStylesheet('/admin/dashboard-executive.css?v=20260922-figma1'",'CSS versionado de dashboard');
 requireText(erp,"loadScript('/admin/dashboard-operational-state.js?v=20260921-ux8clarity1'",'owner versionado de dashboard');
 forbid(erp,/data-platform-theme|data-navigation-shell-style/,'erp.js no debe volver a cargar tarde la base visual estática');
 forbid(navigationJs,/\sstyle\s*=/i,'navigation-shell.js vuelve a crear iframes con estilos inline');

@@ -53,13 +53,13 @@ for(const text of [
   'id="clientCreateForm"',
   'id="clientSearch"'
 ]) requireText(index,text,`markup canónico ${text}`);
-requireText(index,'/admin/erp.js?v=20260921-ux8contrast1','revisión del loader ERP para Clientes');
+requireText(index,'/admin/erp.js?v=20260922-figma1','revisión del loader ERP para Clientes');
 const clientsStart=index.indexOf('<section id="clientsSection"');
 const clientsEnd=index.indexOf('<section id="registerContainerSection"',clientsStart);
 const clientsMarkup=clientsStart>=0&&clientsEnd>clientsStart?index.slice(clientsStart,clientsEnd):'';
 forbid(clientsMarkup,/\sstyle\s*=/i,'Clientes conserva estilos inline en index.html');
 
-const styleLoad="loadStylesheet('/admin/clients-module.css?v=20260902-ux7clients1', 'data-clients-module-style')";
+const styleLoad="loadStylesheet('/admin/clients-module.css?v=20260922-figma1', 'data-clients-module-style')";
 const scriptLoad="loadScript('/admin/clients-module.js?v=20260902-ux7clients1', 'data-clients-module')";
 requireText(erp,styleLoad,'carga stylesheet de Clientes');
 requireText(erp,scriptLoad,'carga JavaScript de Clientes');

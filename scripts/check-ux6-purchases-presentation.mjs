@@ -107,15 +107,15 @@ for(const text of [
   'aria-modal="true"',
   'id="purchaseDecisionCancel"',
   'id="purchaseDecisionAccept"',
-  '/admin/embedded-foundation.css?v=20260921-ux8contrast1',
-  '/admin/purchases.css?v=20260920-directsale1',
+  '/admin/embedded-foundation.css?v=20260922-figma1',
+  '/admin/purchases.css?v=20260922-figma1',
   '/admin/purchases.js?v=20260920-directsale1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ]) requireText(html,text,`HTML ${text}`);
 forbid(html,/\sstyle\s*=/i,'Compras conserva estilos inline');
 forbid(html,/purchases-(?:master-refresh|product-catalog)\.js/,'Compras vuelve a cargar un script complementario retirado');
-const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260921-ux8contrast1');
-const ownerCssIndex=html.indexOf('/admin/purchases.css?v=20260920-directsale1');
+const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
+const ownerCssIndex=html.indexOf('/admin/purchases.css?v=20260922-figma1');
 if(foundationIndex<0||ownerCssIndex<0||foundationIndex>ownerCssIndex)failures.push('la base visual debe cargar antes del CSS propietario de Compras');
 
 for(const file of detachedConsumers){
