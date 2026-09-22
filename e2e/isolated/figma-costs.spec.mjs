@@ -24,7 +24,8 @@ test('Figma expenses: white list, readable cards, search, menus and financial vi
   await fits(page);
   const row=page.locator('.cost-record').first();
   expect(await row.locator('[data-edit]').evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
-  await info.attach('gastos',{body:await page.screenshot({fullPage:true}),contentType:'image/png'});
+  await page.screenshot({path:info.outputPath('gastos.png'),fullPage:true});
+  await info.attach('gastos',{path:info.outputPath('gastos.png'),contentType:'image/png'});
   await row.locator('summary').click();
   await expect(row.locator('[data-void]')).toBeVisible();
   await expect(row.locator('[data-post]')).toHaveCount(0);
@@ -69,12 +70,14 @@ for(const viewport of [{width:390,height:500},{width:1440,height:700}]){
     const dialog=page.locator('#chargeModal .dialog');
     expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
     await page.locator('#chargeTitle').scrollIntoViewIfNeeded();
-    await info.attach('editar-gasto',{body:await page.screenshot(),contentType:'image/png'});
+    await page.screenshot({path:info.outputPath('editar-gasto.png')});
+    await info.attach('editar-gasto',{path:info.outputPath('editar-gasto.png'),contentType:'image/png'});
     await page.locator('#saveCharge').scrollIntoViewIfNeeded();
     const box=await page.locator('#saveCharge').boundingBox();
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.y+box.height).toBeLessThanOrEqual(viewport.height+1);
-    await info.attach('guardar-gasto-visible',{body:await page.screenshot(),contentType:'image/png'});
+    await page.screenshot({path:info.outputPath('guardar-gasto-visible.png')});
+    await info.attach('guardar-gasto-visible',{path:info.outputPath('guardar-gasto-visible.png'),contentType:'image/png'});
     await page.locator('#saveCharge').click();
     await expect(page.locator('#chargeModal')).not.toBeVisible();
     await expect(page.locator('#pageMsg')).toContainText('historial');
