@@ -373,7 +373,7 @@
     const actions = [
       '<button class="btn" type="button" data-detail="' + esc(charge.id) + '">Ver detalle</button>'
     ];
-    if (actionAllowed(charge, 'edit')) {
+    if ((actionAllowed(charge, 'edit') || actionAllowed(charge, 'revise'))) {
       actions.push('<button class="btn" type="button" ' + attribute + 'edit="' + esc(charge.id) + '">Editar</button>');
     }
     if (actionAllowed(charge, 'post')) {
@@ -861,7 +861,7 @@
 
   function openEdit(id) {
     const charge = state.charges.find(row => String(row.id) === String(id));
-    if (!charge || !actionAllowed(charge, 'edit')) return false;
+    if (!charge || !(actionAllowed(charge, 'edit') || actionAllowed(charge, 'revise'))) return false;
     resetChargeForm(charge);
     setModal('chargeModal', true, '#cCategory');
     return true;
@@ -891,10 +891,13 @@
     $('saveCharge').disabled = true;
     try {
       const editingId = state.editingId;
+      const editingCharge = state.charges.find(row => String(row.id) === String(editingId));
+      const revising = Boolean(editingId && actionAllowed(editingCharge, 'revise'));
+      if (editingId && !revising && !actionAllowed(editingCharge, 'edit')) throw new Error('La acción ya no está disponible para este gasto.');
       await request('/api/costs', {
         method: 'POST',
         body: JSON.stringify({
-          action: editingId ? 'replace' : 'create',
+          action: revising ? 'revise_posted' : editingId ? 'replace' : 'create',
           cost_charge_id: editingId,
           category: $('cCategory').value,
           stage: $('cStage').value,
@@ -909,7 +912,7 @@
       });
       setModal('chargeModal', false);
       await refresh();
-      setPageMessage(editingId ? 'Cargo actualizado correctamente.' : 'Cargo creado correctamente.', 'good');
+      setPageMessage(revising ? 'Gasto corregido. El registro anterior se conserva en el historial.' : editingId ? 'Cargo actualizado correctamente.' : 'Cargo creado correctamente.', 'good');
     } catch (error) {
       const value = reportCostError('save', error, 'No se pudo guardar el cargo. Revisa los datos e intenta nuevamente.');
       message('chargeMsg', value);
@@ -942,7 +945,7 @@
       '<div class="detail-items">', allocations || emptyState('Sin distribución', 'Este cargo no tiene líneas de distribución.', true), '</div>'
     ].join('');
     const actions = [];
-    if (actionAllowed(charge, 'edit')) actions.push('<button class="btn" type="button" data-detail-edit="' + esc(charge.id) + '">Editar</button>');
+    if ((actionAllowed(charge, 'edit') || actionAllowed(charge, 'revise'))) actions.push('<button class="btn" type="button" data-detail-edit="' + esc(charge.id) + '">Editar</button>');
     if (actionAllowed(charge, 'post')) actions.push('<button class="btn primary" type="button" data-detail-post="' + esc(charge.id) + '">Contabilizar</button>');
     if (actionAllowed(charge, 'void')) actions.push('<button class="btn danger" type="button" data-detail-void="' + esc(charge.id) + '">Anular</button>');
     $('detailActions').innerHTML = actions.join('');

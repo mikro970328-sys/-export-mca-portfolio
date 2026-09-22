@@ -79,3 +79,37 @@ test('Figma sales: read-only users keep their original capabilities', async ({pa
   await expect(page.locator('[data-edit-order],[data-load-order]')).toHaveCount(0);
   await expect(page.locator('[data-view-order]').first()).toBeVisible();
 });
+
+for (const viewport of [{width:390,height:500},{width:1440,height:700}]) {
+  test(`Sales detail remains scrollable and expense editor reachable at ${viewport.width}`, async ({page}, info) => {
+    await page.setViewportSize(viewport);
+    await open(page,{workspace:true});
+    await page.locator('[data-view-order]').first().click();
+    const dialog=page.locator('#detailModal .sales-workspace-dialog');
+    await expect(dialog).toBeVisible();
+    await page.locator('[data-ws-tab="history"]').click();
+    const last=page.locator('.sales-ws-history-row').last();
+    await last.scrollIntoViewIfNeeded();
+    const box=await last.boundingBox();
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y+box.height).toBeLessThanOrEqual(viewport.height+1);
+    expect(await dialog.evaluate(el=>el.scrollHeight>el.clientHeight)).toBe(true);
+    await page.locator('[data-ws-tab="costs"]').click();
+    await page.locator('[data-ws-action="edit_cost"]').click();
+    await expect(page.locator('#salesWorkspaceCostModal')).toBeVisible();
+    await expect(page.locator('#wsCostAmount')).toHaveValue('11600');
+    await page.locator('#wsCostAmount').fill('11500');
+    await page.locator('#salesWorkspaceCostModal button').filter({hasText:'Cancelar'}).click();
+    await expect(page.locator('#salesWorkspaceCostModal')).not.toBeVisible();
+    await page.locator('[data-ws-action="edit_cost"]').scrollIntoViewIfNeeded();
+    await info.attach('gasto-accesible',{body:await page.screenshot(),contentType:'image/png'});
+    expect(await page.evaluate(()=>window.__fixtureCalls.every(call=>!call.method||call.method==='GET'))).toBe(true);
+  });
+}
+
+test('Sales posted expense revision respects read-only capability',async({page})=>{
+  await open(page,{workspace:true,writable:false});
+  await page.locator('[data-view-order]').first().click();
+  await page.locator('[data-ws-tab="costs"]').click();
+  await expect(page.locator('[data-ws-action="edit_cost"]')).toHaveCount(0);
+});

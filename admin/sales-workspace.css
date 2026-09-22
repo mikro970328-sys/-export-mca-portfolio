@@ -3,7 +3,9 @@
   flex-direction:column;
   width:min(1180px,96vw);
   max-height:92vh;
-  overflow:hidden;
+  max-height:92dvh;
+  overflow-y:auto;
+  overscroll-behavior:contain;
   padding:0;
 }
 
@@ -14,9 +16,11 @@
   background:#fff;
 }
 
+.erp-module-sales .sales-workspace-dialog > #detailBody{flex:0 0 auto;min-height:0}
+
 .sales-workspace-shell{
   display:flex;
-  flex:1;
+  flex:0 0 auto;
   flex-direction:column;
   min-height:0;
 }
@@ -139,9 +143,9 @@
 }
 
 .sales-workspace-content{
-  flex:1;
-  min-height:280px;
-  overflow:auto;
+  flex:0 0 auto;
+  min-height:0;
+  overflow:visible;
   padding:18px 20px 24px;
   background:#fff;
 }
@@ -389,8 +393,9 @@
 @media(max-width:700px){
   .erp-module-sales .dialog.sales-workspace-dialog{
     width:100%;
-    height:100%;
-    max-height:100vh;
+    height:auto;
+    max-height:100%;
+    padding-bottom:env(safe-area-inset-bottom);
     border-radius:0;
   }
 
