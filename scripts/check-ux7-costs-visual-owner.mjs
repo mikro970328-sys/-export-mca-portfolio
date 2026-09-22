@@ -48,7 +48,7 @@ const workflow = read(files.workflow);
   '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/costs.css?v=20260921-ux8contrast1',
-  '/admin/costs.js?v=20260903-ux7costs1',
+  '/admin/costs.js?v=20260922-costedit2',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero costs-page-head"',
   'id="costsPageTitle">Costos y rentabilidad',
@@ -445,6 +445,17 @@ if (!fixtureFetches.includes('GET /api/profitability')) failures.push('El owner 
 if (!fixtureNodes.get('content').innerHTML.includes('SO-&lt;100&gt;')) failures.push('Rentabilidad no escapa ni presenta la orden de venta');
 if (!fixtureNodes.get('content').innerHTML.includes('Cliente &lt;Seguro&gt;')) failures.push('Rentabilidad no presenta el cliente desde el read-model');
 if (fixtureFetches.some(value => !value.startsWith('GET '))) failures.push('El fixture de lectura detectó una mutación');
+
+// Posted corrections use the separate revise capability, without enabling denied edits.
+fixtureCharge.status = 'posted';
+fixtureCharge.capabilities.actions.revise = { allowed: true };
+await fixtureWindow.CostsModule.refresh();
+fixtureWindow.CostsModule.openCost('cost-1');
+if (!fixtureNodes.get('detailActions').innerHTML.includes('data-detail-edit="cost-1"')) failures.push('La corrección permitida de un gasto contabilizado debe ofrecer Editar');
+fixtureCharge.capabilities.actions.revise.allowed = false;
+await fixtureWindow.CostsModule.refresh();
+fixtureWindow.CostsModule.openCost('cost-1');
+if (fixtureNodes.get('detailActions').innerHTML.includes('data-detail-edit="cost-1"')) failures.push('La corrección denegada debe ocultar Editar');
 
 [
   "authorizeAdmin(req, res, req.method === 'GET' ? 'finance.read' : 'finance.write')",

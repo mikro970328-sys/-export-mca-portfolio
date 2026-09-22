@@ -25,7 +25,7 @@ const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 requireText(html,'/admin/embedded-foundation.css?v=20260922-figma1','base visual compartida');
 requireText(html,'/admin/sales.css?v=20260922-figma1','CSS dedicado y versionado');
 requireText(html,'/admin/sales-order-ux.css?v=20260922-figma1','CSS del editor versionado');
-requireText(html,'/admin/sales-workspace.css?v=20260902-ux7sales1','CSS del workspace versionado');
+requireText(html,'/admin/sales-workspace.css?v=20260922-scroll1','CSS del workspace versionado');
 requireText(html,'/admin/sales-supply-workspace.css?v=20260902-ux7sales1','CSS de abastecimiento versionado');
 requireText(html,'/admin/sales-customer-finance.css?v=20260902-ux7sales1','CSS financiero versionado');
 for(const asset of [

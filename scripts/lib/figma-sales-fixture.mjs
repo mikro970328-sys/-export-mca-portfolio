@@ -7,7 +7,7 @@ const read = path => readFileSync(`${root}${path}`, 'utf8');
 const font = readFileSync(`${root}admin/fonts/InterVariable.woff2`).toString('base64');
 
 // Presentation fixture only: authored owners, fictional records, no network or writes.
-export function salesFixture({ writable = true } = {}) {
+export function salesFixture({ writable = true, workspace = false } = {}) {
   const dom = new JSDOM(read('admin/sales.html'));
   const doc = dom.window.document;
   doc.querySelectorAll('script,link:not([rel="stylesheet"])').forEach(node => node.remove());
@@ -32,6 +32,18 @@ export function salesFixture({ writable = true } = {}) {
     capabilities:{actions:{edit:{allowed:writable&&status==='draft'},allocate_load:{allowed:writable&&status==='confirmed'}}}
   }));
   const payload = {orders,clients:[client],products:[product],importers:[],client_importers:[],write_access:writable};
+  const workspaceData = { summary: { so_number:'SO-DEMO-0248', client_company:client.company,
+    commercial_status:'confirmed', sales_currency:'USD', order_total:39916,
+    profitability_status:'comparable', contribution_status:'comparable', billing_currency_comparable:true,
+    recognized_merchandise_cogs:22680, direct_cost_amount:11600, direct_cost_currency:'USD',
+    contribution_margin:5636, issued_invoice_total:39916, collected_amount:39916 },
+    financial_access:{read:true,write:writable}, items:[],
+    billing:{invoices:[],capabilities:{create_invoice:{allowed:false}}},
+    costs:{allocations:[{amount:11600,basis:'manual',cost_charge:{id:'fixture-cost',cost_number:'CC-DEMO',
+      status:'posted',category:'domestic_trucking',stage:'fulfillment',amount:11600,currency:'USD',
+      incurred_date:'2026-09-22',capabilities:{actions:{revise:{allowed:writable}}}}}]},
+    history:Array.from({length:12},(_,index)=>({action:'cost_charge_created',entity_type:'cost_charge',
+      created_at:'2026-09-22T12:00:00Z',details:{notes:'Evento de prueba '+index}})) };
   const harness = `
     localStorage.setItem('export_mca_token','isolated-fixture-only');
     window.__fixtureCalls=[];
@@ -42,6 +54,7 @@ export function salesFixture({ writable = true } = {}) {
       const url=new URL(path,'https://erp-visual.invalid');
       let data;
       if(url.pathname==='/api/sales')data=${JSON.stringify(payload)};
+      else if(url.pathname==='/api/sales-workspace')data={workspace:${JSON.stringify(workspaceData)}};
       else if(url.pathname==='/api/sales-order-ux'){
         const mode=url.searchParams.get('mode');
         if(mode==='clients')data={clients:[${JSON.stringify(client)}],has_more:false};
@@ -52,7 +65,7 @@ export function salesFixture({ writable = true } = {}) {
       }else throw Error('Fixture blocks network');
       return {ok:true,status:200,json:async()=>data};
     };`;
-  for (const code of [harness, read('admin/sales.js'), read('admin/sales-order-ux.js')]) {
+  for (const code of [harness, read('admin/sales.js'), read('admin/sales-order-ux.js'), ...(workspace?[read('admin/sales-workspace.js'),read('admin/sales-controller.js')]:[])]) {
     const script=doc.createElement('script');
     script.textContent=code.replaceAll('</script','<\\/script');
     doc.body.append(script);
