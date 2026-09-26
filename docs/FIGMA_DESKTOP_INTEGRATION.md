@@ -1,4 +1,4 @@
-# Cierre integrado del ERP de escritorio
+# Cierre integrado del ERP de escritorio · Publicado
 
 Daniel pidió terminar escritorio y avisarle antes del iPhone físico. Este bloque comprueba la composición final después de las migraciones por módulo.
 
@@ -23,7 +23,9 @@ El menú lateral usa los 224 px de Figma. El main dentro del shell ocupa el anch
 - 26 gates locales de owners, navegación, contexto, Compras, trazabilidad, foundation, permisos y shell correctos.
 - Composición jsdom de ocho owners reales en el shell original; carrera de respuestas de dos compras comprobada sin escrituras.
 - 14 nuevas pruebas por motor (28 enumeradas): ocho pantallas nativas, menú expandido/contraído y ancho 1024/1440; transición nativa/iframe en 1440/390; relaciones lentas, listas largas, posición de Cancelar, respuesta obsoleta, reintento y destino de recepción.
-- Fixtures sin red y API en memoria. CI/capturas del head exacto y publicación pendientes antes del aviso final. WebKit simulado no certifica el iPhone físico.
+- CI `36248419740`: 44/44 workflows, 22/22 trabajos y 174/174 pruebas visuales por motor, Chromium y WebKit. Capturas finales revisadas. Head `78f8e90a4693aa19142a419b2582a62a9f91d910`, árbol `bbe3cdcfdee19003d6347385db9389f2561eb0fe`.
+- PR #358 publicada en `fc038fb9e56cf182df4b46db97af1ed1291d72a6`, Vercel `dpl_D7M6unyM73pSuBxsZxK62yTEq3Xt` READY. Once archivos idénticos por GET; Compras, enlaces operativos/AP y supervisión devuelven 401 sin sesión.
+- Fixtures sin red y API en memoria; recorridos comerciales con PostgreSQL/PostgREST desechables. WebKit simulado no certifica el iPhone físico.
 
 ## Bloques anteriores
 
@@ -31,4 +33,4 @@ Inicio/comunicaciones: PR #356 publicada en `8642667ba88e121cfb3ae00eb4552164477
 
 Publicaciones/asignaciones/supervisión: PR #357 publicada en `a1e5d913b826f5536a680d94154ff896b3069e06`, Vercel `dpl_7hVAAF77UFU181XaHMd17Z9P4gvj` READY. CI `36247353321`: 34/34 workflows, 22/22 trabajos y 160/160 visuales por motor; nueve assets exactos por GET. Guía 135:4515 publicada.
 
-No se han enviado mensajes, activado dispositivos ni escrito datos QA en producción o Preview. Avisar antes de pasar al iPhone físico cuando este bloque esté publicado y verificado.
+No se han enviado mensajes, activado dispositivos ni escrito datos QA en producción o Preview. El escritorio está cerrado; avisar a Daniel antes de pasar al iPhone físico. Estado consolidado: [ERP_DESKTOP_HANDOFF.md](ERP_DESKTOP_HANDOFF.md).

@@ -1,3 +1,17 @@
+## Estado vigente · 26 sep 2026 · Escritorio terminado y publicado
+
+- La etapa de escritorio acordada con Daniel está cerrada. Avisarle antes de iniciar la revisión del iPhone físico. No reiniciar pendientes históricos ni detenerse en entregas intermedias ya resueltas.
+- Entrega y evidencia consolidadas: [ERP_DESKTOP_HANDOFF.md](ERP_DESKTOP_HANDOFF.md). ERP: https://admin.exportmca.com · Figma: guía 141:2.
+- Publicación final: PR #358, main `fc038fb9e56cf182df4b46db97af1ed1291d72a6`; Vercel `dpl_D7M6unyM73pSuBxsZxK62yTEq3Xt` READY. Once archivos exactos por GET; cuatro endpoints protegidos devuelven 401 sin sesión.
+- Head probado `78f8e90a4693aa19142a419b2582a62a9f91d910`, árbol `bbe3cdcfdee19003d6347385db9389f2561eb0fe`. CI `36248419740`: 44/44 workflows, 22/22 trabajos, 174/174 visuales en Chromium y 174/174 en WebKit. Capturas finales revisadas.
+- Compras: relaciones asíncronas estables dentro de su owner, descarte de respuestas obsoletas, detalle alineado con Figma y estados AP en español. Shell 224 px y espacio interior a cargo de cada módulo. Sin cambios de API, SQL, permisos, cálculos, payloads, historial ni idempotencia.
+- Pruebas en memoria y bases desechables; ninguna escritura QA en producción/Preview, envío real, activación push o validación física del iPhone. WebKit simulado no certifica el dispositivo.
+- Siguiente etapa: revisar el iPhone físico después del aviso a Daniel. No comprar tiempo de BrowserStack ni ejecutar envíos por cuenta propia.
+
+Este estado sustituye los pendientes históricos resueltos de abajo.
+
+---
+
 ## Continuidad 26 sep 2026 · Cierre integrado de escritorio en revisión
 
 - Objetivo vigente: terminar escritorio y avisar a Daniel antes del iPhone físico. Continuar sin confirmaciones rutinarias.
