@@ -143,7 +143,7 @@
     else document.head.appendChild(link);
   });
 
-  const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260922-figma1', 'data-access-control-style');
+  const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260926-figma2', 'data-access-control-style');
   const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260921-ux8contrast1', 'data-ui-icon-system');
 
   const accessCan = permission => window.ExportMcaAccessControl?.can?.(permission) !== false;
@@ -225,7 +225,7 @@
 
     bootPromise = (async () => {
       await accessStylesPromise;
-      await loadScript('/admin/access-control-administration.js?v=20260916-tasksnav1', 'data-access-control-administration');
+      await loadScript('/admin/access-control-administration.js?v=20260926-figma2', 'data-access-control-administration');
       if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
       await window.ExportMcaAccessControl.initialize();
       await iconSystemPromise;
@@ -248,8 +248,8 @@
         await loadScript('/admin/shipment-editor.js?v=20260926-figma1', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
-      await loadStylesheet('/admin/account-administration.css?v=20260922-figma1', 'data-account-administration-style');
-      await loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration');
+      await loadStylesheet('/admin/account-administration.css?v=20260926-figma2', 'data-account-administration-style');
+      await loadScript('/admin/account-administration.js?v=20260926-figma2', 'data-account-administration');
       await loadScript('/admin/navigation-shell.js?v=20260926-figma5', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {

@@ -136,20 +136,20 @@
           <div class="native-workspace-heading">
             <span class="native-workspace-kicker">Identidad y seguridad</span>
             <h2>Mi cuenta</h2>
-            <p>Consulta el acceso que tienes hoy, protege tu contraseña y administra sesiones autorizadas desde un solo lugar.</p>
+            <p>Consulta tu acceso, cambia tu contraseña y administra sesiones autorizadas.</p>
             <div class="account-hero-state" aria-label="Estado de la cuenta">
-              <span class="account-state-dot" aria-hidden="true"></span>
+
               <span id="accountOperationalState">Sesión autenticada</span>
               <span id="accountLastUpdated">Preparando perfil…</span>
             </div>
           </div>
+        </header>
           <div class="account-summary native-workspace-summary" aria-label="Resumen de la cuenta" aria-live="polite">
             <article class="account-summary-card native-workspace-summary-card"><strong id="accountRoleMetric">—</strong><span>Rol efectivo</span><small id="accountRoleDetail">Cargando acceso</small></article>
             <article class="account-summary-card native-workspace-summary-card"><strong id="accountPermissionMetric">—</strong><span>Permisos</span><small>Capacidades vigentes</small></article>
             <article class="account-summary-card native-workspace-summary-card"><strong id="accountTeamMetric">—</strong><span>Equipos</span><small>Membresías activas</small></article>
             <article class="account-summary-card native-workspace-summary-card"><strong id="accountPasswordMetric">—</strong><span>Contraseña</span><small id="accountPasswordDetail">Estado pendiente</small></article>
           </div>
-        </header>
 
         <div id="accountWorkspaceMessage" class="account-message" role="status" aria-live="polite"></div>
 
@@ -167,7 +167,7 @@
           <section class="account-panel account-card account-security-panel" aria-labelledby="accountSecurityTitle">
             <header class="account-panel-head">
               <div><span class="account-eyebrow">Protección personal</span><h3 id="accountSecurityTitle">Cambiar contraseña</h3><p>Verifica tu contraseña actual. Al guardar, las sesiones anteriores dejan de ser válidas.</p></div>
-              <span class="account-security-badge"><span aria-hidden="true"></span>Canal seguro</span>
+
             </header>
             <form id="accountPasswordForm" class="account-security-form" autocomplete="off" novalidate>
               <div class="account-field-control"><label for="accountCurrentPassword">Contraseña actual</label><span class="account-password-control"><input id="accountCurrentPassword" type="password" autocomplete="current-password" required><button type="button" class="account-password-toggle" data-account-toggle="accountCurrentPassword" data-account-label="contraseña actual" aria-label="Mostrar contraseña actual" aria-pressed="false">Mostrar</button></span></div>
@@ -187,7 +187,7 @@
 
           <section id="accountSessionAdminCard" class="account-panel account-card account-session-admin hidden" aria-labelledby="accountSessionTitle">
             <header class="account-panel-head account-session-head">
-              <div><span class="account-eyebrow">Control administrativo</span><h3 id="accountSessionTitle">Revocar sesiones anteriores</h3><p>Invalida de inmediato los tokens emitidos para una cuenta. La acción y su motivo quedan registrados en auditoría.</p></div>
+              <div><span class="account-eyebrow">Control administrativo</span><h3 id="accountSessionTitle">Revocar sesiones anteriores</h3><p>Cierra las sesiones anteriores de una cuenta. La acción y su motivo quedan registrados.</p></div>
               <span class="account-sensitive-pill">Acción sensible</span>
             </header>
             <div class="account-session-body">
@@ -343,8 +343,8 @@
       : '<span class="account-team-empty">Sin equipo asignado</span>';
     target.innerHTML = `
       <article class="account-identity">
-        <span class="account-avatar" aria-hidden="true">${esc(snapshot.initials)}</span>
-        <div class="account-identity-copy"><div class="account-name-row"><h4>${esc(snapshot.fullName)}</h4><span class="account-active-pill"><i aria-hidden="true"></i>${snapshot.active ? 'Activa' : 'No disponible'}</span></div><p>@${esc(snapshot.username)}</p><span class="account-role-pill">${esc(snapshot.role)}</span></div>
+
+        <div class="account-identity-copy"><div class="account-name-row"><h4>${esc(snapshot.fullName)}</h4><span class="account-active-pill">${snapshot.active ? 'Activa' : 'No disponible'}</span></div><p>@${esc(snapshot.username)}</p><span class="account-role-pill">${esc(snapshot.role)}</span></div>
       </article>
       <div class="account-profile-grid">
         <article class="account-fact"><span class="account-field-label">Equipos</span><div class="account-team-list">${teamMarkup}</div></article>
@@ -441,6 +441,7 @@
   async function submitPassword(event) {
     event.preventDefault();
     if (state.passwordBusy) return;
+    const form = event.currentTarget;
     const currentPassword = byId('accountCurrentPassword')?.value || '';
     const newPassword = byId('accountNewPassword')?.value || '';
     const confirmPassword = byId('accountConfirmPassword')?.value || '';
@@ -459,7 +460,7 @@
       });
       if (!result?.token) throw new Error('No se pudo renovar la sesión segura. Inicia sesión nuevamente.');
       localStorage.setItem('export_mca_token', result.token);
-      event.currentTarget.reset();
+      form.reset();
       renderPasswordChecks();
       setStatus('Contraseña actualizada. Las sesiones anteriores quedaron cerradas.', true);
       await loadAccount();
@@ -485,7 +486,7 @@
     dialog.classList.remove('hidden');
     dialog.setAttribute('aria-hidden','false');
     document.body.classList.add('account-dialog-open');
-    queueMicrotask(() => byId('accountConfirmRevoke')?.focus());
+    byId('accountConfirmDialog')?.querySelector('[data-account-dialog-close]')?.focus();
   }
 
   function closeRevocationDialog() {
@@ -608,6 +609,11 @@
       byId('accountSessionUser')?.addEventListener('change', renderSessionTarget);
     }
     const section = byId('accountSection');
+    const modal = byId('accountConfirmDialog');
+    if(modal && modal.parentElement!==document.body){
+      document.body.appendChild(modal);
+      modal.addEventListener('click',handleAccountClick);
+    }
     if (section && section.dataset.interactionsBound !== 'true') {
       section.dataset.interactionsBound = 'true';
       section.addEventListener('click', handleAccountClick);
@@ -630,6 +636,7 @@
 
     window.addEventListener('export-mca:section-changed', event => {
       const id = event.detail?.id;
+      if(id !== 'accountSection')closeRevocationDialog();
       updatePageTitle(id);
       if (id === 'accountSection') loadAccount().catch(error => {
         console.error('ACCOUNT_SECTION_REFRESH_FAILED', error);
