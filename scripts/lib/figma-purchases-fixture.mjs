@@ -8,7 +8,7 @@ const font=readFileSync(`${root}admin/fonts/InterVariable.woff2`).toString('base
 const chevron=readFileSync(`${root}admin/assets/purchase-chevron.svg`).toString('base64');
 
 // Original UI and fictional data; every API call stays in memory, under a no-network CSP.
-export function purchasesFixture({writable=true}={}) {
+export function purchasesFixture({writable=true,related=false}={}) {
   const dom=new JSDOM(read('admin/purchases.html')),doc=dom.window.document;
   doc.querySelectorAll('script,link:not([rel="stylesheet"])').forEach(node=>node.remove());
   doc.querySelectorAll('link[rel="stylesheet"]').forEach(link=>{
@@ -53,7 +53,13 @@ export function purchasesFixture({writable=true}={}) {
       if(method!=='GET')throw Error('Fixture blocks network');
       return {ok:true,status:200,json:async()=>(${JSON.stringify(payload)})};
     };`;
-  for(const code of [harness,read('admin/form-drafts.js'),read('admin/purchases.js')]){
+  const relatedHarness=`
+    window.__fixtureRelatedPending={};window.__fixtureRelatedOpened=[];
+    const pending=key=>new Promise((resolve,reject)=>{window.__fixtureRelatedPending[key]={resolve,reject};});
+    window.OperationalNavigation={purchaseByNumber:number=>pending('receipts:'+number),invalidateLinks(){},openSupplier:value=>window.__fixtureRelatedOpened.push({supplier:value}),openWarehouseReceipt:value=>window.__fixtureRelatedOpened.push({receipt:value})};
+    window.APTraceability={billsForPurchase:id=>pending('bills:'+id),paymentsForPurchase:id=>pending('payments:'+id),invalidate(){},openBill:id=>window.__fixtureRelatedOpened.push({bill:id}),openPayment:id=>window.__fixtureRelatedOpened.push({payment:id})};
+  `;
+  for(const code of [harness,...(related?[relatedHarness]:[]),read('admin/form-drafts.js'),read('admin/purchases.js')]){
     const script=doc.createElement('script');script.textContent=code.replaceAll('</script','<\\/script');doc.body.append(script);
   }
   const html=dom.serialize();dom.window.close();return html;

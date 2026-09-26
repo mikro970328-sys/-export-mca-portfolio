@@ -126,48 +126,6 @@
     window.openOperationalSupplier = openSupplier;
   }
 
-  function initPurchases() {
-    const nav = parentNav();
-    if (!nav) return;
-    async function renderContext() {
-      const modal = document.getElementById('detailModal');
-      if (!modal || modal.classList.contains('hidden')) return;
-      const poNumber = document.getElementById('detailTitle')?.textContent?.trim();
-      const purchase = await nav.purchaseByNumber(poNumber);
-      if (!purchase?.purchase_order_id || modal.classList.contains('hidden')) return;
-      const body = document.getElementById('detailBody');
-      if (!body) return;
-      document.getElementById('purchaseOperationalContextSupplier')?.remove();
-      document.getElementById('purchaseOperationalContextReceipts')?.remove();
-      const supplierBlock = block('Proveedor',purchase.supplier_id ? [{label:'Ver proveedor',primary:true,action:() => nav.openSupplier({ supplierId:purchase.supplier_id })}] : [],'La PO no tiene proveedor resoluble.');
-      supplierBlock.id = 'purchaseOperationalContextSupplier';
-      body.appendChild(supplierBlock);
-      const receiptBlock = block('Warehouse Receipts recibidos',(purchase.receipts || []).map(receipt => ({label:`${receipt.receipt_number}${receipt.receipt_status === 'cancelled' ? ' · anulado' : ''}`,action:() => nav.openWarehouseReceipt({ receiptNumber:receipt.receipt_number })})),'Todavía no hay WR creados desde esta PO.');
-      receiptBlock.id = 'purchaseOperationalContextReceipts';
-      body.appendChild(receiptBlock);
-    }
-    window.openOperationalPurchase = purchaseOrderId => {
-      if (typeof window.openDetail !== 'function') return false;
-      window.openDetail(purchaseOrderId);
-      renderContext().catch(error => console.error('[purchase operational context]', error));
-      return true;
-    };
-    window.openOperationalPurchaseReceipt = purchaseOrderId => {
-      if (typeof window.openDetail !== 'function') return false;
-      window.openDetail(purchaseOrderId);
-      requestAnimationFrame(() => document.querySelector('#detailActions [data-detail-action="receive"]')?.click());
-      return true;
-    };
-    const modal = document.getElementById('detailModal');
-    if (modal) {
-      const observer = new MutationObserver(() => renderContext().catch(error => console.error('[purchase operational context]', error)));
-      observer.observe(modal, { attributes:true, attributeFilter:['class'] });
-      const title = document.getElementById('detailTitle');
-      if (title) observer.observe(title, { childList:true, subtree:true });
-    }
-    observeChanges(document.getElementById('orderList'), () => nav.invalidateLinks?.());
-  }
-
   function initSales() {
     const nav = parentNav();
     if (!nav) return;
@@ -263,7 +221,6 @@
   installStyles();
   let moduleName = 'none';
   if (path.endsWith('/admin/suppliers.html')) { moduleName='suppliers';initSuppliers(); }
-  else if (path.endsWith('/admin/purchases.html')) { moduleName='purchases';initPurchases(); }
   else if (path.endsWith('/admin/sales.html')) { moduleName='sales';initSales(); }
   else if (path.endsWith('/admin/warehouse.html')) { moduleName='warehouse';initWarehouse(); }
 

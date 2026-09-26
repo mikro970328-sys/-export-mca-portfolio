@@ -1,3 +1,15 @@
+## Continuidad 26 sep 2026 · Cierre integrado de escritorio en revisión
+
+- Objetivo vigente: terminar escritorio y avisar a Daniel antes del iPhone físico. Continuar sin confirmaciones rutinarias.
+- Inicio/comunicaciones publicado: PR #356, main 8642667, Vercel dpl_41cHz17WYm3J7bfya4i53tNWepH3 READY; 38 workflows, 22 trabajos y 142/142 visuales por motor; nueve assets exactos por GET, APIs sin sesión 401; guía 132:2 publicada.
+- Publicaciones/asignaciones/supervisión publicado: #357, main a1e5d913, Vercel dpl_7hVAAF77UFU181XaHMd17Z9P4gvj READY; 34 workflows, 22 trabajos, 160/160 visuales por motor y nueve archivos exactos por GET. Guía 135:4515 publicada.
+- Integración: Compras retira dos bridges de presentación y conserva sus relaciones en un desplegable estable; shell 224 px, sin márgenes duplicados. 26 gates y composición jsdom correctos; 14 pruebas nuevas por motor. Detalle en docs/FIGMA_DESKTOP_INTEGRATION.md.
+- Pendiente antes del aviso: CI y capturas exactas, publicación y verificación GET. Sin QA en producción/Preview, envíos, suscripciones ni iPhone físico.
+
+Este corte sustituye los pendientes históricos resueltos de abajo.
+
+---
+
 ## Continuidad 26 sep 2026 · Publicaciones y supervisión en revisión
 
 - Terminar escritorio y avisar a Daniel antes del iPhone físico; continuar sin confirmaciones rutinarias.

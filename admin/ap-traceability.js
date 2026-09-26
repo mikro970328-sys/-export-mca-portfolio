@@ -1,8 +1,8 @@
 (() => {
   if (window.APTraceability) return;
 
-  const CONTEXT_SECTIONS = ['suppliersSection','purchasesSection','warehouseSection'];
-  const BRIDGE_SRC = '/admin/ap-context-bridge.js';
+  const CONTEXT_SECTIONS = ['suppliersSection','warehouseSection'];
+  const BRIDGE_SRC = '/admin/ap-context-bridge.js?v=20260926-relations1';
   let cache = null;
   let pending = null;
   let restoring = false;

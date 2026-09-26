@@ -61,7 +61,7 @@ function orderTotal(o){return (o.items||[]).reduce((sum,i)=>sum+lineTotal(i),0);
 function capability(order,key){return order?.capabilities?.actions?.[key]||{allowed:false,reason:'CAPABILITY_UNAVAILABLE'};}
 function can(order,key){return capability(order,key).allowed===true;}
 
-async function load(){const d=await api('/api/purchases');orders=d.orders||[];suppliers=d.suppliers||[];warehouses=d.warehouses||[];products=d.products||[];render();fillMasters();}
+async function load(){const d=await api('/api/purchases');orders=d.orders||[];suppliers=d.suppliers||[];warehouses=d.warehouses||[];products=d.products||[];const context=purchaseContextOwners();context.nav?.invalidateLinks?.();context.ap?.invalidate?.();render();fillMasters();}
 function fillMasters(){
   // A catalogue response may finish after the user opens or changes a form.
   // Rebuilding options must preserve its current values, not an earlier snapshot.
@@ -230,6 +230,53 @@ function closeModal(name){
 }
 async function saveOrder(){const btn=$('saveOrder'),repeated=Boolean(repeatSource);try{btn.disabled=true;$('orderMsg').textContent='';const direct=$('oDestinationMode').value==='direct';if(!direct&&!$('oWarehouse').value)throw new Error('Selecciona el almacén que recibirá la mercancía o elige Direct Ship.');const body={action:editing?'replace_plan':'create_plan',purchase_order_id:editing?.id,supplier_id:$('oSupplier').value,warehouse_id:direct?null:$('oWarehouse').value,order_date:$('oDate').value,expected_at:localToIso($('oExpected').value),currency:$('oCurrency').value,supplier_reference:$('oReference').value,notes:$('oNotes').value,lines:collectLines()};await api('/api/purchases',{method:'POST',body:JSON.stringify(body)});orderDraft?.clear({silent:true});orderDraft?.destroy({flush:false});orderDraft=null;closeModal('order');if(repeated){$('search').value='';selectPurchaseView('draft');}await load();}catch(error){console.error('PURCHASE_ORDER_SAVE_FAILED',{purchase_order_id:editing?.id||null,error});$('orderMsg').textContent=safePurchaseMessage(error,'No se pudo guardar la Purchase Order. Intenta nuevamente.');}finally{btn.disabled=false;}}
 function itemProgress(item){const active=(item.allocations||[]).filter(a=>a.receipt_item?.receipt?.status==='received'),rq=active.reduce((s,a)=>s+n(a.received_quantity),0),rp=active.reduce((s,a)=>s+n(a.received_pallets),0),complete=(n(item.ordered_quantity)===0||rq>=n(item.ordered_quantity))&&(n(item.ordered_pallets)===0||rp>=n(item.ordered_pallets));return {rq,rp,status:rq===0&&rp===0?'Pendiente':complete?'Recibido':'Parcial'};}
+function purchaseContextOwners(){
+  try{return {nav:parent?.OperationalNavigation||null,ap:parent?.APTraceability||null};}
+  catch{return {nav:null,ap:null};}
+}
+function renderPurchaseRelations(order){
+  const {nav,ap}=purchaseContextOwners();
+  if(!nav&&!ap)return;
+  const disclosure=document.createElement('details');disclosure.id='purchaseRelations';disclosure.className='purchase-relations';
+  const summary=document.createElement('summary');summary.textContent='Relaciones de la compra';disclosure.append(summary);
+  const grid=document.createElement('div');grid.className='purchase-relations-grid';disclosure.append(grid);$('detailBody').append(disclosure);
+  const current=()=>detailOrder===order&&disclosure.isConnected&&!$('detailModal').classList.contains('hidden');
+  function section(id,title){
+    const node=document.createElement('section');node.id=id;node.className='purchase-related-section';
+    const heading=document.createElement('h3');heading.textContent=title;node.append(heading);
+    const content=document.createElement('div');content.className='purchase-related-actions';node.append(content);grid.append(node);return content;
+  }
+  function show(content,items,empty){
+    content.replaceChildren();
+    if(!items.length){const text=document.createElement('p');text.textContent=empty;content.append(text);return;}
+    for(const item of items){const control=document.createElement('button');control.type='button';control.className='btn';control.textContent=item.label;
+      control.addEventListener('click',async()=>{try{await item.action();}catch(error){console.error('PURCHASE_RELATED_OPEN_FAILED',{purchase_order_id:order.id,error});$('detailMsg').textContent='No se pudo abrir el registro relacionado. Intenta nuevamente.';}});content.append(control);}
+  }
+  function populate(content,fetchItems,empty){
+    async function run(){
+      content.setAttribute('aria-busy','true');show(content,[],'Cargando relaciones…');
+      try{const items=await fetchItems();if(current())show(content,items,empty);}
+      catch(error){console.error('PURCHASE_RELATED_LOAD_FAILED',{purchase_order_id:order.id,error});if(current())show(content,[{label:'Reintentar carga',action:run}],'');}
+      finally{if(content.isConnected)content.setAttribute('aria-busy','false');}
+    }
+    void run();
+  }
+  if(nav){
+    const supplier=section('purchaseOperationalContextSupplier','Proveedor');show(supplier,order.supplier_id?[{label:'Ver proveedor',action:()=>nav.openSupplier({supplierId:order.supplier_id})}]:[],'La PO no tiene proveedor resoluble.');
+    const receipts=section('purchaseOperationalContextReceipts','Recepciones WR');
+    populate(receipts,async()=>((await nav.purchaseByNumber(order.po_number))?.receipts||[]).map(receipt=>({label:`${receipt.receipt_number}${receipt.receipt_status==='cancelled'?' · anulado':''}`,action:()=>nav.openWarehouseReceipt({receiptNumber:receipt.receipt_number})})),'Todavía no hay WR creados desde esta PO.');
+  }
+  if(ap){
+    const finance=section('purchaseAPContext','Cuentas por pagar');
+    populate(finance,async()=>{const [bills,payments]=await Promise.all([ap.billsForPurchase(order.id),ap.paymentsForPurchase(order.id)]);return [
+      ...bills.map(row=>({label:`${row.bill_number} · ${{draft:'Borrador',posted:'Contabilizada',void:'Anulada'}[row.bill_status]||'Consultar estado'}`,action:()=>ap.openBill(row.supplier_bill_id)})),
+      ...payments.map(row=>({label:`${row.payment_number} · ${{posted:'Registrado',reversed:'Revertido'}[row.payment_status]||'Consultar estado'}`,action:()=>ap.openPayment(row.supplier_payment_id)}))
+    ];},'Esta PO todavía no tiene factura o pago de proveedor.');
+  }
+}
+window.openOperationalPurchase=async id=>{await purchaseInitialLoad;if(!orders.some(order=>order.id===id))return false;openDetail(id);return true;};
+window.openOperationalPurchaseReceipt=async id=>{await purchaseInitialLoad;const order=orders.find(row=>row.id===id);if(!order||!can(order,'receive_remaining'))return false;openReceive(order,'remaining');return true;};
+
 function openDetail(id){
   detailOrder=orders.find(o=>o.id===id);if(!detailOrder)return;const o=detailOrder,direct=isDirectPurchase(o);$('detailTitle').textContent=o.po_number;$('detailSubtitle').textContent=`${o.supplier?.name||'—'} · ${commercialLabel(o.status)} · ${direct?'Direct Ship · sin WR':receiptLabel(o.progress?.receipt_status)}`;
   $('detailBody').innerHTML=`<div class="summary"><div><b>Proveedor</b>${esc(o.supplier?.name||'—')}</div><div><b>Destino</b>${isDirectPurchase(o)?'<span class="pill purchase-direct-pill">Direct Ship · sin WR</span>':esc(o.warehouse?.name||'Almacén')}</div><div><b>Fecha / ETA</b>${date(o.order_date)}<br><span class="small">${dateTime(o.expected_at)}</span></div><div><b>Total estimado</b>${money(orderTotal(o),o.currency)}</div></div><div class="summary"><div><b>Estado comercial</b><span class="pill ${commercialClass(o.status)}">${commercialLabel(o.status)}</span></div><div><b>Estado físico</b>${isDirectPurchase(o)?'<span class="pill purchase-direct-pill">No entra a inventario</span>':`<span class="pill ${receiptClass(o.progress?.receipt_status,o.progress?.has_excess)}">${o.progress?.has_excess?'Exceso · ':''}${receiptLabel(o.progress?.receipt_status)}</span>`}</div><div><b>Referencia proveedor</b>${esc(o.supplier_reference||'—')}</div><div><b>Notas</b>${esc(o.notes||'—')}</div></div>${isDirectPurchase(o)?'<div class="purchase-destination-help direct">Continúa esta compra desde Ventas → abre la venta → Origen / Direct Ship. Allí vinculas la PO y el contenedor sin crear una recepción de almacén.</div>':''}<div class="detail-items">${(o.items||[]).map(i=>{const p=itemProgress(i);return `<div class="detail-item"><div class="line-head"><div><b>${esc(i.product?.sku?i.product.sku+' · ':'')}${esc(i.product?.name||'Producto')}</b><div class="small">${esc(i.product?.brand||'')} ${esc(i.product?.package_format||'')}</div></div>${isDirectPurchase(o)?'<span class="pill purchase-direct-pill">Direct Ship</span>':`<span class="pill ${p.status==='Recibido'?'ok':p.status==='Parcial'?'warn':''}">${p.status}</span>`}</div><div class="progress">Ordenado: <b>${fmt(i.ordered_quantity)} ${esc(i.unit)}</b>${n(i.ordered_pallets)?` · ${fmt(i.ordered_pallets)} pallets`:''}${isDirectPurchase(o)?' · Sin recepción WR':` · Recibido: <b>${fmt(p.rq)} ${esc(i.unit)}</b>${p.rp?` · ${fmt(p.rp)} pallets`:''}`} · Costo unitario: ${i.unit_cost!=null?money(i.unit_cost,i.currency):'—'} · Total línea: <b>${money(lineTotal(i),i.currency)}</b></div>${(i.allocations||[]).length?`<div class="small">WR: ${(i.allocations||[]).map(a=>`${esc(a.receipt_item?.receipt?.receipt_number||'—')} (${a.receipt_item?.receipt?.status==='cancelled'?'anulado':fmt(a.received_quantity)})`).join(' · ')}</div>`:''}</div>`;}).join('')}</div>`;
@@ -242,8 +289,8 @@ function openDetail(id){
   if(can(o,'receive_remaining'))acts.push('<button class="btn orange" data-detail-action="receive">Recibir</button>');
   if(can(o,'receive_excess'))acts.push('<button class="btn" data-detail-action="receive_excess">Registrar exceso / ajuste</button>');
   if(can(o,'close'))acts.push('<button class="btn" data-detail-action="close">Cerrar</button>');
-  if(can(o,'cancel'))acts.push('<button class="btn danger" data-detail-action="cancel">Cancelar compra</button>');
-  $('detailActions').innerHTML=acts.join('');$('detailActions').querySelectorAll('[data-detail-action]').forEach(b=>b.onclick=()=>detailAction(b.dataset.detailAction));$('detailMsg').textContent='';openPurchaseModal('detail');
+  if(can(o,'cancel'))acts.push('<button class="btn" data-detail-action="cancel">Cancelar compra</button>');
+  $('detailActions').innerHTML=acts.join('');$('detailActions').querySelectorAll('[data-detail-action]').forEach(b=>b.onclick=()=>detailAction(b.dataset.detailAction));$('detailMsg').textContent='';renderPurchaseRelations(o);openPurchaseModal('detail');
 }
 async function detailAction(action){
   if(action==='repeat'){await openRepeatOrder(detailOrder.id);return;}
@@ -358,4 +405,4 @@ document.addEventListener('keydown',event=>{
   if(active){closeModal(active);return;}
   document.querySelectorAll('.purchase-more[open]').forEach(menu=>{menu.open=false;menu.querySelector('summary')?.focus();});
 },true);
-load().catch(error=>{console.error('PURCHASES_INITIAL_LOAD_FAILED',{error});$('orderList').innerHTML=`<div class="empty">${esc(safePurchaseMessage(error,'No se pudieron cargar las compras. Intenta nuevamente.'))}</div>`;});
+const purchaseInitialLoad=load().catch(error=>{console.error('PURCHASES_INITIAL_LOAD_FAILED',{error});$('orderList').innerHTML=`<div class="empty">${esc(safePurchaseMessage(error,'No se pudieron cargar las compras. Intenta nuevamente.'))}</div>`;});
