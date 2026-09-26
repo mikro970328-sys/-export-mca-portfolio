@@ -44,7 +44,6 @@ if(requiredFiles.every(file=>fs.existsSync(path.join(root,file)))){
   }
 
   for(const required of [
-    'openOperationalPurchaseReceipt',
     'openOperationalSalesSupply',
     'direct_shipments',
     'Contenedores / Tracking'
@@ -52,6 +51,10 @@ if(requiredFiles.every(file=>fs.existsSync(path.join(root,file)))){
   for(const forbidden of ['openExpediente','Tracking / Expediente','Expediente ·']){
     if(bridge.includes(forbidden))failures.push(`operational-context-bridge.js: referencia activa prohibida ${forbidden}`);
   }
+  const purchaseOwner=read('admin/purchases.js');
+  for(const name of ['openOperationalPurchase','openOperationalPurchaseReceipt','renderPurchaseRelations']) if(!purchaseOwner.includes(name))failures.push(`purchases.js: falta owner contextual ${name}`);
+  if(/function initPurchases\s*\(/.test(bridge)||/CONTEXT_SECTIONS[^;]*purchasesSection/.test(nav))failures.push('Compras conserva un bridge visual ajeno');
+  if(!nav.includes("callEmbedded('purchasesSection','openOperationalPurchase'"))failures.push('Compras no delega al owner canónico');
   if(/function initLoads\s*\(/.test(bridge))failures.push('operational-context-bridge.js: conserva un segundo owner de Cargues');
   if(bridge.includes('/admin/loads.html'))failures.push('operational-context-bridge.js: todavía se activa dentro de Cargues');
   if(!nav.includes("callEmbedded('loadsSection','LoadsModule.openLoad'"))failures.push('operational-navigation.js: Cargues no delega al owner canónico LoadsModule');

@@ -3,8 +3,8 @@
   window.__operationalNavigationInstalled=true;
 
   const normalize=value=>String(value||'').trim().toUpperCase();
-  const CONTEXT_SECTIONS=['suppliersSection','purchasesSection','salesSection','warehouseSection'];
-  const BRIDGE_SRC='/admin/operational-context-bridge.js?v=20260830-p6';
+  const CONTEXT_SECTIONS=['suppliersSection','salesSection','warehouseSection'];
+  const BRIDGE_SRC='/admin/operational-context-bridge.js?v=20260926-relations1';
   const ENTITY_ACCESS=Object.freeze({
     client:{label:'Clientes',permissions:['clients.read']},
     sales_order:{label:'Ventas',permissions:['sales.read']},
@@ -141,8 +141,8 @@
   function openInventoryReceipt(receiptNumber,options={}){const receipt=String(receiptNumber||'').trim();if(!receipt)return false;if(options.history!==false)writeContext('wr',receipt,options);window.NavigationShell?.openInventory?.();return callEmbedded('inventorySection','traceWR',[receipt]);}
   async function openWarehouseReceipt({receiptNumber=null}={},options={}){const receipt=await receiptByNumber(receiptNumber);if(!receipt?.id)return false;if(options.history!==false)writeContext('receipt',receipt.receipt_number,options);window.NavigationShell?.openWarehouse?.();return callContextEmbedded('warehouseSection','openOperationalReceipt',[receipt.id]);}
   function openWarehouseReceiptById(receiptId,options={}){if(!receiptId)return false;if(options.history!==false)writeContext('receipt_id',receiptId,options);window.NavigationShell?.openWarehouse?.();installBridge('warehouseSection').then(()=>callEmbedded('warehouseSection','openOperationalReceipt',[receiptId]));return true;}
-  async function openPurchase({purchaseOrderId=null}={},options={}){if(!purchaseOrderId)return false;if(options.history!==false)writeContext('po',purchaseOrderId,options);window.NavigationShell?.openPurchases?.();return callContextEmbedded('purchasesSection','openOperationalPurchase',[purchaseOrderId]);}
-  function openPurchaseReceipt(purchaseOrderId,options={}){if(!purchaseOrderId)return false;if(options.history!==false)writeContext('po_receive',purchaseOrderId,options);window.NavigationShell?.openPurchases?.();installBridge('purchasesSection').then(()=>callEmbedded('purchasesSection','openOperationalPurchaseReceipt',[purchaseOrderId]));return true;}
+  async function openPurchase({purchaseOrderId=null}={},options={}){if(!purchaseOrderId)return false;if(options.history!==false)writeContext('po',purchaseOrderId,options);window.NavigationShell?.openPurchases?.();return callEmbedded('purchasesSection','openOperationalPurchase',[purchaseOrderId]);}
+  function openPurchaseReceipt(purchaseOrderId,options={}){if(!purchaseOrderId)return false;if(options.history!==false)writeContext('po_receive',purchaseOrderId,options);window.NavigationShell?.openPurchases?.();return callEmbedded('purchasesSection','openOperationalPurchaseReceipt',[purchaseOrderId]);}
   function openSales({salesOrderId=null}={},options={}){if(!salesOrderId)return false;if(options.history!==false)writeContext('so',salesOrderId,options);window.NavigationShell?.openSales?.();installBridge('salesSection').then(ready=>{if(ready&&callEmbedded('salesSection','openOperationalSale',[salesOrderId]))return;callEmbedded('salesSection','openDetail',[salesOrderId]);}).catch(()=>callEmbedded('salesSection','openDetail',[salesOrderId]));return true;}
   function openSalesSupply(salesOrderId,options={}){if(!salesOrderId)return false;if(options.history!==false)writeContext('so_supply',salesOrderId,options);window.NavigationShell?.openSales?.();installBridge('salesSection').then(()=>callEmbedded('salesSection','openOperationalSalesSupply',[salesOrderId]));return true;}
   function openInvoice(invoiceId,options={}){if(!invoiceId)return false;if(options.history!==false)writeContext('invoice',invoiceId,options);window.NavigationShell?.openInvoices?.();return callEmbedded('invoicesSection','InvoicesModule.openInvoice',[invoiceId]);}

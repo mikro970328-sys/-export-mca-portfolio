@@ -32,7 +32,7 @@ const dashboardCss=read(files.dashboardCss);
 const dashboardJs=read(files.dashboardJs);
 
 const themeRef='/admin/platform-theme.css?v=20260922-figma1';
-const navigationRef='/admin/navigation-shell.css?v=20260922-figma1';
+const navigationRef='/admin/navigation-shell.css?v=20260926-integration1';
 for(const ref of [themeRef,navigationRef])requireText(index,ref,ref);
 requireText(index,'<meta name="theme-color" content="#ffffff">','color del navegador');
 requireText(index,'/admin/manifest.webmanifest?v=5','manifest versionado');
@@ -68,7 +68,7 @@ for(const text of [
 ])requireText(theme,text,`sistema visual ${text}`);
 
 for(const text of [
-  '--sidebar-expanded:248px',
+  '--sidebar-expanded:224px',
   '--sidebar-collapsed:80px',
   'position:fixed',
   '.sidebar-nav .nav-group.open>.submenu',

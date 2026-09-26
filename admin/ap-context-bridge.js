@@ -84,25 +84,6 @@
     window.openSupplierAP = supplierId => openSupplierAP(supplierId);
   }
 
-  function initPurchases() {
-    const ap = nav(); if (!ap) return;
-    async function render() {
-      const modal = document.getElementById('detailModal'); if (!modal || modal.classList.contains('hidden')) return;
-      const poNumber = document.getElementById('detailTitle')?.textContent?.trim();
-      const po = await ap.purchaseByNumber(poNumber); if (!po?.purchase_order_id || modal.classList.contains('hidden')) return;
-      const [bills,payments] = await Promise.all([ap.billsForPurchase(po.purchase_order_id), ap.paymentsForPurchase(po.purchase_order_id)]);
-      const body = document.getElementById('detailBody'); if (!body) return;
-      document.getElementById('purchaseAPContext')?.remove();
-      const context = block('Cuentas por pagar', [
-        ...bills.map(row => ({ label:`${row.bill_number} · ${row.bill_status}`, action:() => ap.openBill(row.supplier_bill_id) })),
-        ...payments.map(row => ({ label:`${row.payment_number} · ${row.payment_status}`, action:() => ap.openPayment(row.supplier_payment_id) }))
-      ], 'Esta PO todavía no tiene factura o pago de proveedor.');
-      context.id = 'purchaseAPContext'; body.appendChild(context);
-    }
-    const modal = document.getElementById('detailModal');
-    if (modal) { observe(modal, () => render().catch(console.error), { attributes:true, attributeFilter:['class'] }); observe(document.getElementById('detailTitle'), () => render().catch(console.error)); }
-  }
-
   function initWarehouse() {
     const ap = nav(); if (!ap) return;
     async function render() {
@@ -123,7 +104,6 @@
 
   installStyles();
   if (path.endsWith('/suppliers.html')) initSuppliers();
-  else if (path.endsWith('/purchases.html')) initPurchases();
   else if (path.endsWith('/warehouse.html')) initWarehouse();
 
   window.APContextBridge = Object.freeze({ ready:true, owner:'ap-context-bridge.js' });

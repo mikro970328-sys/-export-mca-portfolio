@@ -359,7 +359,7 @@ for (const text of [
 ]) requireText(paymentsApi, text, `API canónica de pagos AP ${text}`);
 
 for (const text of ['supplier_bill_action_capabilities', 'supplier_payment_action_capabilities', "entry.required_permission='finance.write'"]) requireText(capabilityOwner, text, `capabilities AP ${text}`);
-requireText(erp, "loadScript('/admin/ap-traceability.js?v=20260903-ux7payables1', 'data-ap-traceability')", 'carga explícita de trazabilidad AP');
+requireText(erp, "loadScript('/admin/ap-traceability.js?v=20260926-relations1', 'data-ap-traceability')", 'carga explícita de trazabilidad AP');
 requireText(operationalNavigation, "callEmbedded('payablesSection','PayablesModule.openBill'", 'navegación directa al owner PayablesModule');
 forbid(operationalNavigation, /CONTEXT_SECTIONS[^;]*payablesSection/, 'Cuentas por pagar sigue recibiendo el bridge operativo compartido');
 forbid(operationalNavigation, /openSupplierBill[^\n]*installBridge\('payablesSection'\)/, 'openSupplierBill todavía inyecta el bridge anterior');

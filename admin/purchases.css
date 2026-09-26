@@ -255,3 +255,14 @@
   .erp-module-purchases .purchase-receive-line { grid-template-columns:1fr; }
   .erp-module-purchases .purchase-line-details { gap:16px; }
 }
+
+/* Related records load within a bounded disclosure; footer controls never move. */
+.erp-module-purchases .purchase-relations { margin-top:24px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface); }
+.erp-module-purchases .purchase-relations>summary { min-height:44px;cursor:pointer;color:var(--text);font-size:14px;line-height:44px;font-weight:600; }
+.erp-module-purchases .purchase-relations-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;height:200px;margin-top:16px;overflow:hidden; }
+.erp-module-purchases .purchase-related-section { min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain; }
+.erp-module-purchases .purchase-related-section h3 { margin:0 0 16px;font-size:14px;line-height:20px;font-weight:600; }
+.erp-module-purchases .purchase-related-actions { display:grid;gap:8px; }
+.erp-module-purchases .purchase-related-actions .btn { white-space:normal;overflow-wrap:anywhere; }
+.erp-module-purchases .purchase-related-actions p { margin:0;color:var(--muted);font-size:14px;line-height:20px; }
+@media(max-width:720px) { .erp-module-purchases .purchase-relations-grid { grid-template-columns:1fr;height:400px; }.erp-module-purchases .purchase-related-section { padding-right:4px; } }
