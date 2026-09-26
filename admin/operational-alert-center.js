@@ -563,6 +563,7 @@
   async function executeAlertAction(id,action) {
     const row=state.operationalRows.find(item=>String(item.id)===String(id));
     if (!row||state.actionBusy) return;
+    let performed=false;
     try {
       let extra={};
       if (action==='snooze'||action==='resolve') {
@@ -570,6 +571,7 @@
         if (!value) return;
         extra=value;
       }
+      performed=true;
       state.actionBusy=`alert:${id}`;
       renderResultRegion();
       await patchAlert(id,action,extra);
@@ -579,8 +581,15 @@
       console.error('OPERATIONAL_ALERT_ACTION_FAILED',error);
       setFeedback(safeAlertMessage(error,'No se pudo actualizar la alerta. Intenta nuevamente.','alert_action'),true);
     } finally {
-      state.actionBusy='';
-      if (!$('notificationsSection')?.classList.contains('hidden')) renderCenter();
+      if(performed){
+        state.actionBusy='';
+        if (!$('notificationsSection')?.classList.contains('hidden')) renderCenter();
+      }
+      const section=$('notificationsSection');
+      if(section&&!section.classList.contains('hidden')){
+        const actions=[...section.querySelectorAll('[data-alert-id]')];
+        (actions.find(button=>button.dataset.alertId===String(id)&&button.dataset.alertAction===action)||actions.find(button=>button.dataset.alertId===String(id))||section.querySelector('[data-alert-view][aria-selected=true]'))?.focus({preventScroll:true});
+      }
     }
   }
 
