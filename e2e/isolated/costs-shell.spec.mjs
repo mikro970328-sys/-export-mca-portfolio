@@ -43,6 +43,10 @@ test('Figma expenses in the real shell: persistence, history, permissions and se
         locale: 'es-US', timezoneId: 'America/New_York', serviceWorkers: 'allow' });
       contexts.push(context);
       context.setDefaultTimeout(15_000);
+      await context.addInitScript(() => {
+        window.__qaModulesReady = false;
+        window.addEventListener('export-mca:modules-ready', () => { window.__qaModulesReady = true; }, { once: true });
+      });
       await context.route('**/*', route => {
         const url = new URL(route.request().url());
         if (url.origin === api.base || ['data:', 'blob:', 'about:'].includes(url.protocol)) return route.continue();
@@ -78,7 +82,9 @@ test('Figma expenses in the real shell: persistence, history, permissions and se
         await page.locator('#mobileMenuBtn').click();
       }
       const button = page.locator(`[data-section="${section}"]`).first();
-      if (!await button.isVisible()) await page.locator('[data-nav-group="finance"] .nav-group-btn').click();
+      const group = page.locator('[data-nav-group="finance"] .nav-group-btn');
+      if (await group.getAttribute('aria-expanded') !== 'true') await group.click();
+      await expect(group).toHaveAttribute('aria-expanded', 'true');
       await button.click();
       await expect(page.locator(`#${section}`)).toBeVisible();
       await expect(page.locator('.app-section:visible')).toHaveCount(1);
@@ -91,6 +97,9 @@ test('Figma expenses in the real shell: persistence, history, permissions and se
       await page.locator('#login').click();
       expect((await response).status()).toBe(200);
       await expect(page.locator('#loginPage')).toBeHidden();
+      // Startup restores the active navigation group after mounting the shell.
+      // Early user interaction has its own delayed-asset navigation-startup test.
+      await page.waitForFunction(() => window.__qaModulesReady === true);
       await expect(page.locator('[data-section="costsSection"]')).toHaveCount(1);
       await navigate(session, 'costsSection');
       await expect(frame(session).locator('#costsPageTitle')).toHaveText('Gastos y rentabilidad');
@@ -222,6 +231,11 @@ test('Figma expenses in the real shell: persistence, history, permissions and se
     const path = info.outputPath('costs-shell-evidence.json');
     fs.writeFileSync(path, JSON.stringify(evidence, null, 2));
     await info.attach('costs-shell-evidence', { path, contentType: 'application/json' });
+    for (const [index, context] of contexts.entries()) {
+      for (const page of context.pages()) {
+        try { await page.screenshot({ path: info.outputPath(`final-${index}.png`), timeout: 5000 }); } catch {}
+      }
+    }
     await Promise.allSettled(contexts.map(context => context.close()));
     globalThis.fetch = nativeFetch;
     try { await api?.close(); } finally { await db.end(); }

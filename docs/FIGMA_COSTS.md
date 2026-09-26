@@ -34,6 +34,10 @@ ni autenticación. El servidor QA sirve también la fuente Inter local para que
 las capturas integradas conserven la tipografía de Figma. La migración ya
 publicada de corrección contabilizada se carga únicamente en la base QA vacía.
 
+El recorrido espera el evento real de fin de arranque antes de navegar; abrir
+el menú mientras siguen llegando módulos se comprueba por separado en
+`navigation-startup.spec.mjs`, con recursos deliberadamente retrasados.
+
 La matriz CI ejecuta este recorrido en Chromium y WebKit móvil. Consultar los
 resultados del commit en PR #347 antes de declararlo aprobado. No valida sesión
 productiva, Safari en iPhone físico, teclado real ni notificaciones push.
