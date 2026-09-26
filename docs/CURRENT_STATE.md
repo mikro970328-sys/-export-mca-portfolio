@@ -6,7 +6,7 @@ y Vercel READY. Gastos #347 continúa publicado. No repetir esos módulos.
 
 La continuación actual aplica seis vistas de Recepciones en
 `feat/figma-warehouse-white`. Ver `FIGMA_WAREHOUSE.md` para nodos, alcance y
-pruebas. La PR de la entrega registra el head probado y publicación definitivos.
+pruebas. La PR #349 registra el head probado y publicación definitivos.
 Daniel autorizó continuar e implementar/publicar. Escritorio prioritario;
 iPhone físico sigue diferido. Sin QA comercial en producción ni Preview.
 Se conservan APIs, permisos, recuperación de recepción e inventario.

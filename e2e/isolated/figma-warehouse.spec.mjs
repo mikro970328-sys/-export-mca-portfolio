@@ -6,7 +6,7 @@ async function open(page,{embedded=true,...options}={}){
   const html=warehouseFixture(options);
   await page.route('**/*',route=>route.request().url()===url?route.fulfill({contentType:'text/html',body:html}):route.abort());
   await page.goto(url);await page.evaluate(()=>document.fonts.ready);
-  await expect(page.locator('.warehouse-list-count')).toHaveText('3 recepciones');
+  await expect(page.locator('#receiptList .warehouse-list-count')).toHaveText('3 recepciones');
 }
 async function writes(page){return page.evaluate(()=>window.__fixtureCalls.filter(c=>c.method!=='GET').map(c=>c.body));}
 function records(page){return page.viewportSize().width>1100?page.locator('.desktop-table tbody tr'):page.locator('.receipt-card');}
