@@ -6,16 +6,16 @@
 <title>Compras · Export MCA</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
-<link rel="stylesheet" href="/admin/purchases.css?v=20260922-figma1">
+<link rel="stylesheet" href="/admin/purchases.css?v=20260925-figma1">
 <link rel="stylesheet" href="/admin/form-drafts.css?v=20260909-drafts1">
 </head>
 <body class="erp-module-page erp-module-purchases" data-owner="purchases.js">
 <main class="wrap purchases-shell">
   <header class="head module-hero purchases-page-head" aria-labelledby="purchasesPageTitle">
     <div class="module-heading purchases-page-heading">
-      <div class="module-kicker purchases-page-kicker">Abastecimiento · Control de mercancía</div>
+      <div class="module-kicker purchases-page-kicker">Abastecimiento</div>
       <h1 id="purchasesPageTitle">Compras</h1>
-      <p>Organiza órdenes a proveedores y define si la mercancía entra a tu almacén o viaja Direct Ship al cliente.</p>
+      <p>Organiza tus compras y la recepción de mercancía.</p>
     </div>
     <div class="module-actions">
       <button id="newOrder" class="btn orange purchases-primary-action" type="button">Nueva compra</button>
@@ -26,16 +26,13 @@
 
   <section class="panel purchases-list-panel" aria-labelledby="purchasesListTitle">
     <div class="purchases-list-heading">
-      <div>
-        <span class="purchases-eyebrow">Órdenes a proveedores</span>
-        <h2 id="purchasesListTitle">Compras registradas</h2>
-        <p>Consulta el estado comercial, el destino, la recepción cuando aplique y el valor de cada orden.</p>
-      </div>
+      <h2 id="purchasesListTitle">Compras registradas</h2>
+      <span id="purchasesViewCount" class="purchases-view-count" role="status"></span>
     </div>
     <div class="toolbar purchases-list-toolbar">
       <label class="purchases-search-field" for="search">
         <span class="purchases-visually-hidden">Buscar compras</span>
-        <input id="search" class="search" type="search" autocomplete="off" placeholder="Buscar PO, proveedor, referencia o producto">
+        <input id="search" class="search" type="search" autocomplete="off" placeholder="Buscar compra, proveedor o referencia">
       </label>
       <div class="tabs purchases-view-tabs" role="group" aria-label="Filtrar compras">
         <button class="btn active" type="button" data-view="open" aria-pressed="true">Abiertas</button>
@@ -43,29 +40,55 @@
         <button class="btn" type="button" data-view="closed" aria-pressed="false">Cerradas</button>
         <button class="btn" type="button" data-view="all" aria-pressed="false">Todas</button>
       </div>
-      <button id="refresh" class="btn purchases-refresh" type="button" aria-label="Actualizar compras" title="Actualizar compras"><span aria-hidden="true">↻</span></button>
+      <button id="refresh" class="btn purchases-refresh" type="button" aria-label="Actualizar compras" title="Actualizar compras"><span class="purchases-refresh-symbol" aria-hidden="true">↻</span><span class="purchases-refresh-label" aria-hidden="true">Actualizar</span></button>
     </div>
     <div id="purchaseActionMsg" class="msg" role="status" aria-live="polite"></div>
+    <div id="purchasesColumns" class="purchases-columns" aria-hidden="true"><span>Orden</span><span>Proveedor</span><span>Destino</span><span>Estado / Recepción</span><span>Estimado</span><span>Acciones</span></div>
     <div id="orderList" class="orders has-explicit-count purchases-order-list" aria-live="polite"></div>
   </section>
 </main>
 
 <div id="orderModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="orderTitle">
   <div class="dialog purchase-order-dialog">
-    <div class="dialog-head">
-      <div><span class="purchases-dialog-kicker">Plan de abastecimiento</span><h2 id="orderTitle">Nueva Purchase Order</h2><div class="muted">Elige primero el destino: almacén crea WR al recibir; Direct Ship va al cliente sin entrar a tus existencias.</div></div>
-      <button class="btn purchases-close-button" type="button" data-close="order" aria-label="Cerrar formulario de compra">✕</button>
+    <div class="dialog-head purchase-order-header">
+      <div class="purchase-order-heading-row"><span id="orderKicker" class="purchases-dialog-kicker">Compras · Borrador</span><button class="btn" type="button" data-close="order" aria-label="Cerrar formulario de compra">Cerrar</button></div>
+      <h2 id="orderTitle">Nueva compra</h2>
+      <p>Define el proveedor, el destino y la mercancía.</p>
     </div>
-    <div id="orderRepeatHelp" class="purchase-destination-help" role="note" hidden></div>
-    <div class="grid3"><div><label>Proveedor *</label><select id="oSupplier"></select></div><div><label>Destino de la mercancía *</label><select id="oDestinationMode"><option value="warehouse">Recibir en mi almacén</option><option value="direct">Direct Ship al cliente (sin WR)</option></select></div><div id="oWarehouseField"><label>Almacén receptor *</label><select id="oWarehouse"></select></div></div>
-    <div id="oDestinationHelp" class="purchase-destination-help" role="note"></div>
-    <div class="grid3"><div><label>Moneda *</label><input id="oCurrency" value="USD" maxlength="3"></div><div><label>Fecha de orden</label><input id="oDate" type="date"></div><div><label>Llegada estimada</label><input id="oExpected" type="datetime-local"></div></div>
-    <label>Referencia proveedor</label><input id="oReference">
-    <label>Notas</label><textarea id="oNotes"></textarea>
-    <div class="toolbar purchase-form-section-head"><div><b>Mercancía ordenada</b><div class="muted">Selecciona un producto del catálogo maestro o créalo desde la misma línea. Crear la ficha no genera inventario.</div></div><button id="addOrderLine" class="btn" type="button">+ Línea</button></div>
-    <div id="orderLines" class="purchase-order-lines"></div>
-    <div class="actions purchase-modal-actions"><button class="btn" type="button" data-close="order">Cancelar</button><button id="saveOrder" class="btn orange" type="button">Guardar PO</button></div>
-    <div id="orderMsg" class="msg" role="status" aria-live="polite"></div>
+    <div class="purchase-order-body">
+      <div id="orderRepeatHelp" class="purchase-destination-help" role="note" hidden></div>
+      <h3>Datos de la compra</h3>
+      <div class="purchase-order-primary-fields">
+        <div class="purchase-field purchase-supplier-field"><label for="oSupplier">Proveedor *</label><select id="oSupplier"></select></div>
+        <div class="purchase-field"><label for="oCurrency">Moneda *</label><input id="oCurrency" value="USD" maxlength="3" autocomplete="off"></div>
+        <div class="purchase-field"><label for="oDate">Fecha de orden</label><input id="oDate" type="date"></div>
+      </div>
+      <div class="purchase-order-secondary-fields">
+        <div class="purchase-field"><label for="oExpected">Recepción prevista</label><input id="oExpected" type="datetime-local"></div>
+        <div class="purchase-field"><label for="oReference">Referencia del proveedor</label><input id="oReference"></div>
+      </div>
+      <div class="purchase-field"><label for="oNotes">Notas</label><textarea id="oNotes" rows="3" placeholder="Información adicional de la compra (opcional)"></textarea></div>
+      <section class="purchase-destination-section" aria-labelledby="purchaseDestinationTitle">
+        <h3 id="purchaseDestinationTitle">Destino de la mercancía</h3>
+        <select id="oDestinationMode" hidden aria-hidden="true" tabindex="-1"><option value="warehouse">Recibir en mi almacén</option><option value="direct">Direct Ship al cliente (sin WR)</option></select>
+        <div class="purchase-destination-options" role="group" aria-label="Destino de la mercancía">
+          <button class="btn" type="button" data-destination="warehouse" aria-pressed="true" aria-describedby="oDestinationHelp">Almacén</button>
+          <button class="btn" type="button" data-destination="direct" aria-pressed="false" aria-describedby="oDestinationHelp">Direct Ship</button>
+        </div>
+        <div id="oWarehouseField" class="purchase-field"><label for="oWarehouse">Almacén *</label><select id="oWarehouse"></select></div>
+        <div id="oDestinationHelp" class="purchase-destination-help" role="note"></div>
+      </section>
+      <section class="purchase-merchandise-section" aria-labelledby="purchaseMerchandiseTitle">
+        <div class="toolbar purchase-form-section-head"><h3 id="purchaseMerchandiseTitle">Mercancía</h3><button id="addOrderLine" class="btn" type="button">Agregar línea</button></div>
+        <div id="orderLines" class="purchase-order-lines"></div>
+      </section>
+      <p id="orderSaveHelp" class="purchase-save-help">Se guardará como borrador. La recepción se registra por separado.</p>
+      <div id="orderMsg" class="msg" role="status" aria-live="polite"></div>
+    </div>
+    <div class="purchase-order-footer">
+      <div class="purchase-total-preview" aria-live="polite" aria-atomic="true"><strong id="orderTotalPreview">USD 0.00</strong><span id="orderTotalContext">Total estimado · 1 línea</span></div>
+      <div class="actions purchase-modal-actions"><button class="btn" type="button" data-close="order">Cancelar</button><button id="saveOrder" class="btn orange" type="button">Guardar compra</button></div>
+    </div>
   </div>
 </div>
 
@@ -128,7 +151,7 @@
 </div>
 
 <script src="/admin/form-drafts.js?v=20260909-drafts1"></script>
-<script src="/admin/purchases.js?v=20260920-directsale1"></script>
+<script src="/admin/purchases.js?v=20260925-figma1"></script>
 <script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
 </body>
 </html>

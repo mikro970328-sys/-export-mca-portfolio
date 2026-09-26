@@ -1,3 +1,12 @@
+## 2026-09-25 · Compras desde Figma
+
+Lista con resumen, filtros, tabla/tarjetas y acciones por capacidad. Formulario
+con destino Almacén/Direct Ship, total estimado y recuperación de borrador;
+controles y desplazamiento adaptados a móvil. SVG original de Figma y versiones
+de recursos actualizadas. Pruebas aisladas de interfaz más recorridos existentes
+con API/PostgreSQL real desechable; evidencia y despliegue en la PR de entrega.
+Ver `FIGMA_PURCHASES.md`. Gastos #347 ya publicado y comprobado.
+
 ## 2026-09-21 · Contraste de cabeceras e iconos preparados
 
 Corrección del selector compartido que imponía fondo blanco a Ventas/Compras y
