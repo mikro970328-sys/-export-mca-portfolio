@@ -1,3 +1,15 @@
+## Continuidad 26 sep 2026 · Directorios publicados; Tareas y Trabajadores en revisión
+
+- Instrucción vigente: terminar el ERP de escritorio y avisar a Daniel antes de pasar al iPhone físico. Continuar sin confirmaciones rutinarias ni cerrar tras publicar un bloque.
+- Clientes y Proveedores: PR #353 publicado en `735ccd339821134ad376719b5c7e3d4f54a72da1`, Vercel `dpl_CNN1dv7q8C75uFJmN5PGw5nmxVCw` READY. CI `36222871322`: 43/43 workflows, 22/22 trabajos y 83/83 pruebas visuales por motor. Diez archivos de producción exactos por GET; APIs sin sesión 401. Guía Figma `117:5` / `117:7` publicada.
+- Bloque actual: Tareas y Trabajadores, nueve vistas Figma, guía `124:5` / estado `124:7`. Owners revisados, 16 pruebas nuevas por motor preparadas. Falta comprobar CI, capturas y publicación. Detalle en `docs/FIGMA_TASKS_WORKERS.md`.
+- Pendiente: accesos/Mi cuenta, Inicio/alertas/notificaciones, Publicaciones/workflow y revisión integrada. Resolver el desplazamiento asíncrono de enlaces relacionados de Compras antes de considerar terminado el escritorio.
+- Sin datos QA en producción ni Preview: memoria o PostgreSQL/PostgREST desechables. No ejecutar validación física del iPhone todavía.
+
+Este corte sustituye los pendientes históricos ya resueltos que aparecen debajo.
+
+---
+
 ## Continuidad · 26/09/2026 · Finanzas desde Figma
 
 ## Continuidad 26 sep 2026 · Finanzas publicado; Clientes y Proveedores en revisión

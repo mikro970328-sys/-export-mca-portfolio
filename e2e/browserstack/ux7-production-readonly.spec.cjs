@@ -878,7 +878,7 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         };
         const metrics = [...node.querySelectorAll('.tasks-summary-card')];
         const records = [...node.querySelectorAll('#tasksTableWrap .tasks-card, #tasksTableWrap .tasks-empty')];
-        const dialog = node.querySelector('#tasksModal');
+        const dialog = document.getElementById('tasksModal');
         return {
           owner:node.dataset.tasksOwner || '',
           apiOwner:window.TasksWorkspace?.owner || '',
@@ -947,7 +947,7 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         };
         const metrics = [...node.querySelectorAll('.workers-summary-card')];
         const records = [...node.querySelectorAll('#workersDirectory .workers-card, #workersDirectory .workers-empty')];
-        const dialog = node.querySelector('#workersModal');
+        const dialog = document.getElementById('workersModal');
         return {
           owner:node.dataset.workersOwner || '',
           apiOwner:window.WorkersModule?.owner || '',

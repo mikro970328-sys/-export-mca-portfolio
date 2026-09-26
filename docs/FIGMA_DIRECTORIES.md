@@ -30,7 +30,7 @@ No cambian API, SQL, permisos, reglas de alta/edición/eliminación, historial, 
 - Smoke DOM real de ambos owners: dos filas iniciales, sin errores de ejecución.
 - 14 pruebas nuevas por motor: búsquedas, importadoras, edición, alta, error/reintento, confirmación, solo consulta, historial, estados por teclado y reintento de lectura. Incluyen ventanas 1440×700 y 390×500 y comprobación de campos visibles que reciben el puntero.
 - Fixtures en memoria con datos ficticios y CSP sin red; no se envían mensajes reales ni se escriben datos QA en producción o Preview.
-- CI, capturas del head final y publicación deben quedar registrados en el PR antes de cerrar este bloque.
+- Publicado mediante PR #353: head `2f11f40e890cfef31861eeb0383a31a029c72ae4`, main `735ccd339821134ad376719b5c7e3d4f54a72da1`, Vercel `dpl_CNN1dv7q8C75uFJmN5PGw5nmxVCw` READY. Run `36222871322`: 43/43 workflows, 22/22 trabajos, 83/83 visuales por motor; 16 capturas por motor y formularios bajos revisados. Diez assets exactos por GET; APIs sin sesión 401. Guía Figma actualizada.
 
 ## Siguiente
 

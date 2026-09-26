@@ -142,8 +142,8 @@ const workersMarkup=workersStart>=0&&workersEnd>workersStart?index.slice(workers
 forbid(workersMarkup,/workers-(?:shell|head|command|panel)|workerCreateForm/,'index.html duplica presentación del owner de Trabajadores');
 forbid(index,/<script[^>]+src=["']\/admin\/workers-module\.js/i,'index.html carga estáticamente el owner de Trabajadores');
 
-const cssRef="/admin/workers-module.css?v=20260922-figma1";
-const jsRef="/admin/workers-module.js?v=20260903-ux7workers1";
+const cssRef="/admin/workers-module.css?v=20260926-figma2";
+const jsRef="/admin/workers-module.js?v=20260926-figma2";
 const cssIndex=loader.indexOf(cssRef);
 const jsIndex=loader.indexOf(jsRef);
 if(cssIndex<0||jsIndex<0||cssIndex>jsIndex)failures.push('erp.js debe cargar CSS antes del owner JavaScript de Trabajadores');
@@ -237,6 +237,7 @@ try {
   let mountCallback=null;
   const requests=[];
   const section={dataset:{},innerHTML:'',addEventListener:()=>{}};
+  const modal={addEventListener:()=>{}};
   const mountedContext=vm.createContext({
     window:{
       ExportMcaAccessControl:{can:()=>true},
@@ -255,9 +256,9 @@ try {
     document:{
       readyState:'loading',
       activeElement:null,
-      body:{classList:{add:()=>{},remove:()=>{}}},
+      body:{classList:{add:()=>{},remove:()=>{}},appendChild:()=>{}},
       addEventListener:(name,callback)=>{if(name==='DOMContentLoaded')mountCallback=callback;},
-      getElementById:id=>id==='workersSection'?section:null,
+      getElementById:id=>id==='workersSection'?section:id==='workersModal'?modal:null,
       querySelectorAll:()=>[]
     },
     console,
