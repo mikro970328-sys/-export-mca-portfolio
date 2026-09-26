@@ -52,12 +52,14 @@ jobs:
             e2e/isolated/package-lock.json
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
+      - name: Help content, navigation and access contract
+        run: node scripts/check-help-center.mjs
       - name: Install browser engines
         working-directory: e2e/isolated
         run: npx playwright install --with-deps chromium webkit
       - name: Computed header and icon contrast without business data
         working-directory: e2e/isolated
-        run: npm test -- header-contrast.spec.mjs figma-sales.spec.mjs figma-costs.spec.mjs figma-purchases.spec.mjs figma-warehouse.spec.mjs figma-stock-catalog.spec.mjs figma-logistics.spec.mjs figma-finance.spec.mjs figma-directories.spec.mjs figma-tasks-workers.spec.mjs figma-access-account.spec.mjs figma-home-communications.spec.mjs figma-publications-workflow.spec.mjs figma-desktop-integration.spec.mjs --project=${{ matrix.project }}
+        run: npm test -- help-center.spec.mjs header-contrast.spec.mjs figma-sales.spec.mjs figma-costs.spec.mjs figma-purchases.spec.mjs figma-warehouse.spec.mjs figma-stock-catalog.spec.mjs figma-logistics.spec.mjs figma-finance.spec.mjs figma-directories.spec.mjs figma-tasks-workers.spec.mjs figma-access-account.spec.mjs figma-home-communications.spec.mjs figma-publications-workflow.spec.mjs figma-desktop-integration.spec.mjs --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

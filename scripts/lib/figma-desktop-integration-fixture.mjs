@@ -9,11 +9,11 @@ import {logisticsFixture} from './figma-logistics-fixture.mjs';
 const root=fileURLToPath(new URL('../../',import.meta.url)),read=p=>readFileSync(root+p,'utf8');
 export const desktopSections={dashboard:'dashboardSection',alerts:'notificationsSection',clients:'clientsSection',tasks:'tasksSection',workers:'workersSection',access:'adminsSection',account:'accountSection',tracking:'containersSection'};
 // Combine the original shell markup/navigation with each real owner and its memory API.
-export function desktopIntegrationFixture(module){
+export function desktopIntegrationFixture(module,{master=true,permissions}={}){
  let html;
  if(['dashboard','alerts'].includes(module))html=homeCommunicationsFixture({module});
  else if(['tasks','workers'].includes(module))html=tasksWorkersFixture({module});
- else if(['access','account'].includes(module))html=accessAccountFixture({module,master:true});
+ else if(['access','account'].includes(module))html=accessAccountFixture({module,master,permissions});
  else if(module==='clients')html=directoriesFixture({module});
  else if(module==='tracking')html=logisticsFixture({module});
  else throw Error('Unsupported native workspace');
