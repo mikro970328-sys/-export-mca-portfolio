@@ -96,17 +96,10 @@ test('repeat purchase creates an independent draft with current permissions', as
       await page.locator('#login').click();expect((await logged).status()).toBe(200);
       await expect(page.locator('#loginPage')).toBeHidden();
       await page.waitForFunction(()=>window.NavigationShell?.owner==='navigation-shell.js');
-      if(key==='b'){
-        // This identity has only procurement.read: the native shell selects
-        // Compras as its first permitted section. Observe that real startup;
-        // toggling its already-opening submenu races the automatic selection.
-        await expect(page.locator('#purchasesSection')).toBeVisible();
-      }else{
-        if(use.isMobile){await page.locator('#mobileMenuBtn').click();await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);}
-        const button=page.locator('[data-section="purchasesSection"]').first();
-        if(!await button.isVisible())await button.locator('xpath=ancestor::*[contains(concat(" ",normalize-space(@class)," ")," nav-group ")]').locator('.nav-group-btn').click();
-        await button.click();
-      }
+      // Both identities have Compras as their first permitted section.
+      // Observe the shell's startup instead of toggling its opening submenu.
+      await expect(page.locator('#purchasesSection')).toBeVisible();
+      await expect(page.locator('[data-section="purchasesSection"]').first()).toHaveAttribute('aria-current','page');
       const ui=page.frameLocator('#purchasesSection iframe');
       await expect(ui.locator('#newOrder')).toBeVisible();await ui.locator('[data-view="all"]').click();
       await expect(ui.locator(`[data-view-order="${source.id}"]`)).toBeVisible();
