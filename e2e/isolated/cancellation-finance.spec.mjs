@@ -140,7 +140,7 @@ test('financial cancellations preserve balances, permissions and history', async
     };
     const sales=module(a,'sales'),purchase=module(a,'purchases'),ap=module(a,'payables');
     const createSale=async(clientId,reference,currency='USD')=>{
-      await navigate(a,'sales');await sales.locator('[data-view="all"]').click();await sales.locator('#newOrder').click();
+      await navigate(a,'sales');await sales.locator('[data-view="open"]').click();await sales.locator('#newOrder').click();
       await sales.locator('#oClientPickerButton').click();await sales.locator(`[data-client-id="${clientId}"]`).click();
       await sales.locator('#oImporter').selectOption(f.importer);await sales.locator('#oCurrency').fill(currency);
       await sales.locator('#oNationalization').selectOption('nationalized');
@@ -267,7 +267,7 @@ test('financial cancellations preserve balances, permissions and history', async
       expect((await f.one('select status from supplier_payments where id=$1',[payment.id])).status).toBe('reversed');
     });
     await step('CF-11 read-only operator cannot execute financial reversals',async()=>{
-      const readSales=await navigate(b,'sales');await readSales.locator('[data-view="all"]').click();
+      const readSales=await navigate(b,'sales');await readSales.locator('[data-view="open"]').click();
       await readSales.locator(`[data-view-order="${so.id}"]`).click();await readSales.locator('#openCustomerFinance').click();
       await expect(readSales.locator('#salesFinanceBody')).toContainText(advance.advance_number);
       await expect(readSales.locator('[data-cf-register], [data-cf-refund], [data-cf-reverse], [data-cf-apply], [data-cf-reverse-app], [data-cf-reverse-refund]')).toHaveCount(0);

@@ -245,7 +245,7 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await screenshot(b,'05-complete-stock');
     });
     await step('COM-06 create and confirm sale with the received product',async()=>{
-      await navigate(a,'sales');await sales.locator('[data-view="all"]').click();
+      await navigate(a,'sales');await sales.locator('[data-view="open"]').click();
       await sales.locator('#newOrder').click();
       await sales.locator('#oClientPickerButton').click();
       await sales.locator(`[data-client-id="${f.client}"]`).click();

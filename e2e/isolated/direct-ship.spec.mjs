@@ -185,7 +185,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     });
     const sales=await navigate('sales');
     await step('DS-04 the sale shows the purchase already linked with automatic quantities',async()=>{
-      await sales.locator('[data-view="all"]').click();
+      await sales.locator('[data-view="open"]').click();
       const supplyAction=sales.locator(`[data-supply-order="${so.id}"]`);
       await supplyAction.locator('xpath=ancestor::details').locator('summary').click();
       await supplyAction.click();
