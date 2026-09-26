@@ -1,3 +1,20 @@
+## Continuación Figma: Recepciones (WR) — 2026-09-26
+
+Compras #348 ya está publicada en `4c29b2dd8521c3c0ab1797089166a399ba251181`,
+con árbol probado idéntico a producción, 22/22 trabajos de navegador aprobados
+y Vercel READY. Gastos #347 continúa publicado. No repetir esos módulos.
+
+La continuación actual aplica seis vistas de Recepciones en
+`feat/figma-warehouse-white`. Ver `FIGMA_WAREHOUSE.md` para nodos, alcance y
+pruebas. La PR de la entrega registra el head probado y publicación definitivos.
+Daniel autorizó continuar e implementar/publicar. Escritorio prioritario;
+iPhone físico sigue diferido. Sin QA comercial en producción ni Preview.
+Se conservan APIs, permisos, recuperación de recepción e inventario.
+
+Este corte sustituye los pendientes históricos ya resueltos que figuran debajo.
+
+---
+
 ## Continuación Figma: Compras — 2026-09-25
 
 Gastos ya está publicado por PR #347 en `9847906669e098dc88883f2ec7e59ab65276f2d1`,

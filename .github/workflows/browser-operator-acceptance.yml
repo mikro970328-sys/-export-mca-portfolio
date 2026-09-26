@@ -10,6 +10,7 @@ on:
       - 'migrations/**'
       - 'supabase/tests/fixtures/*acceptance*.sql'
       - 'scripts/lib/*acceptance*.mjs'
+      - 'scripts/lib/figma-*.mjs'
       - 'e2e/isolated/**'
       - 'package*.json'
       - '.github/workflows/browser-operator-acceptance.yml'
@@ -23,6 +24,7 @@ on:
       - 'migrations/**'
       - 'supabase/tests/fixtures/*acceptance*.sql'
       - 'scripts/lib/*acceptance*.mjs'
+      - 'scripts/lib/figma-*.mjs'
       - 'e2e/isolated/**'
       - 'package*.json'
       - '.github/workflows/browser-operator-acceptance.yml'
@@ -55,7 +57,7 @@ jobs:
         run: npx playwright install --with-deps chromium webkit
       - name: Computed header and icon contrast without business data
         working-directory: e2e/isolated
-        run: npm test -- header-contrast.spec.mjs figma-sales.spec.mjs figma-costs.spec.mjs figma-purchases.spec.mjs --project=${{ matrix.project }}
+        run: npm test -- header-contrast.spec.mjs figma-sales.spec.mjs figma-costs.spec.mjs figma-purchases.spec.mjs figma-warehouse.spec.mjs --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
