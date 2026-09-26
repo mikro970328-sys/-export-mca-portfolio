@@ -208,7 +208,9 @@ test('Figma expenses in the real shell: persistence, history, permissions and se
       await navigate(a, 'costsSection');
       await a.page.reload();
       await expect(a.page.locator('#loginPage')).toBeHidden();
+      await a.page.waitForFunction(() => window.__qaModulesReady === true);
       await expect(a.page.locator('#costsSection')).toBeVisible();
+      await expect(a.page.locator('[data-section="costsSection"]')).toHaveClass(/\bactive\b/);
       await expect(a.page.locator('.app-section:visible')).toHaveCount(1);
       await expect(row(a, replacement.cost_number).locator('.money-strong')).toHaveText('USD 1,400.00');
       await expect(row(a, draft.cost_number).locator('.money-strong')).toHaveText('USD 90.00');
