@@ -9,7 +9,7 @@ async function open(page,options){
   await expect(page.locator('.purchase-order-row')).toHaveCount(3);
 }
 async function posts(page){return page.evaluate(()=>window.__fixtureCalls.filter(call=>call.method==='POST').map(call=>call.body));}
-async function shot(page,info,name){const path=info.outputPath(`${name}.png`);await page.screenshot({path,fullPage:false});await info.attach(name,{path,contentType:'image/png'});}
+async function shot(page,info,name){const path=info.outputPath(`${name}.png`);await page.screenshot({path,fullPage:name==='compras',scale:'css'});await info.attach(name,{path,contentType:'image/png'});}
 async function fillOrder(page){
   await page.locator('#oSupplier').selectOption('fixture-supplier');
   await page.locator('#oWarehouse').selectOption('fixture-warehouse');
@@ -22,6 +22,10 @@ test('Figma purchases: white list, search, views, actions and keyboard menus',as
   await page.emulateMedia({colorScheme:'dark'});await open(page);
   await expect(page.locator('body')).toHaveCSS('background-color','rgb(255, 255, 255)');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  const mobile=page.viewportSize().width<=650;
+  await expect(page.locator('.purchase-metric-mobile-label')).toBeVisible({visible:mobile});
+  await expect(page.locator('.purchase-metric-desktop-label')).toBeVisible({visible:!mobile});
+  await expect(page.locator('#metrics .metric:visible')).toHaveCount(mobile?3:5);
   const first=page.locator('.purchase-order-row').first();
   expect(await first.locator('[data-view-order]').evaluate(el=>el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
   await shot(page,info,'compras');

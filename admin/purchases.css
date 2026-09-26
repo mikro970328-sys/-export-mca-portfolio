@@ -5,8 +5,8 @@
   font-size:14px;
   line-height:20px;
 }
-.erp-module-purchases [hidden],
-.erp-module-purchases .hidden { display:none; }
+.erp-module-page.erp-module-purchases [hidden],
+.erp-module-page.erp-module-purchases .hidden { display:none; }
 .erp-module-purchases .purchases-shell { width:calc(100% - 64px);margin:32px auto;padding-bottom:32px;min-width:0; }
 .erp-module-page.erp-module-purchases .purchases-page-head {
   min-height:0;align-items:center;margin:0 0 32px;padding:0;border:0;border-radius:0;background:var(--surface);box-shadow:none;
@@ -22,7 +22,7 @@
 .erp-module-page.erp-module-purchases .purchases-primary-action { min-height:44px;white-space:nowrap;background:var(--purchases-action);border-color:var(--purchases-action);color:var(--surface);box-shadow:none; }
 .erp-module-purchases input,
 .erp-module-purchases select,
-.erp-module-purchases textarea { min-width:0;min-height:44px;border-color:var(--line-strong);border-radius:var(--radius-sm);padding:11px 12px;background:var(--surface);color:var(--text);font-size:14px;line-height:20px;box-shadow:none; }
+.erp-module-purchases textarea { min-width:0;min-height:44px;border-color:var(--line-strong);border-radius:var(--radius-sm);padding:11px 12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:400;line-height:20px;box-shadow:none; }
 .erp-module-purchases select { appearance:none;padding-right:42px;background-image:url('/admin/assets/purchase-chevron.svg');background-repeat:no-repeat;background-position:right 12px center;background-size:18px 18px; }
 .erp-module-purchases input::placeholder,
 .erp-module-purchases textarea::placeholder { color:var(--muted);opacity:1; }
@@ -36,7 +36,7 @@
 .erp-module-purchases .purchases-metrics .metric:first-child { border-left:0; }
 .erp-module-purchases .purchases-metrics .metric b { margin:0;font-size:32px;font-weight:600;line-height:40px;letter-spacing:-.8px;color:var(--text); }
 .erp-module-purchases .purchases-metrics .metric span { color:var(--muted);font-size:12px;font-weight:400;line-height:18px;text-transform:none;letter-spacing:0; }
-.erp-module-purchases .purchase-metric-mobile-label,
+.erp-module-purchases .purchases-metrics .metric .purchase-metric-mobile-label,
 .erp-module-purchases .purchases-receipt-summary { display:none; }
 .erp-module-purchases .purchases-list-panel { overflow:visible;border:0;border-radius:0;background:var(--surface);box-shadow:none; }
 .erp-module-purchases .purchases-list-heading { display:flex;align-items:center;justify-content:space-between;gap:16px; }
@@ -101,6 +101,10 @@
 .erp-module-purchases .purchases-dialog-kicker { display:block;margin:0;color:var(--muted);font-size:12px;font-weight:500;line-height:18px;letter-spacing:0;text-transform:uppercase; }
 .erp-module-purchases .purchase-order-header h2 { margin:0;font-size:30px;font-weight:600;line-height:38px;letter-spacing:-.6px; }
 .erp-module-purchases .purchase-order-header p { margin:8px 0 0;color:var(--muted); }
+.erp-module-purchases .purchase-order-dialog .form-draft-status { margin:16px 32px 0;padding:12px;border-color:var(--line);border-radius:var(--radius-sm);background:var(--surface-soft);color:var(--muted); }
+.erp-module-purchases .purchase-order-dialog .form-draft-copy strong { color:var(--text); }
+.erp-module-purchases .purchase-order-dialog .form-draft-discard { min-height:44px;border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 12px;background:var(--surface);color:var(--text);font-size:12px;font-weight:600;text-decoration:none; }
+.erp-module-purchases .purchase-order-dialog .form-draft-status[data-form-draft-status=error] { border-color:var(--bad);background:var(--bad-soft);color:var(--bad); }
 .erp-module-purchases .purchase-order-body { display:grid;gap:24px;padding:32px; }
 .erp-module-purchases .purchase-order-body h3 { margin:0;color:var(--text);font-size:20px;font-weight:600;line-height:28px;letter-spacing:-.3px; }
 .erp-module-purchases .purchase-order-primary-fields { display:grid;grid-template-columns:minmax(0,488fr) minmax(100px,144fr) minmax(0,336fr);gap:24px; }
@@ -214,8 +218,8 @@
   .erp-module-purchases .purchases-metrics .metric { border:0;padding:0; }
   .erp-module-purchases .purchases-metrics .purchase-metric-partial,
   .erp-module-purchases .purchases-metrics .purchase-metric-received,
-  .erp-module-purchases .purchase-metric-desktop-label { display:none; }
-  .erp-module-purchases .purchase-metric-mobile-label { display:inline; }
+  .erp-module-purchases .purchases-metrics .metric .purchase-metric-desktop-label { display:none; }
+  .erp-module-purchases .purchases-metrics .metric .purchase-metric-mobile-label { display:inline; }
   .erp-module-purchases .purchases-receipt-summary { display:block;grid-column:1 / -1;color:var(--muted);font-size:12px;line-height:18px; }
   .erp-module-purchases .purchases-list-panel { display:flex;flex-direction:column;gap:16px; }
   .erp-module-purchases .purchases-list-heading { order:1;gap:8px; }
@@ -230,6 +234,7 @@
   .erp-module-purchases .dialog { max-height:100vh;max-height:100dvh;border-radius:var(--radius-md) var(--radius-md) 0 0;padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
   .erp-module-purchases .purchase-order-dialog { width:100%;border:0;border-radius:0;padding:0; }
   .erp-module-purchases .purchase-order-header { padding:24px 16px; }
+  .erp-module-purchases .purchase-order-dialog .form-draft-status { margin:16px 16px 0; }
   .erp-module-purchases .purchase-order-body { padding:16px; }
   .erp-module-purchases .purchase-order-primary-fields { gap:24px 16px; }
   .erp-module-purchases .purchase-order-secondary-fields { grid-template-columns:1fr;gap:24px; }

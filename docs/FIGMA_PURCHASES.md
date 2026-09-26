@@ -31,7 +31,8 @@ formulario, respetando costo unitario o total por línea. El guardado conserva
 `create_plan` y `replace_plan`, sus validaciones y el esquema de la API.
 
 Todo el diálogo puede desplazarse, con `dvh`, área segura y controles de 44 px.
-Tab permanece dentro del diálogo activo, Escape cierra el superior y devuelve
+La banda funcional de autoguardado conserva la recuperación y usa los mismos
+colores y márgenes del formulario. Tab permanece dentro del diálogo activo, Escape cierra el superior y devuelve
 el foco al control de origen o a Más. Las versiones del módulo, navegación,
 loader y contratos de caché se actualizan juntas; el service worker ya busca
 los recursos en red y no almacena HTML/JS comerciales en su caché de respaldo.
