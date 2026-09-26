@@ -9,6 +9,10 @@ const state = {
   workers: [],
   imageUrls: [],
   uploading: false,
+  saving: false,
+  listBusy: false,
+  loading: false,
+  editorTrigger: null,
   writeAccess: false,
   decisionResolve: null,
   decisionTrigger: null
@@ -154,7 +158,7 @@ function renderPhotos() {
   $('photoPreview').innerHTML = state.imageUrls.map((url, index) => `
     <article class="photo">
       <img src="${esc(url)}" alt="Foto ${index + 1} de la publicación">
-      <button class="photo-remove" type="button" data-remove-photo="${index}"${!state.writeAccess || state.uploading ? ' disabled' : ''}>Quitar</button>
+      <button class="photo-remove" type="button" data-remove-photo="${index}"${!state.writeAccess || state.uploading || state.saving ? ' disabled' : ''}>Quitar</button>
       ${index === 0 ? '<span class="photo-main">Principal</span>' : ''}
     </article>
   `).join('');
@@ -164,28 +168,31 @@ function renderPhotos() {
 }
 
 async function removePhoto(index) {
-  if (!state.writeAccess || state.uploading) return;
+  if (!state.writeAccess || state.uploading || state.saving) return;
   const url = state.imageUrls[index];
   if (!url) return;
   state.imageUrls.splice(index, 1);
   renderPhotos();
   publicationDraft?.touch();
   if (!url.includes('/storage/v1/object/public/publication-images/')) return;
+  let failureMessage='';state.uploading=true;applyWriteAccess();
   try {
     await api('/api/publication-images', { method: 'DELETE', body: JSON.stringify({ url }) });
   } catch (error) {
     state.imageUrls.splice(index, 0, url);
-    renderPhotos();
     publicationDraft?.touch();
-    setPhotoMessage(safePublicationMessage(error, 'No se pudo quitar la foto. Intenta nuevamente.', 'remove_photo'), true);
+    failureMessage=safePublicationMessage(error, 'No se pudo quitar la foto. Intenta nuevamente.', 'remove_photo');
+  } finally {
+    state.uploading=false;applyWriteAccess();
+    if(failureMessage)setPhotoMessage(failureMessage,true);
   }
 }
 
 function applyWriteAccess() {
   $('readOnlyNote').hidden = state.writeAccess;
-  $('newBtn').disabled = !state.writeAccess;
+  $('newBtn').disabled = !state.writeAccess || state.uploading || state.saving;
   $('publicationForm').querySelectorAll('input, select, textarea, button').forEach(control => {
-    control.disabled = !state.writeAccess || state.uploading;
+    control.disabled = (control.id!=='cancelBtn' && !state.writeAccess) || state.uploading || state.saving;
   });
   renderPhotos();
 }
@@ -335,7 +342,7 @@ function publicationTable(rows, hidden = false) {
     <thead><tr><th>Publicación</th><th>Categoría</th><th>Fotos</th><th>Responsable</th><th>Estado</th><th>Acciones</th></tr></thead>
     <tbody>${rows.map(row => {
       const status = String(row.publication_status || 'draft');
-      const statusClass = status === 'published' ? 'published' : status === 'hidden' ? 'hidden' : status === 'archived' ? 'off' : '';
+      const statusClass = status === 'published' ? 'published' : status === 'hidden' ? 'is-hidden' : status === 'archived' ? 'off' : '';
       const title = row.title || 'Publicación sin título';
       const editLabel = state.writeAccess ? 'Editar' : 'Ver';
       const statusAction = hidden
@@ -344,23 +351,25 @@ function publicationTable(rows, hidden = false) {
           ? `<button class="alt" type="button" data-action="status" data-status="hidden" data-id="${esc(row.id)}">Ocultar</button>`
           : `<button type="button" data-action="status" data-status="published" data-id="${esc(row.id)}">Publicar</button>`;
       const actions = state.writeAccess
-        ? `${statusAction}<button class="danger" type="button" data-action="delete" data-id="${esc(row.id)}">Eliminar</button>`
+        ? `${statusAction}<button class="alt" type="button" data-action="delete" data-id="${esc(row.id)}">Eliminar</button>`
         : '<span class="muted">Solo lectura</span>';
       return `<tr>
-        <td class="publications-title-cell"><b>${esc(title)}</b><span class="muted">${esc(row.location_public || 'Sin ubicación pública')}</span></td>
-        <td>${esc(CATEGORY_LABELS[row.category] || 'Sin categoría')}</td>
-        <td>${Math.min((row.image_urls || []).length, 2)}/2</td>
-        <td>${row.assigned_worker ? `<b>${esc(row.assigned_worker.full_name)}</b><br><span class="muted">${esc(row.assigned_worker.phone || '')}</span>` : '<span class="muted">Número general</span>'}</td>
-        <td><span class="pill ${statusClass}">${esc(STATUS_LABELS[status] || 'Sin estado')}</span></td>
-        <td><div class="actions publications-table-actions"><button class="alt" type="button" data-action="edit" data-id="${esc(row.id)}">${editLabel}</button>${actions}</div></td>
+        <td class="publications-title-cell" data-label="Publicación"><b>${esc(title)}</b><span class="muted">${esc(row.location_public || 'Sin ubicación pública')}</span></td>
+        <td data-label="Categoría">${esc(CATEGORY_LABELS[row.category] || 'Sin categoría')}</td>
+        <td data-label="Fotos">${Math.min((row.image_urls || []).length, 2)}/2</td>
+        <td data-label="Responsable">${row.assigned_worker ? `<b>${esc(row.assigned_worker.full_name)}</b><br><span class="muted">${esc(row.assigned_worker.phone || '')}</span>` : '<span class="muted">Número general</span>'}</td>
+        <td data-label="Estado"><span class="pill ${statusClass}">${esc(STATUS_LABELS[status] || 'Sin estado')}</span></td>
+        <td data-label="Acciones"><div class="actions publications-table-actions"><button class="alt" type="button" data-action="edit" data-id="${esc(row.id)}">${editLabel}</button>${actions}</div></td>
       </tr>`;
     }).join('')}</tbody>
   </table></div>`;
 }
 
 function renderLists() {
-  $('activeList').innerHTML = publicationTable(state.publications.filter(row => row.publication_status !== 'hidden'));
-  $('hiddenList').innerHTML = publicationTable(state.publications.filter(row => row.publication_status === 'hidden'), true);
+  const term=String($('publicationsSearch').value||'').trim().toLocaleLowerCase('es');
+  const rows=state.publications.filter(row=>[row.title,CATEGORY_LABELS[row.category],row.location_public,row.assigned_worker?.full_name].filter(Boolean).join(' ').toLocaleLowerCase('es').includes(term));
+  $('activeList').innerHTML = publicationTable(rows.filter(row => row.publication_status !== 'hidden'));
+  $('hiddenList').innerHTML = publicationTable(rows.filter(row => row.publication_status === 'hidden'), true);
 }
 
 function render() {
@@ -370,6 +379,7 @@ function render() {
 }
 
 async function load() {
+  if(state.loading)return;state.loading=true;$('refreshPublications').disabled=true;
   try {
     const result = await api('/api/publications');
     state.publications = result.publications || [];
@@ -384,10 +394,23 @@ async function load() {
     $('hiddenList').innerHTML = '';
     renderMetrics();
     setPageMessage(message, false);
-  }
+  } finally {state.loading=false;$('refreshPublications').disabled=false;}
 }
 
-function editPublication(id) {
+function openEditor(trigger=document.activeElement) {
+  state.editorTrigger=trigger;
+  $('publicationEditorModal').classList.remove('hidden');document.body.classList.add('editor-open');
+  (state.writeAccess?$('title'):$('publicationEditorClose')).focus();
+}
+
+function closeEditor() {
+  if(state.uploading||state.saving)return;
+  publicationDraft?.flush();
+  $('publicationEditorModal').classList.add('hidden');document.body.classList.remove('editor-open');
+  (state.editorTrigger?.isConnected?state.editorTrigger:$('newBtn')).focus();state.editorTrigger=null;
+}
+
+function editPublication(id,trigger=document.activeElement) {
   const publication = state.publications.find(row => String(row.id) === String(id));
   if (!publication) {
     setPageMessage('La publicación ya no está disponible.', false);
@@ -406,12 +429,12 @@ function editPublication(id) {
   state.imageUrls = (publication.image_urls || []).slice(0, 2);
   $('formTitle').textContent = state.writeAccess ? 'Editar publicación' : 'Detalle de la publicación';
   $('editorMode').textContent = STATUS_LABELS[publication.publication_status] || 'Registrada';
-  $('editorMode').className = `pill ${publication.publication_status === 'published' ? 'published' : publication.publication_status === 'hidden' ? 'hidden' : ''}`;
+  $('editorMode').className = `pill ${publication.publication_status === 'published' ? 'published' : publication.publication_status === 'hidden' ? 'is-hidden' : ''}`;
   setFormMessage();
   syncDateRequirement();
   applyWriteAccess();
   if (state.writeAccess) activatePublicationDraft(publication.id);
-  scrollTo({ top: 0, behavior: 'smooth' });
+  openEditor(trigger);
 }
 
 function closeDecision(result) {
@@ -436,7 +459,7 @@ function openDeleteDecision(publication, trigger) {
   $('publicationDecision').setAttribute('aria-hidden', 'false');
   document.body.classList.add('modal-open');
   state.decisionTrigger = trigger || document.activeElement;
-  setTimeout(() => $('publicationDecisionCancel').focus(), 0);
+  $('publicationDecisionCancel').focus();
   return new Promise(resolve => {
     state.decisionResolve = resolve;
   });
@@ -444,19 +467,19 @@ function openDeleteDecision(publication, trigger) {
 
 async function handleListAction(event) {
   const button = event.target.closest('[data-action]');
-  if (!button) return;
+  if (!button || state.listBusy) return;
   const id = button.dataset.id;
   const action = button.dataset.action;
   const publication = state.publications.find(row => String(row.id) === String(id));
 
   if (action === 'edit') {
-    editPublication(id);
+    editPublication(id,button);
     return;
   }
   if (!state.writeAccess || !publication) return;
 
   try {
-    button.disabled = true;
+    state.listBusy=true;button.disabled = true;
     if (action === 'status') {
       await api('/api/publications', {
         method: 'PATCH',
@@ -476,13 +499,14 @@ async function handleListAction(event) {
   } catch (error) {
     setPageMessage(safePublicationMessage(error, 'No se pudo completar la acción. Intenta nuevamente.', `list_${action}`), false);
   } finally {
-    button.disabled = false;
+    state.listBusy=false;button.disabled = false;
+    if(button.isConnected)button.focus();else $('newBtn').focus();
   }
 }
 
 async function savePublication(event) {
   event.preventDefault();
-  if (!state.writeAccess) return;
+  if (!state.writeAccess || state.saving) return;
   const button = $('saveBtn');
   try {
     button.disabled = true;
@@ -494,6 +518,7 @@ async function savePublication(event) {
       throw new Error('Para Próximos envíos debes indicar al menos una fecha');
     }
     const editing = Boolean(body.id);
+    state.saving=true;applyWriteAccess();
     await api('/api/publications', {
       method: editing ? 'PATCH' : 'POST',
       body: JSON.stringify(body)
@@ -501,9 +526,11 @@ async function savePublication(event) {
     resetForm();
     await load();
     setPageMessage(editing ? 'Publicación actualizada correctamente.' : 'Publicación creada correctamente.', true);
+    state.saving=false;applyWriteAccess();closeEditor();
   } catch (error) {
     setFormMessage(safePublicationMessage(error, 'No se pudo guardar la publicación. Revisa los datos e intenta nuevamente.', 'save'), false);
   } finally {
+    state.saving=false;applyWriteAccess();
     button.disabled = !state.writeAccess;
   }
 }
@@ -518,8 +545,12 @@ function bindEvents() {
   });
   $('activeList').addEventListener('click', handleListAction);
   $('hiddenList').addEventListener('click', handleListAction);
-  $('newBtn').addEventListener('click', () => resetForm({ focus: true, clearPageMessage: true }));
-  $('cancelBtn').addEventListener('click', () => resetForm({ focus: true }));
+  $('newBtn').addEventListener('click', event => {resetForm({ clearPageMessage:true,preserveDraft:true });openEditor(event.currentTarget);});
+  $('cancelBtn').addEventListener('click', closeEditor);
+  $('publicationEditorClose').addEventListener('click', closeEditor);
+  $('publicationEditorModal').addEventListener('click',event=>{if(event.target===$('publicationEditorModal'))closeEditor();});
+  $('publicationsSearch').addEventListener('input',renderLists);
+  $('refreshPublications').addEventListener('click',()=>{setPageMessage();load();});
   $('publicationDecisionClose').addEventListener('click', () => closeDecision(false));
   $('publicationDecisionCancel').addEventListener('click', () => closeDecision(false));
   $('publicationDecisionConfirm').addEventListener('click', () => closeDecision(true));
@@ -527,7 +558,13 @@ function bindEvents() {
     if (event.target === $('publicationDecision')) closeDecision(false);
   });
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && !$('publicationDecision').classList.contains('hidden')) closeDecision(false);
+    const decision=!$('publicationDecision').classList.contains('hidden');
+    const modal=decision?$('publicationDecision'):!$('publicationEditorModal').classList.contains('hidden')?$('publicationEditorModal'):null;if(!modal)return;
+    if(event.key==='Escape'){event.preventDefault();decision?closeDecision(false):closeEditor();return;}
+    if(event.key!=='Tab')return;
+    const controls=[...modal.querySelectorAll('button:not(:disabled),input:not(:disabled):not([type=hidden]),select:not(:disabled),textarea:not(:disabled),[tabindex]')].filter(n=>n.tabIndex>=0&&n.getClientRects().length);
+    const first=controls[0],last=controls.at(-1);
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
   });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) load();

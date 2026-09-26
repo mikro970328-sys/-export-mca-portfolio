@@ -58,7 +58,7 @@ if(!failures.length){
   for(const required of [
     "canManage=()=>window.ExportMcaAccessControl?.can?.('tasks.manage')===true",
     'Supervisión de trabajo',
-    'Esto no crea Alertas ni Notificaciones',
+    'Revisa asignaciones, vencimientos y tareas que necesitan atención.',
     'data-task-supervisor-filter',
     'needs_routing_attention',
     'window.TasksWorkspace?.open?.(id)'
@@ -69,8 +69,8 @@ if(!failures.length){
 
   for(const required of [
     "if (accessCan('tasks.manage'))",
-    "'/admin/task-supervisor-queue.css?v=20260830-p8'",
-    "'/admin/task-supervisor-queue.js?v=20260830-p8'"
+    "'/admin/task-supervisor-queue.css?v=20260926-figma2'",
+    "'/admin/task-supervisor-queue.js?v=20260926-figma2'"
   ]) if(!loader.includes(required))failures.push(`loader P8: falta ${required}`);
 }
 
