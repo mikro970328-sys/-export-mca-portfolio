@@ -27,6 +27,9 @@ for(const width of [1440,1024])test(`Help index and article fit desktop ${width}
 });
 test('Help search handles accents, filters, empty state and return to results',async({page})=>{
   await page.setViewportSize({width:1440,height:1000});await start(page);
+  await page.locator('#helpSearch').fill('¿Cómo crear una factura?');
+  await expect(page.locator('.help-card[data-help-article="facturas"]')).toBeVisible();
+  await page.locator('#helpClear').click();
   await page.locator('#helpSearch').fill('RECEPCIÓN');
   await expect(page.locator('.help-card[data-help-article="recepciones"]')).toBeVisible();
   await page.locator('[data-help-category="Compras y almacén"]').click();

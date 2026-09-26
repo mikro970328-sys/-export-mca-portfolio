@@ -25,6 +25,8 @@ w.fetch=()=>{throw Error('Help must not call a business API');};
 w.eval(read('admin/help-content.js'));w.eval(read('admin/help-center.js'));
 const q=s=>w.document.querySelector(s);
 assert.equal(w.document.querySelectorAll('.help-card').length,articles.length);
+q('#helpSearch').value='¿Cómo crear una factura?';q('#helpSearch').dispatchEvent(new w.Event('input'));
+assert.ok(q('.help-card[data-help-article="facturas"]'),'A normal question finds the invoice guide');
 q('#helpSearch').value='COSTO INCOMPLETO';q('#helpSearch').dispatchEvent(new w.Event('input'));
 assert.ok(q('.help-card[data-help-article="margen"]'),'Search finds problem by its wording');
 w.ExportMcaHelpCenter.openArticle('facturas');assert.ok(q('[data-help-module]').disabled,'No module bypass for reader');

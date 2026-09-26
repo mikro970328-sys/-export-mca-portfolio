@@ -9,7 +9,8 @@
   const byId = new Map(articles.map(article => [article.id, article]));
   const categories = [...new Set(articles.map(article => article.category))];
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').trim();
+  const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').replace(/[^a-z0-9\s]/g, ' ').trim();
+  const searchFillers = new Set(['como','el','la','los','las','un','una','unos','unas','de','del','en','al','con','para','por','mi','mis','que','quiero','necesito']);
   const index = articles.map(article => ({article, text: normalize([article.title, article.summary, article.category, article.tags, ...article.steps, article.result, article.note].join(' '))}));
   let category = '', activeArticle = null;
   const reportTemplate = 'Módulo y acción:\nReferencia de la operación:\nFecha y hora:\nUsuario afectado (sin contraseña):\nNavegador:\nQué esperaba:\nQué ocurrió y mensaje exacto:\n¿Quedó guardado?:\n¿Afecta a otros usuarios?:\nPasos para reproducirlo:';
@@ -27,7 +28,7 @@
   const search = element('helpSearch');
 
   function renderResults() {
-    const terms = normalize(search.value).split(/\s+/).filter(Boolean);
+    const terms = normalize(search.value).split(/\s+/).filter(term => term && !searchFillers.has(term));
     const matches = index.filter(item => (!category || item.article.category === category) && terms.every(term => item.text.includes(term)));
     element('helpCount').textContent = `${matches.length} ${matches.length === 1 ? 'guía disponible' : 'guías disponibles'}${category ? ' · ' + category : ''}`;
     element('helpResults').innerHTML = matches.map(({article}) => `<button type="button" class="help-card" data-help-article="${escape(article.id)}"><span class="help-card-category">${escape(article.category)}</span><span class="help-card-title">${escape(article.title)}</span><span class="help-card-summary">${escape(article.summary)}</span><span class="help-card-link">Ver guía <span aria-hidden="true">→</span></span></button>`).join('');

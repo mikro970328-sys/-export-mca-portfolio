@@ -406,7 +406,7 @@
         "reportes",
         "duplicados"
       ],
-      "tags": "factura factura vencida cobro cobrar pago cliente saldo parcial emitir"
+      "tags": "factura factura vencida cobro cobrar pago cliente saldo parcial emitir crear guardar nueva"
     },
     {
       "id": "anticipos",
