@@ -42,6 +42,7 @@ No cambian APIs, SQL, payloads, permisos, capabilities, idempotencia, cálculo m
 - 19 pruebas de navegador por motor: listas, detalle, cobro y pago con reintento estable, crédito/aplicación/devolución, precio exacto, distribución, permisos, errores y CSV. Ventanas 1440×700 y 390×500, campo visible y capaz de recibir el puntero.
 - Fixtures ficticias en memoria, CSP sin red, columnas de reportes tomadas de la definición oficial de la API local. No prueban la contabilidad del servidor; las suites existentes con PostgreSQL/PostgREST desechables mantienen esa cobertura.
 - Sin escrituras QA en producción ni Preview. WebKit simulado no certifica iPhone físico.
+- Revisión inicial PR #352, run `36219654228`: 66/69 visuales por motor. Detectó que la regla de grid superaba `hidden` en el formulario de aplicación de saldo; corregido en los owners. La fixture de Reportes ahora respeta `include_options=0` como la API real. Las capturas también motivaron elevar pestañas a 44 px/14 px y marcar la pestaña activa de Reportes con el color del sistema.
 - El PR registrará CI, capturas del head final, merge y publicación antes de cerrar este bloque.
 
 ## Pendiente

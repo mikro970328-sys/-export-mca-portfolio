@@ -65,7 +65,7 @@ export function financeFixture({module='invoices',writable=true,failRead=false}=
           const csv=[config.columns.map(([,label])=>label).join(','),...rows.map(row=>config.columns.map(([key])=>row[key]??'').join(','))].join('\\n');
           return {ok:true,status:200,headers:{get:()=> 'attachment; filename="'+key+'.csv"'},blob:async()=>new Blob([csv],{type:'text/csv'})};
         }
-        return response({report:{key,label:config.label,columns,dimensions:config.dimensions,basis:config.basis||'period_activity'},datasets:Object.entries(fixtureDatasets).map(([key,c])=>({key,label:c.label,dimensions:c.dimensions,basis:c.basis||'period_activity'})),rows,row_count:rows.length,limit:1000,filters:Object.fromEntries(url.searchParams),filter_options:{currencies:['USD','EUR'],clients:[${JSON.stringify(client)}],suppliers:[${JSON.stringify(supplier)}],products:[${JSON.stringify(product)}]},generated_at:'2026-09-26T09:30:00Z'});
+        return response({report:{key,label:config.label,columns,dimensions:config.dimensions,basis:config.basis||'period_activity'},datasets:Object.entries(fixtureDatasets).map(([key,c])=>({key,label:c.label,dimensions:c.dimensions,basis:c.basis||'period_activity'})),rows,row_count:rows.length,limit:1000,filters:Object.fromEntries(url.searchParams),filter_options:url.searchParams.get('include_options')==='0'?null:{currencies:['USD','EUR'],clients:[${JSON.stringify(client)}],suppliers:[${JSON.stringify(supplier)}],products:[${JSON.stringify(product)}]},generated_at:'2026-09-26T09:30:00Z'});
       }
       throw Error('Unsupported fixture request');
     };`;

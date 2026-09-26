@@ -17,7 +17,7 @@ const action=(page,a,id='fixture-invoice-0')=>page.locator(`#invoiceList [data-i
 for(const width of [1440,390]){
   test(`Invoices: list, filters, detail and reversal controls at ${width}`,async({page},info)=>{
     await page.setViewportSize({width,height:1000});await page.emulateMedia({colorScheme:'dark'});await open(page);await fits(page);
-    await expect(page.locator('body')).toHaveCSS('background-color','rgb(255, 255, 255)');await expect(page.locator('.invoice-row')).toHaveCount(2);
+    await expect(page.locator('body')).toHaveCSS('background-color','rgb(255, 255, 255)');await expect(page.locator('.invoice-row')).toHaveCount(2);await expect(page.locator('[data-view="all"]')).toHaveCSS('min-height','44px');
     await page.locator('[data-view="all"]').click();await expect(page.locator('.invoice-row')).toHaveCount(3);await shot(page,info,'facturacion',true);
     await page.locator('#search').fill('INV-DEMO-019');await expect(page.locator('.invoice-row')).toHaveCount(1);
     await page.locator('#clearInvoiceFilters').click();await expect(page.locator('#search')).toBeFocused();await action(page,'detail').click();
@@ -58,7 +58,7 @@ test('Invoice credits, application and refund preserve reasons and retry identit
 });
 
 test('Payables: lists, bill and payment detail preserve capabilities',async({page},info)=>{
-  await open(page,'payables');await fits(page);await shot(page,info,'cuentas-por-pagar',true);await page.locator('[data-bill-action="detail"][data-bill-id="fixture-bill-0"]').click();await expect(page.locator('#detailBody')).toContainText('1,200.00');await shot(page,info,'detalle-proveedor');await page.locator('#detailModal [data-close]').click();
+  await open(page,'payables');await fits(page);await expect(page.locator('[data-entity="bills"]')).toHaveCSS('min-height','44px');await shot(page,info,'cuentas-por-pagar',true);await page.locator('[data-bill-action="detail"][data-bill-id="fixture-bill-0"]').click();await expect(page.locator('#detailBody')).toContainText('1,200.00');await shot(page,info,'detalle-proveedor');await page.locator('#detailModal [data-close]').click();
   await page.locator('[data-entity="payments"]').click();await expect(page.locator('.payable-row')).toHaveCount(1);await shot(page,info,'pagos-proveedor',true);await page.locator('[data-payment-action="detail"]').click();await expect(page.locator('#detailBody')).toContainText('SB-DEMO-018');await page.locator('#detailModal [data-close]').click();expect(await writes(page)).toEqual([]);
 });
 
@@ -94,7 +94,7 @@ for(const module of ['invoices','payables']){
 
 for(const width of [1440,390]){
   test(`Reports: keyboard datasets, snapshot filters, full columns and CSV at ${width}`,async({page},info)=>{
-    await page.setViewportSize({width,height:1000});await open(page,'reports');await fits(page);await expect(page.locator('.report-table th')).toHaveCount(20);await shot(page,info,'reportes-ventas',true);
+    await page.setViewportSize({width,height:1000});await open(page,'reports');await fits(page);await expect(page.locator('.report-table th')).toHaveCount(20);await expect(page.locator('[data-dataset="sales"]')).toHaveCSS('min-height','44px');await expect(page.locator('[data-dataset="sales"]')).toHaveCSS('color','rgb(255, 255, 255)');await shot(page,info,'reportes-ventas',true);
     await page.locator('[data-dataset="sales"]').focus();await page.keyboard.press('End');await expect(page.locator('[data-dataset="inventory"]')).toBeFocused();await expect(page.locator('#reportBasisMetric')).toHaveText('Actual');await expect(page.locator('[data-filter-dimension="period"]').first()).toBeHidden();await expect(page.locator('[data-filter-dimension="currency"]')).toBeHidden();await expect(page.locator('.report-table th')).toHaveCount(15);await shot(page,info,'reportes-inventario',true);
     await page.keyboard.press('Home');await expect(page.locator('[data-dataset="sales"]')).toBeFocused();await expect(page.locator('#reportBasisMetric')).toHaveText('Período');await page.locator('#currency').selectOption('EUR');await page.locator('#applyFilters').click();await expect(page.locator('#reportCurrencyMetric')).toHaveText('EUR');await expect(page.locator('.report-table tbody tr')).toHaveCount(1);
     const downloaded=page.waitForEvent('download');await page.locator('#exportReport').click();const download=await downloaded;expect(download.suggestedFilename()).toBe('sales.csv');const csv=await readFile(await download.path(),'utf8');expect(csv).toContain('SO-DEMO-019');expect(csv).toContain('EUR');expect(csv).toContain('Estado contribución');

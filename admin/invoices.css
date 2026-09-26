@@ -1,6 +1,6 @@
 /* Figma financial workspace. This module owns its presentation. */
 .erp-module-page.erp-module-invoices { color-scheme:light;overflow-x:hidden; }
-.erp-module-invoices [hidden],.erp-module-invoices .hidden { display:none; }
+.erp-module-page.erp-module-invoices [hidden],.erp-module-page.erp-module-invoices .hidden { display:none; }
 .erp-module-invoices.modal-open { overflow:hidden; }
 .erp-module-page.erp-module-invoices .invoices-shell { width:calc(100% - 64px);max-width:1480px;margin:32px auto; }
 .erp-module-page.erp-module-invoices .invoices-page-head { display:flex;align-items:flex-start;justify-content:space-between;gap:24px;overflow:visible;margin:0 0 24px;padding:0;border:0;border-radius:0;background:var(--surface);box-shadow:none; }
@@ -30,7 +30,7 @@
 .erp-module-invoices .metric small { color:var(--muted);font-size:12px;line-height:18px; }
 .erp-module-page.erp-module-invoices .invoices-list-panel { margin:0 0 24px;padding:0;border:0;border-radius:0;background:var(--surface);box-shadow:none; }
 .erp-module-invoices .tabs { display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px;padding:0;border:0;background:var(--surface); }
-.erp-module-invoices .tabs button { min-width:112px; }
+.erp-module-page.erp-module-invoices .tabs .btn { min-width:112px;min-height:44px;padding:11px 16px;font-size:14px;line-height:20px; }
 .invoices-list-toolbar { display:grid;grid-template-columns:minmax(0,1fr) 112px 160px;align-items:end;gap:16px;margin-bottom:24px; }
 .erp-module-invoices .invoices-search-field,.erp-module-invoices label { display:block;margin:0 0 8px;color:var(--text);font-size:14px;font-weight:600;line-height:20px; }
 .erp-module-invoices .invoices-search-field { display:grid;gap:8px;margin:0; }

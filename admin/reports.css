@@ -1,6 +1,6 @@
 /* Figma financial workspace. This module owns its presentation. */
 .erp-module-page.erp-module-reports { color-scheme:light;overflow-x:hidden; }
-.erp-module-reports [hidden],.erp-module-reports .hidden { display:none; }
+.erp-module-page.erp-module-reports [hidden],.erp-module-page.erp-module-reports .hidden { display:none; }
 .erp-module-reports.modal-open { overflow:hidden; }
 .erp-module-page.erp-module-reports .reports-shell { width:calc(100% - 64px);max-width:1480px;margin:32px auto; }
 .erp-module-page.erp-module-reports .reports-page-head { display:flex;align-items:flex-start;justify-content:space-between;gap:24px;overflow:visible;margin:0 0 24px;padding:0;border:0;border-radius:0;background:var(--surface);box-shadow:none; }
@@ -33,7 +33,8 @@
 .reports-control-panel { display:grid;gap:24px; }
 .reports-action-row { display:flex;gap:16px; }
 .erp-module-reports .reports-dataset-tabs { display:flex;gap:8px;flex-wrap:wrap;margin:0;padding:0;border:0;background:var(--surface); }
-.erp-module-reports .dataset-tab { min-width:112px; }
+.erp-module-page.erp-module-reports .dataset-tabs .dataset-tab { min-width:112px;min-height:44px;padding:11px 16px;border-color:var(--line);background:var(--surface);color:var(--text);font-size:14px;line-height:20px;box-shadow:none; }
+.erp-module-page.erp-module-reports .dataset-tabs .dataset-tab.active { border-color:var(--orange);background:var(--orange);color:#fff; }
 .reports-panel-head { display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin:0;padding:0;border:0;background:var(--surface); }
 .erp-module-reports .reports-panel-head h2 { margin:0;color:var(--text);font-size:20px;font-weight:600;line-height:28px;letter-spacing:-.3px; }
 .reports-panel-head p { margin:8px 0 0;color:var(--muted);font-size:14px;line-height:20px; }
