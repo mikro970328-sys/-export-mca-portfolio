@@ -151,6 +151,10 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await purchases.locator(`[data-detail-action="${action}"]`).click();
       await mutation('purchases',()=>purchases.locator('#purchaseDecisionAccept').click());
       await expect(purchases.locator('#detailModal')).toBeHidden();
+      // The detail closes before its follow-up read finishes. Continue only
+      // when the canonical list presents the new commercial state.
+      const refreshedRow=purchases.locator(`.purchase-order-row:has([data-view-order="${po.id}"])`);
+      await expect(refreshedRow.locator('.purchase-order-state .pill')).toHaveText(action==='issue'?'Emitida':'Confirmada');
     };
     await step('DS-02 issue and confirm Direct Ship purchase without receipt action',async()=>{
       await purchaseTransition('issue');await purchaseTransition('confirm');

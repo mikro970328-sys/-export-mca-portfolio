@@ -1,1079 +1,149 @@
-.erp-module-page.erp-module-payables {
-  --payables-hero:#0b1d36;
-  --payables-action:#c4510b;
-  --payables-action-hover:#a63f06;
-  --payables-line:#dce4ee;
-  overflow-x:hidden;
-}
-
-.erp-module-payables [hidden],
-.erp-module-payables .hidden {
-  display:none;
-}
-
-.erp-module-payables.modal-open {
-  overflow:hidden;
-}
-
-.erp-module-payables .payables-shell {
-  min-width:0;
-  padding-bottom:30px;
-}
-
-.erp-module-payables .payables-page-head {
-  isolation:isolate;
-  align-items:center;
-  min-height:128px;
-  overflow:hidden;
-  border:0;
-  padding:30px 32px;
-  background:var(--surface);
-  box-shadow:none;
-}
-
-.erp-module-payables .payables-page-head::before {
-  width:5px;
-  background:var(--orange);
-}
-
-.erp-module-payables .payables-page-head::after {
-  content:none;
-  position:absolute;
-  z-index:-1;
-  right:-80px;
-  bottom:-126px;
-  width:320px;
-  height:320px;
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:50%;
-}
-
-.erp-module-payables .payables-page-heading {
-  max-width:760px;
-}
-
-.erp-module-payables .payables-page-kicker {
-  color:var(--orange-strong);
-}
-
-.erp-module-payables .payables-page-head h1 {
-  color:var(--text);
-  font-size:clamp(30px,4vw,42px);
-}
-
-.erp-module-payables .payables-page-head p {
-  max-width:720px;
-  color:var(--muted);
-  font-size:14px;
-}
-
-.payables-hero-actions {
-  display:flex;
-  width:min(440px,44%);
-  min-width:360px;
-  align-items:stretch;
-  flex-direction:column;
-  gap:10px;
-}
-
-.payables-hero-state {
-  display:flex;
-  min-height:58px;
-  align-items:center;
-  gap:11px;
-  border:1px solid var(--line);
-  border-radius:13px;
-  padding:11px 14px;
-  background:var(--surface-soft);
-  color:var(--text);
-}
-
-.payables-hero-state strong,
-.payables-hero-state span:not(.payables-live-dot) {
-  display:block;
-}
-
-.payables-hero-state strong {
-  font-size:12px;
-}
-
-.payables-hero-state span:not(.payables-live-dot) {
-  margin-top:2px;
-  color:var(--muted);
-  font-size:10px;
-}
-
-.payables-live-dot {
-  width:9px;
-  height:9px;
-  flex:0 0 auto;
-  border:2px solid rgba(255,255,255,.45);
-  border-radius:50%;
-  background:#39c37a;
-  box-shadow:0 0 0 5px rgba(57,195,122,.13);
-}
-
-.payables-primary-actions {
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:8px;
-}
-
-.erp-module-page.erp-module-payables .payables-primary-actions .btn {
-  min-height:42px;
-  border-color:var(--line-strong);
-  background:var(--surface);
-  color:var(--text);
-}
-
-.erp-module-page.erp-module-payables .payables-primary-actions .btn:not(:disabled):hover {
-  border-color:var(--line-strong);
-  background:var(--surface-soft);
-  color:var(--text);
-}
-
-.erp-module-page.erp-module-payables .payables-primary-actions .btn.orange {
-  border-color:var(--payables-action);
-  background:var(--payables-action);
-  color:#fff;
-  box-shadow:0 10px 24px rgba(0,0,0,.2);
-}
-
-.erp-module-page.erp-module-payables .payables-primary-actions .btn.orange:not(:disabled):hover {
-  border-color:var(--payables-action-hover);
-  background:var(--payables-action-hover);
-  color:#fff;
-}
-
-.payables-feedback {
-  min-height:0;
-  margin:0 0 14px;
-  border-radius:12px;
-  color:var(--muted-strong);
-  font-size:12px;
-}
-
-.payables-feedback:not(:empty) {
-  min-height:42px;
-  border:1px solid #cfe0f5;
-  padding:11px 14px;
-  background:var(--info-soft);
-}
-
-.payables-feedback.ok:not(:empty) {
-  border-color:#bde5cf;
-  background:var(--ok-soft);
-  color:var(--ok);
-}
-
-.payables-feedback.bad:not(:empty) {
-  border-color:#efc0bc;
-  background:var(--bad-soft);
-  color:var(--bad);
-}
-
-.payables-readonly {
-  display:flex;
-  align-items:flex-start;
-  gap:10px;
-  margin:0 0 14px;
-  border:1px solid #cfe0f5;
-  border-radius:12px;
-  padding:12px 14px;
-  background:var(--info-soft);
-  color:#31516f;
-  font-size:12px;
-}
-
-.payables-readonly-icon {
-  display:grid;
-  width:22px;
-  height:22px;
-  flex:0 0 22px;
-  place-items:center;
-  border-radius:50%;
-  background:#d7e9ff;
-  color:var(--info);
-  font-size:11px;
-  font-weight:900;
-}
-
-.erp-module-payables .payables-metrics {
-  grid-template-columns:repeat(5,minmax(0,1fr));
-  gap:12px;
-  margin-bottom:18px;
-}
-
-.erp-module-payables .payables-metrics .metric {
-  position:relative;
-  min-width:0;
-  min-height:108px;
-  overflow:hidden;
-  padding:17px 18px 15px 21px;
-}
-
-.erp-module-payables .payables-metrics .metric::before {
-  content:"";
-  position:absolute;
-  inset:0 auto 0 0;
-  width:4px;
-  background:#aebbd0;
-}
-
-.erp-module-payables .payables-metrics .payable-metric-balance::before,
-.erp-module-payables .payables-metrics .payable-metric-unapplied::before {
-  background:var(--orange);
-}
-
-.erp-module-payables .payables-metrics .payable-metric-overdue::before {
-  background:var(--bad);
-}
-
-.erp-module-payables .payables-metrics .payable-metric-paid::before {
-  background:var(--ok);
-}
-
-.erp-module-payables .payables-metrics .metric b {
-  display:block;
-  margin-top:8px;
-  overflow-wrap:anywhere;
-  color:var(--navy-strong);
-  font-size:22px;
-  line-height:1.15;
-}
-
-.erp-module-payables .payables-metrics .metric small {
-  display:block;
-  margin-top:5px;
-  color:var(--muted);
-  font-size:10px;
-  line-height:1.35;
-}
-
-.erp-module-payables .payables-list-panel {
-  min-width:0;
-  overflow:hidden;
-  border-radius:var(--radius-lg);
-  box-shadow:0 12px 32px rgba(16,35,63,.07);
-}
-
-.payables-panel-head {
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:16px;
-  border-bottom:1px solid var(--line);
-  padding:20px 22px 18px;
-  background:var(--surface);
-}
-
-.payables-panel-head h2 {
-  margin:3px 0 0;
-  color:var(--navy-strong);
-  font-size:20px;
-  letter-spacing:-.025em;
-}
-
-.payables-panel-head p {
-  margin:5px 0 0;
-  color:var(--muted);
-  font-size:12px;
-}
-
-.payables-eyebrow,
-.payables-dialog-kicker {
-  display:block;
-  color:#b54708;
-  font-size:10px;
-  font-weight:800;
-  letter-spacing:.1em;
-  text-transform:uppercase;
-}
-
-.payables-result-count {
-  display:inline-flex;
-  min-height:29px;
-  flex:0 0 auto;
-  align-items:center;
-  border:1px solid var(--line);
-  border-radius:999px;
-  padding:5px 10px;
-  background:var(--surface-soft);
-  color:var(--muted-strong);
-  font-size:10px;
-  font-weight:800;
-}
-
-.payables-list-toolbar {
-  display:grid;
-  grid-template-columns:minmax(220px,1fr) auto auto auto 40px;
-  gap:10px;
-  align-items:center;
-  border-bottom:1px solid var(--line);
-  padding:14px 16px;
-  background:var(--surface-soft);
-}
-
-.payables-search-field {
-  position:relative;
-  min-width:0;
-  margin:0;
-}
-
-.payables-search-field .search {
-  max-width:none;
-  margin:0;
-  padding-left:38px;
-  background:#fff;
-}
-
-.payables-search-icon {
-  position:absolute;
-  z-index:1;
-  top:50%;
-  left:13px;
-  color:var(--muted);
-  font-size:16px;
-  transform:translateY(-50%);
-  pointer-events:none;
-}
-
-.payables-visually-hidden,
-.payable-cell-label {
-  position:absolute;
-  width:1px;
-  height:1px;
-  overflow:hidden;
-  clip:rect(0 0 0 0);
-  clip-path:inset(50%);
-  white-space:nowrap;
-}
-
-.erp-module-payables .payables-entity-tabs,
-.erp-module-payables .payables-view-tabs {
-  min-width:max-content;
-}
-
-.erp-module-payables .payables-entity-tabs .active,
-.erp-module-payables .payables-view-tabs .active {
-  border-color:var(--navy);
-  background:var(--navy);
-  color:#fff;
-}
-
-.erp-module-payables .payables-clear {
-  min-height:40px;
-}
-
-.erp-module-payables .payables-refresh {
-  display:inline-grid;
-  width:40px;
-  min-width:40px;
-  height:40px;
-  min-height:40px;
-  place-items:center;
-  padding:0;
-  font-size:17px;
-}
-
-.payables-table-wrap {
-  min-width:0;
-  overflow-x:auto;
-  overscroll-behavior-inline:contain;
-  background:#fff;
-  scrollbar-color:#b9c5d4 transparent;
-}
-
-.payables-table-head,
-.payable-row {
-  display:grid;
-  grid-template-columns:minmax(130px,.9fr) minmax(190px,1.3fr) minmax(140px,.9fr) minmax(120px,.8fr) minmax(140px,.9fr) minmax(140px,.9fr) minmax(205px,1.3fr);
-  min-width:1190px;
-  gap:14px;
-  align-items:center;
-}
-
-.payables-table-head {
-  position:sticky;
-  top:0;
-  z-index:2;
-  border-bottom:1px solid var(--line);
-  padding:11px 16px;
-  background:#f3f6fa;
-  color:var(--muted-strong);
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:.065em;
-  text-transform:uppercase;
-}
-
-.payables-list {
-  min-width:1190px;
-}
-
-.payable-row {
-  border-bottom:1px solid var(--payables-line);
-  padding:14px 16px;
-  background:#fff;
-  transition:background .15s ease;
-}
-
-.payable-row:last-child {
-  border-bottom:0;
-}
-
-.payable-row:hover {
-  background:#fbfcfe;
-}
-
-.payable-cell {
-  min-width:0;
-}
-
-.payable-number,
-.payable-cell-main {
-  display:block;
-  overflow:hidden;
-  color:var(--navy-strong);
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-.payable-number {
-  font-size:14px;
-  font-weight:850;
-}
-
-.payable-cell-main {
-  color:var(--text);
-  font-size:12px;
-  font-weight:780;
-}
-
-.payable-cell-sub {
-  display:block;
-  margin-top:4px;
-  overflow:hidden;
-  color:var(--muted);
-  font-size:10px;
-  line-height:1.35;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-.payable-money {
-  color:var(--navy-strong);
-  font-size:12px;
-  font-variant-numeric:tabular-nums;
-  font-weight:800;
-}
-
-.payable-money.balance {
-  color:#9a3e08;
-}
-
-.payable-row-actions {
-  display:flex;
-  justify-content:flex-end;
-  gap:6px;
-  flex-wrap:wrap;
-}
-
-.erp-module-page.erp-module-payables .payable-row-actions .btn {
-  min-height:34px;
-  padding:7px 9px;
-  font-size:10px;
-}
-
-.payables-loading,
-.payables-empty {
-  display:flex;
-  min-height:170px;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  padding:32px;
-  color:var(--muted);
-  font-size:12px;
-  text-align:center;
-}
-
-.payables-empty {
-  flex-direction:column;
-}
-
-.payables-empty strong {
-  color:var(--navy);
-  font-size:14px;
-}
-
-.payables-empty span {
-  max-width:490px;
-}
-
-.payables-spinner {
-  width:19px;
-  height:19px;
-  border:2px solid #d7dfe9;
-  border-top-color:var(--orange);
-  border-radius:50%;
-  animation:payables-spin .75s linear infinite;
-}
-
-@keyframes payables-spin {
-  to { transform:rotate(360deg); }
-}
-
-.erp-module-payables .dialog {
-  overscroll-behavior:contain;
-}
-
-.erp-module-payables .dialog-head {
-  align-items:flex-start;
-  flex-wrap:nowrap;
-}
-
-.erp-module-payables .dialog-head > div {
-  min-width:0;
-}
-
-.erp-module-payables .dialog-head .muted {
-  max-width:780px;
-  margin-top:5px;
-}
-
-.erp-module-page.erp-module-payables .payables-close-button {
-  display:grid;
-  width:38px;
-  min-width:38px;
-  height:38px;
-  min-height:38px;
-  flex:0 0 38px;
-  place-items:center;
-  padding:0;
-  font-size:15px;
-}
-
-.payable-form-dialog,
-.payable-allocation-dialog,
-.payable-detail-dialog {
-  width:min(1040px,100%);
-}
-
-.payable-form-section {
-  margin-top:15px;
-  border:1px solid var(--line);
-  border-radius:15px;
-  padding:17px;
-  background:#fbfcfe;
-}
-
-.payable-form-section:first-of-type {
-  margin-top:0;
-}
-
-.payable-form-section-head {
-  display:flex;
-  align-items:flex-start;
-  gap:11px;
-  margin-bottom:12px;
-}
-
-.payable-form-section-head > div {
-  min-width:0;
-}
-
-.payable-form-section-head h3 {
-  margin:0;
-  color:var(--navy-strong);
-  font-size:15px;
-}
-
-.payable-form-section-head p {
-  margin:3px 0 0;
-  color:var(--muted);
-  font-size:11px;
-}
-
-.payable-form-step {
-  display:grid;
-  width:27px;
-  height:27px;
-  flex:0 0 27px;
-  place-items:center;
-  border-radius:9px;
-  background:var(--orange-soft);
-  color:var(--orange-strong);
-  font-size:11px;
-  font-weight:900;
-}
-
-.payable-lines-head .payable-calculated-total {
-  min-width:max-content;
-  margin-left:auto;
-  border:1px solid #f2c9aa;
-  border-radius:999px;
-  padding:7px 10px;
-  background:var(--orange-soft);
-  color:#93400d;
-  font-size:11px;
-  font-variant-numeric:tabular-nums;
-}
-
-.payable-lines {
-  display:grid;
-  gap:10px;
-  margin-top:0;
-}
-
-.payable-line {
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:14px;
-  background:#fff;
-}
-
-.payable-line-title {
-  color:var(--navy-strong);
-  font-size:12px;
-  font-weight:850;
-}
-
-.payable-line-meta,
-.payable-line-hint {
-  margin-top:4px;
-  color:var(--muted);
-  font-size:10px;
-  line-height:1.4;
-}
-
-.payable-line-hint {
-  color:#7a552f;
-}
-
-.payables-payment-hint {
-  min-height:38px;
-  margin-top:10px;
-  border:1px solid #d6e3f2;
-  border-radius:10px;
-  padding:10px 12px;
-  background:var(--info-soft);
-  color:#31516f;
-  font-size:11px;
-  line-height:1.45;
-}
-
-.allocation-amount {
-  width:190px;
-  max-width:100%;
-}
-
-.payables-modal-actions {
-  justify-content:flex-end;
-  margin-top:16px;
-}
-
-.payables-dialog-message {
-  margin-top:10px;
-  text-align:right;
-}
-
-.payable-detail-summary {
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:10px;
-  margin-bottom:17px;
-}
-
-.payable-detail-summary > article {
-  min-width:0;
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:13px;
-  background:var(--surface-soft);
-}
-
-.payable-detail-summary span {
-  display:block;
-  color:var(--muted);
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:.055em;
-  text-transform:uppercase;
-}
-
-.payable-detail-summary strong {
-  display:block;
-  margin-top:5px;
-  overflow-wrap:anywhere;
-  color:var(--navy-strong);
-  font-size:14px;
-}
-
-.payable-detail-section {
-  margin-top:14px;
-  border:1px solid var(--line);
-  border-radius:14px;
-  overflow:hidden;
-}
-
-.payable-detail-section-head {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  border-bottom:1px solid var(--line);
-  padding:11px 14px;
-  background:var(--surface-soft);
-}
-
-.payable-detail-section-head h3 {
-  margin:0;
-  color:var(--navy);
-  font-size:13px;
-}
-
-.payable-detail-section-head span {
-  color:var(--muted);
-  font-size:10px;
-}
-
-.payable-detail-items {
-  padding:0 14px;
-}
-
-.payable-detail-item {
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:14px;
-  border-bottom:1px solid var(--line);
-  padding:13px 0;
-}
-
-.payable-detail-item:last-child {
-  border-bottom:0;
-}
-
-.payable-detail-item > div:first-child {
-  min-width:0;
-}
-
-.payable-detail-item-title {
-  color:var(--navy-strong);
-  font-size:12px;
-  font-weight:800;
-}
-
-.payable-detail-item-meta {
-  margin-top:3px;
-  color:var(--muted);
-  font-size:10px;
-  line-height:1.4;
-}
-
-.payable-detail-item-value {
-  flex:0 0 auto;
-  color:var(--navy-strong);
-  font-size:12px;
-  font-variant-numeric:tabular-nums;
-  font-weight:800;
-  text-align:right;
-}
-
-.payable-notes {
-  margin-top:14px;
-  border-left:4px solid #d5dde8;
-  border-radius:10px;
-  padding:12px 14px;
-  background:var(--surface-soft);
-  color:var(--muted-strong);
-  font-size:11px;
-  white-space:pre-wrap;
-}
-
-.payable-trace-actions {
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  padding:13px 14px;
-  background:#fff;
-}
-
-.erp-module-page.erp-module-payables .payable-trace-actions .btn {
-  min-height:35px;
-  font-size:10px;
-}
-
-.payable-decision-dialog {
-  width:min(560px,100%);
-}
-
-.payable-decision-dialog h2 {
-  margin-top:5px;
-}
-
-.payables-decision-copy {
-  margin:9px 0 15px;
-  color:var(--muted-strong);
-  font-size:12px;
-  line-height:1.55;
-}
-
-.payable-decision-actions {
-  border-top:1px solid var(--line);
-  padding-top:15px;
-}
-
+/* Figma financial workspace. This module owns its presentation. */
+.erp-module-page.erp-module-payables { color-scheme:light;overflow-x:hidden; }
+.erp-module-page.erp-module-payables [hidden],.erp-module-page.erp-module-payables .hidden { display:none; }
+.erp-module-payables.modal-open { overflow:hidden; }
+.erp-module-page.erp-module-payables .payables-shell { width:calc(100% - 64px);max-width:1480px;margin:32px auto; }
+.erp-module-page.erp-module-payables .payables-page-head { display:flex;align-items:flex-start;justify-content:space-between;gap:24px;overflow:visible;margin:0 0 24px;padding:0;border:0;border-radius:0;background:var(--surface);box-shadow:none; }
+.erp-module-payables .payables-page-head::before,.erp-module-payables .payables-page-head::after { content:none; }
+.erp-module-payables .payables-page-heading { max-width:none;min-width:0; }
+.erp-module-page.erp-module-payables .payables-page-kicker,.payables-dialog-kicker { display:block;margin:0 0 8px;color:var(--muted);font-size:12px;font-weight:500;line-height:18px;letter-spacing:0;text-transform:none; }
+.erp-module-page.erp-module-payables .payables-page-head h1,.erp-module-payables .dialog h2 { margin:0;color:var(--text);font-size:30px;font-weight:600;line-height:38px;letter-spacing:-.6px; }
+.erp-module-page.erp-module-payables .payables-page-head p { max-width:none;margin:8px 0 0;color:var(--muted);font-size:14px;line-height:20px; }
+.payables-hero-actions,.payables-primary-actions { display:flex;flex:none;align-items:flex-start;gap:16px; }
+.erp-module-page.erp-module-payables button { min-height:44px;border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 16px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;line-height:20px;box-shadow:none;cursor:pointer; }
+.erp-module-page.erp-module-payables button:not(:disabled):hover { border-color:var(--line-strong);background:var(--surface-soft);box-shadow:none; }
+.erp-module-page.erp-module-payables button.primary,.erp-module-page.erp-module-payables button.orange,.erp-module-page.erp-module-payables button.active { border-color:var(--orange);background:var(--orange);color:#fff; }
+.erp-module-page.erp-module-payables button.primary:not(:disabled):hover,.erp-module-page.erp-module-payables button.orange:not(:disabled):hover,.erp-module-page.erp-module-payables button.active:not(:disabled):hover { border-color:var(--orange);background:var(--orange);color:#fff; }
+.erp-module-page.erp-module-payables button.danger { border-color:var(--bad);color:var(--bad); }
+.erp-module-page.erp-module-payables button:disabled { opacity:.55;cursor:not-allowed; }
+.erp-module-page.erp-module-payables :focus-visible { outline:3px solid var(--text);outline-offset:2px; }
+.erp-module-payables .payables-primary-action { min-width:180px; }
+.erp-module-payables .payables-feedback:empty,.erp-module-payables .payable-feedback:empty,.erp-module-payables .msg:empty { display:none; }
+.erp-module-payables .payables-feedback,.erp-module-payables .payable-feedback,.erp-module-payables .msg { margin:0 0 24px;padding:16px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-soft);font-size:14px;text-align:left; }
+.erp-module-payables .payables-feedback.bad,.erp-module-payables .payable-feedback.bad,.erp-module-payables .msg.bad { border-color:var(--bad);background:var(--bad-soft);color:var(--bad); }
+.erp-module-payables .payables-feedback.ok,.erp-module-payables .payable-feedback.ok,.erp-module-payables .msg.ok { border-color:var(--ok);background:var(--ok-soft);color:var(--ok); }
+.payables-readonly { margin-bottom:24px;padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);color:var(--muted); }
+.erp-module-page.erp-module-payables .payables-metrics { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin:0 0 24px; }
+.erp-module-page.erp-module-payables .metric { display:flex;flex-direction:column;gap:4px;min-width:0;margin:0;padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);box-shadow:none; }
+.erp-module-page.erp-module-payables .metric b { order:-1;margin:0;color:var(--text);font-size:32px;font-weight:600;line-height:40px;letter-spacing:-.8px;overflow-wrap:anywhere; }
+.erp-module-page.erp-module-payables .metric span { color:var(--text);font-size:14px;font-weight:600;line-height:20px;letter-spacing:0;text-transform:none; }
+.erp-module-payables .metric small { color:var(--muted);font-size:12px;line-height:18px; }
+.erp-module-page.erp-module-payables .payables-list-panel { margin:0 0 24px;padding:0;border:0;border-radius:0;background:var(--surface);box-shadow:none; }
+.erp-module-payables .tabs { display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px;padding:0;border:0;background:var(--surface); }
+.erp-module-page.erp-module-payables .tabs .btn { min-width:112px;min-height:44px;padding:11px 16px;font-size:14px;line-height:20px; }
+.payables-list-toolbar { display:grid;grid-template-columns:minmax(0,1fr) 112px 160px;align-items:end;gap:16px;margin-bottom:24px; }
+.erp-module-payables .payables-search-field,.erp-module-payables label { display:block;margin:0 0 8px;color:var(--text);font-size:14px;font-weight:600;line-height:20px; }
+.erp-module-payables .payables-search-field { display:grid;gap:8px;margin:0; }
+.erp-module-page.erp-module-payables input,.erp-module-page.erp-module-payables select,.erp-module-page.erp-module-payables textarea { width:100%;max-width:none;min-width:0;min-height:44px;margin:0;border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:11px 12px;background:var(--surface);color:var(--text);font-size:14px;font-weight:400;line-height:20px;box-shadow:none; }
+.erp-module-page.erp-module-payables select { appearance:none;padding-right:40px;background-image:url('/admin/assets/purchase-chevron.svg');background-repeat:no-repeat;background-position:right 12px center;background-size:18px 18px; }
+.erp-module-page.erp-module-payables textarea { min-height:80px;resize:vertical; }
+.payables-panel-head { display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 16px;padding:0;border:0;background:var(--surface); }
+.erp-module-payables .payables-panel-head h2,.erp-module-payables h3 { margin:0;color:var(--text);font-size:20px;font-weight:600;line-height:28px;letter-spacing:-.3px; }
+.payables-panel-head p { margin:8px 0 0;color:var(--muted);font-size:14px;line-height:20px; }
+.payables-result-count { flex:none;color:var(--muted);font-size:12px;line-height:18px; }
+.payables-table-wrap { width:100%;overflow-x:auto; }
+.payables-table-head,.payable-row { display:grid;grid-template-columns:minmax(144px,1fr) 152px 132px 104px 124px 124px 164px;align-items:center;gap:16px;min-width:1152px;padding:16px; }
+.payables-table-head { margin-bottom:16px;background:var(--surface-soft);color:var(--muted);font-size:12px;font-weight:500;line-height:18px; }
+.payables-list { display:grid;gap:16px; }
+.payable-row { border:1px solid var(--line);background:var(--surface); }
+.payable-cell { display:grid;gap:4px;min-width:0;overflow-wrap:anywhere; }
+.payable-cell-label { display:none; }
+.payable-number,.payable-cell-main,.payable-money { color:var(--text);font-size:14px;font-weight:600;line-height:20px; }
+.payable-cell-sub { color:var(--muted);font-size:12px;line-height:18px; }
+.payable-row-actions { display:grid;gap:8px;min-width:0; }
+.erp-module-payables .payable-row-actions button { width:100%; }
+.erp-module-payables .pill { display:inline-block;width:fit-content;padding:4px 8px;border:0;border-radius:var(--radius-sm);background:var(--surface-soft);color:var(--muted);font-size:12px;font-weight:500;line-height:18px;white-space:normal; }
+.erp-module-payables .pill.ok { background:var(--ok-soft);color:var(--ok); }
+.erp-module-payables .pill.warn { background:var(--warn-soft);color:var(--warn); }
+.erp-module-payables .pill.bad { background:var(--bad-soft);color:var(--bad); }
+.payables-empty,.payables-loading { display:grid;gap:8px;min-height:140px;align-content:center;justify-items:center;padding:24px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-soft);color:var(--muted);text-align:center; }
+.payables-empty strong { color:var(--text);font-size:16px;font-weight:600; }
+.payables-spinner { width:20px;height:20px;border:2px solid var(--line);border-top-color:var(--orange);border-radius:50%;animation:payables-spin 1s linear infinite; }
+@keyframes payables-spin { to { transform:rotate(360deg); } }
+.erp-module-payables .modal { position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto;background:rgba(32,33,31,.42);backdrop-filter:none; }
+.erp-module-payables .modal.hidden { display:none; }
+.erp-module-payables .dialog { width:min(1080px,100%);max-height:calc(100dvh - 48px);margin:auto;padding:32px;overflow:auto;overscroll-behavior:contain;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);box-shadow:none; }
+.erp-module-page.erp-module-payables .dialog.compact { width:min(700px,100%); }
+.erp-module-payables .dialog-head { display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:space-between;gap:24px;margin:0 0 48px;padding:0;border:0;background:var(--surface); }
+.erp-module-payables .dialog-head > div { flex:1;min-width:0; }
+.erp-module-payables .dialog-head .muted { margin:8px 0 0;color:var(--muted);font-size:14px;line-height:20px; }
+.erp-module-page.erp-module-payables .payables-close-button { flex:none;min-width:116px; }
+.erp-module-payables .grid,.erp-module-payables .grid3 { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-bottom:24px; }
+.erp-module-payables .grid4 { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:16px 0 0; }
+.payable-form-section { display:grid;gap:24px;min-width:0;margin:0 0 24px;padding:0;border:0;background:var(--surface); }
+.payable-form-section .grid,.payable-form-section .grid3 { margin:0; }
+.payable-form-section-head { display:flex;align-items:flex-start;justify-content:space-between;gap:16px; }
+.payable-form-section-head p { margin:8px 0 0;color:var(--muted);font-size:14px;line-height:20px; }
+.payable-lines,.detail-items { display:grid;gap:16px; }
+.payable-line { padding:16px;border:1px solid var(--line);background:var(--surface); }
+.payable-line-title { font-weight:600; }
+.payable-line-meta,.payable-line-hint { margin-top:4px;color:var(--muted);font-size:12px;line-height:18px; }
+.payable-line .grid { margin:16px 0 0; }
+.erp-module-payables .actions { display:flex;flex-wrap:wrap;gap:16px; }
+.erp-module-payables .payables-modal-actions,.erp-module-payables .payable-modal-actions { position:static;justify-content:flex-end;gap:16px;margin:48px 0 0;padding:0;border:0;background:var(--surface); }
+.erp-module-payables .payables-modal-actions button,.erp-module-payables .payable-modal-actions button { min-width:132px; }
+.erp-module-payables .payables-dialog-message,.erp-module-payables .payable-dialog-message { margin:24px 0 0; }
+.payable-detail-summary { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:0 0 24px; }
+.payable-detail-summary > article { display:flex;flex-direction:column;gap:4px;min-width:0; }
+.payable-detail-summary span { color:var(--muted);font-size:12px;line-height:18px; }
+.payable-detail-summary strong { order:-1;font-size:14px;font-weight:600;overflow-wrap:anywhere; }
+.payable-detail-section { display:grid;gap:16px;min-width:0;margin-bottom:24px; }
+.payable-detail-section-head { display:flex;justify-content:space-between;gap:16px; }
+.payable-detail-section-head span { color:var(--muted);font-size:12px; }
+.payable-detail-items { display:grid;gap:16px; }
+.payable-detail-item { display:flex;justify-content:space-between;align-items:flex-start;gap:24px;min-width:0; }
+.payable-detail-item > div:first-child { flex:1;min-width:0; }
+.payable-detail-item-title,.payable-detail-item-value { font-weight:600;overflow-wrap:anywhere; }
+.payable-detail-item-meta { margin-top:4px;color:var(--muted);font-size:12px;line-height:18px;overflow-wrap:anywhere; }
+.payable-payment-actions { display:grid;gap:8px; }
+.payable-notes { margin:24px 0;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere; }
+.payables-decision-copy,.payable-decision-copy { margin:24px 0;color:var(--muted);font-size:14px;line-height:20px; }
+.payables-visually-hidden { position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap; }
 @media(max-width:1180px) {
-  .erp-module-payables .payables-page-head {
-    align-items:stretch;
-    flex-direction:column;
-  }
-
-  .payables-hero-actions {
-    width:100%;
-    min-width:0;
-  }
-
-  .erp-module-payables .payables-metrics {
-    grid-template-columns:repeat(3,minmax(0,1fr));
-  }
-
-  .payables-list-toolbar {
-    grid-template-columns:minmax(220px,1fr) auto auto 40px;
-  }
-
-  .payables-clear {
-    display:none;
-  }
+  .erp-module-page.erp-module-payables .payables-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .erp-module-payables .payables-page-head { flex-wrap:wrap; }
 }
-
 @media(max-width:900px) {
-  .erp-module-payables .payables-page-head {
-    min-height:0;
-  }
-
-  .payables-list-toolbar {
-    grid-template-columns:minmax(0,1fr) auto 40px;
-  }
-
-  .payables-view-tabs {
-    grid-column:1 / -1;
-    grid-row:2;
-    overflow-x:auto;
-  }
-
-  .payable-lines-head {
-    flex-wrap:wrap;
-  }
-
-  .payable-lines-head .payable-calculated-total {
-    margin-left:38px;
-  }
+  .erp-module-page.erp-module-payables .payables-shell { width:calc(100% - 32px);margin:24px auto; }
+  .payables-table-head { display:none; }
+  .payables-table-wrap { overflow:visible; }
+  .payable-row { min-width:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px; }
+  .payable-cell-label { display:block;color:var(--muted);font-size:12px;line-height:18px; }
+  .payable-row-actions { grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
-
 @media(max-width:760px) {
-  .erp-module-payables .payables-page-head {
-    padding:22px 20px;
-  }
-
-  .erp-module-payables .payables-page-head::after {
-    right:-120px;
-    bottom:-170px;
-  }
-
-  .payables-primary-actions {
-    grid-template-columns:repeat(2,minmax(0,1fr));
-  }
-
-  .payables-primary-actions #newBill {
-    grid-column:1 / -1;
-  }
-
-  .erp-module-payables .payables-metrics {
-    grid-template-columns:repeat(2,minmax(0,1fr));
-  }
-
-  .erp-module-payables .payables-metrics .payable-metric-unapplied {
-    grid-column:1 / -1;
-  }
-
-  .payables-panel-head {
-    align-items:flex-start;
-    flex-direction:column;
-    padding:18px 16px 15px;
-  }
-
-  .payables-list-toolbar {
-    grid-template-columns:minmax(0,1fr) 40px;
-    padding:12px;
-  }
-
-  .payables-entity-tabs {
-    grid-column:1;
-    grid-row:2;
-  }
-
-  .payables-view-tabs {
-    grid-column:1 / -1;
-    grid-row:3;
-  }
-
-  .payables-table-wrap {
-    overflow-x:visible;
-    padding:12px;
-    background:#f7f9fc;
-  }
-
-  .payables-table-head {
-    display:none;
-  }
-
-  .payables-list {
-    display:grid;
-    min-width:0;
-    gap:10px;
-  }
-
-  .payable-row {
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    min-width:0;
-    gap:13px 15px;
-    border:1px solid var(--payables-line);
-    border-radius:13px;
-    padding:15px;
-    box-shadow:var(--shadow-xs);
-  }
-
-  .payable-row:last-child {
-    border-bottom:1px solid var(--payables-line);
-  }
-
-  .payable-cell-label {
-    position:static;
-    display:block;
-    width:auto;
-    height:auto;
-    margin-bottom:4px;
-    overflow:visible;
-    clip:auto;
-    clip-path:none;
-    color:var(--muted);
-    font-size:9px;
-    font-weight:800;
-    letter-spacing:.055em;
-    text-transform:uppercase;
-    white-space:normal;
-  }
-
-  .payable-row-actions {
-    grid-column:1 / -1;
-    justify-content:flex-start;
-    border-top:1px solid var(--line);
-    padding-top:12px;
-  }
-
-  .payable-detail-summary {
-    grid-template-columns:repeat(2,minmax(0,1fr));
-  }
-
-  .payable-form-section {
-    padding:14px;
-  }
+  .erp-module-page.erp-module-payables .payables-page-head h1,.erp-module-payables .dialog h2 { font-size:26px;line-height:34px; }
+  .erp-module-page.erp-module-payables .payables-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .erp-module-payables .modal { padding:8px; }
+  .erp-module-payables .dialog { max-height:calc(100dvh - 16px);padding:24px;border-radius:var(--radius-md); }
+  .erp-module-payables .dialog-head { gap:16px;margin-bottom:32px; }
+  .erp-module-page.erp-module-payables .payables-close-button { min-width:72px;padding-inline:12px; }
+  .erp-module-payables .grid,.erp-module-payables .grid3,.erp-module-payables .grid4 { grid-template-columns:1fr;gap:16px; }
+  .payable-detail-item { flex-direction:column;gap:16px; }
+  .payables-panel-head { align-items:flex-start;flex-wrap:wrap; }
+  .erp-module-page.erp-module-payables input,.erp-module-page.erp-module-payables select,.erp-module-page.erp-module-payables textarea { font-size:16px; }
 }
-
 @media(max-width:560px) {
-  .erp-module-payables .payables-page-head h1 {
-    font-size:28px;
-  }
-
-  .payables-primary-actions {
-    grid-template-columns:1fr;
-  }
-
-  .payables-primary-actions #newBill {
-    grid-column:auto;
-  }
-
-  .erp-module-payables .payables-metrics .metric {
-    min-height:98px;
-    padding:14px 14px 13px 17px;
-  }
-
-  .erp-module-payables .payables-metrics .metric b {
-    font-size:19px;
-  }
-
-  .payables-entity-tabs,
-  .payables-view-tabs {
-    width:100%;
-  }
-
-  .payable-row {
-    grid-template-columns:1fr;
-  }
-
-  .payable-row-actions {
-    grid-column:1;
-  }
-
-  .erp-module-page.erp-module-payables .payable-row-actions .btn {
-    flex:1 1 calc(50% - 6px);
-  }
-
-  .payable-detail-summary {
-    grid-template-columns:1fr;
-  }
-
-  .payable-detail-item,
-  .payable-form-section-head.payable-lines-head {
-    flex-direction:column;
-  }
-
-  .payable-detail-item-value {
-    text-align:left;
-  }
-
-  .payable-lines-head .payable-calculated-total {
-    min-width:0;
-    margin-left:38px;
-  }
-
-  .allocation-amount {
-    width:100%;
-  }
-
-  .payables-modal-actions > button {
-    flex:1;
-  }
+  .payables-list-toolbar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .payables-search-field { grid-column:1/-1; }
+  .payables-hero-actions,.payables-primary-actions { width:100%;flex-wrap:wrap; }
+  .erp-module-payables .tabs { flex-wrap:nowrap;overflow:auto; }
+  .erp-module-payables .tabs button { flex:none; }
+  .payable-form-section-head { flex-wrap:wrap; }
+  .payable-detail-summary { grid-template-columns:1fr;gap:16px; }
+  .erp-module-payables .payables-modal-actions,.erp-module-payables .payable-modal-actions { margin-top:32px; }
 }
-
 @media(max-width:390px) {
-  .erp-module-payables .payables-metrics {
-    grid-template-columns:1fr;
-  }
-
-  .erp-module-payables .payables-metrics .payable-metric-unapplied {
-    grid-column:auto;
-  }
-
-  .payables-hero-state {
-    padding-inline:12px;
-  }
-
-  .erp-module-page.erp-module-payables .payable-row-actions .btn {
-    flex-basis:100%;
-  }
+  .erp-module-page.erp-module-payables .payables-shell { width:calc(100% - 24px); }
+  .erp-module-payables .dialog { padding:16px; }
 }
+@media(prefers-reduced-motion:reduce) { .erp-module-payables * { scroll-behavior:auto;transition:none;animation:none; } }
 
-@media(prefers-reduced-motion:reduce) {
-  .erp-module-payables .payables-spinner {
-    animation-duration:.01ms;
-    animation-iteration-count:1;
-  }
-
-  .erp-module-payables .payable-row {
-    transition:none;
-  }
-}
+.payables-payment-hint { margin-top:24px;color:var(--muted);font-size:14px;line-height:20px; }
+.payable-calculated-total { font-size:14px;font-weight:600; }
+.erp-module-payables .allocation-amount { width:336px;max-width:100%; }
+.payable-trace-actions { display:flex;flex-wrap:wrap;gap:16px; }
+.payable-trace-body { padding:0;color:var(--muted);overflow-wrap:anywhere; }
+.payable-trace-summary,.payable-trace-table { overflow:auto; }
+.payable-trace-summary { margin-bottom:16px; }
+@media(max-width:760px) { .erp-module-payables .allocation-amount { width:100%; } }

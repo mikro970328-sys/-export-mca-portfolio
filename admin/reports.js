@@ -120,13 +120,27 @@
   }
 
   function renderTabs() {
+    const focusedDataset = $('datasetTabs').contains(document.activeElement) ? document.activeElement.dataset.dataset : null;
     $('datasetTabs').innerHTML = state.datasets.map(item => {
       const active = item.key === state.dataset;
       return `<button type="button" role="tab" class="dataset-tab ${active ? 'active' : ''}" data-dataset="${esc(item.key)}" aria-selected="${active}" aria-controls="reportTable" tabindex="${active ? '0' : '-1'}">${esc(item.label)}</button>`;
     }).join('');
     $('datasetTabs').querySelectorAll('[data-dataset]').forEach(button => {
       button.addEventListener('click', () => switchDataset(button.dataset.dataset));
+      button.addEventListener('keydown', event => {
+        const keys = ['ArrowLeft','ArrowRight','Home','End'];
+        if (!keys.includes(event.key)) return;
+        event.preventDefault();
+        const index = state.datasets.findIndex(item => item.key === button.dataset.dataset);
+        const last = state.datasets.length - 1;
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? last : (index + (event.key === 'ArrowRight' ? 1 : last)) % state.datasets.length;
+        const dataset = state.datasets[next]?.key;
+        if (!dataset) return;
+        switchDataset(dataset);
+        [...$('datasetTabs').querySelectorAll('[data-dataset]')].find(tab => tab.dataset.dataset === dataset)?.focus();
+      });
     });
+    if (focusedDataset) [...$('datasetTabs').querySelectorAll('[data-dataset]')].find(tab => tab.dataset.dataset === focusedDataset)?.focus();
   }
 
   function setDimensions(dimensions, basis) {

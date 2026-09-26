@@ -39,7 +39,8 @@ Se conservan las APIs, payloads, permisos, capacidades, saldos, estados y operac
 - Diez pruebas de presentación por motor: filtros, detalles, WR, asignación, validaciones, permisos, radio/teclado, errores y recuperación. Se incluyen ventanas 1440×700 y 390×500 y comprobación de que el campo recibe el puntero.
 - Fixtures ficticias en memoria con CSP que bloquea la red. No escriben en producción ni Preview.
 - Las suites existentes con PostgreSQL/PostgREST desechables siguen comprobando reservas, despacho, documentación/versiones, recuperación, workflow y concurrencia.
-- CI y capturas del head final se registrarán en el PR antes de integrar. WebKit simulado no equivale a iPhone físico.
+- Publicado por PR #351: head probado `a3311d104e8848762d05e87c33c210eb93c0d48d`, main `c15459f61ff19755e5fa0c0f20585eb63bc50b86`. 45/45 workflows; run `36218460503`, 22/22 jobs, 50/50 pruebas visuales por motor. Capturas finales revisadas. Vercel `dpl_Ao7GVtchdtYvVxNRVBpLxHkK7JVZ` READY; 12 archivos exactos en producción; APIs sin sesión 401.
+- La revisión integrada corrigió el foco diferido de Gastos y comprobó foco/importe antes y después del fallo de guardado. WebKit simulado no equivale a iPhone físico.
 
 ## Pendiente del ERP de escritorio
 

@@ -6,7 +6,7 @@
   <title>Reportes · Export MCA</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
-  <link rel="stylesheet" href="/admin/reports.css?v=20260922-figma2">
+  <link rel="stylesheet" href="/admin/reports.css?v=20260926-figma1">
 </head>
 <body class="erp-module-page erp-module-reports" data-owner="reports.js">
   <main class="reports-wrap reports-shell">
@@ -17,10 +17,7 @@
         <p>Analiza ventas, compras, facturación, pagos e inventario desde las fuentes oficiales del ERP, con monedas separadas y sin conversiones automáticas.</p>
       </div>
       <div class="reports-hero-actions">
-        <div class="reports-hero-state" aria-label="Estado del módulo">
-          <span class="reports-live-dot" aria-hidden="true"></span>
-          <div><strong>Datos ejecutivos</strong><span id="reportLastUpdated">Preparando reportes…</span></div>
-        </div>
+        <span id="reportLastUpdated" class="reports-visually-hidden">Preparando reportes…</span>
         <div class="reports-action-row">
           <button id="refreshReport" type="button" class="btn reports-refresh">Actualizar</button>
           <button id="exportReport" type="button" class="btn orange reports-export">Exportar CSV</button>
@@ -39,16 +36,15 @@
     </section>
 
     <section class="panel reports-control-panel" aria-labelledby="reportFiltersTitle">
+      <div id="datasetTabs" class="dataset-tabs reports-dataset-tabs" role="tablist" aria-label="Tipos de reporte"></div>
       <header class="reports-panel-head">
         <div>
-          <span class="reports-eyebrow">Análisis disponible</span>
-          <h2 id="reportFiltersTitle">Selecciona la información</h2>
+
+          <h2 id="reportFiltersTitle">Filtros</h2>
           <p>Cambia de reporte y limita la consulta únicamente con los filtros que aplican a esa vista.</p>
         </div>
         <span id="reportScope" class="reports-scope">Actividad del período</span>
       </header>
-
-      <div id="datasetTabs" class="dataset-tabs reports-dataset-tabs" role="tablist" aria-label="Tipos de reporte"></div>
 
       <div class="report-filters reports-filter-grid">
         <label data-filter-dimension="period" for="startDate"><span>Desde</span><input id="startDate" type="date"></label>
@@ -72,18 +68,19 @@
     <section class="panel reports-table-panel" aria-labelledby="reportDataTitle">
       <header class="reports-panel-head reports-table-panel-head">
         <div>
-          <span class="reports-eyebrow">Resultado canónico</span>
+
           <h2 id="reportDataTitle">Ventas</h2>
           <p id="reportDataDescription">Ventas y rentabilidad reconocida por orden, cliente y moneda.</p>
         </div>
         <span id="reportResultCount" class="reports-result-count">Consultando…</span>
       </header>
-      <div id="reportTable" class="report-table-wrap reports-table-wrap" aria-live="polite">
+      <div id="reportTable" class="report-table-wrap reports-table-wrap" role="tabpanel" tabindex="0" aria-labelledby="reportDataTitle" aria-live="polite">
         <div class="reports-loading" role="status"><span class="reports-spinner" aria-hidden="true"></span>Consultando reporte…</div>
       </div>
+      <p class="reports-scroll-hint">Desplaza la tabla horizontalmente para consultar todas las columnas.</p>
     </section>
   </main>
-  <script src="/admin/reports.js?v=20260916-queue1" defer></script>
+  <script src="/admin/reports.js?v=20260926-figma1" defer></script>
   <script src="/admin/embedded-auto-refresh.js?v=20260920-speed3" defer></script>
 </body>
 </html>

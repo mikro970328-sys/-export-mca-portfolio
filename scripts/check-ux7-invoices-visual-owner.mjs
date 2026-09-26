@@ -44,8 +44,8 @@ const workflow = read(files.workflow);
 for (const text of [
   '<body class="erp-module-page erp-module-invoices" data-owner="invoices.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/invoices.css?v=20260922-figma1',
-  '/admin/invoices.js?v=20260916-payment1',
+  '/admin/invoices.css?v=20260926-figma1',
+  '/admin/invoices.js?v=20260926-figma1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero invoices-page-head"',
   'id="invoiceLastUpdated"',
@@ -62,7 +62,7 @@ for (const text of [
 ]) requireText(html, text, `HTML canónico ${text}`);
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerCssIndex = html.indexOf('/admin/invoices.css?v=20260922-figma1');
+const ownerCssIndex = html.indexOf('/admin/invoices.css?v=20260926-figma1');
 if (foundationIndex < 0 || ownerCssIndex < 0 || foundationIndex > ownerCssIndex) {
   failures.push('la base visual compartida debe cargar antes de invoices.css');
 }
@@ -75,7 +75,6 @@ forbid(html, /purchases\.css/i, 'Facturación vuelve a depender del CSS de Compr
 
 for (const selector of [
   '.invoices-page-head',
-  '.invoices-hero-state',
   '.invoices-metrics',
   '.invoices-list-panel',
   '.invoices-list-toolbar',
@@ -97,7 +96,7 @@ for (const selector of [
 ]) requireText(styles, selector, `CSS propietario ${selector}`);
 
 requireText(styles, 'overflow-x:auto;', 'scroll horizontal interno de la tabla');
-requireText(styles, 'min-width:1160px;', 'ancho interno controlado de la tabla');
+requireText(styles, 'min-width:1152px;', 'ancho interno controlado de la tabla');
 requireText(styles, 'overflow-x:hidden;', 'protección contra desbordamiento del documento');
 forbid(styles, /@import|!important|font-family\s*:\s*Arial|linear-gradient/i, 'invoices.css conserva estilos legacy, una importación tardía o una sobrescritura');
 forbid(styles, /\b(?:fetch|MutationObserver|prompt|alert|confirm)\b/, 'invoices.css mezcla comportamiento de JavaScript');
