@@ -48,7 +48,53 @@ test('Figma expenses: white list, readable cards, search, menus and financial vi
     await expect(page.locator(`[data-view="${view}"]`)).toHaveAttribute('aria-pressed','true');
     await fits(page);
   }
+  await page.locator('[data-view="profitability"]').click();
+  await page.locator('[data-profit-subview="shipments"]').click();
+  await expect(page.locator('.profit-card').filter({hasText:'CONT-DEMO-0248'})).toContainText('Ganancia del contenedor');
+  await expect(page.locator('.profit-card').filter({hasText:'CONT-DEMO-0248'})).toContainText('350.00');
+  await expect(page.locator('.profit-card').filter({hasText:'CONT-DEMO-0248'})).toContainText('total acordado');
+  await page.locator('[data-profit-subview="operations"]').click();
+  await expect(page.locator('.profit-card').filter({hasText:'OP-DEMO-0248'})).toBeVisible();
   expect(await posts(page)).toEqual([]);
+});
+
+test('Company monthly and annual profit subtract worker salary and tips; void payroll is excluded',async({page})=>{
+  await open(page);
+  await page.locator('[data-view="profitability"]').click();
+  await page.locator('[data-profit-subview="company"]').click();
+  const result=page.locator('.company-month-table tbody tr').last();
+  await expect(result).toContainText('125.00');
+  await page.locator('[data-payroll-add]').click();
+  await page.locator('#payrollSalary').fill('300');
+  await page.locator('#payrollTips').fill('50');
+  await page.locator('#savePayroll').click();
+  await expect(page.locator('.payroll-row').filter({hasText:'350.00'})).toHaveCount(1);
+  await expect(page.locator('.company-month-table tbody tr').last()).toContainText('225.00');
+  await expect(page.locator('.company-month-table tbody tr').last().locator('td').last()).toHaveClass(/company-net-negative/);
+  await page.locator('[data-payroll-void="fixture-payroll-created"]').click();
+  await page.locator('#costDecisionAccept').click();
+  await expect(page.locator('.company-month-table tbody tr').last()).toContainText('125.00');
+  const calls=await posts(page);
+  expect(calls.filter(call=>call.action==='create')).toHaveLength(1);
+  expect(calls.filter(call=>call.action==='void')).toHaveLength(1);
+});
+
+test('Company profit stays pending when an issued invoice has no recognized merchandise cost',async({page})=>{
+  await open(page,{companyPending:true});
+  await page.locator('[data-view="profitability"]').click();
+  await page.locator('[data-profit-subview="company"]').click();
+  await expect(page.locator('.company-month-table tbody tr').last()).toContainText('Pendiente de costo');
+  await expect(page.locator('.company-annual-card')).toContainText('Pendiente: costo de mercancía incompleto');
+});
+
+test('Finance readers see the company deduction without employee salary details',async({page})=>{
+  await open(page,{writable:false});
+  await page.locator('[data-view="profitability"]').click();
+  await page.locator('[data-profit-subview="company"]').click();
+  await expect(page.locator('.company-month-table tbody tr').last()).toContainText('125.00');
+  await expect(page.locator('.payroll-row')).toHaveCount(0);
+  await expect(page.locator('[data-payroll-add]')).toHaveCount(0);
+  await expect(page.locator('.payroll-section')).toContainText('detalle por trabajador requiere permiso');
 });
 
 for(const viewport of [{width:390,height:500},{width:1440,height:700}]){

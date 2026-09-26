@@ -13,14 +13,17 @@ for (const writable of [true,false]) {
     one(selector).dispatchEvent(new win.Event(type,{bubbles:true}));
   };
   await flush();
-  check(doc.querySelectorAll('.sales-order-row').length===3,'Open sales retain the confirmed status filter');
+  check(doc.querySelectorAll('.sales-order-row').length===4,'En marcha groups draft and confirmed sales');
   check(one('#newOrder').hidden===!writable,'Creation follows server write access');
   check(one('#salesAccessNote').hidden===writable,'Read-only guidance follows server write access');
-  one('[data-view="draft"]').click();
-  check(doc.querySelectorAll('.sales-order-row').length===1,'Draft filter works');
-  check(Boolean(one('[data-edit-order]'))===writable,'Edit follows the exact server capability');
-  check(!one('[data-load-order]'),'Draft without load capability has no create-load action');
-  one('[data-view="all"]').click();
+  one('[data-view="history"]').click();
+  check(doc.querySelectorAll('.sales-order-row').length===1,'Historial groups completed sales');
+  check(!one('[data-edit-order]'),'History does not expose draft editing');
+  one('[data-view="open"]').click();
+  const draftRow=[...doc.querySelectorAll('.sales-order-row')].find(row=>row.textContent.includes('Borrador'));
+  check(Boolean(draftRow),'Draft sales remain visible under En marcha');
+  check(Boolean(draftRow.querySelector('[data-edit-order]'))===writable,'Edit follows the exact server capability');
+  check(!draftRow.querySelector('[data-load-order]'),'Draft without load capability has no create-load action');
   edit('#search','REF-247');
   check(doc.querySelectorAll('.sales-order-row').length===1,'Reference search survives the new row presentation');
   check(one('.sales-order-total').textContent.includes('€'),'Each sale retains its currency');
@@ -34,6 +37,7 @@ for (const writable of [true,false]) {
     await flush();
     check(!one('#orderModal').classList.contains('hidden'),'New sale opens the existing modal');
     check(one('label[for="oClientPickerButton"]'),'Client picker keeps a persistent associated label');
+    check(one('.lPriceMode').value==='total','A sale starts from its agreed line total');
     edit('.lQty','10');edit('.lPrice','12.5');
     check(one('.lTotal').value==='125','Unit pricing still computes the line total');
     edit('.lTotal','250');
@@ -45,10 +49,23 @@ for (const writable of [true,false]) {
     one('#addOrderLine').click();
     const ids=[...doc.querySelectorAll('[id]')].map(node=>node.id);
     check(new Set(ids).size===ids.length,'Dynamic field labels have unique IDs');
+    one('[data-sales-add-product]').click();
+    edit('#salesQuickProductName','Mercancía por encargo');edit('#salesQuickProductUnit','cajas');
+    one('#salesQuickProductForm').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+    await flush();
+    check(one('.lProduct').value==='fixture-made-to-order','Quick-created merchandise is attached to the current line');
+    one('#oClientPickerButton').click();
+    check(one('#clientQuickAddToggle').hidden===false,'Client creation is available inside the picker to authorized users');
+    one('#clientQuickAddToggle').click();
+    edit('#clientQuickName','Cliente agregado desde venta');edit('#clientQuickCompany','Empresa rápida');edit('#clientQuickNIT','555-888');edit('#clientQuickPhone','+5351234567');
+    one('#clientQuickAddForm').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+    await flush();await flush();
+    check(one('#oClientPickerButton').textContent.includes('NIT 555-888'),'A client created from the sale is selected with its NIT');
     one('#orderModal [data-close="order"]').click();
     check(one('#orderModal').classList.contains('hidden'),'Original close action works');
   }
-  check(win.__fixtureCalls.every(call=>!call.method||call.method==='GET'),'Fixture never writes business records');
+  const writes=win.__fixtureCalls.filter(call=>call.method&&call.method!=='GET');
+  check(writable?writes.length===2&&writes.some(call=>call.path==='/api/clients')&&writes.some(call=>call.path==='/api/sales-order-ux'):writes.length===0,'Only the two explicitly tested quick-create actions write fixture data');
   dom.window.close();
 }
 console.log(`Figma Sales DOM: ${checks} checks passed. Layout/browser checks remain separate.`);

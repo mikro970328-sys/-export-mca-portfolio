@@ -89,7 +89,8 @@ if(Object.values(files).every(file=>fs.existsSync(path.join(root,file)))){
     "window.ExportMcaAccessControl?.can?.('documents.write')===true",
     'Versiones anteriores',
     'Eliminar versión vigente',
-    "title:'Eliminar versión vigente'",
+    "title:supporting?'Eliminar archivo':'Eliminar versión vigente'",
+    "button:supporting?'Eliminar archivo':'Eliminar vigente'",
     'refreshAfterCustomsChange',
     'window.TasksWorkspace?.load?.()',
     'SalesWorkspace?.reload?.({keepTab:true})'

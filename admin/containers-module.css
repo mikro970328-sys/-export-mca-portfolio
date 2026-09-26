@@ -140,6 +140,10 @@
 .container-customs-version-main small { display:block;margin-top:4px;color:var(--muted);font-size:12px;line-height:18px; }
 .container-customs-version-actions { display:flex;align-items:center;gap:16px; }
 .container-customs-version-state { color:var(--muted);font-size:12px;line-height:18px; }
+.container-customs-card.supporting-documents { grid-column:1/-1; }
+.container-customs-label { font-size:12px;font-weight:650;color:var(--text); }
+.container-customs-related-list { display:grid;gap:12px; }
+.container-customs-related-list .container-customs-version { grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding-top:10px;border-top:1px solid var(--line); }
 .tracking-history { gap:16px; }
 .tracking-history-event { padding:16px;border:1px solid var(--line);border-radius:var(--radius-md); }
 .tracking-history-event strong { font-weight:600; }

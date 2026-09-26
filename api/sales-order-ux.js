@@ -25,9 +25,10 @@ function cleanLines(lines) {
     const upp = text(line.units_per_pallet, 80);
     const unitPrice = text(line.unit_price, 80);
     const lineTotal = text(line.line_total, 80);
-    if (!productId) throw new Error(`Selecciona el producto de la línea ${index + 1}`);
+    if (!productId) throw new Error(`Selecciona o agrega la mercancía de la línea ${index + 1}`);
     if (lineTotal !== '' && (!Number.isFinite(Number(lineTotal)) || Number(lineTotal) < 0)) throw new Error(`El total de venta de la línea ${index + 1} no es válido`);
     if (lineTotal === '' && unitPrice !== '' && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0)) throw new Error(`El precio unitario de la línea ${index + 1} no es válido`);
+    if (lineTotal === '' && unitPrice === '') throw new Error(`Indica el total acordado de la línea ${index + 1}`);
     return {
       product_id:productId,
       ordered_quantity:quantity,
@@ -45,10 +46,10 @@ async function listClients(req) {
   const pageSize = int(req.query?.page_size, 25, 10, 100);
   const q = safeSearch(req.query?.q);
   const offset = (page - 1) * pageSize;
-  let query = '?select=id,name,company,mipyme_name,active&active=eq.true&order=name.asc';
+  let query = '?select=id,name,company,mipyme_name,nit,active&active=eq.true&order=name.asc';
   if (q) {
     const pattern = encodeURIComponent(`*${q}*`);
-    query += `&or=(name.ilike.${pattern},company.ilike.${pattern},mipyme_name.ilike.${pattern})`;
+    query += `&or=(name.ilike.${pattern},company.ilike.${pattern},mipyme_name.ilike.${pattern},nit.ilike.${pattern})`;
   }
   query += `&limit=${pageSize + 1}&offset=${offset}`;
   const rows = await supabase('clients', { query });
@@ -63,7 +64,7 @@ async function listClients(req) {
 }
 
 async function clientContext(clientId) {
-  const clients = await supabase('clients', { query:`?select=id,name,company,mipyme_name,active&id=eq.${clientId}&limit=1` });
+  const clients = await supabase('clients', { query:`?select=id,name,company,mipyme_name,nit,active&id=eq.${clientId}&limit=1` });
   const client = Array.isArray(clients) ? clients[0] : null;
   if (!client || client.active !== true) throw new Error('Cliente no encontrado o inactivo');
   const links = await supabase('client_importers', { query:`?select=importer_id&client_id=eq.${clientId}&limit=1000` });
@@ -131,6 +132,26 @@ async function saveOrder(body, admin) {
   return { order };
 }
 
+async function createProductForOrder(body, admin) {
+  const name = text(body.name, 250);
+  const unit = text(body.unit, 80) || 'unidades';
+  if (!name) throw new Error('Escribe el nombre de la mercancía.');
+  if (/^[-+]?\d+(?:[.,]\d+)?$/.test(unit)) throw new Error('Escribe una unidad, por ejemplo: cajas o unidades.');
+  const existingRows = await supabase('products', { query:'?select=id,sku,name,brand,category,unit,package_format,default_units_per_pallet,active&active=eq.true&order=name.asc&limit=5000' }) || [];
+  const key = name.toLocaleLowerCase('es').replace(/\s+/g, ' ').trim();
+  const existing = existingRows.find(row => String(row.name || '').toLocaleLowerCase('es').replace(/\s+/g, ' ').trim() === key && String(row.unit || 'unidades').toLocaleLowerCase('es') === unit.toLocaleLowerCase('es'));
+  if (existing) return { product:existing, created:false };
+  const rows = await supabase('products', {
+    method:'POST',
+    body:[{ name, unit, sku:null, active:true }],
+    prefer:'return=representation'
+  });
+  const product = rows?.[0];
+  if (!product?.id) throw new Error('No se pudo agregar la mercancía.');
+  await writeAudit(admin, 'product_created_from_sales_order', 'product', product.id, { name:product.name, unit:product.unit });
+  return { product, created:true };
+}
+
 function translatedError(raw) {
   const pairs = [
     ['SO_CLIENT_REQUIRED','Selecciona un cliente.'],
@@ -153,7 +174,7 @@ function translatedError(raw) {
   ];
   const translated = pairs.find(([key]) => raw.includes(key))?.[1] || null;
   if (translated) return translated;
-  if (/^(?:Agrega al menos una línea a la Sales Order|Selecciona el producto de la línea \d+|El total de venta de la línea \d+ no es válido|El precio unitario de la línea \d+ no es válido|Cliente no encontrado o inactivo|Acción de Sales Order inválida|Falta la Sales Order)$/.test(raw)) return raw;
+  if (/^(?:Agrega al menos una línea a la Sales Order|Selecciona o agrega la mercancía de la línea \d+|Indica el total acordado de la línea \d+|El total de venta de la línea \d+ no es válido|El precio unitario de la línea \d+ no es válido|Escribe el nombre de la mercancía\.|Escribe una unidad, por ejemplo: cajas o unidades\.|No se pudo agregar la mercancía\.|Cliente no encontrado o inactivo|Acción de Sales Order inválida|Falta la Sales Order)$/.test(raw)) return raw;
   return null;
 }
 
@@ -183,6 +204,7 @@ export default async function handler(req,res) {
     }
     if (req.method === 'POST') {
       const body = await readJson(req);
+      if (text(body.action,60).toLowerCase() === 'create_product') return ok(res, await createProductForOrder(body,admin));
       return ok(res, await saveOrder(body,admin));
     }
     return fail(res,405,'Método no permitido');

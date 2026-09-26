@@ -33,6 +33,7 @@
   let clientHasMore = false;
   let clientQuery = '';
   let clientTimer = null;
+  let quickProductLine = null;
   const inventoryCache = new Map();
 
   async function uxApi(path, options={}) {
@@ -58,8 +59,10 @@
     modal.setAttribute('aria-modal','true');
     modal.setAttribute('aria-labelledby','clientPickerTitle');
     modal.innerHTML = `<div class="dialog client-picker-dialog">
-      <div class="dialog-head"><div><span class="sales-dialog-kicker">Directorio comercial</span><h2 id="clientPickerTitle">Seleccionar cliente</h2><div class="muted">Busca por nombre o empresa y navega las páginas de clientes activos.</div></div><button type="button" class="btn sales-close-button" data-client-close aria-label="Cerrar selector de clientes">✕</button></div>
-      <label class="sales-visually-hidden" for="clientPickerSearch">Buscar cliente o empresa</label><input id="clientPickerSearch" class="client-picker-search" type="search" autocomplete="off" placeholder="Buscar cliente o empresa">
+      <div class="dialog-head"><div><span class="sales-dialog-kicker">Directorio comercial</span><h2 id="clientPickerTitle">Seleccionar cliente</h2><div class="muted">Busca por nombre, empresa o NIT.</div></div><button type="button" class="btn sales-close-button" data-client-close aria-label="Cerrar selector de clientes">✕</button></div>
+      <div class="client-picker-create"><button id="clientQuickAddToggle" type="button" class="btn orange" hidden>＋ Nuevo cliente</button></div>
+      <form id="clientQuickAddForm" class="client-quick-form" hidden><div class="client-quick-grid"><div><label for="clientQuickName">Nombre completo *</label><input id="clientQuickName" required autocomplete="name"></div><div><label for="clientQuickCompany">Empresa o MIPYME</label><input id="clientQuickCompany" autocomplete="organization"></div><div><label for="clientQuickNIT">NIT</label><input id="clientQuickNIT" autocomplete="off"></div><div><label for="clientQuickPhone">WhatsApp *</label><input id="clientQuickPhone" type="tel" inputmode="tel" placeholder="+5351234567" required autocomplete="tel"></div><div><label for="clientQuickEmail">Correo</label><input id="clientQuickEmail" type="email" autocomplete="email"></div></div><div id="clientQuickAddMsg" class="msg" role="status" aria-live="polite"></div><div class="actions"><button id="clientQuickAddCancel" type="button" class="btn">Cancelar</button><button id="clientQuickAddSave" type="submit" class="btn orange">Guardar y seleccionar</button></div></form>
+      <label class="sales-visually-hidden" for="clientPickerSearch">Buscar cliente o empresa</label><input id="clientPickerSearch" class="client-picker-search" type="search" autocomplete="off" placeholder="Buscar cliente o NIT">
       <div id="clientPickerList" class="client-picker-list"></div>
       <div class="client-picker-footer"><button id="clientPrev" type="button" class="btn">← Anterior</button><span id="clientPageLabel" class="muted">Página 1</span><button id="clientNext" type="button" class="btn">Siguiente →</button></div>
       <div id="clientPickerMsg" class="msg" role="status" aria-live="polite"></div>
@@ -69,6 +72,11 @@
     modal.addEventListener('click', event => { if (event.target === modal) closeClientPicker(); });
     byId('clientPrev').onclick = () => { if (clientPage > 1) { clientPage--; loadClientPage(); } };
     byId('clientNext').onclick = () => { if (clientHasMore) { clientPage++; loadClientPage(); } };
+    const quickAdd = byId('clientQuickAddToggle');
+    quickAdd.hidden = window.ExportMcaAccessControl?.can?.('clients.write') !== true;
+    quickAdd.onclick = () => { byId('clientQuickAddForm').hidden = false; byId('clientQuickAddMsg').textContent=''; byId('clientQuickName').focus(); };
+    byId('clientQuickAddCancel').onclick = () => { byId('clientQuickAddForm').hidden = true; quickAdd.focus(); };
+    byId('clientQuickAddForm').addEventListener('submit',saveQuickClient);
     byId('clientPickerSearch').addEventListener('input', event => {
       clearTimeout(clientTimer);
       clientTimer = setTimeout(() => {
@@ -103,7 +111,7 @@
     if (!select || !button) return;
     const edit = currentEditing();
     if (!select.value && edit?.client_id) {
-      const label = edit?.client?.company || edit?.client?.mipyme_name || edit?.client?.name || 'Cliente seleccionado';
+      const label = `${edit?.client?.company || edit?.client?.mipyme_name || edit?.client?.name || 'Cliente seleccionado'}${edit?.client?.nit?` · NIT ${edit.client.nit}`:''}`;
       if (![...select.options].some(option => option.value === edit.client_id)) {
         select.add(new Option(label, edit.client_id));
       }
@@ -133,6 +141,89 @@
     button?.focus();
   }
 
+  async function saveQuickClient(event) {
+    event.preventDefault();
+    const button=byId('clientQuickAddSave'),message=byId('clientQuickAddMsg');
+    if(!button||button.disabled)return;
+    button.disabled=true;message.textContent='Guardando cliente…';
+    try {
+      const result=await uxApi('/api/clients',{method:'POST',body:JSON.stringify({
+        name:byId('clientQuickName').value,
+        company:byId('clientQuickCompany').value,
+        nit:byId('clientQuickNIT').value,
+        phone:byId('clientQuickPhone').value,
+        email:byId('clientQuickEmail').value,
+        mipyme_name:''
+      })});
+      if(!result.client?.id)throw new Error('No se pudo guardar el cliente.');
+      const client=result.client,select=byId('oClient');
+      if(select){
+        let option=[...select.options].find(item=>String(item.value)===String(client.id));
+        if(!option){option=new Option('',client.id);select.add(option)}
+        option.textContent=`${client.display_name||client.company||client.name||'Cliente'}${client.nit?` · NIT ${client.nit}`:''}`;
+        select.value=client.id;
+      }
+      const importerSelect=byId('oImporter');
+      if(importerSelect)importerSelect.innerHTML='<option value="">Sin importador definido</option>';
+      syncClientButton();
+      window.SalesOrderDrafts?.touch?.();
+      window.dispatchEvent(new CustomEvent('export-mca:clients-changed'));
+      closeClientPicker();
+      byId('clientQuickAddForm').reset();
+      byId('clientQuickAddForm').hidden=true;
+    } catch(error) {
+      const raw=String(error?.message||'');
+      const safe=new Set(['El nombre del cliente es obligatorio','Ese cliente ya existe','Ese NIT ya pertenece a otro cliente.','Número de WhatsApp inválido. Usa formato internacional, por ejemplo +5351234567.','No tienes permiso para realizar esta acción','No autorizado']);
+      message.textContent=safe.has(raw)?raw:reportOrderError('client-create',error,'No se pudo guardar el cliente. Revisa los datos e intenta nuevamente.');
+    } finally {button.disabled=false;}
+  }
+
+  function ensureQuickProductModal() {
+    const modal=byId('salesQuickProductModal');
+    if(!modal||modal.dataset.salesQuickProductBound==='1')return;
+    modal.dataset.salesQuickProductBound='1';
+    modal.querySelectorAll('[data-quick-product-close]').forEach(button=>button.addEventListener('click',closeQuickProduct));
+    modal.addEventListener('click',event=>{if(event.target===modal)closeQuickProduct();});
+    byId('salesQuickProductForm')?.addEventListener('submit',saveQuickProduct);
+  }
+
+  function openQuickProduct(line) {
+    ensureQuickProductModal();quickProductLine=line;
+    byId('salesQuickProductName').value='';byId('salesQuickProductUnit').value='unidades';byId('salesQuickProductMsg').textContent='';
+    byId('salesQuickProductModal')?.classList.remove('hidden');byId('salesQuickProductName')?.focus();
+  }
+
+  function closeQuickProduct() {
+    byId('salesQuickProductModal')?.classList.add('hidden');
+    quickProductLine?.querySelector('[data-sales-add-product]')?.focus();quickProductLine=null;
+  }
+
+  function currentProductList() {
+    try { return typeof products!=='undefined'&&Array.isArray(products)?products:[]; } catch { return []; }
+  }
+
+  async function saveQuickProduct(event) {
+    event.preventDefault();
+    const button=byId('salesQuickProductSave'),message=byId('salesQuickProductMsg'),line=quickProductLine;
+    if(!button||button.disabled||!line)return;
+    button.disabled=true;message.textContent='Agregando mercancía…';
+    try {
+      const result=await uxApi('/api/sales-order-ux',{method:'POST',body:JSON.stringify({action:'create_product',name:byId('salesQuickProductName').value,unit:byId('salesQuickProductUnit').value})});
+      const product=result.product;
+      if(!product?.id)throw new Error('No se pudo agregar la mercancía.');
+      const list=currentProductList();
+      if(!list.some(row=>String(row.id)===String(product.id)))list.unshift(product);
+      const select=line.querySelector('.lProduct');
+      if(select&&!Array.from(select.options).some(option=>option.value===product.id))select.add(new Option(`${product.sku?product.sku+' · ':''}${product.name}`,product.id));
+      if(select){select.value=product.id;select.dispatchEvent(new Event('change',{bubbles:true}));}
+      if(typeof syncProduct==='function')syncProduct(line);
+      window.SalesOrderDrafts?.touch?.();
+      closeQuickProduct();
+    } catch(error) {
+      message.textContent=reportOrderError('quick-product',error,'No se pudo agregar la mercancía. Intenta nuevamente.');
+    } finally {button.disabled=false;}
+  }
+
   async function loadClientPage() {
     const list = byId('clientPickerList');
     if (!list) return;
@@ -145,7 +236,7 @@
       clientHasMore = Boolean(data.has_more);
       const rows = Array.isArray(data.clients) ? data.clients : [];
       list.innerHTML = rows.length ? rows.map(row => `<button type="button" class="client-picker-row" data-client-id="${esc(row.id)}">
-        <div><b>${esc(row.display_name || row.company || row.mipyme_name || row.name || 'Cliente')}</b><div class="small">${esc(row.name || '')}</div></div>
+        <div><b>${esc(row.display_name || row.company || row.mipyme_name || row.name || 'Cliente')}</b><div class="small">${esc(row.name || '')}${row.nit?` · NIT ${esc(row.nit)}`:''}</div></div>
         <div class="secondary small">${esc(row.company || row.mipyme_name || '')}</div><span class="choose">Seleccionar</span>
       </button>`).join('') : '<div class="empty">No se encontraron clientes.</div>';
       list.querySelectorAll('[data-client-id]').forEach(button => button.onclick = () => chooseClient(button.dataset.clientId));
@@ -165,9 +256,9 @@
       const client = data.client;
       const select = byId('oClient');
       if (!client || !select) return;
-      if (![...select.options].some(option => option.value === client.id)) {
-        select.add(new Option(client.display_name || client.company || client.mipyme_name || client.name || 'Cliente', client.id));
-      }
+      let option=[...select.options].find(row=>String(row.value)===String(client.id));
+      if(!option){option=new Option('',client.id);select.add(option)}
+      option.textContent=`${client.display_name || client.company || client.mipyme_name || client.name || 'Cliente'}${client.nit?` · NIT ${client.nit}`:''}`;
       select.value = client.id;
       const importerSelect = byId('oImporter');
       if (importerSelect) {
@@ -198,15 +289,15 @@
     if (!price || !qty || !pallets || !upp || !product) return;
 
     const priceLabel = price.closest('div')?.querySelector('label');
-    if (priceLabel) priceLabel.textContent = 'Precio unitario *';
+    if (priceLabel) priceLabel.textContent = 'Precio unitario (opcional)';
     const secondGrid = price.closest('.grid3');
     if (secondGrid) secondGrid.classList.add('sales-price-grid');
     const totalWrap = document.createElement('div');
-    totalWrap.innerHTML = `<label for="${price.id}-total">Total de línea</label><input id="${price.id}-total" class="lTotal" type="number" min="0" step="0.01" placeholder="0.00"><div class="pricing-hint">Usa unitario o total.</div>`;
+    totalWrap.innerHTML = `<label for="${price.id}-total">Total acordado *</label><input id="${price.id}-total" class="lTotal" type="number" min="0" step="0.01" placeholder="0.00"><div class="pricing-hint">Escribe cuánto pagará el cliente por esta mercancía.</div>`;
     price.closest('div').insertAdjacentElement('afterend', totalWrap);
     const total = totalWrap.querySelector('.lTotal');
     const modeWrap = document.createElement('div');
-    modeWrap.innerHTML = `<label for="${price.id}-mode">Calcular usando</label><select id="${price.id}-mode" class="lPriceMode"><option value="unit">Precio unitario</option><option value="total">Total de línea</option></select>`;
+    modeWrap.innerHTML = `<label for="${price.id}-mode">Valor para la venta</label><select id="${price.id}-mode" class="lPriceMode"><option value="total">Total acordado</option><option value="unit">Precio unitario</option></select>`;
     secondGrid?.prepend(modeWrap);
     modeWrap.querySelector('select').addEventListener('change', event => {
       line.dataset.priceMode = event.target.value;
@@ -220,7 +311,7 @@
     const info = line.querySelector('.lProductInfo');
     (info || secondGrid || line).insertAdjacentElement('afterend', stock);
 
-    line.dataset.priceMode = price.value !== '' ? 'unit' : '';
+    line.dataset.priceMode = price.value !== '' ? 'unit' : 'total';
     if (price.value !== '' && qty.value !== '') total.value = inputNumber(num(qty.value) * num(price.value));
 
     price.addEventListener('input', () => {
@@ -379,9 +470,9 @@
       const price = line.querySelector('.lPrice')?.value ?? '';
       const total = line.querySelector('.lTotal')?.value ?? '';
       const mode = line.dataset.priceMode || (total !== '' ? 'total' : price !== '' ? 'unit' : '');
-      if (!productId) throw new Error(`Selecciona el producto de la línea ${index+1}.`);
+      if (!productId) throw new Error(`Selecciona o agrega la mercancía de la línea ${index+1}.`);
       if (num(qty) <= 0 && !(num(pallets) > 0 && num(upp) > 0)) throw new Error(`Indica cantidad o pallets válidos en la línea ${index+1}.`);
-      if (!mode || (mode === 'total' && total === '') || (mode === 'unit' && price === '')) throw new Error(`Indica precio unitario o total de venta en la línea ${index+1}.`);
+      if (!mode || (mode === 'total' && total === '') || (mode === 'unit' && price === '')) throw new Error(`Indica el total acordado o el precio unitario de la línea ${index+1}.`);
       return {
         product_id:productId,
         ordered_quantity:qty,
@@ -396,7 +487,8 @@
 
   function toIso(value) {
     if (!value) return null;
-    const d = new Date(value);
+    const dateOnly=String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const d=dateOnly?new Date(Number(dateOnly[1]),Number(dateOnly[2])-1,Number(dateOnly[3]),12,0,0):new Date(value);
     if (Number.isNaN(d.getTime())) throw new Error('Fecha y hora inválida');
     return d.toISOString();
   }
@@ -414,8 +506,7 @@
       if (edit && edit?.capabilities?.actions?.edit?.allowed !== true) throw new Error('Esta Sales Order ya no admite edición.');
       const clientId = byId('oClient')?.value || '';
       if (!clientId) throw new Error('Selecciona un cliente.');
-      const nationalizationStatus = byId('oNationalization')?.value || '';
-      if (!nationalizationStatus) throw new Error('Selecciona si la mercancía está nacionalizada o no nacionalizada.');
+      const nationalizationStatus = byId('oNationalization')?.value || null;
       const body = {
         action:edit ? 'replace_plan' : 'create_plan',
         sales_order_id:edit?.id || null,
@@ -453,6 +544,8 @@
     ensureClientPickerModal();
     decorateAllLines();
     if (byId('saveOrder')) byId('saveOrder').onclick = saveOrderUx;
+    ensureQuickProductModal();
+    byId('orderLines')?.addEventListener('click',event=>{const button=event.target.closest?.('[data-sales-add-product]');if(button)openQuickProduct(button.closest('.line'));});
     if (byId('oCurrency')) byId('oCurrency').addEventListener('input',refreshOrderTotalPreview);
     const modal = byId('orderModal');
     if (modal && !modal.classList.contains('hidden')) onOrderOpen();

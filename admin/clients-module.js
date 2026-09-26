@@ -15,6 +15,7 @@
   const SAFE_CLIENT_ERRORS = new Set([
     'El nombre del cliente es obligatorio',
     'Ese cliente ya existe',
+    'Ese NIT ya pertenece a otro cliente.',
     'Cliente no encontrado',
     'El nombre es obligatorio',
     'Otro cliente ya utiliza ese WhatsApp o correo',
@@ -147,7 +148,8 @@
     return {
       name:byId(`${prefix}Name`)?.value || '',
       company:byId(`${prefix}Company`)?.value || '',
-      mipyme_name:byId(`${prefix}Mipyme`)?.value || '',
+      mipyme_name:'',
+      nit:byId(`${prefix}NIT`)?.value || '',
       phone:byId(`${prefix}Phone`)?.value || '',
       email:byId(`${prefix}Email`)?.value || ''
     };
@@ -158,6 +160,7 @@
       client.name,
       client.company,
       client.mipyme_name,
+      client.nit,
       client.phone,
       client.email,
       ...importerNames(client.id)
@@ -192,7 +195,8 @@
     const company = client.company || client.mipyme_name || 'Sin empresa registrada';
     return `<tr data-client-id="${esc(client.id)}">
       <td data-label="Cliente"><div class="client-person"><div><strong>${esc(client.name || 'Cliente sin nombre')}</strong><small>${esc(client.email || 'Correo no registrado')}</small></div></div></td>
-      <td data-label="Empresa"><strong class="client-company">${esc(company)}</strong>${client.company && client.mipyme_name ? `<small class="client-company-detail">${esc(client.mipyme_name)}</small>` : ''}</td>
+      <td data-label="Empresa o MIPYME"><strong class="client-company">${esc(company)}</strong></td>
+      <td data-label="NIT"><span class="client-contact">${esc(client.nit || 'No registrado')}</span></td>
       <td data-label="WhatsApp"><span class="client-contact">${esc(client.phone || 'No registrado')}</span></td>
       <td data-label="Bienvenida"><span class="client-welcome-status ${welcomeClass(client.welcome_status)}">${esc(welcomeLabel(client.welcome_status))}</span></td>
       <td data-label="Acciones" class="client-actions-cell"><button class="client-actions-trigger" type="button" data-client-menu aria-haspopup="menu" aria-expanded="false" aria-label="Abrir acciones de ${esc(client.name || 'cliente')}"><span aria-hidden="true">Acciones</span><span class="clients-visually-hidden">${writeAccess ? 'Gestionar cliente' : 'Consultar cliente'}</span></button></td>
@@ -222,7 +226,7 @@
       target.innerHTML = `${emptyState(rows.length > 0)}<div class="client-list-footer">${state.query ? `0 de ${rows.length}` : '0'} clientes</div>`;
       return;
     }
-    target.innerHTML = `<div class="clients-table-wrap"><table class="clients-table"><thead><tr><th>Cliente</th><th>Empresa</th><th>WhatsApp</th><th>Bienvenida</th><th>Acciones</th></tr></thead><tbody>${visibleRows.map(clientRow).join('')}</tbody></table></div><div class="client-list-footer">${state.query ? `${visibleRows.length} de ${rows.length}` : visibleRows.length} cliente${visibleRows.length === 1 ? '' : 's'}</div>`;
+    target.innerHTML = `<div class="clients-table-wrap"><table class="clients-table"><thead><tr><th>Cliente</th><th>Empresa o MIPYME</th><th>NIT</th><th>WhatsApp</th><th>Bienvenida</th><th>Acciones</th></tr></thead><tbody>${visibleRows.map(clientRow).join('')}</tbody></table></div><div class="client-list-footer">${state.query ? `${visibleRows.length} de ${rows.length}` : visibleRows.length} cliente${visibleRows.length === 1 ? '' : 's'}</div>`;
   }
 
   function infoRow(label,value) {
@@ -240,12 +244,12 @@
       setClientMessage('No se pudo abrir la información del cliente.', false);
       return false;
     }
-    openClientDialog(`Información · ${client.name || 'Cliente'}`, `<div class="client-information-grid"><section>${infoRow('Nombre completo', client.name)}${infoRow('Empresa', client.company)}${infoRow('MIPYME', client.mipyme_name)}<div class="client-information-row"><div class="client-information-label">Importadoras</div><div class="client-information-value">${importers.length ? `<div class="client-importer-list">${importers.map(name => `<div class="client-importer-item">${esc(name)}</div>`).join('')}</div><div class="client-information-count">${importers.length} registro${importers.length === 1 ? '' : 's'}</div>` : 'Sin registrar'}</div></div></section><section>${infoRow('WhatsApp', client.phone)}${infoRow('Correo', client.email)}${infoRow('Bienvenida', welcomeLabel(client.welcome_status))}${infoRow('Cliente creado', formatDate(client.created_at))}${infoRow('Última actualización', formatDate(client.updated_at))}</section></div>`);
+    openClientDialog(`Información · ${client.name || 'Cliente'}`, `<div class="client-information-grid"><section>${infoRow('Nombre completo', client.name)}${infoRow('Empresa o MIPYME', client.company || client.mipyme_name)}${infoRow('NIT', client.nit)}<div class="client-information-row"><div class="client-information-label">Importadoras</div><div class="client-information-value">${importers.length ? `<div class="client-importer-list">${importers.map(name => `<div class="client-importer-item">${esc(name)}</div>`).join('')}</div><div class="client-information-count">${importers.length} registro${importers.length === 1 ? '' : 's'}</div>` : 'Sin registrar'}</div></div></section><section>${infoRow('WhatsApp', client.phone)}${infoRow('Correo', client.email)}${infoRow('Bienvenida', welcomeLabel(client.welcome_status))}${infoRow('Cliente creado', formatDate(client.created_at))}${infoRow('Última actualización', formatDate(client.updated_at))}</section></div>`);
     return true;
   }
 
   function editorHtml(client) {
-    return `<form id="clientEditForm" class="client-editor"><div class="client-editor-grid"><div><label for="clientEditName">Nombre completo <span aria-hidden="true">*</span></label><input id="clientEditName" value="${esc(client.name || '')}" required></div><div><label for="clientEditCompany">Empresa</label><input id="clientEditCompany" value="${esc(client.company || '')}"></div><div><label for="clientEditMipyme">MIPYME</label><input id="clientEditMipyme" value="${esc(client.mipyme_name || '')}"></div><div><label for="clientEditImporters">Importadoras</label><input id="clientEditImporters" value="${esc(importerNames(client.id).join(', '))}"></div><div><label for="clientEditPhone">WhatsApp <span aria-hidden="true">*</span></label><input id="clientEditPhone" value="${esc(client.phone || '')}" required></div><div><label for="clientEditEmail">Correo</label><input id="clientEditEmail" type="email" value="${esc(client.email || '')}"></div></div><div id="clientEditMsg" class="clients-message" role="status" aria-live="polite"></div><div class="client-editor-actions"><button id="cancelClientEdit" type="button" class="alt">Cancelar</button><button id="saveClientEdit" type="submit" class="clients-primary">Guardar cambios</button></div></form>`;
+    return `<form id="clientEditForm" class="client-editor"><div class="client-editor-grid"><div><label for="clientEditName">Nombre completo <span aria-hidden="true">*</span></label><input id="clientEditName" value="${esc(client.name || '')}" required></div><div><label for="clientEditCompany">Empresa o MIPYME</label><input id="clientEditCompany" value="${esc(client.company || client.mipyme_name || '')}"></div><div><label for="clientEditNIT">NIT</label><input id="clientEditNIT" value="${esc(client.nit || '')}"></div><div><label for="clientEditImporters">Importadoras</label><input id="clientEditImporters" value="${esc(importerNames(client.id).join(', '))}"></div><div><label for="clientEditPhone">WhatsApp <span aria-hidden="true">*</span></label><input id="clientEditPhone" value="${esc(client.phone || '')}" required></div><div><label for="clientEditEmail">Correo</label><input id="clientEditEmail" type="email" value="${esc(client.email || '')}"></div></div><div id="clientEditMsg" class="clients-message" role="status" aria-live="polite"></div><div class="client-editor-actions"><button id="cancelClientEdit" type="button" class="alt">Cancelar</button><button id="saveClientEdit" type="submit" class="clients-primary">Guardar cambios</button></div></form>`;
   }
 
   function openEditor(id) {

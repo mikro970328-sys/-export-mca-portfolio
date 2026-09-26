@@ -929,7 +929,37 @@
   .erp-module-costs .trace-chain,
   .erp-module-costs .summary,
   .erp-module-costs .detail-item{grid-template-columns:1fr}
-  .erp-module-costs .cost-modal-actions .btn{min-width:0;flex:1}
+.erp-module-costs .cost-modal-actions .btn{min-width:0;flex:1}
+}
+.erp-module-costs .company-profit-head,.erp-module-costs .payroll-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.erp-module-costs .company-profit-year{display:flex;align-items:center;gap:8px;font-weight:700}
+.erp-module-costs .company-profit-year select{min-width:112px}
+.erp-module-costs .company-annual-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0 18px}
+.erp-module-costs .company-annual-card{border:1px solid var(--line);border-radius:var(--radius-md);padding:12px;background:var(--surface)}
+.erp-module-costs .company-annual-card b{display:block;color:var(--navy);font-size:18px;margin:5px 0}
+.erp-module-costs .company-month-table{width:100%;border-collapse:collapse;min-width:920px}
+.erp-module-costs .company-month-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius-md)}
+.erp-module-costs .company-month-table th,.erp-module-costs .company-month-table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-size:12px}
+.erp-module-costs .company-month-table th:first-child,.erp-module-costs .company-month-table td:first-child{text-align:left}
+.erp-module-costs .company-month-table th{color:var(--muted-strong);background:var(--surface-soft);font-weight:750}
+.erp-module-costs .company-net-positive{color:var(--ok);font-weight:800}
+.erp-module-costs .company-net-negative{color:var(--bad);font-weight:800}
+.erp-module-costs .company-section-note{color:var(--muted);font-size:12px;line-height:1.5;margin:8px 0 14px}
+.erp-module-costs .payroll-section{margin-top:22px}
+.erp-module-costs .payroll-list{display:grid;gap:8px;margin-top:12px}
+.erp-module-costs .payroll-row{display:grid;grid-template-columns:minmax(160px,1.2fr) minmax(130px,.8fr) minmax(160px,1fr) auto;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
+.erp-module-costs .payroll-row b{color:var(--navy)}
+.erp-module-costs .payroll-actions{display:flex;gap:6px;justify-content:flex-end}
+.erp-module-costs .payroll-status{font-size:11px;color:var(--muted-strong)}
+.erp-module-costs .payroll-dialog{width:min(620px,100%)}
+.erp-module-costs .payroll-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.erp-module-costs .payroll-form-grid .full{grid-column:1/-1}
+.erp-module-costs .payroll-dialog input,.erp-module-costs .payroll-dialog select{width:100%}
+@media(max-width:640px){
+  .erp-module-costs .payroll-row{grid-template-columns:1fr}
+  .erp-module-costs .payroll-actions{justify-content:flex-start}
+  .erp-module-costs .payroll-form-grid{grid-template-columns:1fr}
+  .erp-module-costs .payroll-form-grid .full{grid-column:auto}
 }
 @media(max-width:390px){
   .erp-module-costs .costs-page-head h1{font-size:30px}

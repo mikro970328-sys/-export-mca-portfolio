@@ -8,6 +8,8 @@ on:
       - 'admin/erp.js'
       - 'admin/index.html'
       - 'api/clients.js'
+      - 'supabase/migrations/20260926182551_client_nit_duplicate_protection.sql'
+      - 'scripts/check-company-profitability.mjs'
       - 'scripts/check-ux6-clients-owner.mjs'
       - 'scripts/check-ux6b-native-workspace-foundation.mjs'
       - '.github/workflows/ux6-clients-owner.yml'
@@ -21,8 +23,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Install runtime dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Validate Clients presentation ownership
         run: node scripts/check-ux6-clients-owner.mjs
+      - name: Validate NIT uniqueness and company profitability workflows
+        run: node scripts/check-company-profitability.mjs
       - name: Preserve native workspace foundation
         run: node scripts/check-ux6b-native-workspace-foundation.mjs
       - name: Validate JavaScript syntax
@@ -31,6 +37,7 @@ jobs:
           node --check api/clients.js
           node --check admin/erp.js
           node --check scripts/check-ux6-clients-owner.mjs
+          node --check scripts/check-company-profitability.mjs
       - name: Preserve access-control boundary
         run: node scripts/check-access-control.mjs
       - name: Preserve admin shell resilience

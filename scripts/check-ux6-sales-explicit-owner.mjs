@@ -24,13 +24,13 @@ const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
 requireText(html,'/admin/embedded-foundation.css?v=20260922-figma1','base visual compartida');
 requireText(html,'/admin/sales.css?v=20260922-figma1','CSS dedicado y versionado');
-requireText(html,'/admin/sales-order-ux.css?v=20260922-figma1','CSS del editor versionado');
+requireText(html,'/admin/sales-order-ux.css?v=20260926-business1','CSS del editor versionado');
 requireText(html,'/admin/sales-workspace.css?v=20260922-scroll1','CSS del workspace versionado');
 requireText(html,'/admin/sales-supply-workspace.css?v=20260902-ux7sales1','CSS de abastecimiento versionado');
 requireText(html,'/admin/sales-customer-finance.css?v=20260902-ux7sales1','CSS financiero versionado');
 for(const asset of [
-  '/admin/sales.js?v=20260922-figma1',
-  '/admin/sales-order-ux.js?v=20260922-figma1',
+  '/admin/sales.js?v=20260926-business2',
+  '/admin/sales-order-ux.js?v=20260926-business2',
   '/admin/sales-workspace.js?v=20260921-costedit1',
   '/admin/sales-existing-load-link-v2.js?v=20260902-ux6owner1'
 ])requireText(html,asset,`asset revisado ${asset}`);

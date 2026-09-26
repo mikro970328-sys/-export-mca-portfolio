@@ -143,8 +143,8 @@
     else document.head.appendChild(link);
   });
 
-  const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260926-figma2', 'data-access-control-style');
-  const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260926-help1', 'data-ui-icon-system');
+  const accessStylesPromise = loadStylesheet('/admin/access-control.css?v=20260926-business1', 'data-access-control-style');
+  const iconSystemPromise = loadScript('/admin/ui-icon-system.js?v=20260926-help2', 'data-ui-icon-system');
 
   const accessCan = permission => window.ExportMcaAccessControl?.can?.(permission) !== false;
 
@@ -187,8 +187,8 @@
 
     if (accessCan('clients.read')) {
       tasks.push(
-        loadStylesheet('/admin/clients-module.css?v=20260926-figma2', 'data-clients-module-style')
-          .then(() => loadScript('/admin/clients-module.js?v=20260926-figma2', 'data-clients-module'))
+        loadStylesheet('/admin/clients-module.css?v=20260926-business1', 'data-clients-module-style')
+          .then(() => loadScript('/admin/clients-module.js?v=20260926-business1', 'data-clients-module'))
       );
     }
     if (accessCan('administration.workers.read')) {
@@ -228,7 +228,7 @@
 
     bootPromise = (async () => {
       await accessStylesPromise;
-      await loadScript('/admin/access-control-administration.js?v=20260926-figma2', 'data-access-control-administration');
+      await loadScript('/admin/access-control-administration.js?v=20260926-business1', 'data-access-control-administration');
       if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
       await window.ExportMcaAccessControl.initialize();
       await iconSystemPromise;
@@ -243,8 +243,8 @@
         await loadScript('/admin/dashboard-operational-state.js?v=20260926-figma2', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
-        await loadStylesheet('/admin/containers-module.css?v=20260926-figma1', 'data-containers-module-style');
-        await loadScript('/admin/containers-module.js?v=20260926-figma1', 'data-containers-module');
+        await loadStylesheet('/admin/containers-module.css?v=20260926-business1', 'data-containers-module-style');
+        await loadScript('/admin/containers-module.js?v=20260926-business1', 'data-containers-module');
       }
       if (accessCan('logistics.write')) {
         await loadStylesheet('/admin/shipment-editor.css?v=20260926-figma1', 'data-shipment-editor-style');
@@ -253,13 +253,13 @@
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
       await loadStylesheet('/admin/account-administration.css?v=20260926-figma2', 'data-account-administration-style');
       await loadScript('/admin/account-administration.js?v=20260926-figma2', 'data-account-administration');
-      await loadScript('/admin/navigation-shell.js?v=20260926-help1', 'data-navigation-shell');
+      await loadScript('/admin/navigation-shell.js?v=20260926-help2', 'data-navigation-shell');
 
       // Help is informational and must not prevent the operational shell booting.
       try {
-        await loadStylesheet('/admin/help-center.css?v=20260926-help1', 'data-help-center-style');
-        await loadScript('/admin/help-content.js?v=20260926-help1', 'data-help-content');
-        await loadScript('/admin/help-center.js?v=20260926-help1', 'data-help-center');
+        await loadStylesheet('/admin/help-center.css?v=20260926-help2', 'data-help-center-style');
+        await loadScript('/admin/help-content.js?v=20260926-help2', 'data-help-content');
+        await loadScript('/admin/help-center.js?v=20260926-help2', 'data-help-center');
       } catch {
         const status = document.getElementById('helpLoadStatus');
         if (status) status.textContent = 'No se pudo cargar la ayuda. Guarda o termina tu trabajo y vuelve a cargar la página para intentarlo de nuevo.';

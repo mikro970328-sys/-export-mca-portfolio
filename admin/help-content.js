@@ -126,38 +126,40 @@
       "id": "clientes",
       "category": "Ventas y clientes",
       "title": "Crear y mantener clientes e importadoras",
-      "summary": "Prepara el destinatario comercial antes de vender.",
+      "summary": "Prepara el cliente con su NIT y evita crear registros repetidos.",
       "section": "clientsSection",
       "steps": [
-        "Abre Comercial → Clientes y busca por nombre, empresa o contacto antes de crear otro registro.",
-        "Utiliza Nuevo cliente para registrar sus datos. Revisa teléfono, correo y empresa antes de guardar.",
+        "Abre Comercial → Clientes y busca por nombre, empresa, contacto o NIT antes de crear otro registro.",
+        "Utiliza Nuevo cliente para registrar sus datos. El campo Empresa o MIPYME guarda el nombre comercial en un solo lugar; añade el NIT si está disponible.",
+        "El ERP avisa si el NIT ya está asociado a otro cliente, incluso cuando cambian espacios, puntos, guiones o barras. Abre el registro existente si es la misma empresa.",
         "Abre la ficha y revisa las importadoras asociadas al cliente cuando correspondan a la operación.",
         "Si cambió un dato, edita el cliente existente y verifica después su ficha. No crees un cliente nuevo para corregir un teléfono.",
         "La bienvenida por WhatsApp es una acción independiente: revisa el destinatario antes de enviarla o reenviarla."
       ],
-      "result": "El cliente queda disponible para ventas y seguimiento con sus datos correctos.",
+      "result": "El cliente queda disponible en ventas y el NIT ayuda a reconocer duplicados.",
       "note": "Guardar un cliente no envía automáticamente una bienvenida. Enviar o reenviar sí contacta al destinatario.",
       "related": [
         "ventas",
         "whatsapp"
       ],
-      "tags": "cliente importador importadora contacto bienvenida"
+      "tags": "cliente NIT empresa MIPYME importador importadora contacto bienvenida duplicado"
     },
     {
       "id": "ventas",
       "category": "Ventas y clientes",
       "title": "Crear y confirmar una venta",
-      "summary": "Registra qué vendes, a quién y cómo se abastecerá.",
+      "summary": "Registra el compromiso con el cliente, aunque todavía no hayas comprado la mercancía.",
       "section": "salesSection",
       "steps": [
-        "En Comercial → Ventas, inicia una venta y selecciona el cliente correcto.",
-        "Añade productos, cantidades, unidad, pallets si corresponden y precio o total comercial. Comprueba la moneda y la condición de nacionalización.",
-        "Guarda y revisa el resumen antes de confirmar. Una venta confirmada puede tener restricciones para cambiar lo ya comprometido.",
-        "En Origen / abastecimiento, decide entre existencias, compra destinada a almacén o Direct Ship. Vincula únicamente la cantidad disponible.",
-        "Sigue las acciones habilitadas para preparar el cumplimiento y la facturación. Revisa los documentos y saldos relacionados desde el detalle."
+        "En Comercial → Ventas, abre Nueva venta. La lista separa las ventas En marcha del Historial; abre una venta para continuar trabajando dentro de su espacio.",
+        "Selecciona al cliente. Si aún no existe, usa Agregar cliente junto al selector y regístralo desde ahí; el NIT también detecta duplicados.",
+        "Añade la mercancía y la cantidad. Si trabajarás por encargo y todavía no existe en el catálogo, usa Agregar mercancía: se agrega al catálogo sin crear existencias. Después registra la compra real y vincúlala desde Origen / abastecimiento.",
+        "Escribe el total acordado de cada línea; no necesitas calcular un precio por unidad. Revisa la moneda y la fecha estimada de entrega. Nacionalización puede quedar Por definir.",
+        "Guarda y revisa el resumen dentro de la venta. Desde ese espacio puedes seguir abastecimiento, costos, facturación y cobros según los permisos de tu cuenta.",
+        "La venta registra lo acordado con el cliente. La factura es el documento de cobro que se prepara desde esa venta cuando corresponda; emitir una factura no significa que ya recibiste el dinero."
       ],
       "result": "La venta tiene líneas coherentes y una ruta de abastecimiento identificada.",
-      "note": "Confirmar una venta no equivale a recibir el dinero ni a despachar la mercancía.",
+      "note": "Crear o confirmar una venta no compra ni despacha mercancía y no registra un cobro. Un artículo agregado desde la venta no aumenta las existencias.",
       "related": [
         "recorrido-almacen",
         "recorrido-directo",
@@ -165,7 +167,7 @@
         "anticipos",
         "editar-cancelar"
       ],
-      "tags": "venta confirmar nacionalizado nacionalizacion origen abastecimiento"
+      "tags": "venta encargo pedido por encargo total acordado unidad precio cliente agregar nacionalizacion fecha entrega abierta borrador cerrada factura cobro abastecimiento"
     },
     {
       "id": "publicaciones",
@@ -366,24 +368,25 @@
     {
       "id": "documentos",
       "category": "Logística y documentos",
-      "title": "Documentos, factura comercial y packing list",
+      "title": "Documentos y archivos del contenedor",
       "summary": "Reúne los archivos en la operación que les corresponde.",
       "section": "containersSection",
       "steps": [
         "Abre el contenedor u operación relacionada y entra a sus documentos.",
-        "Selecciona el tipo correcto y comprueba que el archivo corresponde al cliente, contenedor y B/L indicados.",
-        "Carga el documento o utiliza la generación comercial disponible desde la venta, factura o cargue relacionado.",
+        "Para el requisito oficial de Cuba, carga la versión vigente de Packing List Cuba y Factura comercial Cuba.",
+        "En Otros archivos del contenedor puedes adjuntar contratos, certificados, comprobantes, fotos y otros documentos relacionados. Se aceptan PDF, Word, Excel, JPG, PNG y WEBP de hasta 25 MB.",
+        "Comprueba que cada archivo corresponde al cliente, contenedor y B/L indicados. También puedes utilizar la generación comercial disponible desde la venta, factura o cargue relacionado.",
         "Abre o descarga el resultado y verifica nombre, contenido, cantidades y referencias. No basta con que aparezca un archivo adjunto.",
         "Revisa los requisitos pendientes de documentación antes de continuar con liberación u otras acciones restringidas."
       ],
       "result": "Los documentos están ligados a su operación y pueden revisarse antes del siguiente paso.",
-      "note": "Una factura comercial generada o una proforma no equivalen por sí solas a un cobro registrado.",
+      "note": "Los archivos adicionales no sustituyen el Packing List Cuba ni la Factura comercial Cuba, y no cambian por sí solos el indicador READY. Una factura comercial o proforma tampoco equivale a un cobro registrado.",
       "related": [
         "archivo-error",
         "proformas",
         "facturas"
       ],
-      "tags": "documento archivo PDF packing list factura comercial Cuba BL BOL adjuntar subir descargar"
+      "tags": "documento archivo PDF Word Excel JPG PNG WEBP contrato certificado comprobante foto packing list factura comercial Cuba BL BOL adjuntar subir descargar"
     },
     {
       "id": "facturas",
@@ -399,7 +402,7 @@
         "Abre la factura y revisa cobros y saldo. Si utilizas un anticipo, aplícalo mediante su acción correspondiente para no duplicar caja."
       ],
       "result": "La factura muestra lo emitido, lo cobrado y el saldo que queda pendiente.",
-      "note": "Una factura emitida no significa que esté pagada. No repitas el cobro cuando una respuesta se demore sin consultar antes su historial.",
+      "note": "La venta registra el acuerdo comercial; la factura se emite desde esa venta y controla el importe facturado. Una factura emitida no significa que esté pagada. No repitas el cobro cuando una respuesta se demore sin consultar antes su historial.",
       "related": [
         "anticipos",
         "reversos",
@@ -477,7 +480,7 @@
       "id": "gastos",
       "category": "Finanzas",
       "title": "Registrar y distribuir gastos",
-      "summary": "Asigna los costos a las operaciones correctas.",
+      "summary": "Registra gastos y consulta el resultado por contenedor o por compañía.",
       "section": "costsSection",
       "steps": [
         "Abre Finanzas → Costos y rentabilidad y prepara el gasto con categoría, etapa, fecha, moneda e importe.",
@@ -486,36 +489,39 @@
         "Verifica que la suma distribuida coincida con el total antes de contabilizar.",
         "Después de guardar, revisa estado, asignaciones y su efecto en el reporte correspondiente. Para corregir, utiliza la revisión o anulación disponible."
       ],
-      "result": "El gasto queda asignado y puede incorporarse al análisis de la operación.",
-      "note": "Un importe sin distribuir completamente puede impedir contabilizar. No cambies la moneda solo para hacer coincidir un margen.",
+      "result": "El gasto queda asignado a la operación y los cargos contabilizados se descuentan del resultado correspondiente.",
+      "note": "Un importe sin distribuir completamente puede impedir contabilizar. No cambies la moneda solo para hacer coincidir un margen. La vista Empresa separa las monedas y usa fechas de factura, gasto y nómina según cada movimiento.",
       "related": [
         "margen",
         "reportes",
         "reversos"
       ],
-      "tags": "gasto costo flete distribucion asignacion rentabilidad contabilizar"
+      "tags": "gasto costo flete distribucion asignacion rentabilidad contabilizar empresa salario sueldo propina mensual anual contenedor"
     },
     {
       "id": "margen",
       "category": "Finanzas",
       "title": "Entender un margen vacío o un costo incompleto",
-      "summary": "Qué revisar antes de tomar una cifra como ganancia definitiva.",
+      "summary": "Consulta ganancias por contenedor y por mes o año de la compañía.",
       "section": "reportsSection",
       "steps": [
         "Revisa el estado del cumplimiento: vender o emitir una factura no siempre significa que la mercancía ya fue despachada.",
         "Comprueba que el origen de la mercancía esté vinculado a la venta y que sus cantidades correspondan a lo cumplido.",
         "Revisa el costo de compra o de la factura del proveedor y los gastos contabilizados y asignados.",
-        "Comprueba las monedas. El ERP no debe presentar una comparación automática como si existiera un tipo de cambio que no fue definido.",
+        "En Finanzas → Costos y rentabilidad → Rentabilidad, elige Contenedores para revisar cada contenedor, Operaciones para revisar el expediente completo o Empresa para ver meses y años.",
+        "En Contenedores, el ERP suma la venta acordada según las cantidades de cada orden que están asignadas al contenedor y resta el costo reconocido de esa mercancía y los gastos contabilizados asignados al contenedor o sus cargues. Los gastos de una operación sin contenedor asignado no se reparten automáticamente.",
+        "En Empresa, los ingresos y el costo de mercancía se agrupan por fecha de factura; los gastos usan su fecha registrada y los salarios usan el mes asignado. Salarios y propinas reducen la ganancia.",
+        "Comprueba las monedas. El ERP las muestra por separado y no debe presentar una comparación automática como si existiera un tipo de cambio que no fue definido.",
         "Si aparece costo incompleto o sin cumplimiento, completa el paso real pendiente o solicita revisión al responsable financiero."
       ],
       "result": "Puedes distinguir un dato pendiente de una pérdida o una ganancia confirmada.",
-      "note": "No introduzcas un costo ficticio ni cambies estados físicos para hacer desaparecer una advertencia.",
+      "note": "Si falta el costo de mercancía de una factura, Empresa marca la ganancia como pendiente. En Contenedores, una venta sin cantidades asignadas o sin costos reconocidos también queda pendiente. No introduzcas un costo ficticio ni cambies estados físicos para hacer desaparecer una advertencia. Las cifras de Empresa se basan en facturas emitidas, gastos contabilizados y nómina registrada.",
       "related": [
         "gastos",
         "proveedores-pagos",
         "recorrido-directo"
       ],
-      "tags": "COGS incomplete_cogs margen vacio cero ganancia utilidad costo incompleto rentabilidad"
+      "tags": "COGS incomplete_cogs margen vacio cero ganancia utilidad costo incompleto rentabilidad contenedor empresa mensual anual salario propina"
     },
     {
       "id": "reportes",
@@ -571,20 +577,20 @@
       "steps": [
         "Con una cuenta autorizada, abre Administración → Usuarios y acceso.",
         "Prepara el rol con los permisos de consulta y gestión que necesita esa función. Distingue ver información de modificarla.",
-        "Crea la cuenta de la persona y asígnale el rol. Entrega sus credenciales por un canal privado.",
+        "Crea la cuenta de la persona y asígnale el rol. El icono de ojo permite revisar la contraseña que estás escribiendo en ese momento; úsalo antes de guardar y entrega las credenciales por un canal privado.",
         "Configura equipos y miembros si repartirás trabajo por equipos. Un registro en Trabajadores no sustituye una cuenta de acceso.",
         "Comprueba con esa persona que ve los módulos necesarios y que no puede ejecutar acciones fuera de su responsabilidad.",
         "Cuando cambie de función o salga del equipo, ajusta permisos, desactiva la cuenta o revoca su sesión mediante las acciones disponibles."
       ],
       "result": "Cada usuario puede trabajar con permisos identificables y trazabilidad individual.",
-      "note": "No compartas la cuenta maestra. Esta guía no permite saltarse permisos ni recuperar contraseñas de otros usuarios.",
+      "note": "Por seguridad, el ERP no permite ver después la contraseña guardada. Si la persona la pierde, un administrador autorizado debe establecer una nueva. No compartas la cuenta maestra.",
       "related": [
         "cuenta",
         "tareas",
         "rutas",
         "permisos"
       ],
-      "tags": "usuarios acceso equipo crear usuario rol permiso administrador cuatro personas"
+      "tags": "usuarios acceso equipo crear usuario rol permiso administrador cuatro personas contraseña password ojo ver mostrar"
     },
     {
       "id": "cuenta",
@@ -615,16 +621,16 @@
       "section": "workersSection",
       "steps": [
         "Abre Administración → Trabajadores y busca a la persona antes de crearla.",
-        "Registra sus datos y puesto según los campos disponibles.",
+        "Registra sus datos y puesto según los campos disponibles. Para añadir salario y propinas, primero debe existir aquí el trabajador.",
         "Revisa su estado y datos de contacto. Si deja de trabajar, utiliza la desactivación con el motivo correspondiente.",
-        "Si necesita entrar al ERP, gestiona además su cuenta y rol en Usuarios y acceso."
+        "Si necesita entrar al ERP, gestiona además su cuenta y rol en Usuarios y acceso. Para registrar el sueldo mensual y las propinas, ve a Finanzas → Costos y rentabilidad → Rentabilidad → Empresa."
       ],
       "result": "El directorio conserva los datos y estados del personal sin duplicar identidades.",
-      "note": "Crear un trabajador no le concede automáticamente una cuenta ni permisos en el ERP.",
+      "note": "Crear un trabajador no le concede automáticamente una cuenta ni permisos en el ERP. Los salarios y propinas solo los pueden consultar o registrar los perfiles con permisos financieros.",
       "related": [
         "equipo"
       ],
-      "tags": "trabajador empleado personal puesto desactivar"
+      "tags": "trabajador empleado personal puesto desactivar salario sueldo propina nómina"
     },
     {
       "id": "tareas",

@@ -24,6 +24,16 @@
 .client-picker-button span{color:var(--muted);font-size:12px}
 .erp-module-sales .client-picker-dialog{width:min(900px,100%)}
 
+.erp-module-sales .client-picker-create{display:flex;justify-content:flex-end;margin:10px 0}
+.erp-module-sales .client-quick-form{border:1px solid var(--line);border-radius:var(--radius-md);padding:14px;margin:10px 0;background:var(--surface-soft)}
+.erp-module-sales .client-quick-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
+.erp-module-sales .client-quick-form .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.erp-module-sales .client-quick-form[hidden]{display:none}
+.erp-module-sales .sales-add-product{display:block;margin-top:7px;min-height:34px;padding:6px 10px;font-size:12px}
+.erp-module-sales .sales-quick-product-dialog{width:min(520px,100%)}
+.erp-module-sales .sales-quick-product-dialog form{display:grid;gap:8px}
+.erp-module-sales .sales-quick-product-dialog .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
+
 .erp-module-sales .client-picker-search{
   margin:12px 0;
   background:var(--surface-soft);
@@ -165,5 +175,6 @@
 
   .erp-module-sales .client-picker-row{grid-template-columns:1fr}
   .client-picker-row .choose{justify-self:start}
+  .erp-module-sales .client-quick-grid{grid-template-columns:1fr}
   .sales-total-preview > div{width:100%;min-width:0}
 }

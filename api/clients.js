@@ -4,6 +4,22 @@ async function audit(action, entityId, details = {}) {
   try { await supabase('audit_log', { method: 'POST', body: [{ action, entity_type: 'client', entity_id: entityId, details }] }); } catch {}
 }
 
+function cleanNit(value) {
+  return String(value ?? '').trim().replace(/\s+/g, ' ').slice(0, 80) || null;
+}
+
+function normalizeNit(value) {
+  return cleanNit(value)?.toUpperCase().replace(/[\s.\/-]/g, '') || null;
+}
+
+function publicClient(value) {
+  const safe = publicNotificationData(value);
+  if (Array.isArray(safe)) return safe.map(publicClient);
+  if (!safe || typeof safe !== 'object') return safe;
+  const { nit_normalized: _internalNitKey, ...client } = safe;
+  return client;
+}
+
 async function persistWelcomeNotification(client, data = {}) {
   try {
     await supabase('notifications', {
@@ -68,13 +84,22 @@ async function findDuplicate({ phone, email, excludeId = null }) {
   return rows?.[0] || null;
 }
 
+async function findDuplicateNit(nit, excludeId = null) {
+  const normalized = normalizeNit(nit);
+  if (!normalized) return null;
+  let query = `?select=id,name,company,nit&nit_normalized=eq.${encodeURIComponent(normalized)}&limit=1`;
+  if (excludeId) query += `&id=neq.${encodeURIComponent(excludeId)}`;
+  const rows = await supabase('clients', { query });
+  return rows?.[0] || null;
+}
+
 export default async function handler(req, res) {
   const admin = await authorizeAdmin(req, res, req.method === 'GET' ? 'clients.read' : 'clients.write');
   if (!admin) return;
   try {
     if (req.method === 'GET') {
       const data = await supabase('clients', { query: '?select=*&order=created_at.desc' });
-      return ok(res, { clients: publicNotificationData(data || []) });
+      return ok(res, { clients: publicClient(data || []) });
     }
 
     if (req.method === 'POST') {
@@ -83,19 +108,22 @@ export default async function handler(req, res) {
       if (!name) return fail(res, 400, 'El nombre del cliente es obligatorio');
       const phone = normalizePhone(body.phone);
       const email = String(body.email || '').trim().toLowerCase() || null;
+      const nit = cleanNit(body.nit);
+      if (await findDuplicateNit(nit)) return fail(res, 409, 'Ese NIT ya pertenece a otro cliente.');
       const duplicate = await findDuplicate({ phone, email });
       if (duplicate) return fail(res, 409, 'Ese cliente ya existe', JSON.stringify({ existing_client: duplicate }));
       const created = await supabase('clients', { method: 'POST', body: [{
         name,
         company: String(body.company || '').trim() || null,
         mipyme_name: String(body.mipyme_name || '').trim() || null,
+        nit,
         importer_name: String(body.importer_name || '').trim() || null,
         phone,
         email,
         active: true,
         welcome_status: 'pending'
       }] });
-      const client = publicNotificationData(created?.[0]);
+      const client = publicClient(created?.[0]);
       await audit('client_created', client?.id, { name, phone, mipyme_name: client?.mipyme_name || null, importer_name: client?.importer_name || null });
       return ok(res, { client, welcome: { status: 'pending' } });
     }
@@ -110,16 +138,22 @@ export default async function handler(req, res) {
       if (body.action === 'resend_welcome') return ok(res, { welcome: await sendWelcome(current) });
       const patch = { updated_at: new Date().toISOString() };
       if (body.name !== undefined) { patch.name = String(body.name).trim(); if (!patch.name) return fail(res, 400, 'El nombre es obligatorio'); }
-      if (body.company !== undefined) patch.company = String(body.company).trim() || null;
+      if (body.company !== undefined) {
+        patch.company = String(body.company).trim() || null;
+        if (body.mipyme_name === undefined) patch.mipyme_name = null;
+      }
       if (body.mipyme_name !== undefined) patch.mipyme_name = String(body.mipyme_name).trim() || null;
+      if (body.nit !== undefined) patch.nit = cleanNit(body.nit);
       if (body.importer_name !== undefined) patch.importer_name = String(body.importer_name).trim() || null;
       if (body.phone !== undefined) patch.phone = normalizePhone(body.phone);
       if (body.email !== undefined) patch.email = String(body.email).trim().toLowerCase() || null;
+      const nitDuplicate = await findDuplicateNit(patch.nit ?? current.nit, id);
+      if (nitDuplicate) return fail(res, 409, 'Ese NIT ya pertenece a otro cliente.');
       const duplicate = await findDuplicate({ phone: patch.phone || current.phone, email: patch.email ?? current.email, excludeId: id });
       if (duplicate) return fail(res, 409, 'Otro cliente ya utiliza ese WhatsApp o correo', JSON.stringify({ existing_client: duplicate }));
       const updated = await supabase('clients', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}&select=*`, body: patch });
       await audit('client_updated', id, patch);
-      return ok(res, { client: publicNotificationData(updated?.[0] || { ...current, ...patch }) });
+      return ok(res, { client: publicClient(updated?.[0] || { ...current, ...patch }) });
     }
 
     if (req.method === 'DELETE') {
@@ -133,6 +167,9 @@ export default async function handler(req, res) {
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
     if (error.message === 'PHONE_INVALID') return fail(res, 400, 'Número de WhatsApp inválido. Usa formato internacional, por ejemplo +5351234567.');
+    if (error.code === '23505' && String(error.message || '').includes('clients_nit_normalized_uidx')) {
+      return fail(res, 409, 'Ese NIT ya pertenece a otro cliente.');
+    }
     console.error('CLIENTS_API_FAILED', error);
     return fail(res, 500, 'No se pudo completar la operación del cliente');
   }

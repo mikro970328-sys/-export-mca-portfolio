@@ -8,6 +8,7 @@ Solicitud de Daniel, 26 de septiembre de 2026: incorporar una guía completa de 
 - 43 artículos en siete temas: primeros pasos; ventas y clientes; compras y almacén; logística y documentos; finanzas; equipo y avisos; solución de problemas.
 - Búsqueda por palabras, títulos, pasos y sinónimos, sin distinguir mayúsculas ni acentos; filtro de tema, estado vacío y retorno que conserva la búsqueda.
 - Guías con pasos, comprobación del resultado, precauciones y artículos relacionados. Recorridos completos por almacén y Direct Ship, rutina diaria y glosario.
+- Guías actualizadas para NIT y clientes duplicados, alta de clientes desde una venta, ventas por encargo con total acordado, archivos extra de contenedor, rentabilidad por contenedor/empresa, salario y propinas, y contraseña visible solo mientras se escribe.
 - Acceso al módulo que vuelve a comprobar su permiso al pulsarlo. Leer instrucciones no concede permisos.
 - Impresión del artículo y plantilla copiable para escalar incidencias, con selección manual si el navegador impide copiar. No envía el reporte automáticamente.
 
@@ -23,10 +24,11 @@ El loader autenticado carga contenido antes del renderer. Si falla la ayuda, pre
 |---|---|
 | Navegación y acceso | `navigation-shell.js`, `admin-shell-runtime.js`, `section-state.js`, `access-control-administration.js`, `account-administration.js` |
 | Compra, recepción, almacenes y cantidades | `purchases.js`, `warehouse.html`, `warehouse.js`, `warehouse.css`, aceptación de compras/inventario |
-| Venta y Direct Ship | `sales.js`, `purchases.js`, `api/sales-supply.js`, aceptación de Direct Ship y logística |
-| Documentos y tracking | Owners de contenedores/documentos, aceptación de tracking/documentos y reglas de integración P19 |
-| Facturación, anticipos, proveedores, gastos y reportes | Owners financieros y `docs/FINANCE_ACCEPTANCE.md`; regresión financiera y controles de lectura de la auditoría |
-| Personal, tareas y avisos | Owners de usuarios, trabajadores, tareas, rutas, supervisión, alertas y bandeja |
+| Clientes | `clients-module.js`, `api/clients.js`, detección de NIT y formulario rápido de venta |
+| Venta y Direct Ship | `sales.js`, `sales-order-ux.js`, `purchases.js`, `api/sales-supply.js`, aceptación de Direct Ship y logística |
+| Documentos y tracking | `containers-module.js`, `api/shipment-documents.js`, aceptación de tracking/documentos y reglas de integración P19 |
+| Facturación, anticipos, proveedores, gastos y reportes | Owners financieros, `api/payroll.js` y `docs/FINANCE_ACCEPTANCE.md`; regresión financiera y controles de lectura de la auditoría |
+| Personal, tareas y avisos | Owners de usuarios, control de contraseña en pantalla, trabajadores, tareas, rutas, supervisión, alertas y bandeja |
 | Incidencias | Errores de los handlers, políticas de recuperación/reintento, permisos, estados y dependencias protegidas |
 
 Las instrucciones siguen el alcance actual: el seguimiento se mantiene en el ERP; WhatsApp solo contempla bienvenida manual y hitos de salida/liberación. No se reintroduce el proveedor de tracking retirado ni se enseñan mecanismos para eludir permisos.
@@ -34,6 +36,7 @@ Las instrucciones siguen el alcance actual: el seguimiento se mantiene en el ERP
 ## Validación
 
 - `node scripts/check-help-center.mjs`: integridad del catálogo, cobertura de secciones, enlaces relacionados, búsquedas, ausencia de tráfico comercial, permisos, revocación antes del clic y copia alternativa.
+- Las guías financieras explican que Empresa usa facturas emitidas, gastos contabilizados y nómina; Contenedores atribuye la venta acordada y el costo reconocido por cantidades asignadas a sus cargues o Direct Ship. Los gastos de Operación sin contenedor asignado no se reparten automáticamente y las monedas permanecen separadas.
 - `e2e/isolated/help-center.spec.mjs`: integración con el shell y control de acceso reales, administrador y cuenta restringida, navegación, filtros, accesibilidad del foco, impresión, copia fallida y pantallas de 1440/1024 px. Datos en memoria, tráfico externo bloqueado.
 - Se incluye en Browser Operator Acceptance. Las pruebas de navegación y los contratos de caché existentes conservan sus exigencias, actualizando únicamente las referencias de los archivos modificados.
 - Chequeos locales de ownership, integración P19 y los trece contratos de versión afectados aprobados. Composición completa en jsdom: ayuda visible para ambas cuentas, 43 artículos y enlace de administración bloqueado para la cuenta restringida.

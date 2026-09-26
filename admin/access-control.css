@@ -68,6 +68,11 @@ body.access-dialog-open { overflow:hidden; }
 .access-form { display:grid;gap:24px; }
 .access-form-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px; }
 .access-form-grid > div { min-width:0; }
+#accessModal .access-password-control { position:relative;display:flex;align-items:center; }
+#accessModal .access-password-control input { width:100%;padding-right:48px; }
+#accessModal .access-password-eye { position:absolute;right:7px;display:grid;place-items:center;min-height:36px;width:36px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--muted-strong); }
+#accessModal .access-password-eye:hover { background:var(--surface-soft);color:var(--navy); }
+#accessModal .access-password-eye:focus-visible { outline:2px solid var(--text);outline-offset:2px; }
 .access-field-help,.access-panel-intro { display:block;margin:8px 0;color:var(--muted);font-size:12px;line-height:18px; }
 .access-role-selection,.access-role-permission-summary { display:grid;gap:8px;margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface); }
 .access-role-selection span,.access-role-permission-summary { color:var(--muted);font-size:14px;line-height:20px; }
