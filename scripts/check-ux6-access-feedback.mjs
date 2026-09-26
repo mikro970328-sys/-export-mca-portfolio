@@ -57,11 +57,11 @@ for(const text of [
   "section.dataset.accessOwner = 'access-control-administration.js'"
 ])requireText(owner,text,`ownership canónico ${text}`);
 
-requireText(loader,"/admin/access-control.css?v=20260922-figma1",'revisión del CSS de Accesos');
-requireText(loader,"/admin/access-control-administration.js?v=20260916-tasksnav1",'revisión del owner de Accesos');
+requireText(loader,"/admin/access-control.css?v=20260926-figma2",'revisión del CSS de Accesos');
+requireText(loader,"/admin/access-control-administration.js?v=20260926-figma2",'revisión del owner de Accesos');
 requireText(loader,"await window.ExportMcaAccessControl.initialize()",'inicialización del contexto de acceso');
-requireText(styles,'.access-modal-message{margin:0 16px 12px}','feedback visible dentro del diálogo de Accesos');
-requireText(index,'/admin/erp.js?v=20260926-figma6','revisión del loader ERP');
+requireText(styles,'.access-modal-message { margin:0 32px; }','feedback visible dentro del diálogo de Accesos');
+requireText(index,'/admin/erp.js?v=20260926-figma7','revisión del loader ERP');
 
 for(const [source,label] of [[accessApi,'api/access-control.js'],[adminsApi,'api/admins.js']]){
   requireText(source,'authorizeAdmin(',`${label} conserva autorización backend`);

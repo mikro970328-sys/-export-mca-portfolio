@@ -1015,7 +1015,7 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
           return rect.left >= -1 && rect.right <= window.innerWidth + 1;
         };
         const metrics = [...node.querySelectorAll('.access-summary-card')];
-        const modal = node.querySelector('#accessModal');
+        const modal = document.getElementById('accessModal');
         const records = [...node.querySelectorAll('#accessDirectoryList .access-card, #accessDirectoryList .access-empty')];
         return {
           owner:node.dataset.accessOwner || '',
@@ -1087,7 +1087,7 @@ test(`UX-7 ${CERT_SCOPE} production is read-only and usable on real iPhone Safar
         const metrics = [...node.querySelectorAll('.account-summary-card')];
         const panels = [...node.querySelectorAll('.account-panel')].filter(visible);
         const passwordInputs = [...node.querySelectorAll('#accountPasswordForm input[type="password"]')];
-        const dialog = node.querySelector('#accountConfirmDialog');
+        const dialog = document.getElementById('accountConfirmDialog');
         const sessionPanel = node.querySelector('#accountSessionAdminCard');
         return {
           owner:node.dataset.accountOwner || '',

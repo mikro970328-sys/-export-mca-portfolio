@@ -1,3 +1,15 @@
+## Continuidad 26 sep 2026 · Tareas publicadas; Administración en revisión
+
+- Instrucción vigente: terminar escritorio y avisar a Daniel antes del iPhone físico; continuar sin confirmaciones rutinarias.
+- Tareas y Trabajadores: PR #354 publicado en `1527d4af094c97179e4d696037e7d6e65ce73e11`; Vercel `dpl_71heePGGFim5KypdWXhKKttFtRo2` READY. 38 workflows, 22 trabajos y 99/99 visuales por motor correctos. Seis archivos de producción exactos; APIs sin sesión 401. Guía Figma 124:5 publicada.
+- Bloque actual: Usuarios y acceso / Mi cuenta. Trece vistas Figma (guía 127:2), owners revisados, 22 nuevas pruebas por motor; verificar CI/capturas antes de publicar. Detalle en docs/FIGMA_ACCESS_ACCOUNT.md.
+- Después: Inicio/alertas/notificaciones, Publicaciones, configuración/supervisión de workflow y revisión integrada. Resolver el bridge asíncrono de Compras que desplaza las acciones al insertar enlaces relacionados.
+- No QA de escritura en producción ni Preview. No empezar iPhone físico ni declarar el ERP completo antes de cerrar ese alcance.
+
+Este corte sustituye los pendientes históricos resueltos de abajo.
+
+---
+
 ## Continuidad 26 sep 2026 · Directorios publicados; Tareas y Trabajadores en revisión
 
 - Instrucción vigente: terminar el ERP de escritorio y avisar a Daniel antes de pasar al iPhone físico. Continuar sin confirmaciones rutinarias ni cerrar tras publicar un bloque.

@@ -129,8 +129,8 @@ requireText(styles,'overflow-x:hidden;','protección contra desbordamiento del o
 forbid(styles,/@import|font-family\s*:\s*Arial|(?:linear|radial)-gradient/i,'account-administration.css conserva importación tardía o estética legacy');
 
 [
-  "/admin/account-administration.css?v=20260922-figma1",
-  "/admin/account-administration.js?v=20260903-ux7account1"
+  "/admin/account-administration.css?v=20260926-figma2",
+  "/admin/account-administration.js?v=20260926-figma2"
 ].forEach(value => requireText(loader,value,`loader canónico ${value}`));
 
 [

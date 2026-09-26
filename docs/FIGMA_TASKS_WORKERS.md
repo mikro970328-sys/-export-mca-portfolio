@@ -34,7 +34,7 @@ No cambian APIs, SQL, payloads, permisos, capabilities, reglas de transición ni
 - Smoke DOM con los owners reales: dos filas iniciales por módulo, diálogos montados en el cuerpo, sin errores de ejecución.
 - 16 pruebas por motor (32 registradas): filtros y teclado, edición, alta, validaciones, asignación por equipo, error y reintento, motivos, comentarios, dependencias, historial, desactivación/reactivación, acceso de consulta y recuperación de lectura.
 - Ventanas de 1440 y 390 px; formularios de 700 y 500 px de alto, comprobando que los campos reciben el puntero y no hay desbordamiento del documento.
-- Fixtures en memoria, datos ficticios y CSP sin red. No se escriben datos QA en producción ni Preview. La CI y las capturas del head final deben verificarse antes de publicar.
+- Fixtures en memoria, datos ficticios y CSP sin red. No se escriben datos QA en producción ni Preview. El head final y sus capturas Chromium/WebKit están comprobados.
 
 ## Continuidad
 
@@ -43,3 +43,7 @@ PR #353 de Clientes y Proveedores está publicado en `735ccd339821134ad376719b5c
 Después: accesos/Mi cuenta, Inicio/alertas/notificaciones, Publicaciones y configuración de workflow. Revisar el contenido relacionado asíncrono de Compras: el bridge anterior inserta enlaces por encima del pie y puede desplazar acciones durante una interacción rápida. La prueba financiera espera ahora su carga visible. Resolver la revisión integrada antes de avisar y comenzar iPhone físico.
 
 La inspección de las primeras 99 capturas comprobadas por motor detectó una regla hover que reducía el contraste de los botones primarios. Se corrigió en ambos propietarios y la prueba de creación exige contraste de texto ≥ 4,5 al pasar el puntero. La búsqueda de trabajadores conserva un botón de una sola línea y el directorio cambia a tarjetas antes de estrecharse dentro del shell.
+
+## Publicación verificada
+
+PR #354, main `1527d4af094c97179e4d696037e7d6e65ce73e11`, deployment `dpl_71heePGGFim5KypdWXhKKttFtRo2` READY. Head final `4c69c54e4d3748dbdfb9b8da62aeff22a4d5c80b`; 38 workflows y 22 trabajos correctos, 99/99 visuales por motor en CI `36224011949`. Seis archivos de producción idénticos por GET; APIs sin sesión 401. Guía `124:5` / estado `124:7` publicada. Continúa Administración; escritorio completo e iPhone físico siguen pendientes.
