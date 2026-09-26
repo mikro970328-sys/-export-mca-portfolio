@@ -19,7 +19,7 @@
     { id:'costsSection', label:'Costos y rentabilidad', src:'/admin/costs.html?embedded=1' },
     { id:'reportsSection', label:'Reportes', src:'/admin/reports.html?embedded=1', permission:'reports.read' },
     { id:'inventorySection', label:'Existencias', src:'/admin/inventory.html?embedded=1&v=20260926-figma1' },
-    { id:'loadsSection', label:'Cargues', src:'/admin/loads.html?embedded=1' }
+    { id:'loadsSection', label:'Cargues', src:'/admin/loads.html?embedded=1&v=20260926-figma1' }
   ];
 
   const NAV_GROUPS = [

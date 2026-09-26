@@ -99,10 +99,10 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))) {
     '/admin/tasks-workspace.css?v=20260922-figma1',
     '/admin/tasks-workspace.js?v=20260916-taskdialog1',
     '/admin/tasks-navigation.js?v=20260830-p4',
-    '/admin/navigation-shell.js?v=20260926-figma2',
+    '/admin/navigation-shell.js?v=20260926-figma3',
     '/admin/section-state.js?v=20260910-startup1'
   ]) if(!loader.includes(required))failures.push(`admin/erp.js: falta ${required}`);
-  const navIndex=loader.indexOf('/admin/navigation-shell.js?v=20260926-figma2');
+  const navIndex=loader.indexOf('/admin/navigation-shell.js?v=20260926-figma3');
   const taskIndex=loader.indexOf('/admin/tasks-workspace.js?v=20260916-taskdialog1');
   const taskNavIndex=loader.indexOf('/admin/tasks-navigation.js?v=20260830-p4');
   const stateIndex=loader.indexOf('/admin/section-state.js?v=20260910-startup1');
