@@ -81,7 +81,7 @@ for(const viewport of [{width:1440,height:700},{width:390,height:500}]){
     await page.setViewportSize(viewport);await open(page,{module:'tracking'});await page.locator('#trackingRegisterShortcut').click();
     await page.locator('#saveShipment').click();await expect(page.locator('#shipmentMsg')).toContainText('4 letras y 7 números');expect(await writes(page)).toEqual([]);
     await page.locator('#shipmentContainer').fill('ABCD1234567');await page.locator('#shipmentClient').selectOption('fixture-client');await page.locator('#shipmentImporter').fill('Importadora de ejemplo');await page.locator('#shipmentProduct').fill('Panel solar 620W');await page.locator('#shipmentQuantity').fill('80');await page.locator('#shipmentQuantityUnit').fill('paneles');
-    await page.locator('#shipmentContainer').scrollIntoViewIfNeeded();await shot(page,info,'registro-contenedor');await noOverflow(page);
+    await page.locator('#shipmentContainer').scrollIntoViewIfNeeded();await shot(page,info,'registro-contenedor',true);await noOverflow(page);
     await page.evaluate(()=>window.__fixtureRejectWrites=true);await page.locator('#saveShipment').click();await expect(page.locator('#shipmentMsg')).toContainText('No se pudo registrar');await expect(page.locator('#shipmentContainer')).toHaveValue('ABCD1234567');
     await page.evaluate(()=>window.__fixtureRejectWrites=false);await page.locator('#saveShipment').click();await expect(page.locator('#shipmentMsg')).toContainText('registrado correctamente');
     expect((await writes(page)).filter(c=>c.method==='POST').at(-1).body).toMatchObject({container_number:'ABCD1234567',client_id:'fixture-client',quantity:'80',quantity_unit:'paneles'});

@@ -304,7 +304,7 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await mutation(a,'loads',()=>loads.locator('#createContainer').click());
       await expect(loads.locator('#containerModal')).toBeHidden();
       await loadAction('dispatch');await inventoryValues(0,0,0);
-      await expect(loads.locator('.load-detail-hero')).toContainText('Despachado');
+      await expect(loads.locator('#drawerSub')).toContainText('Despachado');
       await expect(loads.locator('[data-action="dispatch"]')).toHaveCount(0);
       const shipment=await f.one('select * from shipments');
       expect(Number(shipment.quantity)).toBe(100);expect(shipment.client_id).toBe(f.client);

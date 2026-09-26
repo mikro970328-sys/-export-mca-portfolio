@@ -160,10 +160,10 @@
 .manual-track-current-box b { order:-1;font-weight:600; }
 .manual-track-current-box small { color:var(--muted);font-size:12px; }
 .manual-track-list { display:grid;gap:16px; }
-.manual-track-step { display:flex;align-items:center;gap:16px;min-width:0;padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);cursor:pointer; }
+.manual-track-step { display:flex;align-items:center;gap:16px;min-width:0;margin:0;padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);font-size:14px;font-weight:400;line-height:20px;cursor:pointer; }
 .manual-track-step:has(input:checked) { background:var(--orange-soft); }
-.manual-track-step-title { font-weight:600; }
-.manual-track-step-note { margin-top:4px;color:var(--muted);font-size:12px;line-height:18px; }
+.manual-track-step-title { font-size:14px;font-weight:600;line-height:20px; }
+.manual-track-step-note { margin-top:4px;color:var(--muted);font-size:12px;font-weight:400;line-height:18px; }
 .container-dialog .manual-track-radio { appearance:auto;order:-1;flex:none;width:20px;height:20px;margin:0;accent-color:var(--orange); }
 .manual-track-field { display:grid;gap:8px;margin-top:32px; }
 .manual-track-field label { font-weight:600; }
