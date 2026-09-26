@@ -10,9 +10,9 @@
 
   const EMBEDDED_SECTIONS = [
     { id:'warehouseSection', label:'Recepciones (WR)', src:'/admin/warehouse.html?embedded=1&v=20260926-figma1' },
-    { id:'suppliersSection', label:'Proveedores', src:'/admin/suppliers.html?embedded=1' },
+    { id:'suppliersSection', label:'Proveedores', src:'/admin/suppliers.html?embedded=1&v=20260926-figma2' },
     { id:'productsSection', label:'Productos', src:'/admin/products.html?embedded=1&v=20260926-figma1' },
-    { id:'purchasesSection', label:'Compras', src:'/admin/purchases.html?embedded=1&v=20260925-figma1' },
+    { id:'purchasesSection', label:'Compras', src:'/admin/purchases.html?embedded=1&v=20260926-focus1' },
     { id:'salesSection', label:'Ventas', src:'/admin/sales.html?embedded=1&v=20260904-flowclarity1' },
     { id:'invoicesSection', label:'Facturación', src:'/admin/invoices.html?embedded=1&v=20260926-figma1' },
     { id:'payablesSection', label:'Cuentas por pagar', src:'/admin/payables.html?embedded=1&v=20260926-figma1' },

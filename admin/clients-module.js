@@ -50,6 +50,22 @@
     node.className = `clients-message ${message ? (ok ? 'ok' : 'bad') : ''}`;
   }
 
+  function setCreateMessage(message = '', ok = false) {
+    const node = byId('clientCreateMsg');
+    if (!node) return;
+    node.textContent = message;
+    node.className = `clients-message ${message ? (ok ? 'ok' : 'bad') : ''}`;
+  }
+
+  function openClientDialog(title, html, focusId = 'closeModal') {
+    window.openModal(title, `<div class="client-dialog-root">${html}</div>`);
+    const panel = byId('modalBody')?.closest('.modalbox');
+    panel?.setAttribute('role', 'dialog');
+    panel?.setAttribute('aria-modal', 'true');
+    panel?.setAttribute('aria-labelledby', 'modalTitle');
+    byId(focusId)?.focus();
+  }
+
   function setEditMessage(message = '', ok = false) {
     const node = byId('clientEditMsg');
     if (!node) return;
@@ -163,24 +179,23 @@
 
   function emptyState(hasRows) {
     if (hasRows) {
-      return '<div class="clients-empty"><span class="clients-empty-icon" aria-hidden="true">⌕</span><strong>No encontramos coincidencias</strong><span>Prueba con otro nombre, empresa, teléfono o correo.</span></div>';
+      return '<div class="clients-empty"><strong>No encontramos coincidencias</strong><span>Prueba con otro nombre, empresa, teléfono o correo.</span></div>';
     }
     const action = canWriteClients()
       ? '<span>Agrega el primer contacto para comenzar tu cartera comercial.</span>'
       : '<span>Cuando se registren clientes, aparecerán aquí.</span>';
-    return `<div class="clients-empty"><span class="clients-empty-icon" aria-hidden="true">+</span><strong>No hay clientes registrados</strong>${action}</div>`;
+    return `<div class="clients-empty"><strong>No hay clientes registrados</strong>${action}</div>`;
   }
 
   function clientRow(client) {
     const writeAccess = canWriteClients();
-    const identity = String(client.name || '?').trim();
     const company = client.company || client.mipyme_name || 'Sin empresa registrada';
     return `<tr data-client-id="${esc(client.id)}">
-      <td data-label="Cliente"><div class="client-person"><span class="client-avatar" aria-hidden="true">${esc(identity.charAt(0).toUpperCase())}</span><div><strong>${esc(client.name || 'Cliente sin nombre')}</strong><small>${esc(client.email || 'Correo no registrado')}</small></div></div></td>
+      <td data-label="Cliente"><div class="client-person"><div><strong>${esc(client.name || 'Cliente sin nombre')}</strong><small>${esc(client.email || 'Correo no registrado')}</small></div></div></td>
       <td data-label="Empresa"><strong class="client-company">${esc(company)}</strong>${client.company && client.mipyme_name ? `<small class="client-company-detail">${esc(client.mipyme_name)}</small>` : ''}</td>
       <td data-label="WhatsApp"><span class="client-contact">${esc(client.phone || 'No registrado')}</span></td>
-      <td data-label="Bienvenida"><span class="client-welcome-status ${welcomeClass(client.welcome_status)}"><span aria-hidden="true"></span>${esc(welcomeLabel(client.welcome_status))}</span></td>
-      <td data-label="Acciones" class="client-actions-cell"><button class="client-actions-trigger" type="button" data-client-menu aria-haspopup="menu" aria-expanded="false" aria-label="Abrir acciones de ${esc(client.name || 'cliente')}"><span aria-hidden="true">•••</span><span class="clients-visually-hidden">${writeAccess ? 'Gestionar cliente' : 'Consultar cliente'}</span></button></td>
+      <td data-label="Bienvenida"><span class="client-welcome-status ${welcomeClass(client.welcome_status)}">${esc(welcomeLabel(client.welcome_status))}</span></td>
+      <td data-label="Acciones" class="client-actions-cell"><button class="client-actions-trigger" type="button" data-client-menu aria-haspopup="menu" aria-expanded="false" aria-label="Abrir acciones de ${esc(client.name || 'cliente')}"><span aria-hidden="true">Acciones</span><span class="clients-visually-hidden">${writeAccess ? 'Gestionar cliente' : 'Consultar cliente'}</span></button></td>
     </tr>`;
   }
 
@@ -190,6 +205,7 @@
     const readOnlyNote = byId('clientsReadOnlyNote');
     const layout = byId('clientsLayout');
     if (createPanel) createPanel.hidden = !writeAccess;
+    if (byId('newClient')) byId('newClient').hidden = !writeAccess;
     if (readOnlyNote) readOnlyNote.hidden = writeAccess;
     layout?.classList.toggle('is-readonly', !writeAccess);
   }
@@ -206,7 +222,7 @@
       target.innerHTML = `${emptyState(rows.length > 0)}<div class="client-list-footer">${state.query ? `0 de ${rows.length}` : '0'} clientes</div>`;
       return;
     }
-    target.innerHTML = `<div class="clients-table-wrap"><table class="clients-table"><thead><tr><th>Cliente</th><th>Empresa</th><th>WhatsApp</th><th>Bienvenida</th><th><span class="clients-visually-hidden">Acciones</span></th></tr></thead><tbody>${visibleRows.map(clientRow).join('')}</tbody></table></div><div class="client-list-footer">${state.query ? `${visibleRows.length} de ${rows.length}` : visibleRows.length} cliente${visibleRows.length === 1 ? '' : 's'}</div>`;
+    target.innerHTML = `<div class="clients-table-wrap"><table class="clients-table"><thead><tr><th>Cliente</th><th>Empresa</th><th>WhatsApp</th><th>Bienvenida</th><th>Acciones</th></tr></thead><tbody>${visibleRows.map(clientRow).join('')}</tbody></table></div><div class="client-list-footer">${state.query ? `${visibleRows.length} de ${rows.length}` : visibleRows.length} cliente${visibleRows.length === 1 ? '' : 's'}</div>`;
   }
 
   function infoRow(label,value) {
@@ -224,7 +240,7 @@
       setClientMessage('No se pudo abrir la información del cliente.', false);
       return false;
     }
-    window.openModal(`Información · ${client.name || 'Cliente'}`, `<div class="client-information-grid"><section>${infoRow('Nombre completo', client.name)}${infoRow('Empresa', client.company)}${infoRow('MIPYME', client.mipyme_name)}<div class="client-information-row"><div class="client-information-label">Importadoras</div><div class="client-information-value">${importers.length ? `<div class="client-importer-list">${importers.map(name => `<div class="client-importer-item">${esc(name)}</div>`).join('')}</div><div class="client-information-count">${importers.length} registro${importers.length === 1 ? '' : 's'}</div>` : 'Sin registrar'}</div></div></section><section>${infoRow('WhatsApp', client.phone)}${infoRow('Correo', client.email)}${infoRow('Bienvenida', welcomeLabel(client.welcome_status))}${infoRow('Cliente creado', formatDate(client.created_at))}${infoRow('Última actualización', formatDate(client.updated_at))}</section></div>`);
+    openClientDialog(`Información · ${client.name || 'Cliente'}`, `<div class="client-information-grid"><section>${infoRow('Nombre completo', client.name)}${infoRow('Empresa', client.company)}${infoRow('MIPYME', client.mipyme_name)}<div class="client-information-row"><div class="client-information-label">Importadoras</div><div class="client-information-value">${importers.length ? `<div class="client-importer-list">${importers.map(name => `<div class="client-importer-item">${esc(name)}</div>`).join('')}</div><div class="client-information-count">${importers.length} registro${importers.length === 1 ? '' : 's'}</div>` : 'Sin registrar'}</div></div></section><section>${infoRow('WhatsApp', client.phone)}${infoRow('Correo', client.email)}${infoRow('Bienvenida', welcomeLabel(client.welcome_status))}${infoRow('Cliente creado', formatDate(client.created_at))}${infoRow('Última actualización', formatDate(client.updated_at))}</section></div>`);
     return true;
   }
 
@@ -237,7 +253,7 @@
     const client = findClient(id);
     if (!client) return setClientMessage('El cliente ya no está disponible.', false);
     if (typeof window.openModal !== 'function') return setClientMessage('No se pudo abrir el editor del cliente.', false);
-    window.openModal(`Editar cliente · ${client.name}`, editorHtml(client));
+    openClientDialog(`Editar cliente · ${client.name}`, editorHtml(client), 'clientEditName');
     byId('cancelClientEdit')?.addEventListener('click', () => window.closeModal?.());
     byId('clientEditForm')?.addEventListener('submit', async event => {
       event.preventDefault();
@@ -268,13 +284,13 @@
   }
 
   async function save() {
-    if (!canWriteClients()) return setClientMessage('No tienes permiso para agregar clientes.', false);
+    if (!canWriteClients()) return setCreateMessage('No tienes permiso para agregar clientes.', false);
     const button = byId('saveClient');
     if (!button || button.disabled) return;
     button.disabled = true;
     button.textContent = 'Guardando…';
     let createdId = null;
-    setClientMessage('Guardando cliente…', true);
+    setCreateMessage('Guardando cliente…', true);
     try {
       const result = await api('/api/clients', {
         method:'POST',
@@ -288,7 +304,7 @@
       await loadAll();
       await loadImporters();
       render();
-      setClientMessage('Cliente guardado. La bienvenida se envía desde sus acciones.', true);
+      setCreateMessage('Cliente guardado. La bienvenida se envía desde sus acciones.', true);
       window.dispatchEvent(new CustomEvent('export-mca:clients-changed'));
     } catch (error) {
       console.error('CLIENT_CREATE_FAILED', error);
@@ -299,7 +315,7 @@
           console.error('CLIENT_CREATE_ROLLBACK_FAILED', rollbackError);
         }
       }
-      setClientMessage(safeClientMessage(error,'No se pudo guardar el cliente. Revisa los datos e intenta nuevamente.'), false);
+      setCreateMessage(safeClientMessage(error,'No se pudo guardar el cliente. Revisa los datos e intenta nuevamente.'), false);
     } finally {
       button.disabled = false;
       button.textContent = 'Guardar cliente';
@@ -312,7 +328,7 @@
       const previousFocus = document.activeElement;
       const overlay = document.createElement('div');
       overlay.className = 'client-decision-overlay';
-      overlay.innerHTML = `<div class="client-decision-panel" role="alertdialog" aria-modal="true" aria-labelledby="clientDecisionTitle" aria-describedby="clientDecisionDescription"><span class="client-decision-icon" aria-hidden="true">!</span><h3 id="clientDecisionTitle">${esc(title)}</h3><p id="clientDecisionDescription">${esc(message)}</p><div class="client-decision-actions"><button type="button" class="alt" data-client-decision-cancel>Cancelar</button><button type="button" class="danger" data-client-decision-confirm>${esc(confirmLabel)}</button></div></div>`;
+      overlay.innerHTML = `<div class="client-decision-panel" role="alertdialog" aria-modal="true" aria-labelledby="clientDecisionTitle" aria-describedby="clientDecisionDescription"><h3 id="clientDecisionTitle">${esc(title)}</h3><p id="clientDecisionDescription">${esc(message)}</p><div class="client-decision-actions"><button type="button" class="alt" data-client-decision-cancel>Cancelar</button><button type="button" class="danger" data-client-decision-confirm>${esc(confirmLabel)}</button></div></div>`;
       document.body.appendChild(overlay);
       const onKeydown = event => {
         if (event.key === 'Escape') finish(false);
@@ -367,7 +383,7 @@
       const html = events.length
         ? `<div class="timeline">${events.map(event => `<div class="event"><b>${esc(event.title || event.action || event.event_type || 'Evento')}</b><div>${esc(event.details || event.status || event.delivery_status || '')}</div><div class="muted">${esc(formatDate(event.created_at))}</div></div>`).join('')}</div>`
         : '<div class="empty-state">No hay actividad registrada para este cliente.</div>';
-      if (typeof window.openModal === 'function') window.openModal(`Cliente · ${title || 'Historial'}`, html);
+      if (typeof window.openModal === 'function') openClientDialog(`Cliente · ${title || 'Historial'}`, html);
       else setClientMessage('No se pudo abrir el historial del cliente.', false);
     } catch (error) {
       console.error('CLIENT_HISTORY_FAILED', error);
@@ -468,6 +484,31 @@
   }
 
   function bindEvents() {
+    byId('newClient')?.addEventListener('click', () => {
+      if (!canWriteClients()) return;
+      byId('clientCreateTitle')?.scrollIntoView({ block:'start' });
+      byId('clientName')?.focus({ preventScroll:true });
+    });
+    byId('clearClientSearch')?.addEventListener('click', () => {
+      state.query = '';
+      byId('clientSearch').value = '';
+      render();
+      byId('clientSearch').focus();
+    });
+    byId('refreshClients')?.addEventListener('click', async () => {
+      const button = byId('refreshClients');
+      button.disabled = true;
+      try {
+        await loadAll();
+        await loadImporters();
+        render();
+      } catch (error) {
+        console.error('CLIENTS_REFRESH_FAILED', error);
+        setClientMessage('No se pudo actualizar el directorio. Intenta nuevamente.', false);
+      } finally {
+        button.disabled = false;
+      }
+    });
     byId('clientCreateForm')?.addEventListener('submit', event => {
       event.preventDefault();
       save();

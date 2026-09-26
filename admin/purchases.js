@@ -24,7 +24,7 @@ function openPurchaseModal(name,focusId){
   if(!modal)return;
   if(modal.classList.contains('hidden'))purchaseModalReturnFocus.set(name,document.activeElement);
   modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');
-  requestAnimationFrame(()=>{const target=$(focusId)||modal.querySelector('button,select,input,textarea');target?.focus();});
+  const target=$(focusId)||modal.querySelector('button,select,input,textarea');target?.focus();
 }
 function closePurchaseDecision(value=false){
   const modal=$('purchaseDecisionModal'),resolve=purchaseDecisionResolve,returnFocus=purchaseDecisionReturnFocus;

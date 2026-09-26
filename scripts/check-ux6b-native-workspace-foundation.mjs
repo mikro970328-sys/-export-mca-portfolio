@@ -66,7 +66,7 @@ const headEnd=index.indexOf('</head>');
 if(themeIndex<0||navigationIndex<0||foundationIndex<0||headEnd<0||!(themeIndex<navigationIndex&&navigationIndex<foundationIndex&&foundationIndex<headEnd)){
   failures.push('index.html debe cargar tema → navegación → base nativa dentro de head');
 }
-requireText(index,'/admin/erp.js?v=20260926-figma4','revisión de caché del loader ERP');
+requireText(index,'/admin/erp.js?v=20260926-figma5','revisión de caché del loader ERP');
 requireText(loader,"document.querySelector('link[data-native-workspace-foundation]')",'límite de cascada para estilos dinámicos');
 requireText(loader,'insertBefore(link, nativeFoundation)','estilos propietarios antes de la base compartida');
 
@@ -126,7 +126,7 @@ if(fs.existsSync('admin/registration-form-shell.js'))failures.push('registration
 forbid(loader,/registration-form-shell/,'el loader conserva el shell visual retirado del registro');
 
 for(const ref of [
-  "/admin/clients-module.js?v=20260902-ux7clients1",
+  "/admin/clients-module.js?v=20260926-figma2",
   "/admin/workers-module.js?v=20260903-ux7workers1",
   "/admin/containers-module.js?v=20260926-figma1",
   "/admin/operational-alert-center.js?v=20260903-ux7alerts1",

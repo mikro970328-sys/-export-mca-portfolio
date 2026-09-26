@@ -1,5 +1,13 @@
 ## Continuidad · 26/09/2026 · Finanzas desde Figma
 
+## Continuidad 26 sep 2026 · Finanzas publicado; Clientes y Proveedores en revisión
+
+- Daniel pidió continuar hasta terminar el ERP de escritorio y avisarle antes de pasar al iPhone físico. No detener el trabajo tras un bloque ni declarar terminado el ERP.
+- PR #352 publicado en `8dcde7411e0bd3357b79a105f62be74a24804234`: Vercel `dpl_H86FkYG4ukPcDZPwpzY47LkuJDVb` READY, 12 archivos exactos comprobados por GET. Head final `2aa9b000909d7a9ea94e8447523c373968516f4e`, CI `36221102523`: 46/46 workflows, 22/22 trabajos y 69/69 pruebas visuales por motor. Detalle en `docs/FIGMA_FINANCE.md`.
+- Clientes y Proveedores: 7 vistas Figma revisadas, guía `117:5` / estado `117:7`; directorio ancho, alta con foco directo, errores junto al formulario, fichas, estados de proveedores por teclado. 14 nuevas pruebas por motor listas; comprobar CI y capturas antes de publicar. Detalle en `docs/FIGMA_DIRECTORIES.md`.
+- Pendiente: Tareas, Trabajadores, accesos/Mi cuenta, Inicio/alertas/notificaciones, Publicaciones/configuración de workflow y revisión integrada. No QA de escritura en producción ni Preview; fixtures en memoria o PostgreSQL/PostgREST desechables. No iPhone físico aún.
+
+
 - Daniel pidió terminar escritorio y avisar antes del iPhone físico. Continuar sin confirmaciones rutinarias; no cerrar la tarea al publicar un bloque.
 - Logística publicada: PR #351, main `c15459f61ff19755e5fa0c0f20585eb63bc50b86`, tree `532875b5b5e429ba35922a29524beb627da46bf0`, Vercel `dpl_Ao7GVtchdtYvVxNRVBpLxHkK7JVZ` READY. 45/45 workflows; Browser Operator Acceptance `36218460503`, 22/22 jobs y 50/50 pruebas visuales por motor. Doce archivos de producción exactos; APIs sin sesión 401. Guía Figma `101:2` actualizada.
 - Bloque actual: `feat/figma-finance-white`, Facturación, Cuentas por pagar y Reportes. Dieciséis vistas revisadas y tres componentes; guía Figma `112:5`. Implementación y pruebas en `docs/FIGMA_FINANCE.md`.

@@ -57,7 +57,7 @@ jobs:
         run: npx playwright install --with-deps chromium webkit
       - name: Computed header and icon contrast without business data
         working-directory: e2e/isolated
-        run: npm test -- header-contrast.spec.mjs figma-sales.spec.mjs figma-costs.spec.mjs figma-purchases.spec.mjs figma-warehouse.spec.mjs figma-stock-catalog.spec.mjs figma-logistics.spec.mjs figma-finance.spec.mjs --project=${{ matrix.project }}
+        run: npm test -- header-contrast.spec.mjs figma-sales.spec.mjs figma-costs.spec.mjs figma-purchases.spec.mjs figma-warehouse.spec.mjs figma-stock-catalog.spec.mjs figma-logistics.spec.mjs figma-finance.spec.mjs figma-directories.spec.mjs --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

@@ -40,12 +40,11 @@ const workflow = read(files.workflow);
 [
   '<body class="erp-module-page erp-module-suppliers" data-owner="suppliers.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/suppliers.css?v=20260922-figma2',
-  '/admin/suppliers.js?v=20260903-ux7suppliers1',
+  '/admin/suppliers.css?v=20260926-figma2',
+  '/admin/suppliers.js?v=20260926-figma2',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero suppliers-page-head"',
   'id="suppliersPageTitle">Proveedores',
-  'class="suppliers-hero-state"',
   'id="suppliersLastUpdated"',
   'id="suppliersMetrics" class="metrics suppliers-metrics"',
   'id="supplierTotalMetric"',
@@ -66,7 +65,7 @@ const workflow = read(files.workflow);
 ].forEach(value => requireText(html,value,`HTML canónico ${value}`));
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerStylesIndex = html.indexOf('/admin/suppliers.css?v=20260922-figma2');
+const ownerStylesIndex = html.indexOf('/admin/suppliers.css?v=20260926-figma2');
 if (foundationIndex < 0 || ownerStylesIndex < 0 || foundationIndex > ownerStylesIndex) {
   failures.push('la base visual compartida debe cargar antes de suppliers.css');
 }
@@ -79,7 +78,6 @@ forbid(html, /(?:↻|✕|☰|▧|▨|📦|🏭)/u, 'Proveedores conserva glifos 
 
 [
   '.suppliers-page-head',
-  '.suppliers-hero-state',
   '.suppliers-action-row',
   '.suppliers-feedback',
   '.suppliers-readonly',
@@ -170,7 +168,7 @@ forbid(owner, /method\s*:\s*['"]DELETE['"]/i, 'Proveedores introduce eliminació
 ].forEach(value => requireText(api,value,`API autoritativa ${value}`));
 [
   "id:'suppliersSection'",
-  "src:'/admin/suppliers.html?embedded=1'"
+  "src:'/admin/suppliers.html?embedded=1&v=20260926-figma2'"
 ].forEach(value => requireText(navigation,value,`navegación de Proveedores ${value}`));
 [
   "openSection(page, 'suppliersSection')",

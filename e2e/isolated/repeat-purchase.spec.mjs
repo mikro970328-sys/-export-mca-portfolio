@@ -125,7 +125,7 @@ test('repeat purchase creates an independent draft with current permissions', as
     const count=async()=>Number((await f.one('select count(*) from purchase_orders')).count);
     const step=async(name,run)=>test.step(name,async()=>{await run();evidence.checkpoints.push(name);});
     await step('RP-01 repeat prefills both pricing modes and clears old dates, reference and IDs',async()=>{
-      await ui.locator('#newOrder').click();await ui.locator('#oNotes').fill('Unfinished ordinary purchase');await close();
+      await ui.locator('#newOrder').click();await expect(ui.locator('#oSupplier')).toBeFocused();await ui.locator('#oNotes').fill('Unfinished ordinary purchase');await expect(ui.locator('#oNotes')).toHaveValue('Unfinished ordinary purchase');await close();
       await repeat(source.id);
       await expect(ui.locator('#oSupplier')).toHaveValue(f.supplier);await expect(ui.locator('#oWarehouse')).toHaveValue(f.warehouse);
       await expect(ui.locator('#oReference')).toHaveValue('');await expect(ui.locator('#oExpected')).toHaveValue('');

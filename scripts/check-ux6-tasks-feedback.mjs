@@ -51,7 +51,7 @@ for(const text of [
 
 requireText(loader,"/admin/tasks-workspace.css?v=20260922-figma1",'revisión del CSS de Tareas');
 requireText(loader,"/admin/tasks-workspace.js?v=20260916-taskdialog1",'revisión del JS de Tareas');
-requireText(index,'/admin/erp.js?v=20260926-figma4','revisión del loader ERP');
+requireText(index,'/admin/erp.js?v=20260926-figma5','revisión del loader ERP');
 
 for(const text of [
   "authorizeAdmin(req,res,'tasks.read')",
