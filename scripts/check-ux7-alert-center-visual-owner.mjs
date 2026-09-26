@@ -128,8 +128,8 @@ requireText(styles,'overflow-x:hidden;','protección contra desbordamiento del o
 forbid(styles,/@import|font-family\s*:\s*Arial|(?:linear|radial)-gradient/i,'operational-alert-center.css conserva importación tardía o estética legacy');
 
 [
-  "/admin/operational-alert-center.css?v=20260922-figma1",
-  "/admin/operational-alert-center.js?v=20260903-ux7alerts1"
+  "/admin/operational-alert-center.css?v=20260926-figma2",
+  "/admin/operational-alert-center.js?v=20260926-figma2"
 ].forEach(value=>requireText(loader,value,`loader canónico ${value}`));
 
 [

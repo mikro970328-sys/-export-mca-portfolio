@@ -81,7 +81,7 @@
   function dashboardIntro(data) {
     return `<header class="executive-intro">
       <div><span class="executive-kicker">Resumen del negocio</span><h1 id="dashboardGreeting">${esc(greetingForHour())}, ${esc(operatorName())}</h1><p>Revisa el estado de la operación y atiende primero lo que necesita una decisión.</p></div>
-      <div class="executive-live"><span aria-hidden="true"></span><div><b>Última actualización</b><small>${esc(dateLabel(data.generated_at))}</small></div></div>
+      <div class="executive-live"><div><b>Última actualización</b><small>${esc(dateLabel(data.generated_at))}</small></div></div>
     </header>`;
   }
 
@@ -214,6 +214,7 @@
   }
 
   function renderDashboard(data) {
+    const focusedId=document.activeElement?.id;
     rememberDisclosures();
     state.data=data;
     window.__lastDashboardPayload=data;
@@ -234,6 +235,7 @@
     restoreSelect('dashboardSupplier',state.filters.supplier_id);
     restoreSelect('dashboardProduct',state.filters.product_id);
     bind();
+    if(focusedId&&section.contains($(focusedId)))$(focusedId).focus({preventScroll:true});
   }
 
   function restoreSelect(id,value){ const node=$(id); if(node&&value)node.value=value; }
@@ -266,6 +268,7 @@
   async function reloadDashboard(filters=readFilters()) {
     if(state.loading)return false;
     state.loading=true;
+    state.filters={...filters};
     const button=$('dashboardApplyFilters');
     if(button)button.disabled=true;
     if(!state.data)renderLoading();
