@@ -59,5 +59,10 @@ test('Help report template has a clipboard fallback and print hides navigation',
   await shot(page,info,'help-report');
   await page.emulateMedia({media:'print'});await expect(page.locator('#sidebar')).toBeHidden();
   await expect(page.locator('.help-article-actions')).toBeHidden();await expect(page.locator('#helpArticleTitle')).toBeVisible();
+  await page.emulateMedia({media:'screen'});
+  await page.locator('[data-section="accountSection"]').click();
+  await page.emulateMedia({media:'print'});
+  await expect(page.locator('#accountSection')).toBeVisible();
+  await expect(page.locator('#helpSection')).toBeHidden();
   expect(await page.evaluate(()=>window.__fixtureCalls.filter(c=>c.method!=='GET'))).toEqual([]);
 });
