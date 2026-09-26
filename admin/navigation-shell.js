@@ -9,7 +9,7 @@
   let searchGroupState = null;
 
   const EMBEDDED_SECTIONS = [
-    { id:'warehouseSection', label:'Recepciones (WR)', src:'/admin/warehouse.html?embedded=1&v=20260904-flowclarity1' },
+    { id:'warehouseSection', label:'Recepciones (WR)', src:'/admin/warehouse.html?embedded=1&v=20260926-figma1' },
     { id:'suppliersSection', label:'Proveedores', src:'/admin/suppliers.html?embedded=1' },
     { id:'productsSection', label:'Productos', src:'/admin/products.html?embedded=1' },
     { id:'purchasesSection', label:'Compras', src:'/admin/purchases.html?embedded=1&v=20260925-figma1' },

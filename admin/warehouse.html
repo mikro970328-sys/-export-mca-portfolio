@@ -6,15 +6,15 @@
 <title>Recepciones (WR) · Export MCA</title>
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
-<link rel="stylesheet" href="/admin/warehouse.css?v=20260922-figma1">
+<link rel="stylesheet" href="/admin/warehouse.css?v=20260926-figma1">
 </head>
 <body class="erp-module-page erp-module-warehouse" data-owner="warehouse.js">
 <main class="wrap warehouse-shell">
   <header class="module-hero warehouse-page-head" aria-labelledby="warehousePageTitle">
     <div class="module-heading warehouse-page-heading">
-      <div class="module-kicker warehouse-page-kicker">Operación física · Recepción de mercancía</div>
+      <div class="module-kicker warehouse-page-kicker">Operaciones</div>
       <h1 id="warehousePageTitle">Recepciones (WR)</h1>
-      <p><span class="warehouse-copy-standalone">Registra entradas físicas, administra ubicaciones y consulta el catálogo operativo.</span><span class="warehouse-copy-embedded">Aquí registras una entrada física. Cada WR recibido suma mercancía a Existencias; un Direct Ship no pasa por esta etapa.</span></p>
+      <p><span class="warehouse-copy-standalone">Registra entradas físicas, administra ubicaciones y consulta el catálogo operativo.</span><span class="warehouse-copy-embedded">Registra entradas físicas y consulta su mercancía.</span></p>
     </div>
     <div class="module-actions">
       <button id="newReceipt" class="orange warehouse-primary-action" type="button">Registrar entrada WR</button>
@@ -39,20 +39,18 @@
     <section class="panel warehouse-list-panel" aria-labelledby="receiptsTitle">
       <header class="warehouse-panel-head">
         <div>
-          <span class="warehouse-eyebrow">Entradas físicas</span>
           <h2 id="receiptsTitle">Recepciones registradas</h2>
-          <p>Cada llegada recibe un WR consecutivo y conserva su mercancía, proveedor y referencia operativa.</p>
         </div>
       </header>
       <div class="warehouse-list-toolbar">
+        <label class="warehouse-search-field" for="receiptSearch">
+          <span>Buscar recepciones</span>
+          <input id="receiptSearch" class="search warehouse-search" type="search" autocomplete="off" placeholder="Buscar WR, proveedor o producto">
+        </label>
         <div class="receipt-filter" role="group" aria-label="Filtrar recepciones">
           <button class="active" type="button" data-receipt-view="active" aria-pressed="true">Activas</button>
           <button type="button" data-receipt-view="cancelled" aria-pressed="false">Anuladas</button>
         </div>
-        <label class="warehouse-search-field" for="receiptSearch">
-          <span class="warehouse-visually-hidden">Buscar recepciones</span>
-          <input id="receiptSearch" class="search warehouse-search" type="search" autocomplete="off" placeholder="Buscar WR, almacén, proveedor, producto, lote o camión">
-        </label>
       </div>
       <div id="receiptList" class="warehouse-receipt-list" aria-live="polite"></div>
     </section>
@@ -107,23 +105,23 @@
 
 <div id="receiptModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle" aria-hidden="true">
   <div class="modalbox warehouse-receipt-dialog">
-    <div class="dialog-head"><div><span class="warehouse-dialog-kicker">Entrada física</span><h2 id="receiptModalTitle" class="warehouse-heading-reset">Nueva recepción</h2><p class="muted">El número WR se asigna automáticamente al guardar.</p></div><button id="closeReceipt" class="alt icon-btn" type="button" aria-label="Cerrar recepción">✕</button></div>
-    <div class="warehouse-dialog-section"><div class="grid"><div><label for="rWarehouse">Almacén receptor *</label><select id="rWarehouse"></select></div><div><label for="rReceivedAt">Fecha y hora de recepción</label><input id="rReceivedAt" type="datetime-local"></div></div>
+    <div class="dialog-head"><div><span class="warehouse-dialog-kicker">Entrada física</span><h2 id="receiptModalTitle" class="warehouse-heading-reset">Nueva recepción</h2><p class="muted">El número WR se asigna automáticamente al guardar.</p></div><button id="closeReceipt" class="alt icon-btn" type="button" aria-label="Cerrar recepción">×</button></div>
+    <div class="warehouse-dialog-section"><h3>Datos de la recepción</h3><div class="grid"><div><label for="rWarehouse">Almacén receptor *</label><select id="rWarehouse"></select></div><div><label for="rReceivedAt">Fecha y hora de recepción</label><input id="rReceivedAt" type="datetime-local"></div></div>
     <div class="grid"><div><label for="rSupplier">Proveedor</label><select id="rSupplier"><option value="">Sin proveedor / recepción directa</option></select></div><div><label for="rReference">Referencia proveedor / PO</label><input id="rReference"></div></div>
     <div class="grid"><div><label for="rTruck">Camión / referencia</label><input id="rTruck" placeholder="Truck #, BOL terrestre..."></div><div><label for="rDriver">Chofer</label><input id="rDriver"></div></div>
-    <label for="rNotes">Notas generales</label><textarea id="rNotes"></textarea></div>
-    <div class="warehouse-dialog-section warehouse-lines-section"><div class="toolbar"><div><span class="warehouse-dialog-kicker">Mercancía recibida</span><b>Detalle del WR</b><p class="muted"><span class="warehouse-copy-standalone">Selecciona un producto existente o créalo aquí sin salir del WR.</span><span class="warehouse-copy-embedded">Selecciona un producto del catálogo maestro. Los productos se administran en Administración → Productos.</span></p></div><button id="addLine" class="alt" type="button">+ Línea</button></div><div id="receiptLines" class="warehouse-lines"></div></div>
+    <div><label for="rNotes">Notas generales</label><textarea id="rNotes" placeholder="Información adicional de la recepción (opcional)"></textarea></div></div>
+    <div class="warehouse-dialog-section warehouse-lines-section"><div class="toolbar"><div><h3>Mercancía recibida</h3><p id="receiptCatalogHelp" class="warehouse-visually-hidden"><span class="warehouse-copy-standalone">Selecciona un producto existente o créalo aquí sin salir del WR.</span><span class="warehouse-copy-embedded">Selecciona un producto del catálogo maestro. Los productos se administran en Administración → Productos.</span></p></div><button id="addLine" class="alt" type="button">Agregar línea</button></div><div id="receiptLines" class="warehouse-lines"></div><p class="warehouse-save-help">Cada WR recibido suma mercancía a Existencias; un Direct Ship no pasa por esta etapa.</p></div>
     <div class="actions warehouse-modal-actions"><button id="cancelReceiptForm" class="alt" type="button">Cancelar</button><button id="saveReceipt" class="orange" type="button">Guardar WR</button></div>
     <div id="rMsg" class="msg" role="status" aria-live="polite"></div>
   </div>
 </div>
 
 <div id="detailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailTitle" aria-hidden="true">
-  <div class="modalbox warehouse-detail-dialog"><div class="dialog-head"><div><span class="warehouse-dialog-kicker">Trazabilidad de recepción</span><h2 id="detailTitle" class="warehouse-heading-reset"></h2></div><button id="closeDetail" class="alt icon-btn" type="button" aria-label="Cerrar detalle">✕</button></div><div id="detailBody" class="warehouse-detail-body"></div></div>
+  <div class="modalbox warehouse-detail-dialog"><div class="dialog-head"><div><span class="warehouse-dialog-kicker">Trazabilidad de recepción</span><h2 id="detailTitle" class="warehouse-heading-reset"></h2></div><button id="closeDetail" class="alt icon-btn" type="button" aria-label="Cerrar detalle">×</button></div><div id="detailBody" class="warehouse-detail-body"></div><div class="actions warehouse-modal-actions"><button id="closeDetailFooter" class="alt" type="button">Cerrar detalle</button></div></div>
 </div>
 
 <div id="quickProductModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="quickProductTitle" aria-hidden="true">
-  <div class="modalbox compact warehouse-product-dialog"><div class="dialog-head"><div><span class="warehouse-dialog-kicker">Catálogo maestro</span><h2 id="quickProductTitle" class="warehouse-heading-reset">Nuevo producto</h2><p class="muted">Crea los datos básicos y selecciona el producto en esta recepción.</p></div><button id="closeQuickProduct" class="alt icon-btn" type="button" aria-label="Cerrar nuevo producto">✕</button></div>
+  <div class="modalbox compact warehouse-product-dialog"><div class="dialog-head"><div><span class="warehouse-dialog-kicker">Catálogo maestro</span><h2 id="quickProductTitle" class="warehouse-heading-reset">Nuevo producto</h2><p class="muted">Crea los datos básicos y selecciona el producto en esta recepción.</p></div><button id="closeQuickProduct" class="alt icon-btn" type="button" aria-label="Cerrar nuevo producto">×</button></div>
     <div class="warehouse-dialog-section"><div class="grid"><div><label for="qpName">Nombre *</label><input id="qpName" placeholder="Panel solar 620W"></div><div><label for="qpSku">SKU</label><input id="qpSku" placeholder="BOV-620-BF"></div></div>
     <div class="grid"><div><label for="qpUnit">Unidad base *</label><input id="qpUnit" list="unitSuggestions" placeholder="paneles, cajas, unidades..."><datalist id="unitSuggestions"><option value="unidades"><option value="paneles"><option value="cajas"><option value="sacos"><option value="piezas"><option value="galones"><option value="litros"></datalist></div><div><label for="qpBrand">Marca</label><input id="qpBrand"></div></div>
     <div class="grid"><div><label for="qpUnitsPallet">Unidades por pallet</label><input id="qpUnitsPallet" type="number" min="0" step="0.001"></div><div><label for="qpFormat">Presentación / empaque</label><input id="qpFormat" placeholder="Caja 35 lb, saco 50 lb, IBC 275 gal..."></div></div></div>
@@ -132,7 +130,7 @@
   </div>
 </div>
 
-<script src="/admin/warehouse.js?v=20260916-receipt-recovery1" defer></script>
+<script src="/admin/warehouse.js?v=20260926-figma1" defer></script>
 <script src="/admin/embedded-auto-refresh.js?v=20260920-speed3" defer></script>
 </body>
 </html>

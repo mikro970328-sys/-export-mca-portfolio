@@ -138,7 +138,18 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
     const step=async(name,fn)=>test.step(name,async()=>{await fn();evidence.checkpoints.push(name);console.log('PASS '+info.project.name+' '+name);});
 
     await step('WR-01 offline retains the form and makes no stock',async()=>{
-      await open('QA-WR-LOST',12);await a.context.setOffline(true);
+      await open('QA-WR-LOST',12);
+      const viewport=a.page.viewportSize();await a.page.setViewportSize({...viewport,height:500});
+      await warehouse.locator('#receiptModalTitle').scrollIntoViewIfNeeded();
+      const formPath=info.outputPath('warehouse-form-in-shell.png');
+      await a.page.screenshot({path:formPath,scale:'css'});await info.attach('warehouse-form-in-shell',{path:formPath,contentType:'image/png'});
+      expect(await warehouse.locator('.warehouse-receipt-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+      await warehouse.locator('#saveReceipt').scrollIntoViewIfNeeded();
+      const box=await warehouse.locator('#saveReceipt').boundingBox();
+      expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(501);
+      const savePath=info.outputPath('warehouse-save-in-shell.png');
+      await a.page.screenshot({path:savePath,scale:'css'});await info.attach('warehouse-save-in-shell',{path:savePath,contentType:'image/png'});
+      await a.page.setViewportSize(viewport);await a.context.setOffline(true);
       await warehouse.locator('#saveReceipt').click();
       await expect(warehouse.locator('#rMsg')).toContainText('No se pudo confirmar');
       await expect(warehouse.locator('.line-quantity')).toHaveValue('12');

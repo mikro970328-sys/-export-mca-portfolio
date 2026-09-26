@@ -1,3 +1,9 @@
+## 2026-09-26 · Recepciones desde Figma — PR #349
+
+Lista blanca adaptable, formulario por pallets/unidades y detalle de WR con
+estado visible. Conserva permisos, guardado recuperable, APIs e inventario.
+Ver `FIGMA_WAREHOUSE.md` y la PR #349 para evidencia de CI/publicación.
+
 ## 2026-09-25 · Compras desde Figma
 
 Lista con resumen, filtros, tabla/tarjetas y acciones por capacidad. Formulario

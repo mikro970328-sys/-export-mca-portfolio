@@ -47,7 +47,7 @@ for(const token of [
 forbidText(api,"body:{ status:'cancelled'",'Warehouse API legacy cancel mutation');
 forbidText(api,'&status=eq.received&select=*','Warehouse API legacy cancel mutation');
 
-requireText(html,'<script src="/admin/warehouse.js?v=20260916-receipt-recovery1" defer></script>','Warehouse HTML external JS ownership');
+requireText(html,'<script src="/admin/warehouse.js?v=20260926-figma1" defer></script>','Warehouse HTML external JS ownership');
 if(/<script>(.|\n)*cancelReceipt/.test(html))errors.push('Warehouse HTML: conserva lógica inline de cancelación');
 
 for(const token of [

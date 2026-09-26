@@ -24,7 +24,7 @@ const styles=read(files.styles);
 const api=read(files.api);
 const workflow=read(files.workflow);
 
-requireText(shell,"src:'/admin/warehouse.html?embedded=1&v=20260904-flowclarity1'",'navegación canónica a Recepciones');
+requireText(shell,"src:'/admin/warehouse.html?embedded=1&v=20260926-figma1'",'navegación canónica a Recepciones');
 for(const token of [
   'applyWarehouseCatalogBoundary',
   'contentDocument',
@@ -35,9 +35,9 @@ if(/warehouseSection[\s\S]{0,300}addEventListener\(['"]load['"]/.test(shell))fai
 
 for(const text of [
   '<link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">',
-  '<link rel="stylesheet" href="/admin/warehouse.css?v=20260922-figma1">',
+  '<link rel="stylesheet" href="/admin/warehouse.css?v=20260926-figma1">',
   '<body class="erp-module-page erp-module-warehouse" data-owner="warehouse.js">',
-  '<script src="/admin/warehouse.js?v=20260916-receipt-recovery1" defer></script>',
+  '<script src="/admin/warehouse.js?v=20260926-figma1" defer></script>',
   '<script src="/admin/embedded-auto-refresh.js?v=20260920-speed3" defer></script>',
   'warehouse-copy-standalone',
   'warehouse-copy-embedded'
@@ -46,7 +46,7 @@ forbid(html,/<style(?:\s|>)/i,'warehouse.html conserva una hoja de estilos embeb
 forbid(html,/\sstyle\s*=/i,'warehouse.html conserva estilos inline');
 forbid(html,/warehouse-embedded\.js/,'warehouse.html vuelve a cargar el owner compensatorio retirado');
 const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerCssIndex=html.indexOf('/admin/warehouse.css?v=20260922-figma1');
+const ownerCssIndex=html.indexOf('/admin/warehouse.css?v=20260926-figma1');
 if(ownerCssIndex<0||foundationIndex<0||foundationIndex>ownerCssIndex)failures.push('la base visual compartida debe cargar antes de warehouse.css');
 
 for(const text of [
