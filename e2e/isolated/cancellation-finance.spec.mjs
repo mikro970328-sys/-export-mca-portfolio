@@ -259,7 +259,11 @@ test('financial cancellations preserve balances, permissions and history', async
       await cash(100,'supplier bill voided');
     });
     await step('CF-10 cancel resolved purchase while preserving historical financial records',async()=>{
-      await navigate(a,'purchases');await purchase.locator(`[data-view-order="${po.id}"]`).click();await purchase.locator('[data-detail-action="cancel"]').click();
+      await navigate(a,'purchases');await purchase.locator(`[data-view-order="${po.id}"]`).click();
+      // Related links arrive asynchronously and expand the detail above its footer.
+      // Observe that visible content before clicking the cancellation control.
+      await expect(purchase.locator('#purchaseOperationalContextReceipts')).toBeVisible();
+      await purchase.locator('[data-detail-action="cancel"]').click();
       await mutation('purchases',()=>purchase.locator('#purchaseDecisionAccept').click());await expect(purchase.locator('#detailModal')).toBeHidden();
       expect((await f.one('select status from purchase_orders where id=$1',[po.id])).status).toBe('cancelled');
       expect((await f.one('select status from supplier_bills where id=$1',[bill.id])).status).toBe('void');

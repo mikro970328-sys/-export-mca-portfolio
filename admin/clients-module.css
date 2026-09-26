@@ -40,7 +40,7 @@
 #clientsSection .clients-directory-head { display:grid;gap:24px;margin-bottom:16px; }
 #clientsSection .clients-search-wrap { display:grid;grid-template-columns:minmax(0,1fr) 132px;align-items:end;gap:16px; }
 #clientsSection .clients-search-field label { display:block;margin:0 0 8px;font-size:14px;font-weight:600; }
-#clientsSection .clients-table-wrap { width:100%;overflow:auto; }
+#clientsSection .clients-table-wrap { position:relative;width:100%;overflow:auto; }
 #clientsSection .clients-table { width:100%;min-width:1152px;margin:0;border:0;border-radius:0;border-collapse:separate;border-spacing:0 16px;table-layout:fixed;background:var(--surface); }
 #clientsSection .clients-table th,#clientsSection .clients-table td { padding:16px;text-align:left;overflow-wrap:anywhere; }
 #clientsSection .clients-table th { background:var(--surface-soft);color:var(--muted);font-size:12px;font-weight:500;line-height:18px;letter-spacing:0;text-transform:none; }

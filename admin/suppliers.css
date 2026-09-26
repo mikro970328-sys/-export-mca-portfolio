@@ -37,7 +37,7 @@
 .suppliers-panel-head { display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px; }
 .erp-module-suppliers .suppliers-panel-head h2 { margin:0;color:var(--text);font-size:20px;font-weight:600;line-height:28px;letter-spacing:-.3px; }
 .suppliers-result-count { flex:none;color:var(--muted);font-size:12px;line-height:18px; }
-.suppliers-table-wrap { width:100%;overflow-x:auto; }
+.suppliers-table-wrap { position:relative;width:100%;overflow-x:auto; }
 .suppliers-columns,.supplier-card { display:grid;grid-template-columns:minmax(200px,1fr) 224px 224px 128px 164px;align-items:center;gap:16px;min-width:1152px;padding:16px; }
 .suppliers-columns { background:var(--surface-soft);color:var(--muted);font-size:12px;font-weight:500;line-height:18px; }
 .erp-module-suppliers .supplier-list { display:grid;gap:16px;margin-top:16px;padding:0; }

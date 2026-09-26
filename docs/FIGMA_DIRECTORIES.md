@@ -37,3 +37,5 @@ No cambian API, SQL, permisos, reglas de alta/edición/eliminación, historial, 
 Tareas, Trabajadores, administración de accesos y Mi cuenta; revisar Inicio, notificaciones, alertas, publicaciones y configuración de workflow. Terminar con la revisión integrada del escritorio y avisar antes de iPhone físico. WebKit simulado no es certificación de iPhone.
 
 Browser review found and corrected the native Clients grid minimum width and the Suppliers header state block at 390px. The Clients draft banner now spans both form columns. Purchases modal focus is synchronous, matching the already verified Costs owner, so delayed focus cannot interrupt an immediately entered value or subsequent action. The repeat-purchase flow now observes its focused field and entered value before closing.
+
+La comprobación de cancelación de Compras espera a que aparezcan los enlaces operativos relacionados: su bridge anterior carga contenido asíncrono por encima de las acciones. Revisar este comportamiento en el cierre integrado. Los contenedores de tablas anclan las etiquetas accesibles para que su posición absoluta no extienda el documento fuera del scroll interno.
