@@ -184,8 +184,8 @@
 
     if (accessCan('clients.read')) {
       tasks.push(
-        loadStylesheet('/admin/clients-module.css?v=20260922-figma1', 'data-clients-module-style')
-          .then(() => loadScript('/admin/clients-module.js?v=20260902-ux7clients1', 'data-clients-module'))
+        loadStylesheet('/admin/clients-module.css?v=20260926-figma2', 'data-clients-module-style')
+          .then(() => loadScript('/admin/clients-module.js?v=20260926-figma2', 'data-clients-module'))
       );
     }
     if (accessCan('administration.workers.read')) {
@@ -250,7 +250,7 @@
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
       await loadStylesheet('/admin/account-administration.css?v=20260922-figma1', 'data-account-administration-style');
       await loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration');
-      await loadScript('/admin/navigation-shell.js?v=20260926-figma4', 'data-navigation-shell');
+      await loadScript('/admin/navigation-shell.js?v=20260926-figma5', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {
         await loadStylesheet('/admin/tasks-workspace.css?v=20260922-figma1', 'data-tasks-workspace-style');

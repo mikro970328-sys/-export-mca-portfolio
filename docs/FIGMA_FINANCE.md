@@ -44,7 +44,9 @@ No cambian APIs, SQL, payloads, permisos, capabilities, idempotencia, cálculo m
 - Sin escrituras QA en producción ni Preview. WebKit simulado no certifica iPhone físico.
 - Revisión inicial PR #352, run `36219654228`: 66/69 visuales por motor. Detectó que la regla de grid superaba `hidden` en el formulario de aplicación de saldo; corregido en los owners. La fixture de Reportes ahora respeta `include_options=0` como la API real. Las capturas también motivaron elevar pestañas a 44 px/14 px y marcar la pestaña activa de Reportes con el color del sistema.
 - Segunda revisión `a4845743e076573fb5f89580e766ff02182c27c1`, run `36220242532`: 69/69 visuales por motor. El flujo Direct Ship detectó una espera incompleta en su prueba: el detalle cierra antes de terminar la recarga de compras. Se añadió la comprobación del estado comercial visible antes de la siguiente transición.
-- El PR registrará CI, capturas del head final, merge y publicación antes de cerrar este bloque.
+- PR #352 publicado: head final `2aa9b000909d7a9ea94e8447523c373968516f4e`, tree `94d6466d70d4b75db985309d798850b23bd2d56c`, run `36221102523`: 46/46 workflows, 22/22 trabajos de navegador y 69/69 visuales por motor. Capturas revisadas.
+- La repetición de compras ahora observa la selección inicial autorizada de Compras para ambos operadores de prueba, sin competir con la apertura automática del menú.
+- Merge `8dcde7411e0bd3357b79a105f62be74a24804234`; Vercel `dpl_H86FkYG4ukPcDZPwpzY47LkuJDVb` READY con ese SHA y alias admin/app. GET de 12 archivos coincide exactamente con el código publicado. APIs invoices/payables/reports responden 401 sin sesión. Guía Figma `112:7` marcada publicada.
 
 ## Pendiente
 

@@ -136,25 +136,23 @@
     const writable = state.writeAccess === true;
     const toggleLabel = item.active === false ? 'Reactivar' : 'Desactivar';
     return `<div class="supplier-card-actions">
-      <button type="button" class="btn" data-supplier-action="detail" data-supplier-id="${id}">Ver</button>
+      <button type="button" class="btn" data-supplier-action="detail" data-supplier-id="${id}">Ver detalle</button>
       ${writable ? `<button type="button" class="btn" data-supplier-action="edit" data-supplier-id="${id}">Editar</button><button type="button" class="btn ${item.active === false ? '' : 'danger'}" data-supplier-action="toggle" data-supplier-id="${id}">${toggleLabel}</button>` : ''}
     </div>`;
   }
 
   function supplierCard(item) {
-    const identity = String(item.name || '?').trim();
     const country = item.country || 'País no registrado';
     const tax = item.tax_id || 'Sin Tax ID / EIN';
     const contact = item.email || item.phone || 'Sin contacto registrado';
     const secondaryContact = item.email && item.phone ? item.phone : 'Correo o teléfono de contacto';
     return `<article class="supplier-card" data-supplier-row="${esc(item.id)}">
       <div class="supplier-identity">
-        <span class="supplier-avatar" aria-hidden="true">${esc(identity.charAt(0).toUpperCase() || '?')}</span>
         <div><strong class="supplier-name">${esc(item.name || 'Proveedor sin nombre')}</strong><span class="supplier-meta">${esc(item.legal_name || 'Sin razón social registrada')}</span></div>
       </div>
-      <div class="supplier-card-section"><span class="supplier-card-label">Ubicación e identidad</span><strong>${esc(country)}</strong><span class="supplier-meta">${esc(tax)}</span></div>
-      <div class="supplier-card-section supplier-card-contact"><span class="supplier-card-label">Contacto</span><strong>${esc(contact)}</strong><span class="supplier-meta">${esc(secondaryContact)}</span></div>
-      <div class="supplier-card-control"><span class="supplier-status ${item.active === false ? 'inactive' : ''}">${item.active === false ? 'Inactivo' : 'Activo'}</span>${actionMarkup(item)}</div>
+      <div class="supplier-card-section"><span class="suppliers-visually-hidden">Ubicación e identidad</span><strong>${esc(country)}</strong><span class="supplier-meta">${esc(tax)}</span></div>
+      <div class="supplier-card-section supplier-card-contact"><span class="suppliers-visually-hidden">Contacto</span><strong>${esc(contact)}</strong><span class="supplier-meta">${esc(secondaryContact)}</span></div>
+      <div class="supplier-card-control"><span class="supplier-status ${item.active === false ? 'inactive' : ''}">${item.active === false ? 'Inactivo' : 'Activo'}</span></div>${actionMarkup(item)}
     </article>`;
   }
 
@@ -239,7 +237,7 @@
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
     syncBodyModalState();
-    setTimeout(() => modal.querySelector(focusSelector)?.focus(), 0);
+    modal.querySelector(focusSelector)?.focus();
   }
 
   function closeModal(id) {
@@ -442,6 +440,12 @@
   function bindEvents() {
     $('refreshSuppliers').addEventListener('click', () => load(true));
     $('newSupplier').addEventListener('click', () => openSupplier());
+    $('clearSupplierSearch')?.addEventListener('click', () => {
+      state.query = '';
+      $('supplierSearch').value = '';
+      renderList();
+      $('supplierSearch').focus();
+    });
     $('supplierForm').addEventListener('submit', saveSupplier);
     $('supplierSearch').addEventListener('input', event => {
       state.query = event.target.value;
@@ -451,6 +455,15 @@
       state.view = button.dataset.view;
       renderTabs();
       renderList();
+    }));
+    document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('keydown', event => {
+      const tabs = [...document.querySelectorAll('[data-view]')];
+      const index = tabs.indexOf(button);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : -1;
+      if (next < 0) return;
+      event.preventDefault();
+      tabs[next].click();
+      tabs[next].focus();
     }));
     $('supplierList').addEventListener('click', onSupplierListClick);
     document.querySelectorAll('[data-close="supplier"]').forEach(button => button.addEventListener('click', closeSupplierEditor));

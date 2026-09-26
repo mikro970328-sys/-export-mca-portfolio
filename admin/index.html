@@ -47,27 +47,42 @@
       <div class="clients-hero-copy native-workspace-heading">
         <span class="clients-kicker native-workspace-kicker">Relaciones comerciales</span>
         <h2>Clientes</h2>
-        <p>Organiza contactos, empresas, importadoras y cada interacción comercial desde una sola vista.</p>
+        <p>Consulta contactos, empresas e importadoras de tus clientes.</p>
       </div>
-      <div class="clients-summary native-workspace-summary" aria-label="Resumen de clientes">
-        <div class="clients-summary-card native-workspace-summary-card"><strong id="clientTotal">0</strong><span>Clientes</span></div>
-        <div class="clients-summary-card native-workspace-summary-card"><strong id="clientWelcomed">0</strong><span>Con bienvenida</span></div>
-        <div class="clients-summary-card native-workspace-summary-card"><strong id="clientCompanies">0</strong><span>Empresas y MIPYMES</span></div>
-      </div>
+      <div class="clients-header-actions"><button id="refreshClients" type="button">Actualizar</button><button id="newClient" type="button" class="clients-primary">Nuevo cliente</button></div>
     </header>
 
+      <div class="clients-summary native-workspace-summary" aria-label="Resumen de clientes">
+        <div class="clients-summary-card native-workspace-summary-card"><strong id="clientTotal">0</strong><span>Clientes</span><small>En el directorio</small></div>
+        <div class="clients-summary-card native-workspace-summary-card"><strong id="clientWelcomed">0</strong><span>Bienvenida enviada</span><small>Envío registrado</small></div>
+        <div class="clients-summary-card native-workspace-summary-card"><strong id="clientCompanies">0</strong><span>Empresas</span><small>Datos comerciales</small></div>
+      </div>
+
     <div id="clientsReadOnlyNote" class="clients-readonly" role="note" hidden>
-      <span class="clients-readonly-icon" aria-hidden="true">i</span>
       <span>Puedes consultar la cartera y su historial. Crear, editar o eliminar clientes requiere permiso de gestión comercial.</span>
     </div>
     <div id="clientMsg" class="clients-message" role="status" aria-live="polite"></div>
 
     <div id="clientsLayout" class="clients-layout">
+
+
+      <section class="clients-directory" aria-labelledby="clientsDirectoryTitle">
+        <div class="clients-directory-head">
+          <div class="clients-search-wrap">
+            <div class="clients-search-field"><label for="clientSearch">Buscar clientes</label><input id="clientSearch" type="search" placeholder="Nombre, empresa, WhatsApp o correo" autocomplete="off"></div>
+            <button id="clearClientSearch" type="button">Limpiar</button>
+          </div>
+          <h3 id="clientsDirectoryTitle">Directorio de clientes</h3>
+        </div>
+        <div id="clients" class="clients-list" aria-live="polite">
+          <div class="clients-loading" role="status"><span class="clients-spinner" aria-hidden="true"></span>Cargando clientes…</div>
+        </div>
+      </section>
+
       <aside id="clientCreatePanel" class="clients-create-panel" aria-labelledby="clientCreateTitle">
         <div class="clients-panel-head">
-          <span class="clients-eyebrow">Nuevo contacto</span>
-          <h3 id="clientCreateTitle">Agregar cliente</h3>
-          <p>Registra los datos esenciales. La bienvenida se envía después desde las acciones del cliente.</p>
+          <h3 id="clientCreateTitle">Nuevo cliente</h3>
+          <p>Completa los datos de contacto. La bienvenida se envía por separado.</p>
         </div>
         <form id="clientCreateForm" class="clients-form">
           <div class="clients-field">
@@ -99,27 +114,10 @@
               <input id="clientEmail" type="email" placeholder="cliente@empresa.com" autocomplete="email">
             </div>
           </div>
+          <div id="clientCreateMsg" class="clients-message" role="status" aria-live="polite"></div>
           <button id="saveClient" class="clients-primary" type="submit">Guardar cliente</button>
         </form>
       </aside>
-
-      <section class="clients-directory" aria-labelledby="clientsDirectoryTitle">
-        <div class="clients-directory-head">
-          <div>
-            <span class="clients-eyebrow">Cartera comercial</span>
-            <h3 id="clientsDirectoryTitle">Clientes registrados</h3>
-            <p>Consulta cada ficha, su bienvenida y el historial de la relación.</p>
-          </div>
-          <div class="clients-search-wrap">
-            <label class="clients-visually-hidden" for="clientSearch">Buscar clientes</label>
-            <span class="clients-search-icon" aria-hidden="true">⌕</span>
-            <input id="clientSearch" type="search" placeholder="Buscar nombre, empresa o contacto" autocomplete="off">
-          </div>
-        </div>
-        <div id="clients" class="clients-list" aria-live="polite">
-          <div class="clients-loading" role="status"><span class="clients-spinner" aria-hidden="true"></span>Cargando clientes…</div>
-        </div>
-      </section>
     </div>
   </div>
 </section>
@@ -235,5 +233,5 @@
 <section id="adminsSection" class="app-section hidden" aria-live="polite"></section>
 </main></div></div>
 <div id="modal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="modalTitle">Historial</h2><button id="closeModal" class="alt">Cerrar</button></div><div id="modalBody"></div></div></div>
-<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260926-figma4"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
+<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260926-figma5"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
 </body></html>
