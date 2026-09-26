@@ -80,7 +80,7 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))){
     "rpc('reconcile_current_workflow_tasks'"
   ]) if(!api.includes(required))failures.push(`api/workflow-routes.js: falta ${required}`);
 
-  for(const required of ['Configurar handoffs','data-workflow-routes-open','data-workflow-reconcile','tasks.manage','/api/workflow-routes']){
+  for(const required of ['Configurar asignaciones automáticas','data-workflow-routes-open','data-workflow-reconcile','tasks.manage','/api/workflow-routes']){
     if(!ui.includes(required))failures.push(`workflow-route-settings.js: falta ${required}`);
   }
   for(const forbidden of ['prompt(', 'alert(', 'confirm(']) if(ui.includes(forbidden))failures.push(`workflow-route-settings.js: diálogo nativo prohibido ${forbidden}`);
@@ -88,11 +88,11 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))){
 
   for(const required of [
     "accessCan('tasks.manage')",
-    '/admin/workflow-route-settings.css?v=20260830-p5',
-    '/admin/workflow-route-settings.js?v=20260830-p5'
+    '/admin/workflow-route-settings.css?v=20260926-figma2',
+    '/admin/workflow-route-settings.js?v=20260926-figma2'
   ]) if(!loader.includes(required))failures.push(`admin/erp.js: falta ${required}`);
   const tasksIndex=loader.indexOf('/admin/tasks-workspace.js?v=20260926-figma2');
-  const routeIndex=loader.indexOf('/admin/workflow-route-settings.js?v=20260830-p5');
+  const routeIndex=loader.indexOf('/admin/workflow-route-settings.js?v=20260926-figma2');
   if(tasksIndex<0||routeIndex<0||tasksIndex>routeIndex)failures.push('admin/erp.js: configuración de handoffs debe cargar después de Mis tareas');
 }
 

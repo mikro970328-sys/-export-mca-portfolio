@@ -1,3 +1,15 @@
+## Continuidad 26 sep 2026 · Publicaciones y supervisión en revisión
+
+- Terminar escritorio y avisar a Daniel antes del iPhone físico; continuar sin confirmaciones rutinarias.
+- Inicio/comunicaciones: PR #356; 142/142 visuales por motor pasaron en ba2664. La corrección final ed2fc49 conserva el color de Resolver al pasar el cursor y evita partir importes en pantallas estrechas; CI y publicación en curso, aún no declararla publicada.
+- Actual: Publicaciones, asignaciones automáticas y supervisión. Seis vistas Figma, guía 135:4515. Implementación y gates locales correctos, 18 pruebas nuevas por motor enumeradas. Ver docs/FIGMA_PUBLICATIONS_WORKFLOW.md; revisar CI/capturas antes de publicar.
+- Cierre pendiente: enlaces asíncronos relacionados de Compras (incluida trazabilidad AP), márgenes del shell y revisión integrada.
+- Sin escrituras QA en producción/Preview, sin envíos ni activaciones push reales. No iniciar iPhone físico antes del aviso de cierre de escritorio.
+
+Este corte sustituye los pendientes históricos resueltos de abajo.
+
+---
+
 ## Continuidad 26 sep 2026 · Administración publicada; Inicio y comunicaciones en revisión
 
 - Terminar escritorio y avisar a Daniel antes del iPhone físico; continuar sin confirmaciones rutinarias.

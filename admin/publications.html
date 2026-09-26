@@ -6,7 +6,7 @@
   <title>Publicaciones comerciales | Export MCA</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
-  <link rel="stylesheet" href="/admin/publications.css?v=20260922-figma1">
+  <link rel="stylesheet" href="/admin/publications.css?v=20260926-figma2">
   <link rel="stylesheet" href="/admin/form-drafts.css?v=20260909-drafts1">
 </head>
 <body class="erp-module-page erp-module-publications" data-owner="publications.js">
@@ -26,32 +26,61 @@
     <section class="metrics publications-metrics" aria-label="Resumen de publicaciones">
       <article class="metric">
         <span>Total</span>
-        <b id="totalMetric">—</b>
+        <b id="totalMetric">—</b><small>En el directorio</small>
       </article>
       <article class="metric metric-online">
         <span>Publicadas</span>
-        <b id="publishedMetric">—</b>
+        <b id="publishedMetric">—</b><small>Visibles al cliente</small>
       </article>
       <article class="metric">
         <span>Borradores</span>
-        <b id="draftMetric">—</b>
+        <b id="draftMetric">—</b><small>En preparación</small>
       </article>
       <article class="metric metric-offline">
         <span>Fuera de línea</span>
-        <b id="offlineMetric">—</b>
+        <b id="offlineMetric">—</b><small>Ocultas o archivadas</small>
       </article>
     </section>
+
+    <div class="publications-command"><label for="publicationsSearch">Buscar publicaciones<input id="publicationsSearch" type="search" placeholder="Título, categoría o responsable"></label><button id="refreshPublications" class="alt" type="button">Actualizar</button></div>
 
     <div id="pageMessage" class="publications-page-message" role="status" aria-live="polite"></div>
 
     <section class="publications-layout">
+      <div class="publications-lists">
+        <section class="card list-card publications-list-card" aria-labelledby="activeTitle">
+          <div class="publications-list-head">
+            <div>
+              <span class="publications-eyebrow">Catálogo</span>
+              <h2 id="activeTitle">Publicaciones registradas</h2>
+              <p>Publicadas, borradores y archivadas.</p>
+            </div>
+          </div>
+          <div id="activeList"><div class="empty">Cargando publicaciones…</div></div>
+        </section>
+
+        <section class="card list-card publications-list-card" aria-labelledby="hiddenTitle">
+          <div class="publications-list-head">
+            <div>
+              <span class="publications-eyebrow">Fuera de línea</span>
+              <h2 id="hiddenTitle">Publicaciones ocultas</h2>
+              <p>No aparecen en la aplicación pública.</p>
+            </div>
+          </div>
+          <div id="hiddenList"><div class="empty">Cargando publicaciones…</div></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div id="publicationEditorModal" class="publications-editor-modal hidden" role="dialog" aria-modal="true" aria-labelledby="formTitle">
       <section class="card publications-editor" aria-labelledby="formTitle">
         <div class="publications-card-head">
           <div>
             <span class="publications-eyebrow">Editor</span>
             <h2 id="formTitle">Nueva publicación</h2>
           </div>
-          <span id="editorMode" class="pill">Borrador nuevo</span>
+          <div class="publications-editor-head-actions"><span id="editorMode" class="pill">Borrador nuevo</span><button id="publicationEditorClose" type="button" class="alt">Cerrar</button></div>
         </div>
         <div id="readOnlyNote" class="publications-read-only-note" hidden>Puedes consultar el catálogo, pero tu perfil no permite modificar publicaciones.</div>
 
@@ -164,38 +193,14 @@
           </fieldset>
 
           <div class="actions publications-editor-actions">
+            <button id="cancelBtn" class="alt" type="button">Cancelar</button>
             <button id="saveBtn" class="orange" type="submit">Guardar publicación</button>
-            <button id="cancelBtn" class="alt" type="button">Limpiar</button>
           </div>
           <div id="msg" class="msg publications-form-message" role="status" aria-live="polite"></div>
         </form>
       </section>
 
-      <div class="publications-lists">
-        <section class="card list-card publications-list-card" aria-labelledby="activeTitle">
-          <div class="publications-list-head">
-            <div>
-              <span class="publications-eyebrow">Catálogo</span>
-              <h2 id="activeTitle">Publicaciones registradas</h2>
-              <p>Publicadas, borradores y archivadas.</p>
-            </div>
-          </div>
-          <div id="activeList"><div class="empty">Cargando publicaciones…</div></div>
-        </section>
-
-        <section class="card list-card publications-list-card" aria-labelledby="hiddenTitle">
-          <div class="publications-list-head">
-            <div>
-              <span class="publications-eyebrow">Fuera de línea</span>
-              <h2 id="hiddenTitle">Publicaciones ocultas</h2>
-              <p>No aparecen en la aplicación pública.</p>
-            </div>
-          </div>
-          <div id="hiddenList"><div class="empty">Cargando publicaciones…</div></div>
-        </section>
-      </div>
-    </section>
-  </main>
+  </div>
 
   <div id="publicationDecision" class="modal hidden" role="alertdialog" aria-modal="true" aria-hidden="true" aria-labelledby="publicationDecisionTitle" aria-describedby="publicationDecisionCopy">
     <div class="decision-card publications-decision-card" tabindex="-1">
@@ -204,17 +209,17 @@
           <span class="publications-eyebrow">Confirmación</span>
           <h2 id="publicationDecisionTitle">Eliminar publicación</h2>
         </div>
-        <button id="publicationDecisionClose" class="alt icon-btn" type="button" aria-label="Cerrar confirmación">×</button>
+        <button id="publicationDecisionClose" class="alt icon-btn" type="button" aria-label="Cerrar confirmación">Cerrar</button>
       </div>
       <p id="publicationDecisionCopy">Esta acción no se puede deshacer.</p>
       <div class="actions publications-decision-actions">
         <button id="publicationDecisionCancel" class="alt" type="button">Conservar publicación</button>
-        <button id="publicationDecisionConfirm" class="danger" type="button">Eliminar definitivamente</button>
+        <button id="publicationDecisionConfirm" class="orange" type="button">Eliminar definitivamente</button>
       </div>
     </div>
   </div>
 
   <script src="/admin/form-drafts.js?v=20260909-drafts1" defer></script>
-  <script src="/admin/publications.js?v=20260902-ux7publications2" defer></script>
+  <script src="/admin/publications.js?v=20260926-figma2" defer></script>
 </body>
 </html>

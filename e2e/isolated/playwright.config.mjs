@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['operators.spec.mjs','commercial.spec.mjs','direct-ship.spec.mjs','cancellation-finance.spec.mjs','navigation-startup.spec.mjs','repeat-purchase.spec.mjs','tracking-documents.spec.mjs','tracking-workflow.spec.mjs','warehouse-recovery.spec.mjs','header-contrast.spec.mjs','figma-sales.spec.mjs','figma-costs.spec.mjs','figma-purchases.spec.mjs','figma-warehouse.spec.mjs','figma-stock-catalog.spec.mjs','figma-logistics.spec.mjs','figma-finance.spec.mjs','figma-directories.spec.mjs','figma-tasks-workers.spec.mjs','figma-access-account.spec.mjs','figma-home-communications.spec.mjs','costs-shell.spec.mjs'],
+  testMatch: ['operators.spec.mjs','commercial.spec.mjs','direct-ship.spec.mjs','cancellation-finance.spec.mjs','navigation-startup.spec.mjs','repeat-purchase.spec.mjs','tracking-documents.spec.mjs','tracking-workflow.spec.mjs','warehouse-recovery.spec.mjs','header-contrast.spec.mjs','figma-sales.spec.mjs','figma-costs.spec.mjs','figma-purchases.spec.mjs','figma-warehouse.spec.mjs','figma-stock-catalog.spec.mjs','figma-logistics.spec.mjs','figma-finance.spec.mjs','figma-directories.spec.mjs','figma-tasks-workers.spec.mjs','figma-access-account.spec.mjs','figma-home-communications.spec.mjs','figma-publications-workflow.spec.mjs','costs-shell.spec.mjs'],
   fullyParallel: false,
   workers: 1,
   retries: 0,
