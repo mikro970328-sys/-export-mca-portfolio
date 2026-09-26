@@ -43,7 +43,7 @@ test('Help is available to restricted operators without opening restricted modul
   await page.locator('.help-card[data-help-article="equipo"]').click();
   await expect(page.locator('[data-help-module]')).toBeDisabled();
   await expect(page.locator('#helpModuleStatus')).toContainText('no está disponible');
-  await page.locator('[data-help-article="cuenta"]').click();await expect(page.locator('[data-help-module]')).toBeEnabled();
+  await page.locator('#helpArticle [data-help-article="cuenta"]').click();await expect(page.locator('[data-help-module]')).toBeEnabled();
   await page.locator('[data-help-module]').click();await expect(page.locator('#accountSection')).toBeVisible();
   expect(await page.evaluate(()=>window.__fixtureCalls.filter(c=>c.method!=='GET'))).toEqual([]);
 });
