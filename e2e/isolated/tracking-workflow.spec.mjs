@@ -63,7 +63,7 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
     await step('TW-01 assigned operator sees pending task and personal notice',async()=>{
       await expect(card(b).locator('.tasks-status')).toHaveText('Pendiente');
       await card(b).locator('[data-task-action="open"]').click();await expect(b.locator('#tasksModal')).toBeVisible();
-      await expect(b.locator('[data-task-action="edit-detail"]')).toHaveCount(0);await b.locator('[data-task-modal-close]').click();
+      await expect(b.locator('[data-task-action="edit-detail"]')).toHaveCount(0);await b.locator('#tasksModal .tasks-modal-close').click();
       await openInbox(b);
       const notice=await f.one("select id from notification_inbox_items where source_id=$1 and recipient_admin_id=$2 and source_event_type='task_assignment'",[task.id,users.b.id]);
       expect(notice).toBeTruthy();
@@ -88,7 +88,7 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
       await a.locator('#closeModal').click();await navigate(a,'tasksSection');await a.locator('[data-task-action="clear"]').first().click();
       await card(a).locator('[data-task-action="open"]').click();await a.locator('[data-task-action="edit-detail"]').click();await a.locator('#tasksFormAssignee').selectOption(users.a.id);
       await a.locator('#tasksModalActions').getByRole('button',{name:'Guardar cambios',exact:true}).click();
-      await expect(a.locator('#tasksModalBody')).toContainText('QA operator a');await a.locator('[data-task-modal-close]').click();
+      await expect(a.locator('#tasksModalBody')).toContainText('QA operator a');await a.locator('#tasksModal .tasks-modal-close').click();
       await expect(card(b)).toHaveCount(0,{timeout:45_000});await openInbox(a);
       await expect.poll(async()=>f.one("select id from notification_inbox_items where source_id=$1 and recipient_admin_id=$2 and source_event_type='task_assignment'",[task.id,users.a.id])).toBeTruthy();
       const notice=await f.one("select id from notification_inbox_items where source_id=$1 and recipient_admin_id=$2 and source_event_type='task_assignment'",[task.id,users.a.id]);

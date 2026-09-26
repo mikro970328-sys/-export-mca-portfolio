@@ -10,7 +10,7 @@ async function open(page,options={}) {
 const writes=page=>page.evaluate(()=>window.__fixtureCalls.filter(c=>c.method!=='GET'));
 const sources=page=>page.locator(page.viewportSize().width>1100?'.inventory-source-desktop tbody tr':'.inventory-source-card');
 const traces=page=>page.locator(page.viewportSize().width>820?'.inventory-trace-desktop tbody tr':'.inventory-trace-card');
-async function shot(page,info,name,fullPage=false){const path=info.outputPath(name+'.png');await page.screenshot({path,fullPage,scale:'css'});await info.attach(name,{path,contentType:'image/png'});}
+async function shot(page,info,name,fullPage=false){const path=info.outputPath(name+'.png');await page.screenshot({path,fullPage,scale:'css',animations:'disabled'});await info.attach(name,{path,contentType:'image/png'});}
 async function noOverflow(page){expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
 
 test('Stock: conserved balances, search, WR expansion, keyboard tabs and trace filter',async({page},info)=>{
@@ -33,7 +33,7 @@ test('Stock: conserved balances, search, WR expansion, keyboard tabs and trace f
   await page.locator('#warehouseFilter').selectOption('fixture-other');await expect(page.locator('.inventory-row')).toHaveCount(1);
   await expect(page.locator('.inventory-product-name')).toHaveText('Aceite de soya 35 lb');
   await expect(page.locator('#stats b')).toHaveText(['1','1','0','1']);
-  await page.locator('#search').fill('no-existe');await expect(page.locator('.inventory-empty')).toContainText('Sin coincidencias');
+  await page.locator('#search').fill('no-existe');await expect(page.locator('#stockView .inventory-empty')).toContainText('Sin coincidencias');
   expect(await writes(page)).toEqual([]);
 });
 
@@ -82,7 +82,10 @@ for(const viewport of [{width:1440,height:700},{width:390,height:500}]){
     await page.evaluate(()=>{window.__fixtureRejectWrites=true});await page.locator('#saveProduct').click();
     await expect(page.locator('#productFormMessage')).toContainText('No se pudo guardar');await expect(page.locator('#productName')).toHaveValue('Producto nuevo');
     await expect(page.locator('#saveProduct')).toBeEnabled();await expect(page.locator('body')).not.toContainText('Internal write');
-    await shot(page,info,'producto-error-recuperable');await page.evaluate(()=>{window.__fixtureRejectWrites=false});await page.locator('#saveProduct').click();
+    await page.locator('#productName').scrollIntoViewIfNeeded();
+    const inputBox=await page.locator('#productName').boundingBox();expect(inputBox.y).toBeGreaterThanOrEqual(0);expect(inputBox.y+inputBox.height).toBeLessThanOrEqual(viewport.height+1);
+    await page.locator('#productName').fill('Producto nuevo');
+    await page.locator('#productFormMessage').scrollIntoViewIfNeeded();await shot(page,info,'producto-error-recuperable');await page.evaluate(()=>{window.__fixtureRejectWrites=false});await page.locator('#saveProduct').click();
     await expect(page.locator('#productModal')).toBeHidden();await expect(page.locator('.product-card')).toHaveCount(3);
     const sent=await writes(page);expect(sent).toHaveLength(2);expect(sent[1].method).toBe('POST');expect(sent[1].body).toMatchObject({name:'Producto nuevo',sku:'NUEVO-001',unit:'cajas',default_units_per_pallet:'20',notes:'Conservar en seco.'});
     await page.locator('[data-product-row="fixture-created"] [data-product-action="edit"]').click();await page.locator('#productName').fill('Producto actualizado');await page.locator('#saveProduct').click();

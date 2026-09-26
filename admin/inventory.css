@@ -19,7 +19,7 @@
 .erp-module-inventory .inventory-tabs { display:flex;gap:8px;width:max-content;max-width:100%;margin:0;border:0;border-radius:0;padding:0;background:transparent; }
 .erp-module-page.erp-module-inventory button { min-height:44px;border:1px solid var(--line);border-radius:var(--radius-sm);padding:11px 16px;background:var(--surface);color:var(--text);font-size:14px;font-weight:600;line-height:20px;box-shadow:none; }
 .erp-module-page.erp-module-inventory button:not(:disabled):hover { border-color:var(--line-strong);background:var(--surface-soft);color:var(--text);box-shadow:none; }
-.erp-module-page.erp-module-inventory .inventory-tabs .tab { min-width:164px; }
+.erp-module-page.erp-module-inventory .inventory-tabs .tab { min-width:164px;min-height:44px;border:1px solid var(--line);padding:11px 16px;background:var(--surface);color:var(--text);font-size:14px;line-height:20px; }
 .erp-module-page.erp-module-inventory .inventory-tabs .tab.active { border-color:var(--orange);background:var(--orange);color:#fff; }
 .inventory-view-note { margin:0;color:var(--muted);font-size:12px;line-height:18px; }
 .erp-module-inventory .inventory-filter-panel,.erp-module-inventory .inventory-list-panel,.erp-module-inventory .inventory-trace-panel { min-width:0;margin:0 0 24px;overflow:visible;border:0;border-radius:0;background:var(--surface);box-shadow:none; }
@@ -37,7 +37,7 @@
 .inventory-list-summary strong { font-weight:400; }
 .inventory-column-head,.erp-module-page.erp-module-inventory .inventory-row-toggle { display:grid;grid-template-columns:minmax(200px,2.35fr) repeat(3,minmax(116px,1fr)) 18px;gap:16px;align-items:center; }
 .inventory-column-head { padding:16px;background:var(--surface-soft);color:var(--muted);font-size:12px;line-height:18px; }
-.inventory-row { border:1px solid var(--line);background:var(--surface); }
+.erp-module-inventory .inventory-row { border:1px solid var(--line);border-radius:0;background:var(--surface); }
 .inventory-row + .inventory-row { border-top:0; }
 .erp-module-page.erp-module-inventory .inventory-row-toggle { width:100%;min-height:112px;border:0;border-radius:0;padding:16px;background:var(--surface);text-align:left; }
 .erp-module-page.erp-module-inventory .inventory-row-toggle:not(:disabled):hover { border:0;background:var(--surface-soft); }
