@@ -81,7 +81,7 @@
   function dashboardIntro(data) {
     return `<header class="executive-intro">
       <div><span class="executive-kicker">Resumen del negocio</span><h1 id="dashboardGreeting">${esc(greetingForHour())}, ${esc(operatorName())}</h1><p>Revisa el estado de la operación y atiende primero lo que necesita una decisión.</p></div>
-      <div class="executive-live"><span aria-hidden="true"></span><div><b>Última actualización</b><small>${esc(dateLabel(data.generated_at))}</small></div></div>
+      <div class="executive-live"><div><b>Última actualización</b><small>${esc(dateLabel(data.generated_at))}</small></div></div>
     </header>`;
   }
 
@@ -213,7 +213,8 @@
     return `<section class="executive-section executive-activity"><div class="executive-section-head"><div><span class="executive-section-kicker">Movimientos</span><h3>Actividad reciente</h3><p>Últimos cambios en la operación logística.</p></div><button type="button" class="alt" data-dashboard-open="containers">Ver tracking</button></div>${rows.length?`<div class="executive-activity-list">${rows.map(row=>`<button type="button" class="executive-activity-row" data-dashboard-shipment="${esc(row.id)}"><span class="executive-activity-icon">${dashboardIcon('containers')}</span><div><strong>${esc(row.container_number||'Sin número')}</strong><span>${esc(row.client_name||'Sin cliente')}</span></div><div><span class="executive-activity-status">${esc(row.operational_status||'Registrado')}</span><small>${esc(dateLabel(row.updated_at))}</small></div></button>`).join('')}</div>`:'<div class="executive-empty">No hay actividad logística reciente.</div>'}</section>`;
   }
 
-  function renderDashboard(data) {
+  function renderDashboard(data,restoreFocusId) {
+    const focusedId=restoreFocusId||document.activeElement?.id;
     rememberDisclosures();
     state.data=data;
     window.__lastDashboardPayload=data;
@@ -234,6 +235,7 @@
     restoreSelect('dashboardSupplier',state.filters.supplier_id);
     restoreSelect('dashboardProduct',state.filters.product_id);
     bind();
+    if(focusedId&&section.contains($(focusedId)))$(focusedId).focus({preventScroll:true});
   }
 
   function restoreSelect(id,value){ const node=$(id); if(node&&value)node.value=value; }
@@ -265,7 +267,9 @@
 
   async function reloadDashboard(filters=readFilters()) {
     if(state.loading)return false;
+    const focusedId=document.activeElement?.id;
     state.loading=true;
+    state.filters={...filters};
     const button=$('dashboardApplyFilters');
     if(button)button.disabled=true;
     if(!state.data)renderLoading();
@@ -273,7 +277,7 @@
       const params=new URLSearchParams();
       Object.entries(filters).forEach(([key,value])=>{if(value)params.set(key,value);});
       const result=await window.api(`/api/dashboard${params.size?`?${params}`:''}`);
-      renderDashboard(result);
+      renderDashboard(result,focusedId);
       return true;
     } catch(error) {
       console.error('[executive dashboard]',error);

@@ -162,10 +162,10 @@
   function operationalSummary() {
     const metrics=summaryMetrics();
     return `<div class="alert-summary-grid native-workspace-summary" aria-label="Resumen del centro de alertas">
-      <article class="alert-summary active native-workspace-summary-card"><strong id="alertMetricActive">${metrics.active}</strong><span>Alertas activas</span></article>
-      <article class="alert-summary critical native-workspace-summary-card"><strong id="alertMetricCritical">${metrics.critical}</strong><span>Críticas</span></article>
-      <article class="alert-summary unread native-workspace-summary-card"><strong id="alertMetricUnread">${metrics.unread}</strong><span>Sin leer</span></article>
-      <article class="alert-summary delivery native-workspace-summary-card"><strong id="alertMetricDelivery">${metrics.deliveryIssues}</strong><span>Incidencias de entrega</span></article>
+      <article class="alert-summary active native-workspace-summary-card"><strong id="alertMetricActive">${metrics.active}</strong><span>Alertas activas</span><small>Requieren atención</small></article>
+      <article class="alert-summary critical native-workspace-summary-card"><strong id="alertMetricCritical">${metrics.critical}</strong><span>Críticas</span><small>Prioridad alta</small></article>
+      <article class="alert-summary unread native-workspace-summary-card"><strong id="alertMetricUnread">${metrics.unread}</strong><span>Sin leer</span><small>Pendientes de revisar</small></article>
+      <article class="alert-summary delivery native-workspace-summary-card"><strong id="alertMetricDelivery">${metrics.deliveryIssues}</strong><span>Incidencias de entrega</span><small>Revisar comunicación</small></article>
     </div>`;
   }
 
@@ -181,23 +181,23 @@
       <div class="alert-center-heading native-workspace-heading">
         <span class="native-workspace-kicker">Control de excepciones</span>
         <h2>Centro de alertas</h2>
-        <p>Alertas = excepciones. Tareas = trabajo. Mensajes = entrega al cliente.</p>
-        <div class="alert-center-hero-state"><span class="alert-center-state-dot" aria-hidden="true"></span><span id="alertCenterOperationalState">${esc(stateLabel)}</span><span id="alertCenterLastUpdated">${esc(updated)}</span></div>
+        <p>Revisa excepciones operativas y el estado de los mensajes.</p>
+        <div class="alert-center-hero-state"><span id="alertCenterOperationalState">${esc(stateLabel)}</span><span id="alertCenterLastUpdated">${esc(updated)}</span></div>
         <div id="operationalAlertFeedback" class="alert-center-feedback ${state.feedback.bad?'bad':state.feedback.message?'ok':''}" role="status" aria-live="polite">${esc(state.feedback.message)}</div>
       </div>
-      ${operationalSummary()}
-    </header>`;
+      <div class="alert-head-actions"><button type="button" id="reloadUnifiedNotifications" class="alert-center-refresh" ${state.loading?'disabled':''}>${state.loading?'Actualizando…':'Actualizar'}</button></div>
+    </header>${operationalSummary()}`;
   }
 
   function commandMarkup() {
     const placeholder=state.activeView==='operational'?'Buscar alerta, cliente o contenedor':'Buscar mensaje, cliente o contenedor';
     return `<section class="alert-center-command" aria-label="Vistas y búsqueda">
       <div class="notification-view-tabs" role="tablist" aria-label="Contenido del centro de alertas">
-        <button type="button" class="alert-view-tab ${state.activeView==='operational'?'active':''}" data-alert-view="operational" role="tab" aria-selected="${state.activeView==='operational'}" aria-controls="alertCenterPanel">Alertas operativas</button>
-        <button type="button" class="alert-view-tab ${state.activeView==='messages'?'active':''}" data-alert-view="messages" role="tab" aria-selected="${state.activeView==='messages'}" aria-controls="alertCenterPanel">Mensajes WhatsApp</button>
+        <button type="button" class="alert-view-tab ${state.activeView==='operational'?'active':''}" data-alert-view="operational" role="tab" aria-selected="${state.activeView==='operational'}" tabindex="${state.activeView==='operational'?0:-1}" aria-controls="alertCenterPanel">Alertas operativas</button>
+        <button type="button" class="alert-view-tab ${state.activeView==='messages'?'active':''}" data-alert-view="messages" role="tab" aria-selected="${state.activeView==='messages'}" tabindex="${state.activeView==='messages'?0:-1}" aria-controls="alertCenterPanel">Mensajes WhatsApp</button>
       </div>
-      <label class="alert-center-search" for="alertCenterSearch"><span>Buscar</span><input id="alertCenterSearch" type="search" value="${esc(state.search)}" placeholder="${esc(placeholder)}" autocomplete="off"></label>
-      <button type="button" id="reloadUnifiedNotifications" class="alert-center-refresh" ${state.loading?'disabled':''}>${state.loading?'Actualizando…':'Actualizar'}</button>
+      <div class="alert-search-row"><label class="alert-center-search" for="alertCenterSearch"><span>Buscar</span><input id="alertCenterSearch" type="search" value="${esc(state.search)}" placeholder="${esc(placeholder)}" autocomplete="off"></label>
+      ${state.activeView==='operational'?alertFilterMarkup():messageFilterMarkup()}</div>
     </section>`;
   }
 
@@ -277,10 +277,10 @@
     const label=state.activeView==='operational'?'alerta':'mensaje';
     const description=state.activeView==='operational'
       ?'Resolver manualmente silencia el ciclo actual. Solo reaparece si la condición se cierra y vuelve a ocurrir.'
-      :'Consulta el estado de cada comunicación sin exponer respuestas técnicas del proveedor.';
+      :'Consulta las entregas y revisa los mensajes que necesitan atención.';
     return `<header class="alert-center-panel-head">
       <div><span class="alert-center-eyebrow">${state.activeView==='operational'?'Excepciones que requieren atención':'Registro de comunicaciones'}</span><h3>${state.activeView==='operational'?'Alertas operativas':'Mensajes y WhatsApp'}</h3><p>${description}</p></div>
-      <div class="alert-panel-tools">${state.activeView==='operational'?alertFilterMarkup():messageFilterMarkup()}<span id="alertCenterResultCount" class="alert-result-count">${rows.length} ${label}${rows.length===1?'':'s'}${rows.length!==total?` de ${total}`:''}</span></div>
+      <div class="alert-panel-tools"><span id="alertCenterResultCount" class="alert-result-count">${rows.length} ${label}${rows.length===1?'':'s'}${rows.length!==total?` de ${total}`:''}</span></div>
     </header>`;
   }
 
@@ -319,11 +319,17 @@
 
   function bindCenterEvents(section) {
     section.querySelectorAll('[data-alert-view]').forEach(button => {
+      button.onkeydown=event=>{
+        if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key))return;
+        const buttons=[...section.querySelectorAll('[data-alert-view]')],index=buttons.indexOf(button);
+        const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
+        event.preventDefault();buttons[next].click();
+      };
       button.onclick=()=>{
         state.activeView=button.dataset.alertView;
         state.search='';
         renderCenter();
-        $('alertCenterSearch')?.focus();
+        section.querySelector(`[data-alert-view="${state.activeView}"]`)?.focus();
       };
     });
     const search=$('alertCenterSearch');
@@ -349,10 +355,13 @@
   function renderCenter() {
     const section=$('notificationsSection');
     if (!section) return;
+    const focused=document.activeElement,focusId=focused?.id,focusView=focused?.dataset?.alertView;
     section.dataset.alertOwner = 'operational-alert-center.js';
     section.setAttribute('aria-busy',state.loading?'true':'false');
     section.innerHTML=`<div class="alert-center-shell native-workspace-shell">${heroMarkup()}${commandMarkup()}${panelMarkup()}</div>`;
     bindCenterEvents(section);
+    if(focusView)section.querySelector(`[data-alert-view="${focusView}"]`)?.focus({preventScroll:true});
+    else if(focusId && section.querySelector(`[id="${focusId}"]`))$(focusId)?.focus({preventScroll:true});
   }
 
   function mountBell() {
@@ -502,12 +511,13 @@
       };
       document.addEventListener('keydown',onKeydown);
       cancel.onclick=()=>finish(null);
+      overlay.querySelector('[data-alert-dialog-close]')?.addEventListener('click',()=>finish(null));
       overlay.onclick=event=>{if(event.target===overlay)finish(null);};
       confirm.onclick=()=>{
         const value=readValue(overlay);
         if (value!==undefined) finish(value);
       };
-      setTimeout(()=>focusable()[0]?.focus(),0);
+      (panel.querySelector('input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')||cancel)?.focus();
     });
   }
 
@@ -515,7 +525,7 @@
     const isResolve=action==='resolve';
     const markup=`<div class="alert-action-panel" role="dialog" aria-modal="true" aria-labelledby="alertActionTitle" aria-describedby="alertActionDescription">
       <span class="alert-dialog-kicker">Decisión operativa</span>
-      <h3 id="alertActionTitle">${isResolve?'Resolver alerta':'Posponer alerta'}</h3>
+      <div class="alert-dialog-head"><h3 id="alertActionTitle">${isResolve?'Resolver alerta':'Posponer alerta'}</h3><button type="button" class="alert-secondary" data-alert-dialog-close>Cerrar</button></div>
       <p id="alertActionDescription">${esc(row.title||typeLabel(row))}. ${isResolve?'La resolución manual silencia este ciclo aunque la condición siga activa.':'La alerta volverá a pendiente cuando termine el plazo si la condición continúa.'}</p>
       ${isResolve?'<label for="alertActionReason">Motivo</label><input id="alertActionReason" value="Revisada manualmente" maxlength="240" autocomplete="off">':'<label for="alertActionHours">Posponer</label><select id="alertActionHours"><option value="1">1 hora</option><option value="4">4 horas</option><option value="12">12 horas</option><option value="24" selected>24 horas</option><option value="48">48 horas</option><option value="72">72 horas</option><option value="168">7 días</option></select>'}
       <div class="alert-action-error" id="alertActionError" role="alert"></div>
@@ -539,7 +549,7 @@
   function retryMessageDialog(row) {
     const markup=`<div class="alert-action-panel" role="dialog" aria-modal="true" aria-labelledby="messageRetryTitle" aria-describedby="messageRetryDescription">
       <span class="alert-dialog-kicker">Confirmación de entrega</span>
-      <h3 id="messageRetryTitle">Reintentar mensaje</h3>
+      <div class="alert-dialog-head"><h3 id="messageRetryTitle">Reintentar mensaje</h3><button type="button" class="alert-secondary" data-alert-dialog-close>Cerrar</button></div>
       <p id="messageRetryDescription">Se volverá a intentar el envío de ${esc(typeLabel(row))} para ${esc(row.clients?.name||'el cliente')}. Esta acción no crea una tarea ni una alerta nueva.</p>
       <div class="alert-action-actions"><button type="button" class="alert-secondary" data-message-retry-cancel>Cancelar</button><button type="button" class="alert-primary" data-message-retry-confirm>Reintentar</button></div>
     </div>`;
@@ -553,6 +563,7 @@
   async function executeAlertAction(id,action) {
     const row=state.operationalRows.find(item=>String(item.id)===String(id));
     if (!row||state.actionBusy) return;
+    let performed=false;
     try {
       let extra={};
       if (action==='snooze'||action==='resolve') {
@@ -560,6 +571,7 @@
         if (!value) return;
         extra=value;
       }
+      performed=true;
       state.actionBusy=`alert:${id}`;
       renderResultRegion();
       await patchAlert(id,action,extra);
@@ -569,8 +581,15 @@
       console.error('OPERATIONAL_ALERT_ACTION_FAILED',error);
       setFeedback(safeAlertMessage(error,'No se pudo actualizar la alerta. Intenta nuevamente.','alert_action'),true);
     } finally {
-      state.actionBusy='';
-      if (!$('notificationsSection')?.classList.contains('hidden')) renderCenter();
+      if(performed){
+        state.actionBusy='';
+        if (!$('notificationsSection')?.classList.contains('hidden')) renderCenter();
+      }
+      const section=$('notificationsSection');
+      if(section&&!section.classList.contains('hidden')){
+        const actions=[...section.querySelectorAll('[data-alert-id]')];
+        (actions.find(button=>button.dataset.alertId===String(id)&&button.dataset.alertAction===action)||actions.find(button=>button.dataset.alertId===String(id))||section.querySelector('[data-alert-view][aria-selected=true]'))?.focus({preventScroll:true});
+      }
     }
   }
 

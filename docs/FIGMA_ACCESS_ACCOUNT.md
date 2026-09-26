@@ -38,7 +38,7 @@ No se modifican APIs, SQL, permisos efectivos, validaciones de negocio, payloads
 - Fixture con owners reales, cuentas ficticias, API en memoria permitida por ruta y CSP sin red.
 - 22 pruebas por motor: directorios a 1440/980/390 px; formularios a 1440×700 y 390×500; alta, edición, contraseñas, plantillas y 29 permisos, membresías, estados, master/sistema, acceso limitado, errores y reintento, foco, doble activación y respuestas tardías.
 - El nuevo flujo de contraseña comprueba limpieza del formulario y renovación de token tras éxito. La revocación comprueba confirmación, cancelación, error retenido y renovación de la sesión propia.
-- El primer head pasó 121/121 pruebas visuales por motor. La inspección de capturas eliminó padding y sombra heredados del panel de acceso, fijó el espaciado de Mi cuenta y alineó las dos columnas de edición de usuario. Verificar CI y capturas del head corregido antes de publicar.
+- Publicado en PR #355, main `2eddad863822d663b2190c7334b7f360d063e18a`, deployment `dpl_6wBaiCXGU8RByjnt1LhUMzT2aV55` READY. Head corregido `a12abfb7ea7d843080e5c7dc6dcb01b10e7002b4`: 39 workflows, 22 trabajos y 121/121 visuales por motor correctos en CI `36242548703`. Capturas revisadas, seis archivos de producción exactos por GET y APIs sin sesión 401. Guía 127:2 publicada.
 
 ## Publicación anterior y continuación
 

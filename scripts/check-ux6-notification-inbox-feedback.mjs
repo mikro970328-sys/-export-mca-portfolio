@@ -70,10 +70,10 @@ for(const text of [
   "can?.('notifications.manage')"
 ])requireText(owner,text,`ownership canónico ${text}`);
 
-requireText(styles,'.notification-preferences-actions{margin-top:12px}','presentación dedicada de acciones de preferencias');
-requireText(loader,"/admin/notification-inbox.css?v=20260903-ux7icons2",'revisión del CSS del Inbox');
-requireText(loader,"/admin/notification-inbox.js?v=20260903-b10push1",'revisión del owner del Inbox');
-requireText(index,'/admin/erp.js?v=20260926-figma7','revisión del loader ERP');
+requireText(styles,'.notification-preferences-actions { justify-content:flex-end;margin-top:8px; }','presentación dedicada de acciones de preferencias');
+requireText(loader,"/admin/notification-inbox.css?v=20260926-figma2",'revisión del CSS del Inbox');
+requireText(loader,"/admin/notification-inbox.js?v=20260926-figma2",'revisión del owner del Inbox');
+requireText(index,'/admin/erp.js?v=20260926-figma8','revisión del loader ERP');
 
 for(const text of [
   "authorizeAdmin(req,res,'notifications.read')",

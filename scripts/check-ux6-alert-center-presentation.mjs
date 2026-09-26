@@ -36,7 +36,7 @@ requireText("tracking_stale:'Tracking sin actualización'",'retiro de etiqueta t
 requireText("['pending','snoozed'].includes(alertStatus(row))",'lifecycle activo P9');
 requireText("patchAlert(id,action",'mutación de alertas por owner existente');
 requireText("notification_scope==='operational'",'separación de alertas operativas');
-requireText('Alertas = excepciones. Tareas = trabajo. Mensajes = entrega al cliente.','separación TASK/ALERT/NOTIFICATION');
+requireText('Esta acción no crea una tarea ni una alerta nueva.','separación TASK/ALERT/NOTIFICATION');
 
 if(failures.length){
   console.error('UX6 alert center presentation gate failed:\n'+failures.map(x=>`- ${x}`).join('\n'));

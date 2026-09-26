@@ -5,7 +5,7 @@
 
   const state = {
     items: [], counts: { total:0, unread:0, task:0, alert:0 }, preferences:null,
-    view:'inbox', filter:'all', history:[], open:false, busy:false, message:'', focusItem:null,
+    view:'inbox', filter:'all', history:[], open:false, busy:false, message:'', messageBad:false, focusItem:null, lastFocused:null, preferenceDraft:null, savingPreferences:false,
     push:{ loaded:false, config:{ready:false,public_key:null}, devices:[], permission:'unsupported', currentDeviceId:null, error:'' }
   };
   const $ = id => document.getElementById(id);
@@ -106,7 +106,7 @@
   }
 
   function setMessage(message='', bad=false) {
-    state.message=message;
+    state.message=message;state.messageBad=bad;
     const node=$('notificationInboxMessage');
     if(node){ node.textContent=message; node.className=`notification-message ${bad?'bad':'ok'}`; }
   }
@@ -176,21 +176,21 @@
   function renderInbox() {
     const list=filteredItems();
     return `<div class="notification-summary"><div class="notification-summary-item"><span>Sin leer</span><strong>${state.counts.unread||0}</strong></div><div class="notification-summary-item"><span>Total</span><strong>${state.counts.total||0}</strong></div><div class="notification-summary-item"><span>Tareas</span><strong>${state.counts.task||0}</strong></div><div class="notification-summary-item"><span>Alertas</span><strong>${state.counts.alert||0}</strong></div></div>
-      <div class="notification-filters"><button class="notification-filter ${state.filter==='all'?'active':''}" data-notification-filter="all">Todas</button><button class="notification-filter ${state.filter==='unread'?'active':''}" data-notification-filter="unread">Sin leer</button><button class="notification-filter ${state.filter==='task'?'active':''}" data-notification-filter="task">Tareas</button><button class="notification-filter ${state.filter==='alert'?'active':''}" data-notification-filter="alert">Alertas</button></div>
+      <div class="notification-filters" role="tablist" aria-label="Filtrar notificaciones"><button class="notification-filter ${state.filter==='all'?'active':''}" data-notification-filter="all" role="tab" aria-selected="${state.filter==='all'}" tabindex="${state.filter==='all'?0:-1}">Todas</button><button class="notification-filter ${state.filter==='unread'?'active':''}" data-notification-filter="unread" role="tab" aria-selected="${state.filter==='unread'}" tabindex="${state.filter==='unread'?0:-1}">Sin leer</button><button class="notification-filter ${state.filter==='task'?'active':''}" data-notification-filter="task" role="tab" aria-selected="${state.filter==='task'}" tabindex="${state.filter==='task'?0:-1}">Tareas</button><button class="notification-filter ${state.filter==='alert'?'active':''}" data-notification-filter="alert" role="tab" aria-selected="${state.filter==='alert'}" tabindex="${state.filter==='alert'?0:-1}">Alertas</button></div>
       <div class="notification-list">${list.length?list.map(renderItem).join(''):'<div class="notification-empty">No hay notificaciones para este filtro.</div>'}</div>`;
   }
 
   function renderPreferences() {
-    const p=state.preferences||{};
+    const p={...(state.preferences||{}),...(state.preferenceDraft||{})};
     const activeDevices=state.push.devices.filter(device=>device.status==='active'&&device.session_valid===true);
     const check=(key,label,help,{disabled=false}={})=>`<label class="notification-pref ${disabled?'is-disabled':''}"><input type="checkbox" data-notification-pref="${key}" ${p[key]!==false?'checked':''} ${disabled?'disabled':''}><span><b>${label}</b><small>${help}</small></span></label>`;
-    return `<div class="notification-preferences-grid">${check('in_app_enabled','Inbox dentro del ERP','Control maestro de notificaciones internas.')}${check('task_assignments_enabled','Asignaciones y vencimientos','Avisar por asignación, proximidad del vencimiento y excepciones relacionadas.')}${check('operational_alerts_enabled','Alertas operativas','Recibir excepciones P9 que correspondan a tu trabajo.')}${check('escalations_enabled','Escalaciones','Recibir escalaciones cuando tengas responsabilidad de supervisión.')}${check('tracking_updates_enabled','Cambios de tracking','Avisar cuando cambie el hito operativo de un contenedor.')}${check('document_updates_enabled','Documentos disponibles','Avisar cuando haya un documento nuevo autorizado.')}${check('integration_failures_enabled','Fallos de integraciones','Avisar a responsables cuando una entrega o webhook requiera revisión.')}${check('push_enabled','Entrega Web Push',activeDevices.length?'Enviar estas categorías a los dispositivos activos.':'Primero activa este dispositivo.',{disabled:activeDevices.length===0})}</div>${renderPushDevices()}<div class="notification-external-note">El aviso de pantalla bloqueada nunca incluye clientes, contenedores, documentos ni errores técnicos. El detalle se resuelve dentro del ERP después de autenticarte.</div><div class="notification-actions notification-preferences-actions"><button id="saveNotificationPreferences" type="button">Guardar preferencias</button></div>`;
+    return `<div class="notification-preferences-grid">${check('in_app_enabled','Bandeja dentro del ERP','Recibir notificaciones internas.')}${check('task_assignments_enabled','Asignaciones y vencimientos','Avisar por asignación, proximidad del vencimiento y excepciones relacionadas.')}${check('operational_alerts_enabled','Alertas operativas','Excepciones que correspondan a tu trabajo.')}${check('escalations_enabled','Escalaciones','Recibir escalaciones cuando tengas responsabilidad de supervisión.')}${check('tracking_updates_enabled','Cambios de tracking','Avisar cuando cambie el hito operativo de un contenedor.')}${check('document_updates_enabled','Documentos disponibles','Avisar cuando haya un documento nuevo autorizado.')}${check('integration_failures_enabled','Fallos de integraciones','Avisar cuando una entrega requiera revisión.')}${check('push_enabled','Notificaciones del dispositivo',activeDevices.length?'Enviar estas categorías a los dispositivos activos.':'Primero activa este dispositivo.',{disabled:activeDevices.length===0})}</div>${renderPushDevices()}<div class="notification-external-note">El aviso de pantalla bloqueada nunca incluye clientes, contenedores, documentos ni errores técnicos. El detalle se resuelve dentro del ERP después de autenticarte.</div><div class="notification-actions notification-preferences-actions"><button id="saveNotificationPreferences" type="button">Guardar preferencias</button></div>`;
   }
 
   function pushAvailability() {
     if(!pushSupported())return{tone:'bad',text:'Este navegador no admite Web Push.'};
     if(isAppleMobile()&&!standaloneMode())return{tone:'warn',text:'En iPhone o iPad, añade el ERP a la pantalla de inicio y ábrelo desde su icono.'};
-    if(!state.push.config.ready)return{tone:'warn',text:'El servidor todavía no tiene configuradas las claves Web Push.'};
+    if(!state.push.config.ready)return{tone:'warn',text:'Las notificaciones del dispositivo aún no están disponibles.'};
     if(state.push.permission==='denied')return{tone:'bad',text:'Las notificaciones están bloqueadas en los ajustes del navegador.'};
     if(state.push.permission==='granted')return{tone:'ok',text:'El navegador tiene permiso para mostrar avisos.'};
     return{tone:'neutral',text:'La activación requiere una pulsación explícita y permiso del navegador.'};
@@ -201,7 +201,7 @@
     const currentId=state.push.currentDeviceId;
     const devices=state.push.devices;
     const canActivate=pushSupported()&&state.push.config.ready&&state.push.permission!=='denied'&&(!isAppleMobile()||standaloneMode());
-    return `<section class="push-device-card" aria-labelledby="pushDeviceTitle"><div class="push-device-head"><div><h3 id="pushDeviceTitle">Dispositivos Web Push</h3><p class="push-availability ${availability.tone}">${esc(availability.text)}</p></div><button id="enablePushDevice" type="button" ${canActivate?'':'disabled'}>${currentId?'Reactivar este dispositivo':'Activar notificaciones'}</button></div><div class="push-device-list">${devices.length?devices.map(device=>`<article class="push-device ${device.status==='active'&&device.session_valid?'is-active':''}"><div><b>${esc(device.device_label)}</b>${String(device.id)===String(currentId)?'<span class="notification-chip active">Este dispositivo</span>':''}<small>${device.status==='active'&&device.session_valid?'Activo':device.status==='expired'?'Expirado':'Desactivado'} · Última actividad ${esc(dateLabel(device.last_seen_at))}</small></div>${device.status==='active'&&device.session_valid?`<button type="button" class="alt" data-push-deactivate="${esc(device.id)}">Desactivar</button>`:''}</article>`).join(''):'<div class="notification-empty">No hay dispositivos registrados.</div>'}</div></section>`;
+    return `<section class="push-device-card" aria-labelledby="pushDeviceTitle"><div class="push-device-head"><div><h3 id="pushDeviceTitle">Dispositivos</h3><p class="push-availability ${availability.tone}">${esc(availability.text)}</p></div><button id="enablePushDevice" type="button" ${canActivate?'':'disabled'}>${currentId?'Reactivar este dispositivo':'Activar notificaciones'}</button></div><div class="push-device-list">${devices.length?devices.map(device=>`<article class="push-device ${device.status==='active'&&device.session_valid?'is-active':''}"><div><b>${esc(device.device_label)}</b>${String(device.id)===String(currentId)?'<span class="notification-chip active">Este dispositivo</span>':''}<small>${device.status==='active'&&device.session_valid?'Activo':device.status==='expired'?'Expirado':'Desactivado'} · Última actividad ${esc(dateLabel(device.last_seen_at))}</small></div>${device.status==='active'&&device.session_valid?`<button type="button" class="alt" data-push-deactivate="${esc(device.id)}">Desactivar</button>`:''}</article>`).join(''):'<div class="notification-empty">No hay dispositivos registrados.</div>'}</div></section>`;
   }
 
   function renderHistory() {
@@ -211,7 +211,11 @@
 
   function render() {
     const target=$('notificationInboxBody'); if(!target)return;
-    target.innerHTML=`<div class="notification-workspace"><div class="notification-head"><div><h2 id="notificationInboxTitle">Notificaciones</h2><p>Inbox personal. Las tareas son trabajo; las alertas son excepciones; aquí solo se entrega y registra lectura.</p></div><div class="notification-actions"><button id="notificationMarkAllRead" class="alt" type="button">Marcar todo leído</button><button id="notificationRefresh" class="alt" type="button">Actualizar</button><button id="notificationClose" class="alt" type="button">Cerrar</button></div></div><div class="notification-tabs"><button class="notification-tab ${state.view==='inbox'?'active':''}" data-notification-view="inbox">Inbox</button><button class="notification-tab ${state.view==='history'?'active':''}" data-notification-view="history">Historial WhatsApp</button><button class="notification-tab ${state.view==='preferences'?'active':''}" data-notification-view="preferences">Preferencias</button><button class="notification-tab" id="openOperationalAlerts">Centro de alertas</button></div><div id="notificationInboxMessage" class="notification-message">${esc(state.message)}</div>${state.view==='inbox'?renderInbox():state.view==='history'?renderHistory():renderPreferences()}</div>`;
+    const active=document.activeElement;
+    const focusAttributes=['id','data-notification-view','data-notification-filter','data-notification-pref','data-notification-open','data-notification-id','data-notification-retry','data-push-deactivate'];
+    const focusAction=active?.dataset?.notificationAction;
+    const focus=target.contains(active)?focusAttributes.map(key=>[key,active.getAttribute(key)]).find(([,value])=>value):null;
+    target.innerHTML=`<div class="notification-workspace"><div class="notification-head"><div><h2 id="notificationInboxTitle">Notificaciones</h2><p>Consulta tus avisos, lecturas y preferencias.</p></div><div class="notification-actions"><button id="notificationMarkAllRead" class="alt" type="button">Marcar todo leído</button><button id="notificationRefresh" class="alt" type="button">Actualizar</button><button id="notificationClose" class="alt" type="button">Cerrar</button></div></div><div class="notification-tabs" role="tablist" aria-label="Vistas de notificaciones"><button class="notification-tab ${state.view==='inbox'?'active':''}" data-notification-view="inbox" role="tab" aria-selected="${state.view==='inbox'}" tabindex="${state.view==='inbox'?0:-1}">Bandeja</button><button class="notification-tab ${state.view==='history'?'active':''}" data-notification-view="history" role="tab" aria-selected="${state.view==='history'}" tabindex="${state.view==='history'?0:-1}">Historial WhatsApp</button><button class="notification-tab ${state.view==='preferences'?'active':''}" data-notification-view="preferences" role="tab" aria-selected="${state.view==='preferences'}" tabindex="${state.view==='preferences'?0:-1}">Preferencias</button><button class="notification-tab" id="openOperationalAlerts">Centro de alertas</button></div><div id="notificationInboxMessage" class="notification-message ${state.message?(state.messageBad?'bad':'ok'):''}" role="status" aria-live="polite">${esc(state.message)}</div>${state.view==='inbox'?renderInbox():state.view==='history'?renderHistory():renderPreferences()}</div>`;
     $('notificationClose').onclick=closePanel;
     $('notificationRefresh').onclick=()=>refresh({history:state.view==='history'});
     $('notificationMarkAllRead').onclick=()=>actAllRead();
@@ -223,7 +227,21 @@
     target.querySelectorAll('[data-notification-retry]').forEach(button=>button.onclick=()=>retryHistory(button.dataset.notificationRetry));
     target.querySelectorAll('[data-push-deactivate]').forEach(button=>button.onclick=()=>deactivatePushDevice(button.dataset.pushDeactivate));
     if($('enablePushDevice'))$('enablePushDevice').onclick=enablePushDevice;
-    if($('saveNotificationPreferences'))$('saveNotificationPreferences').onclick=savePreferences;
+    if($('saveNotificationPreferences')){
+      $('saveNotificationPreferences').onclick=savePreferences;
+      $('saveNotificationPreferences').disabled=state.savingPreferences;
+    }
+    target.querySelectorAll('[data-notification-pref]').forEach(input=>input.onchange=()=>{state.preferenceDraft={...(state.preferenceDraft||{}),[input.dataset.notificationPref]:input.checked};});
+    target.querySelectorAll('[role="tab"]').forEach(button=>button.onkeydown=event=>{
+      if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key))return;
+      const buttons=[...button.parentElement.querySelectorAll('[role="tab"]')],index=buttons.indexOf(button);
+      const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
+      event.preventDefault();buttons[next].focus();buttons[next].click();
+    });
+    if(focus){
+      const candidate=[...target.querySelectorAll('button,input')].find(node=>node.getAttribute(focus[0])===focus[1]&&(!focusAction||node.dataset.notificationAction===focusAction));
+      (candidate||target.querySelector('[role=tab][aria-selected=true]')||$('notificationClose'))?.focus({preventScroll:true});
+    }
   }
 
   async function serviceWorkerRegistration() {
@@ -307,7 +325,10 @@
         localStorage.removeItem('export_mca_push_subscription_id');
         state.push.currentDeviceId=null;
       }
-      if(!state.push.devices.some(device=>device.status==='active'&&device.session_valid===true))state.preferences={...(state.preferences||{}),push_enabled:false};
+      if(!state.push.devices.some(device=>device.status==='active'&&device.session_valid===true)){
+        state.preferences={...(state.preferences||{}),push_enabled:false};
+        if(state.preferenceDraft)state.preferenceDraft.push_enabled=false;
+      }
       setMessage('Dispositivo desactivado.');
       render();
     } catch(error) {
@@ -349,11 +370,15 @@
   }
 
   async function savePreferences() {
+    if(state.savingPreferences)return;
+    state.savingPreferences=true;
+    if($('saveNotificationPreferences'))$('saveNotificationPreferences').disabled=true;
     const body={action:'preferences'};
     document.querySelectorAll('[data-notification-pref]').forEach(input=>{body[input.dataset.notificationPref]=input.checked;});
     body.whatsapp_enabled=false; body.email_enabled=false;
-    try { const result=await apiCall('/api/notification-inbox',{method:'PATCH',body:JSON.stringify(body)}); state.preferences=result.preferences||state.preferences; setMessage('Preferencias guardadas.'); render(); }
+    try { const result=await apiCall('/api/notification-inbox',{method:'PATCH',body:JSON.stringify(body)}); state.preferences=result.preferences||state.preferences; state.preferenceDraft=null; setMessage('Preferencias guardadas.'); render(); }
     catch(error){setMessage(safeInboxMessage(error,'No se pudieron guardar las preferencias. Intenta nuevamente.','save_preferences'),true);render();}
+    finally{state.savingPreferences=false;if($('saveNotificationPreferences'))$('saveNotificationPreferences').disabled=false;}
   }
 
   async function openWork(id) {
@@ -372,15 +397,16 @@
       throw error;
     } catch(error){
       const message=safeInboxMessage(error,'No se pudo abrir el trabajo. Intenta nuevamente.','open_work');
-      state.open=true; ensureShell(); $('notificationInboxOverlay').hidden=false;
+      if(!state.open)state.lastFocused=document.activeElement;
+      state.open=true; ensureShell(); $('notificationInboxOverlay').hidden=false;document.body.classList.add('notification-inbox-open');
       await refresh();
       setMessage(message,true);
-      render();
+      render();$('notificationClose')?.focus();
     }
   }
 
-  async function openPanel() { ensureShell(); state.open=true; $('notificationInboxOverlay').hidden=false; document.body.classList.add('notification-inbox-open'); render(); await refresh(); }
-  function closePanel() { state.open=false; $('notificationInboxOverlay').hidden=true; document.body.classList.remove('notification-inbox-open'); }
+  async function openPanel() { ensureShell(); if(!state.open)state.lastFocused=document.activeElement;state.open=true; $('notificationInboxOverlay').hidden=false; document.body.classList.add('notification-inbox-open'); render();$('notificationClose')?.focus(); await refresh(); }
+  function closePanel() { state.open=false; $('notificationInboxOverlay').hidden=true; document.body.classList.remove('notification-inbox-open');state.lastFocused?.focus?.();state.lastFocused=null; }
 
   function deepLinkId() {
     const value=new URL(location.href).searchParams.get('notification')||'';
@@ -438,7 +464,14 @@
     window.addEventListener('export-mca:data-loaded',()=>refresh().catch(()=>{}));
     window.addEventListener('export-mca:modules-ready',()=>{removeLegacyAlertBell();ensureShell();});
     window.addEventListener('focus',()=>refresh().catch(()=>{}));
-    window.addEventListener('keydown',event=>{if(event.key==='Escape'&&state.open)closePanel();});
+    window.addEventListener('keydown',event=>{
+      if(!state.open)return;
+      if(event.key==='Escape'){closePanel();return;}
+      if(event.key!=='Tab')return;
+      const controls=[...$('notificationInboxOverlay').querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')].filter(n=>n.tabIndex>=0&&n.getClientRects().length),first=controls[0],last=controls.at(-1);
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
+    });
     window.NotificationInbox=Object.freeze({
       open:openPanel,refresh,close:closePanel,deactivatePushForLogout,deactivatePushForInvalidSession,
       getState:()=>({...state}),owner:'notification-inbox.js'

@@ -198,15 +198,15 @@
       tasks.push(loadScript('/admin/module-export-controls.js', 'data-module-export-controls'));
     }
     if (accessCan('notifications.read')) {
-      let alertChain = loadStylesheet('/admin/operational-alert-center.css?v=20260922-figma1', 'data-operational-alert-center-style')
-        .then(() => loadScript('/admin/operational-alert-center.js?v=20260903-ux7alerts1', 'data-operational-alert-center'));
+      let alertChain = loadStylesheet('/admin/operational-alert-center.css?v=20260926-figma2', 'data-operational-alert-center-style')
+        .then(() => loadScript('/admin/operational-alert-center.js?v=20260926-figma2', 'data-operational-alert-center'));
       if (accessCan('notifications.manage')) {
         alertChain = alertChain.then(() => loadScript('/admin/alert-phase2-stability.js?v=20260903-b10push1', 'data-alert-phase2-stability'));
       }
       const inboxChain = Promise.all([
-        loadStylesheet('/admin/notification-inbox.css?v=20260903-ux7icons2', 'data-notification-inbox-style'),
-        loadStylesheet('/admin/push-notifications.css?v=20260903-b10push1', 'data-push-notifications-style')
-      ]).then(() => loadScript('/admin/notification-inbox.js?v=20260903-b10push1', 'data-notification-inbox'));
+        loadStylesheet('/admin/notification-inbox.css?v=20260926-figma2', 'data-notification-inbox-style'),
+        loadStylesheet('/admin/push-notifications.css?v=20260926-figma2', 'data-push-notifications-style')
+      ]).then(() => loadScript('/admin/notification-inbox.js?v=20260926-figma2', 'data-notification-inbox'));
       tasks.push(Promise.all([alertChain,inboxChain]));
     }
 
@@ -236,8 +236,8 @@
       authenticatedShellReady = true;
 
       if (accessCan('dashboard.read')) {
-        await loadStylesheet('/admin/dashboard-executive.css?v=20260922-figma1', 'data-dashboard-executive-style');
-        await loadScript('/admin/dashboard-operational-state.js?v=20260921-ux8clarity1', 'data-dashboard-operational-state');
+        await loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style');
+        await loadScript('/admin/dashboard-operational-state.js?v=20260926-figma2', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
         await loadStylesheet('/admin/containers-module.css?v=20260926-figma1', 'data-containers-module-style');
