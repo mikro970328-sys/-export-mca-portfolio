@@ -31,8 +31,10 @@ async function resolveRelated(page,index=0,many=false){await page.evaluate(({ind
  },{index,many});}
 for(const width of [1440,390])test(`Purchase actions stay in place while related records load at ${width}`,async({page},info)=>{
  await page.setViewportSize({width,height:900});await openPurchase(page);await page.locator('[data-view-order="fixture-po-0"]').click();await expect(page.locator('#purchaseRelations')).not.toHaveAttribute('open');
+ await expect(page.locator('#detailTitle')).toHaveCSS('font-size','30px');await expect(page.locator('[data-close="detail"]')).toHaveText('Cerrar');if(width===1440)await expect(page.locator('.purchase-detail-dialog')).toHaveCSS('width','1080px');await shot(page,info,'compra-detalle-'+width);
  await page.locator('#purchaseRelations summary').click();const cancel=page.locator('[data-detail-action="cancel"]');await cancel.scrollIntoViewIfNeeded();const before=await cancel.boundingBox();
  await resolveRelated(page,0,true);await expect(page.locator('#purchaseAPContext [aria-busy]')).toHaveAttribute('aria-busy','false');await expect(page.locator('#purchaseOperationalContextReceipts button')).toHaveCount(24);
+ await expect(page.locator('#purchaseAPContext')).not.toContainText('posted');await expect(page.locator('#purchaseAPContext')).toContainText('Contabilizada');await expect(page.locator('#purchaseAPContext')).toContainText('Registrado');
  const after=await cancel.boundingBox();expect(Math.abs(after.y-before.y)).toBeLessThanOrEqual(1);expect(Math.abs(after.x-before.x)).toBeLessThanOrEqual(1);await shot(page,info,'compra-relaciones-'+width);
  await page.mouse.click(before.x+before.width/2,before.y+before.height/2);await expect(page.locator('#purchaseDecisionTitle')).toHaveText('Cancelar compra');await page.keyboard.press('Escape');expect(await page.evaluate(()=>window.__fixtureCalls.filter(c=>c.method==='POST'))).toEqual([]);
 });

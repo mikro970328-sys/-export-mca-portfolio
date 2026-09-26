@@ -269,8 +269,8 @@ function renderPurchaseRelations(order){
   if(ap){
     const finance=section('purchaseAPContext','Cuentas por pagar');
     populate(finance,async()=>{const [bills,payments]=await Promise.all([ap.billsForPurchase(order.id),ap.paymentsForPurchase(order.id)]);return [
-      ...bills.map(row=>({label:`${row.bill_number} · ${row.bill_status}`,action:()=>ap.openBill(row.supplier_bill_id)})),
-      ...payments.map(row=>({label:`${row.payment_number} · ${row.payment_status}`,action:()=>ap.openPayment(row.supplier_payment_id)}))
+      ...bills.map(row=>({label:`${row.bill_number} · ${{draft:'Borrador',posted:'Contabilizada',void:'Anulada'}[row.bill_status]||'Consultar estado'}`,action:()=>ap.openBill(row.supplier_bill_id)})),
+      ...payments.map(row=>({label:`${row.payment_number} · ${{posted:'Registrado',reversed:'Revertido'}[row.payment_status]||'Consultar estado'}`,action:()=>ap.openPayment(row.supplier_payment_id)}))
     ];},'Esta PO todavía no tiene factura o pago de proveedor.');
   }
 }
@@ -289,7 +289,7 @@ function openDetail(id){
   if(can(o,'receive_remaining'))acts.push('<button class="btn orange" data-detail-action="receive">Recibir</button>');
   if(can(o,'receive_excess'))acts.push('<button class="btn" data-detail-action="receive_excess">Registrar exceso / ajuste</button>');
   if(can(o,'close'))acts.push('<button class="btn" data-detail-action="close">Cerrar</button>');
-  if(can(o,'cancel'))acts.push('<button class="btn danger" data-detail-action="cancel">Cancelar compra</button>');
+  if(can(o,'cancel'))acts.push('<button class="btn" data-detail-action="cancel">Cancelar compra</button>');
   $('detailActions').innerHTML=acts.join('');$('detailActions').querySelectorAll('[data-detail-action]').forEach(b=>b.onclick=()=>detailAction(b.dataset.detailAction));$('detailMsg').textContent='';renderPurchaseRelations(o);openPurchaseModal('detail');
 }
 async function detailAction(action){

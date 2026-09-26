@@ -147,9 +147,20 @@
 .erp-module-purchases .purchase-order-footer .purchase-modal-actions { flex-wrap:nowrap;gap:16px;margin:0; }
 .erp-module-purchases .purchase-order-footer .btn { white-space:nowrap; }
 .erp-module-purchases #saveOrder { min-width:172px; }
-.erp-module-purchases .purchase-detail-dialog,
 .erp-module-purchases .purchase-receive-dialog,
 .erp-module-purchases .purchase-product-dialog { width:min(1040px,100%); }
+.erp-module-page.erp-module-purchases .purchase-detail-dialog { width:min(1080px,100%);border:1px solid var(--line);border-radius:var(--radius-md);padding:32px;background:var(--surface); }
+.erp-module-page.erp-module-purchases .purchase-detail-dialog .dialog-head { flex-wrap:nowrap;gap:24px;margin:0 0 24px;border:0;padding:0; }
+.erp-module-purchases .purchase-detail-dialog .dialog-head>div { flex:1;min-width:0; }
+.erp-module-purchases .purchase-detail-dialog .purchases-dialog-kicker { margin:0 0 8px;font-weight:400;text-transform:none; }
+.erp-module-page.erp-module-purchases .purchase-detail-dialog h2 { margin:0 0 8px;font-size:30px;line-height:38px;font-weight:600;letter-spacing:-.6px;overflow-wrap:anywhere; }
+.erp-module-purchases .purchase-detail-close { flex:none;width:156px; }
+.erp-module-purchases .purchase-detail-dialog #detailSubtitle { font-size:14px;line-height:20px; }
+.erp-module-page.erp-module-purchases .purchase-detail-dialog .summary { margin:0 0 16px; }
+.erp-module-page.erp-module-purchases .purchase-detail-dialog .summary>div { padding:16px;border-radius:var(--radius-md);background:var(--surface); }
+.erp-module-purchases .purchase-detail-dialog .summary b { font-weight:400; }
+.erp-module-purchases .purchase-detail-dialog .detail-items { margin-top:24px; }
+.erp-module-purchases .purchase-detail-dialog .detail-item { border-radius:var(--radius-md); }
 .erp-module-purchases .dialog-head { align-items:flex-start; }
 .erp-module-purchases .purchases-close-button { flex:none;display:grid;place-items:center;width:44px;min-width:44px;height:44px;padding:0; }
 .erp-module-purchases .purchase-direct-pill { background:var(--surface-soft);color:var(--muted); }
@@ -233,6 +244,8 @@
   .erp-module-purchases .modal { align-items:flex-end;padding:0; }
   .erp-module-purchases .dialog { max-height:100vh;max-height:100dvh;border-radius:var(--radius-md) var(--radius-md) 0 0;padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
   .erp-module-purchases .purchase-order-dialog { width:100%;border:0;border-radius:0;padding:0; }
+  .erp-module-page.erp-module-purchases .purchase-detail-dialog { border-radius:var(--radius-md) var(--radius-md) 0 0;padding:24px 16px calc(16px + env(safe-area-inset-bottom)); }
+  .erp-module-purchases .purchase-detail-dialog .purchase-detail-close { width:auto; }
   .erp-module-purchases .purchase-order-header { padding:24px 16px; }
   .erp-module-purchases .purchase-order-dialog .form-draft-status { margin:16px 16px 0; }
   .erp-module-purchases .purchase-order-body { padding:16px; }

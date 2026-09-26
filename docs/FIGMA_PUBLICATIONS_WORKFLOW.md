@@ -30,6 +30,6 @@ Los tres diálogos ofrecen foco inicial inmediato, Tab limitado al diálogo, Esc
 - Gates locales de Publicaciones, foundation, workflow, tareas, borradores, propiedad, integración y shell correctos; flujos jsdom de error/borrador/guardado verificados.
 - 18 pruebas nuevas por motor enumeradas (36): 1440/390 px, alturas 700/500; catálogo, validación, fotos, borrador, estados, eliminación confirmada, permisos, elegibilidad, plazos, conservación de otros formularios, deduplicación, supervisión y errores.
 - Fixture con owners y runtime reales, API e imágenes en memoria, CSP sin red y datos ficticios. No QA de escritura en producción/Preview ni activación de dispositivos o envío de mensajes.
-- CI y capturas del head exacto pendientes antes de publicar. La cobertura visual acumulada prevista es 160 pruebas por motor.
+- Publicado en PR #357: main `a1e5d913b826f5536a680d94154ff896b3069e06`, Vercel `dpl_7hVAAF77UFU181XaHMd17Z9P4gvj` READY. Head probado `d64ae6a132caf3ee57968850f80d5d92a88f1b39`, árbol `a8c325e99397915b68c74f017af90c912c8ea982`; CI `36247353321`: 34/34 workflows, 22/22 trabajos y 160/160 visuales por motor. Capturas revisadas; nueve archivos exactos en producción por GET. Guía 135:4515 publicada.
 
 Sin cambios en API, SQL, permisos, cálculos financieros, auditoría ni reconciliadores de negocio. Después de este bloque: estabilidad de enlaces relacionados en Compras, márgenes del shell nativo y revisión integrada de escritorio.
