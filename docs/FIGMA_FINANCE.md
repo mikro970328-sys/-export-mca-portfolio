@@ -43,6 +43,7 @@ No cambian APIs, SQL, payloads, permisos, capabilities, idempotencia, cálculo m
 - Fixtures ficticias en memoria, CSP sin red, columnas de reportes tomadas de la definición oficial de la API local. No prueban la contabilidad del servidor; las suites existentes con PostgreSQL/PostgREST desechables mantienen esa cobertura.
 - Sin escrituras QA en producción ni Preview. WebKit simulado no certifica iPhone físico.
 - Revisión inicial PR #352, run `36219654228`: 66/69 visuales por motor. Detectó que la regla de grid superaba `hidden` en el formulario de aplicación de saldo; corregido en los owners. La fixture de Reportes ahora respeta `include_options=0` como la API real. Las capturas también motivaron elevar pestañas a 44 px/14 px y marcar la pestaña activa de Reportes con el color del sistema.
+- Segunda revisión `a4845743e076573fb5f89580e766ff02182c27c1`, run `36220242532`: 69/69 visuales por motor. El flujo Direct Ship detectó una espera incompleta en su prueba: el detalle cierra antes de terminar la recarga de compras. Se añadió la comprobación del estado comercial visible antes de la siguiente transición.
 - El PR registrará CI, capturas del head final, merge y publicación antes de cerrar este bloque.
 
 ## Pendiente
