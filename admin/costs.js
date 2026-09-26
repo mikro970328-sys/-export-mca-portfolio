@@ -775,14 +775,14 @@
       modalReturnFocus.set(id, document.activeElement);
       modal.classList.remove('hidden');
       modal.setAttribute('aria-hidden', 'false');
-      requestAnimationFrame(() => modal.querySelector(focusSelector || 'button,select,input,textarea')?.focus());
+      modal.querySelector(focusSelector || 'button,select,input,textarea')?.focus();
       return;
     }
     modal.classList.add('hidden');
     modal.setAttribute('aria-hidden', 'true');
     const previous = modalReturnFocus.get(id);
     modalReturnFocus.delete(id);
-    if (previous instanceof HTMLElement) requestAnimationFrame(() => previous.focus());
+    if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
   }
 
   function fillSelects() {

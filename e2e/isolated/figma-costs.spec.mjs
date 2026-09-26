@@ -106,8 +106,11 @@ test('Expense create, draft edit, validation, server failure and cancel keep cor
   await expect(page.locator('#chargeModal')).not.toBeVisible();
   expect((await posts(page))[0]).toMatchObject({action:'create',amount:80,allocations:[{load_id:'fixture-load',amount:'80'}]});
   await page.locator('[data-edit="fixture-cost-2"]').click();
+  await expect(page.locator('#cCategory')).toBeFocused();
   await expect(page.locator('#chargeHelp')).not.toContainText('historial');
   await page.locator('#cAmount').fill('400');
+  await expect(page.locator('#cAmount')).toBeFocused();
+  await expect(page.locator('#cAmount')).toHaveValue('400');
   await page.evaluate(()=>{window.__fixtureRejectWrites=true});
   await page.locator('#saveCharge').click();
   await expect(page.locator('#chargeMsg')).not.toBeEmpty();
