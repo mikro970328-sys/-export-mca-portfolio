@@ -109,7 +109,7 @@ for(const text of [
   'id="purchaseDecisionAccept"',
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/purchases.css?v=20260925-figma1',
-  '/admin/purchases.js?v=20260925-figma1',
+  '/admin/purchases.js?v=20260926-focus1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ]) requireText(html,text,`HTML ${text}`);
 forbid(html,/\sstyle\s*=/i,'Compras conserva estilos inline');

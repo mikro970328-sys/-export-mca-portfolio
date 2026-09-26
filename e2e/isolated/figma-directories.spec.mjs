@@ -8,7 +8,7 @@ async function open(page,module,options={}){
 }
 const writes=page=>page.evaluate(()=>window.__fixtureCalls.filter(c=>c.method!=='GET'));
 async function shot(page,info,name,fullPage=false){const path=info.outputPath(name+'.png');await page.screenshot({path,fullPage,animations:'disabled',scale:'css'});await info.attach(name,{path,contentType:'image/png'});}
-async function fits(page){expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
+async function fits(page){const sizes=await page.evaluate(()=>({viewport:innerWidth,width:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('body *')].filter(el=>{const r=el.getBoundingClientRect();return r.width&&r.right>innerWidth+1&&!el.closest('.clients-table-wrap,.suppliers-table-wrap')}).slice(0,12).map(el=>({tag:el.tagName,id:el.id,class:el.className,width:el.getBoundingClientRect().width}))}));expect(sizes.width,JSON.stringify(sizes)).toBeLessThanOrEqual(sizes.viewport);}
 async function hit(page,selector){const n=page.locator(selector);await n.scrollIntoViewIfNeeded();expect(await n.evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===el;})).toBe(true);}
 const clientMenu=async page=>{await page.locator('[data-client-id="fixture-client-0"] [data-client-menu]').click();await expect(page.locator('.client-actions-popover')).toBeVisible();};
 for(const width of [1440,390]){

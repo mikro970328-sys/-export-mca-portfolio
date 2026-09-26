@@ -40,7 +40,7 @@
 .suppliers-table-wrap { width:100%;overflow-x:auto; }
 .suppliers-columns,.supplier-card { display:grid;grid-template-columns:minmax(200px,1fr) 224px 224px 128px 164px;align-items:center;gap:16px;min-width:1152px;padding:16px; }
 .suppliers-columns { background:var(--surface-soft);color:var(--muted);font-size:12px;font-weight:500;line-height:18px; }
-.supplier-list { display:grid;gap:16px;margin-top:16px; }
+.erp-module-suppliers .supplier-list { display:grid;gap:16px;margin-top:16px;padding:0; }
 .supplier-card { border:1px solid var(--line);background:var(--surface); }
 .supplier-card > div { min-width:0; }
 .supplier-card:hover { background:var(--surface-soft); }

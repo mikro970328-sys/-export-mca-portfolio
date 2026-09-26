@@ -1,6 +1,6 @@
 /* Figma 115:3018 / 115:3320 / 115:3373. Canonical Clients owner. */
 #clientsSection,.client-dialog-root,.client-decision-panel,.client-actions-popover { color:var(--text);font:400 14px/20px var(--font-sans);color-scheme:light; }
-#clientsSection .clients-workspace { width:100%;max-width:1544px;margin:0 auto;padding:32px;gap:24px; }
+#clientsSection .clients-workspace { width:100%;max-width:1544px;grid-template-columns:minmax(0,1fr);margin:0 auto;padding:32px;gap:24px; }
 #clientsSection .clients-hero.native-workspace-hero { display:flex;align-items:flex-start;gap:24px;overflow:visible;min-height:0;margin:0;padding:0;border:0;border-radius:0;background:var(--surface);box-shadow:none; }
 #clientsSection .clients-hero::before,#clientsSection .clients-hero::after { content:none; }
 #clientsSection .clients-hero-copy { min-width:0;max-width:none; }
@@ -31,6 +31,7 @@
 #clientsSection .clients-panel-head p { margin:8px 0 0;color:var(--muted);font-size:14px;line-height:20px; }
 #clientsSection .clients-form { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:24px; }
 #clientsSection .clients-form-grid { display:contents; }
+#clientsSection .clients-form > .form-draft-status { grid-column:1/-1; }
 #clientsSection #clientCreateMsg { grid-column:1/-1; }
 #clientsSection #saveClient { grid-column:1/-1;justify-self:start;min-width:224px; }
 #clientsSection .clients-form label,.client-editor label { display:block;margin:0 0 8px;color:var(--text);font-size:14px;font-weight:600;line-height:20px; }

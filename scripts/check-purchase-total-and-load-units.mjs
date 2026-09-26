@@ -60,7 +60,7 @@ for(const text of [
 
 for(const text of [
   '/admin/purchases.css?v=20260925-figma1',
-  '/admin/purchases.js?v=20260925-figma1',
+  '/admin/purchases.js?v=20260926-focus1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ])requireText(html,text,`cache de Compras ${text}`);
 
