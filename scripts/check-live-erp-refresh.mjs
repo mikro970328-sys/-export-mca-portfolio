@@ -14,7 +14,7 @@ const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.
 
 for(const text of [
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
-  '/admin/erp.js?v=20260926-figma1'
+  '/admin/erp.js?v=20260926-figma2'
 ])requireText(shell,text,`shell ${text}`);
 
 for(const text of [

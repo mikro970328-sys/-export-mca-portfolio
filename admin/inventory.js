@@ -166,6 +166,10 @@ function qtyText(quantity, pallets, itemUnit) {
   return parts.join(' · ') || '0';
 }
 
+function balanceMarkup(quantity, pallets, itemUnit) {
+  return `<strong>${num(quantity)} ${esc(itemUnit)}</strong><small>${num(pallets)} ${Number(pallets) === 1 ? 'pallet' : 'pallets'}</small>`;
+}
+
 function matchesWarehouse(id) {
   const warehouseId = $('warehouseFilter').value;
   return !warehouseId || String(id) === String(warehouseId);
@@ -237,7 +241,7 @@ function emptyState(title, copy) {
 }
 
 function sourceDesktop(source, itemUnit) {
-  return `<tr><td><b>${esc(source.receipt_number || 'WR sin número')}</b><br><button class="inventory-action-link" type="button" data-trace-wr="${esc(source.receipt_number)}">Ver trazabilidad</button></td><td>${esc(source.lot_number || 'Sin lote')}</td><td>${qtyText(source.physical_quantity, source.physical_pallets, itemUnit)}</td><td>${qtyText(source.reserved_quantity, source.reserved_pallets, itemUnit)}</td><td><b>${qtyText(source.available_quantity, source.available_pallets, itemUnit)}</b></td><td>${source.units_per_pallet ? num(source.units_per_pallet) : '—'}</td><td>${num(source.movement_count)}</td></tr>`;
+  return `<tr><td><b>${esc(source.receipt_number || 'WR sin número')}</b><br><button class="inventory-action-link" type="button" data-trace-wr="${esc(source.receipt_number)}">Ver trazabilidad</button></td><td>${esc(source.lot_number || 'Sin lote')}</td><td>${balanceMarkup(source.physical_quantity, source.physical_pallets, itemUnit)}</td><td>${balanceMarkup(source.reserved_quantity, source.reserved_pallets, itemUnit)}</td><td><b>${balanceMarkup(source.available_quantity, source.available_pallets, itemUnit)}</b></td><td>${source.units_per_pallet ? num(source.units_per_pallet) : '—'}</td><td>${num(source.movement_count)}</td></tr>`;
 }
 
 function sourceMobile(source, itemUnit) {
@@ -252,7 +256,7 @@ function inventoryRow(row, index) {
   const warehouse = [row.warehouse?.code, row.warehouse?.name].filter(Boolean).join(' · ') || 'Almacén no disponible';
   const sourceId = `inventorySources${index}`;
   const sourceLabel = `${sources.length} WR de origen`;
-  return `<article class="inventory-row"><button class="inventory-row-toggle" type="button" data-toggle-inventory aria-expanded="false" aria-controls="${sourceId}"><div><div class="inventory-product-name">${esc(productName)}</div><div class="inventory-product-meta">${esc(sku)} · ${esc(warehouse)} · ${esc(sourceLabel)}</div>${row.product?.brand ? `<span class="inventory-product-brand">${esc(row.product.brand)}</span>` : ''}<div class="inventory-mobile-summary"><div><span>Físico</span><b>${qtyText(row.physical_quantity, row.physical_pallets, itemUnit)}</b></div><div><span>Reservado</span><b>${qtyText(row.reserved_quantity, row.reserved_pallets, itemUnit)}</b></div><div><span>Disponible</span><b>${qtyText(row.available_quantity, row.available_pallets, itemUnit)}</b></div></div></div><div class="inventory-metric"><span>Físico</span><b>${qtyText(row.physical_quantity, row.physical_pallets, itemUnit)}</b></div><div class="inventory-metric reserved"><span>Reservado</span><b>${qtyText(row.reserved_quantity, row.reserved_pallets, itemUnit)}</b></div><div class="inventory-metric available"><span>Disponible</span><b>${qtyText(row.available_quantity, row.available_pallets, itemUnit)}</b></div><span class="inventory-chevron" aria-hidden="true">⌄</span></button><div id="${sourceId}" class="inventory-source-wrap hidden"><div class="inventory-source-title"><strong>Recepciones que componen esta existencia</strong><span>${esc(sourceLabel)}</span></div><div class="inventory-source-desktop inventory-table-wrap"><table><thead><tr><th>WR origen</th><th>Lote</th><th>Físico</th><th>Reservado</th><th>Disponible</th><th>Unid./pallet</th><th>Mov.</th></tr></thead><tbody>${sources.map(source => sourceDesktop(source, itemUnit)).join('')}</tbody></table></div><div class="inventory-source-mobile">${sources.map(source => sourceMobile(source, itemUnit)).join('')}</div></div></article>`;
+  return `<article class="inventory-row"><button class="inventory-row-toggle" type="button" data-toggle-inventory aria-expanded="false" aria-controls="${sourceId}"><div><div class="inventory-product-name">${esc(productName)}</div><div class="inventory-product-meta">${esc(sku)} · ${esc(warehouse)} · ${esc(sourceLabel)}</div>${row.product?.brand ? `<span class="inventory-product-brand">${esc(row.product.brand)}</span>` : ''}<div class="inventory-mobile-summary"><div><span>Físico</span><b>${qtyText(row.physical_quantity, row.physical_pallets, itemUnit)}</b></div><div><span>Reservado</span><b>${qtyText(row.reserved_quantity, row.reserved_pallets, itemUnit)}</b></div><div><span>Disponible</span><b>${qtyText(row.available_quantity, row.available_pallets, itemUnit)}</b></div></div></div><div class="inventory-metric"><span>Físico</span><b>${balanceMarkup(row.physical_quantity, row.physical_pallets, itemUnit)}</b></div><div class="inventory-metric reserved"><span>Reservado</span><b>${balanceMarkup(row.reserved_quantity, row.reserved_pallets, itemUnit)}</b></div><div class="inventory-metric available"><span>Disponible</span><b>${balanceMarkup(row.available_quantity, row.available_pallets, itemUnit)}</b></div><span class="inventory-chevron" aria-hidden="true"></span></button><div id="${sourceId}" class="inventory-source-wrap hidden"><div class="inventory-source-title"><strong>Recepciones que componen esta existencia</strong><span>${esc(sourceLabel)}</span></div><div class="inventory-source-desktop inventory-table-wrap"><table><thead><tr><th>WR origen</th><th>Lote</th><th>Físico</th><th>Reservado</th><th>Disponible</th><th>Unid./pallet</th><th>Mov.</th></tr></thead><tbody>${sources.map(source => sourceDesktop(source, itemUnit)).join('')}</tbody></table></div><div class="inventory-source-mobile">${sources.map(source => sourceMobile(source, itemUnit)).join('')}</div></div></article>`;
 }
 
 function renderInventory() {
@@ -265,7 +269,7 @@ function renderInventory() {
       : emptyState('Aún no hay existencias', 'Las recepciones WR activas aparecerán aquí cuando aporten inventario.');
     return;
   }
-  $('inventoryList').innerHTML = `<div class="inventory-list-summary"><strong>${rows.length} combinación${rows.length === 1 ? '' : 'es'} de producto y almacén</strong><span>Selecciona una fila para consultar sus WR</span></div>${rows.map(inventoryRow).join('')}`;
+  $('inventoryList').innerHTML = `<div class="inventory-list-summary"><strong>${rows.length} ${rows.length === 1 ? 'combinación' : 'combinaciones'} de producto y almacén</strong><span>Selecciona una fila para consultar sus WR</span></div><div class="inventory-column-head" aria-hidden="true"><span>Producto y almacén</span><span>Físico</span><span>Reservado</span><span>Disponible</span><span></span></div>${rows.map(inventoryRow).join('')}`;
 }
 
 function deltaClass(value) {
@@ -476,6 +480,15 @@ function handleContextClick(event) {
 
 function bindEvents() {
   document.querySelectorAll('[data-inventory-view]').forEach(tab => {
+    tab.addEventListener('keydown', event => {
+      const tabs = [...document.querySelectorAll('[data-inventory-view]')];
+      const index = tabs.indexOf(tab);
+      const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length
+        : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length
+        : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : -1;
+      if (next < 0) return;
+      event.preventDefault(); tabs[next].click(); tabs[next].focus();
+    });
     tab.addEventListener('click', () => {
       activeReceipt = '';
       activeView = tab.dataset.inventoryView;

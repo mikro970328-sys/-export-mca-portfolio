@@ -155,8 +155,7 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
         await expect(row).toHaveCount(1);
         const metrics=row.locator('.inventory-metric');
         for (const [index,quantity] of [physical,reserved,available].entries()) {
-          if (quantity===0) await expect(metrics.nth(index).locator('b')).toHaveText('0');
-          else await expect(metrics.nth(index).locator('b')).toContainText(`${quantity} cajas`);
+          await expect(metrics.nth(index).locator('strong')).toHaveText(`${quantity} cajas`);
         }
       }
       const rows=await f.rows('select physical_quantity,reserved_quantity,available_quantity from inventory_summary where product_id=$1',[f.product]);

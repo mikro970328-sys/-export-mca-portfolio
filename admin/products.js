@@ -156,7 +156,6 @@
   }
 
   function productCard(item) {
-    const identity = String(item.sku || item.name || '?').trim();
     const brandCategory = [item.brand,item.category].filter(Boolean).join(' · ') || 'Sin marca ni categoría';
     const packageLabel = item.package_format || 'Sin presentación definida';
     const origin = item.country_of_origin || 'Origen no registrado';
@@ -170,8 +169,7 @@
     ].filter(Boolean).join(' · ') || 'Sin peso ni volumen maestro';
     return `<article class="product-card" data-product-row="${esc(item.id)}">
       <div class="product-identity">
-        <span class="product-avatar" aria-hidden="true">${esc(identity.slice(0,3).toUpperCase() || '?')}</span>
-        <div><span class="product-sku">${esc(item.sku || 'Sin SKU')}</span><strong class="product-name">${esc(item.name || 'Producto sin nombre')}</strong><span class="product-meta">${esc(brandCategory)}</span></div>
+        <div><strong class="product-name">${esc(item.name || 'Producto sin nombre')}</strong><span class="product-meta"><span class="product-sku">${esc(item.sku || 'Sin SKU')}</span> · ${esc(brandCategory)}</span></div>
       </div>
       <div class="product-card-section"><span class="product-card-label">Unidad y empaque</span><strong>${esc(item.unit || 'unidades')}</strong><span class="product-meta">${esc(packageLabel)}</span></div>
       <div class="product-card-section product-card-origin"><span class="product-card-label">Procedencia</span><strong>${esc(origin)}</strong><span class="product-meta">${esc(hs)}</span></div>
@@ -194,7 +192,7 @@
   function renderList() {
     const list = visibleProducts();
     $('productResultCount').textContent = `${list.length.toLocaleString('es-US')} ${list.length === 1 ? 'producto' : 'productos'}`;
-    $('productList').innerHTML = list.length ? list.map(productCard).join('') : emptyMarkup();
+    $('productList').innerHTML = list.length ? '<div class="product-column-head" aria-hidden="true"><span>Identidad</span><span>Unidad y empaque</span><span>Procedencia</span><span>Manejo</span><span>Estado y acciones</span></div>' + list.map(productCard).join('') : emptyMarkup();
     $('productList').setAttribute('aria-busy', 'false');
   }
 
@@ -285,18 +283,22 @@
     state.detailId = item.id;
     $('productDetailTitle').textContent = item.sku ? `${item.sku} · ${item.name}` : item.name || 'Detalle de producto';
     $('productDetailBody').innerHTML = [
-      detailField('Nombre', item.name),
+      '<section class="product-detail-section"><h3>Identidad</h3>',
       detailField('SKU', item.sku),
-      detailField('Estado', item.active === false ? 'Inactivo' : 'Activo'),
+      detailField('Nombre', item.name),
       detailField('Marca', item.brand),
       detailField('Categoría', item.category),
+      detailField('Estado', item.active === false ? 'Inactivo' : 'Activo'),
+      '</section><section class="product-detail-section"><h3>Unidad y manejo</h3>',
       detailField('Unidad base', item.unit || 'unidades'),
       detailField('Presentación / empaque', item.package_format),
       detailField('Unidades por pallet', formatNumber(item.default_units_per_pallet)),
       detailField('Peso por unidad', item.unit_weight_kg === null || item.unit_weight_kg === undefined ? '' : `${formatNumber(item.unit_weight_kg)} kg`),
       detailField('Volumen por unidad', item.unit_volume_m3 === null || item.unit_volume_m3 === undefined ? '' : `${formatNumber(item.unit_volume_m3,6)} m³`),
+      '</section><section class="product-detail-section"><h3>Procedencia</h3>',
       detailField('País de origen', item.country_of_origin),
       detailField('HS Code', item.hs_code),
+      '</section>',
       detailField('Descripción', item.description, true),
       detailField('Notas internas', item.notes, true)
     ].join('');
@@ -490,6 +492,15 @@
       renderTabs();
       renderList();
     }));
+    document.querySelectorAll('[data-view]').forEach(tab => tab.addEventListener('keydown', event => {
+      const tabs = [...document.querySelectorAll('[data-view]')];
+      const index = tabs.indexOf(tab);
+      const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length
+        : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length
+        : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : -1;
+      if (next < 0) return;
+      event.preventDefault(); tabs[next].click(); tabs[next].focus();
+    }));
     $('productList').addEventListener('click', onProductListClick);
     document.querySelectorAll('[data-close="product"]').forEach(button => button.addEventListener('click', closeProductEditor));
     document.querySelectorAll('[data-close="detail"]').forEach(button => button.addEventListener('click', closeProductDetail));
@@ -509,6 +520,21 @@
       });
     });
     document.addEventListener('keydown', event => {
+      if (event.key === 'Tab') {
+        const modal = ['productDecision','productDetailModal','productModal']
+          .map(id => $(id)).find(node => !node.classList.contains('hidden'));
+        if (!modal) return;
+        const focusable = [...modal.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')]
+          .filter(node => !node.hidden && node.getClientRects().length);
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (!first) return;
+        if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {
+          event.preventDefault(); first.focus();
+        }
+        return;
+      }
       if (event.key !== 'Escape') return;
       if (!$('productDecision').classList.contains('hidden')) return finishDecision(false);
       if (!$('productDetailModal').classList.contains('hidden')) return closeProductDetail();

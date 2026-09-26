@@ -40,8 +40,8 @@ const workflow = read(files.workflow);
 [
   '<body class="erp-module-page erp-module-products" data-owner="products.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/products.css?v=20260922-figma2',
-  '/admin/products.js?v=20260903-ux7products1',
+  '/admin/products.css?v=20260926-figma1',
+  '/admin/products.js?v=20260926-figma1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero products-page-head"',
   'id="productsPageTitle">Productos',
@@ -69,7 +69,7 @@ const workflow = read(files.workflow);
 ].forEach(value => requireText(html,value,`HTML canónico ${value}`));
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerStylesIndex = html.indexOf('/admin/products.css?v=20260922-figma2');
+const ownerStylesIndex = html.indexOf('/admin/products.css?v=20260926-figma1');
 if (foundationIndex < 0 || ownerStylesIndex < 0 || foundationIndex > ownerStylesIndex) {
   failures.push('la base visual compartida debe cargar antes de products.css');
 }
@@ -177,7 +177,7 @@ forbid(owner, /method\s*:\s*['"]DELETE['"]/i, 'Productos introduce eliminación 
 ].forEach(value => requireText(api,value,`API autoritativa ${value}`));
 [
   "id:'productsSection'",
-  "src:'/admin/products.html?embedded=1'"
+  "src:'/admin/products.html?embedded=1&v=20260926-figma1'"
 ].forEach(value => requireText(navigation,value,`navegación de Productos ${value}`));
 [
   "openSection(page, 'productsSection')",
