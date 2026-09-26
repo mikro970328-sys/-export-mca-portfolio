@@ -13,7 +13,7 @@ const routeNames = ['products','suppliers','purchases','warehouse','inventory','
   'history','workflow-routes','task-supervisor-queue','manual-tracking-event'];
 const mime = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
   '.json':'application/json', '.webmanifest':'application/manifest+json',
-  '.png':'image/png', '.svg':'image/svg+xml', '.ico':'image/x-icon' };
+  '.png':'image/png', '.svg':'image/svg+xml', '.ico':'image/x-icon', '.woff2':'font/woff2' };
 
 // Optional asset gate controls delivery order in startup acceptance. HTTP status,
 // asset bytes, handlers and the service worker remain unchanged in every engine.

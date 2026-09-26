@@ -47,12 +47,12 @@ const workflow = read(files.workflow);
 [
   '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/costs.css?v=20260921-ux8contrast1',
-  '/admin/costs.js?v=20260922-costedit2',
+  '/admin/costs.css?v=20260922-figma2',
+  '/admin/costs.js?v=20260922-figma2',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero costs-page-head"',
-  'id="costsPageTitle">Costos y rentabilidad',
-  'class="costs-hero-state"',
+  'id="costsPageTitle">Gastos y rentabilidad',
+  'class="costs-hero-state costs-visually-hidden"',
   'id="costsLastUpdated"',
   'id="metrics" class="metrics costs-metrics"',
   'id="costsReadOnlyNote"',
@@ -68,7 +68,7 @@ const workflow = read(files.workflow);
 ].forEach(value => requireText(html, value, 'HTML canónico ' + value));
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerStylesIndex = html.indexOf('/admin/costs.css?v=20260921-ux8contrast1');
+const ownerStylesIndex = html.indexOf('/admin/costs.css?v=20260922-figma2');
 if (foundationIndex < 0 || ownerStylesIndex < 0 || foundationIndex > ownerStylesIndex) {
   failures.push('la base visual compartida debe cargar antes de costs.css');
 }
@@ -107,7 +107,7 @@ forbid(html, /purchases\.css/i, 'Costos vuelve a depender del CSS de Compras');
 ].forEach(value => requireText(styles, value, 'CSS propietario ' + value));
 
 requireText(styles, 'overflow-x:auto;', 'scroll horizontal interno de la tabla');
-requireText(styles, 'min-width:1180px;', 'ancho interno controlado de la tabla');
+requireText(styles, 'min-width:900px;', 'ancho interno controlado de la tabla');
 requireText(styles, 'overflow-x:hidden;', 'protección contra desbordamiento del documento');
 forbid(styles, /@import|!important|font-family\s*:\s*Arial|linear-gradient/i, 'costs.css conserva estilos legacy, importación tardía o sobrescritura');
 forbid(styles, /\b(?:fetch|MutationObserver|prompt|alert|confirm)\b/, 'costs.css mezcla comportamiento de JavaScript');
@@ -243,7 +243,7 @@ class FakeElement {
 const fixtureNodes = new Map();
 [
   'pageMsg', 'metrics', 'newCharge', 'costsReadOnlyNote', 'costsLastUpdated',
-  'costsResultCount', 'clearCostFilters', 'search', 'refresh', 'content',
+  'costsListTitle', 'chargeHelp', 'chargeTotalPreview', 'allocationPreview', 'costsResultCount', 'clearCostFilters', 'search', 'refresh', 'content',
   'cCategory', 'cStage', 'cDate', 'cAmount', 'cCurrency', 'cSupplier',
   'cReference', 'cNotes', 'allocationEditor', 'addAllocation', 'saveCharge',
   'chargeTitle', 'chargeMsg', 'detailTitle', 'detailSubtitle', 'detailBody',
@@ -431,7 +431,7 @@ if (!fixtureNodes.get('content').innerHTML.includes('data-post="cost-1"')) failu
 if (fixtureNodes.get('content').innerHTML.includes('data-edit="cost-1"')) failures.push('Costos presenta edit pese a estar denegado por capabilities');
 if (fixtureNodes.get('content').innerHTML.includes('data-void="cost-1"')) failures.push('Costos presenta void pese a estar denegado por capabilities');
 if ((fixtureNodes.get('metrics').innerHTML.match(/<article/g) || []).length !== 5) failures.push('Costos no presenta exactamente cinco métricas');
-if (fixtureNodes.get('costsResultCount').textContent !== '1 cargo') failures.push('Costos no actualiza el contador de cargos');
+if (fixtureNodes.get('costsResultCount').textContent !== '1 gasto') failures.push('Costos no actualiza el contador de cargos');
 if (fixtureNodes.get('newCharge').hidden) failures.push('Costos oculta la creación pese a write_access');
 
 fixtureWindow.CostsModule?.openCost('cost-1');

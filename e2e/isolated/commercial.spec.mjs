@@ -73,6 +73,10 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
         isMobile:use.isMobile,hasTouch:use.hasTouch,deviceScaleFactor:use.deviceScaleFactor,
         locale:'es-US',timezoneId:'America/New_York',serviceWorkers:'allow'});
       contexts.push(context);
+      await context.addInitScript(()=>{
+        window.__qaModulesReady=false;
+        window.addEventListener('export-mca:modules-ready',()=>{window.__qaModulesReady=true;},{once:true});
+      });
       await context.route('**/*',route => {
         const url = new URL(route.request().url());
         if (url.origin===api.base || ['data:','blob:','about:'].includes(url.protocol)) return route.continue();
@@ -100,9 +104,9 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await page.locator('#login').click();
       expect((await response).status()).toBe(200);
       await expect(page.locator('#loginPage')).toBeHidden();
-      // The shell is revealed before its lazy navigation owner has mounted.
-      // Observe readiness only; navigation itself still uses real UI clicks.
-      await page.waitForFunction(()=>window.NavigationShell?.owner==='navigation-shell.js');
+      // Startup can still restore the active group after the shell owner mounts.
+      // Early interaction is covered separately by navigation-startup.spec.mjs.
+      await page.waitForFunction(()=>window.__qaModulesReady===true);
     }
     const {a,b}=sessions;
     const module = (session,name)=>session.page.frameLocator(`#${name}Section iframe`);

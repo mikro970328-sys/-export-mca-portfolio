@@ -3,25 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Costos y rentabilidad · Export MCA</title>
+  <title>Gastos y rentabilidad · Export MCA</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
-  <link rel="stylesheet" href="/admin/costs.css?v=20260921-ux8contrast1">
+  <link rel="stylesheet" href="/admin/costs.css?v=20260922-figma2">
 </head>
 <body class="erp-module-page erp-module-costs" data-owner="costs.js">
   <main class="wrap costs-shell">
     <header class="module-hero costs-page-head" aria-labelledby="costsPageTitle">
       <div class="module-heading costs-page-heading">
-        <div class="module-kicker costs-page-kicker">Finanzas · Costos y margen</div>
-        <h1 id="costsPageTitle">Costos y rentabilidad</h1>
-        <p>Consulta cargos, costo reconocido de mercancía y márgenes calculados por el ERP sin mezclar monedas ni alterar la autoridad física de Compras, Almacén o Cargues.</p>
+        <div class="module-kicker costs-page-kicker">Finanzas</div>
+        <h1 id="costsPageTitle">Gastos y rentabilidad</h1>
+        <p>Controla los gastos de cada operación y consulta su rentabilidad.</p>
       </div>
       <div class="costs-hero-actions">
-        <div class="costs-hero-state" aria-label="Estado del módulo">
-          <span class="costs-live-dot" aria-hidden="true"></span>
-          <div><strong>Modelo financiero</strong><span id="costsLastUpdated">Preparando costos…</span></div>
-        </div>
-        <button id="newCharge" class="btn orange" type="button" hidden>Nuevo cargo</button>
+        <span id="costsLastUpdated" class="costs-hero-state costs-visually-hidden" role="status">Preparando gastos…</span>
+        <button id="newCharge" class="btn orange" type="button" hidden>Nuevo gasto</button>
       </div>
     </header>
 
@@ -29,11 +26,11 @@
 
     <div id="costsReadOnlyNote" class="costs-readonly" role="note" hidden>
       <span class="costs-readonly-icon" aria-hidden="true">i</span>
-      <span>Puedes consultar cargos, costos reconocidos, rentabilidad y trazabilidad. Registrar o modificar cargos requiere permiso de gestión financiera.</span>
+      <span>Puedes consultar los gastos y su rentabilidad. Para registrar o modificar gastos necesitas permiso de gestión financiera.</span>
     </div>
 
     <section id="metrics" class="metrics costs-metrics" aria-label="Resumen de Costos y rentabilidad" aria-live="polite">
-      <article class="metric cost-metric-active"><span>Cargos activos</span><b>—</b><small>Contabilizados y vigentes</small></article>
+      <article class="metric cost-metric-active"><span>Gastos activos</span><b>—</b><small>Contabilizados y vigentes</small></article>
       <article class="metric cost-metric-drafts"><span>Borradores</span><b>—</b><small>Pendientes de contabilizar</small></article>
       <article class="metric cost-metric-pending"><span>Sin asignar</span><b>—</b><small>Requieren distribución</small></article>
       <article class="metric cost-metric-receipts"><span>Recepciones</span><b>—</b><small>Con costo reconocido</small></article>
@@ -43,9 +40,7 @@
     <section class="panel costs-list-panel" aria-labelledby="costsListTitle">
       <header class="costs-panel-head">
         <div>
-          <span class="costs-eyebrow">Lectura financiera canónica</span>
-          <h2 id="costsListTitle">Cargos y costos reconocidos</h2>
-          <p>Alterna entre cargos directos, costo recibido, costo de Cargues y rentabilidad sin prorrateos ni conversiones automáticas.</p>
+          <h2 id="costsListTitle">Gastos registrados</h2>
         </div>
         <span id="costsResultCount" class="costs-result-count">Consultando…</span>
       </header>
@@ -53,11 +48,10 @@
       <div class="costs-list-toolbar">
         <label class="costs-search-field" for="search">
           <span class="costs-visually-hidden">Buscar en Costos y rentabilidad</span>
-          <span class="costs-search-icon" aria-hidden="true">⌕</span>
-          <input id="search" class="search" type="search" autocomplete="off" placeholder="Buscar cargo, PO, recepción, Cargue, contenedor, venta o factura">
+          <input id="search" class="search" type="search" autocomplete="off" placeholder="Buscar gasto o referencia">
         </label>
         <div class="tabs costs-view-tabs" role="group" aria-label="Elegir vista financiera">
-          <button class="btn active" type="button" data-view="charges" aria-pressed="true">Cargos</button>
+          <button class="btn active" type="button" data-view="charges" aria-pressed="true">Gastos</button>
           <button class="btn" type="button" data-view="landed" aria-pressed="false">Costo recibido</button>
           <button class="btn" type="button" data-view="cogs" aria-pressed="false">Costo de Cargues</button>
           <button id="profitabilityTab" class="btn" type="button" data-view="profitability" aria-pressed="false">Rentabilidad</button>
@@ -75,34 +69,33 @@
   <div id="chargeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="chargeTitle" aria-hidden="true">
     <div class="dialog cost-form-dialog">
       <div class="dialog-head">
-        <div><span class="costs-dialog-kicker">Cargo operativo</span><h2 id="chargeTitle">Nuevo cargo</h2><div class="muted">El cargo es independiente de la factura del proveedor y debe distribuirse al 100% antes de contabilizar.</div></div>
-        <button class="btn costs-close-button" data-close="charge" type="button" aria-label="Cerrar formulario de cargo">✕</button>
+        <div><span class="costs-dialog-kicker">Gasto operativo</span><h2 id="chargeTitle">Nuevo gasto</h2><p id="chargeHelp" class="muted">Registra el gasto y distribúyelo antes de contabilizar.</p></div>
+        <button class="btn costs-close-button" data-close="charge" type="button" aria-label="Cerrar formulario de gasto">Cerrar</button>
       </div>
 
       <section class="cost-form-section" aria-labelledby="costGeneralTitle">
-        <div class="cost-form-section-head"><span class="cost-form-step">1</span><div><h3 id="costGeneralTitle">Información general</h3><p>Categoría, etapa, fecha, importe y referencia del cargo.</p></div></div>
+        <div class="cost-form-section-head"><h3 id="costGeneralTitle">Información general</h3></div>
         <div class="grid3">
           <div><label for="cCategory">Categoría *</label><select id="cCategory"></select></div>
           <div><label for="cStage">Etapa *</label><select id="cStage"></select></div>
           <div><label for="cDate">Fecha incurrida</label><input id="cDate" type="date"></div>
         </div>
-        <div class="grid3">
+        <div class="cost-form-amounts">
           <div><label for="cAmount">Monto *</label><input id="cAmount" type="number" min="0" step="0.01" inputmode="decimal"></div>
           <div><label for="cCurrency">Moneda *</label><input id="cCurrency" maxlength="3" value="USD" autocomplete="off"></div>
           <div><label for="cSupplier">Proveedor opcional</label><select id="cSupplier"></select></div>
-        </div>
-        <div class="grid">
           <div><label for="cReference">Referencia externa</label><input id="cReference" maxlength="300" autocomplete="off"></div>
-          <div><label for="cNotes">Notas</label><input id="cNotes" maxlength="2000" autocomplete="off"></div>
         </div>
+        <div class="cost-form-notes"><label for="cNotes">Notas</label><textarea id="cNotes" maxlength="2000" rows="3"></textarea></div>
       </section>
 
       <section class="cost-form-section" aria-labelledby="costAllocationTitle">
-        <div class="cost-form-section-head cost-allocation-head"><span class="cost-form-step">2</span><div><h3 id="costAllocationTitle">Distribución</h3><p>Cada línea apunta a una orden, recepción, Cargue, Contenedor u Operación. La base es informativa.</p></div><button id="addAllocation" class="btn" type="button">Agregar línea</button></div>
+        <div class="cost-form-section-head cost-allocation-head"><h3 id="costAllocationTitle">Distribución del gasto</h3><button id="addAllocation" class="btn" type="button">Agregar línea</button></div>
         <div id="allocationEditor" class="allocation-editor"></div>
+        <p id="allocationPreview" class="cost-allocation-preview" role="status" aria-live="polite"></p>
       </section>
 
-      <div class="actions cost-modal-actions"><button class="btn" data-close="charge" type="button">Cancelar</button><button id="saveCharge" class="btn orange" type="button">Guardar cargo</button></div>
+      <footer class="cost-form-footer"><div class="cost-form-total"><b id="chargeTotalPreview">—</b><span>Importe del gasto</span></div><div class="actions cost-modal-actions"><button class="btn" data-close="charge" type="button">Cancelar</button><button id="saveCharge" class="btn orange" type="button">Guardar gasto</button></div></footer>
       <div id="chargeMsg" class="msg cost-dialog-message" role="status" aria-live="polite"></div>
     </div>
   </div>
@@ -136,7 +129,7 @@
     </div>
   </div>
 
-  <script src="/admin/costs.js?v=20260922-costedit2" defer></script>
+  <script src="/admin/costs.js?v=20260922-figma2" defer></script>
   <script src="/admin/embedded-auto-refresh.js?v=20260920-speed3" defer></script>
 </body>
 </html>

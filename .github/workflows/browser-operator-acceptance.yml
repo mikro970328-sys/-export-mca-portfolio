@@ -55,7 +55,7 @@ jobs:
         run: npx playwright install --with-deps chromium webkit
       - name: Computed header and icon contrast without business data
         working-directory: e2e/isolated
-        run: npm test -- header-contrast.spec.mjs figma-sales.spec.mjs --project=${{ matrix.project }}
+        run: npm test -- header-contrast.spec.mjs figma-sales.spec.mjs figma-costs.spec.mjs --project=${{ matrix.project }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -70,7 +70,7 @@ jobs:
       matrix:
         project: [chromium-desktop, webkit-mobile]
         # Each story initializes an empty database in its own service containers.
-        suite: [operators, commercial, direct-ship, cancellation-finance, navigation-startup, repeat-purchase, tracking-documents, tracking-workflow, warehouse-recovery]
+        suite: [operators, commercial, direct-ship, cancellation-finance, navigation-startup, repeat-purchase, tracking-documents, tracking-workflow, warehouse-recovery, costs-shell]
     services:
       postgres:
         image: postgres:17.6
