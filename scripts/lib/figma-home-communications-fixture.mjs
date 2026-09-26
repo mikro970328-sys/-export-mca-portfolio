@@ -9,8 +9,8 @@ const font=readFileSync(root+'admin/fonts/InterVariable.woff2').toString('base64
 export function homeCommunicationsFixture({module='dashboard',writable=true,failRead=false,restricted=false}={}){
   if(!['dashboard','alerts','inbox'].includes(module))throw Error('Unsupported workspace');
   const section=module==='alerts'?'notificationsSection':'dashboardSection';
-  const dom=new JSDOM(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body class="${writable?'':'access-notifications-readonly'}"><div class="topbar-actions"></div><section id="${section}" class="app-section"></section></body></html>`),doc=dom.window.document;
-  for(const name of ['platform-theme','native-workspace-foundation','access-control','dashboard-executive','operational-alert-center','notification-inbox','push-notifications']){
+  const dom=new JSDOM(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body class="${writable?'':'access-notifications-readonly'}"><header class="topbar"><div class="topbar-heading"><span class="topbar-eyebrow">Export MCA</span><b>Inicio</b></div><div class="topbar-actions"></div></header><section id="${section}" class="app-section"></section></body></html>`),doc=dom.window.document;
+  for(const name of ['platform-theme','navigation-shell','native-workspace-foundation','access-control','dashboard-executive','operational-alert-center','notification-inbox','push-notifications']){
     const style=doc.createElement('style');style.textContent=read('admin/'+name+'.css').replaceAll('/admin/fonts/InterVariable.woff2',`data:font/woff2;base64,${font}`);doc.head.append(style);
   }
   const csp=doc.createElement('meta');csp.httpEquiv='Content-Security-Policy';csp.content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:";doc.head.prepend(csp);
@@ -72,6 +72,6 @@ export function homeCommunicationsFixture({module='dashboard',writable=true,fail
     };`;
   const owner=module==='dashboard'?'dashboard-operational-state':module==='alerts'?'operational-alert-center':'notification-inbox';
   const boot=module==='dashboard'?"document.addEventListener('DOMContentLoaded',()=>{window.__fixtureSettled=window.ExecutiveDashboard.refresh();});":module==='alerts'?"":"document.addEventListener('DOMContentLoaded',()=>{window.__fixtureSettled=window.NotificationInbox.open();});";
-  for(const code of [harness,read('admin/admin-shell-runtime.js'),read('admin/ui-icon-system.js'),read('admin/'+owner+'.js'),boot]){const script=doc.createElement('script');script.textContent=code.replaceAll('</script','<\\/script');doc.body.append(script);}
+  for(const code of [harness,read('admin/admin-shell-runtime.js'),"window.showSection=id=>window.__fixtureNavigation.push({section:id});",read('admin/ui-icon-system.js'),read('admin/'+owner+'.js'),boot]){const script=doc.createElement('script');script.textContent=code.replaceAll('</script','<\\/script');doc.body.append(script);}
   const html=dom.serialize();dom.window.close();return html;
 }

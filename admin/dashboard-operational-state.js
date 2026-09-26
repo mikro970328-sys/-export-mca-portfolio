@@ -213,8 +213,8 @@
     return `<section class="executive-section executive-activity"><div class="executive-section-head"><div><span class="executive-section-kicker">Movimientos</span><h3>Actividad reciente</h3><p>Últimos cambios en la operación logística.</p></div><button type="button" class="alt" data-dashboard-open="containers">Ver tracking</button></div>${rows.length?`<div class="executive-activity-list">${rows.map(row=>`<button type="button" class="executive-activity-row" data-dashboard-shipment="${esc(row.id)}"><span class="executive-activity-icon">${dashboardIcon('containers')}</span><div><strong>${esc(row.container_number||'Sin número')}</strong><span>${esc(row.client_name||'Sin cliente')}</span></div><div><span class="executive-activity-status">${esc(row.operational_status||'Registrado')}</span><small>${esc(dateLabel(row.updated_at))}</small></div></button>`).join('')}</div>`:'<div class="executive-empty">No hay actividad logística reciente.</div>'}</section>`;
   }
 
-  function renderDashboard(data) {
-    const focusedId=document.activeElement?.id;
+  function renderDashboard(data,restoreFocusId) {
+    const focusedId=restoreFocusId||document.activeElement?.id;
     rememberDisclosures();
     state.data=data;
     window.__lastDashboardPayload=data;
@@ -267,6 +267,7 @@
 
   async function reloadDashboard(filters=readFilters()) {
     if(state.loading)return false;
+    const focusedId=document.activeElement?.id;
     state.loading=true;
     state.filters={...filters};
     const button=$('dashboardApplyFilters');
@@ -276,7 +277,7 @@
       const params=new URLSearchParams();
       Object.entries(filters).forEach(([key,value])=>{if(value)params.set(key,value);});
       const result=await window.api(`/api/dashboard${params.size?`?${params}`:''}`);
-      renderDashboard(result);
+      renderDashboard(result,focusedId);
       return true;
     } catch(error) {
       console.error('[executive dashboard]',error);
