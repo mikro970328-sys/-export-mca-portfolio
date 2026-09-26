@@ -11,7 +11,7 @@
 .tasks-head-actions { display:flex;flex:none;gap:16px; }
 .tasks-hero-state { position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap; }
 :is(#tasksSection,#tasksModal) button { min-height:44px;margin:0;padding:11px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font:600 14px/20px var(--font-sans);box-shadow:none;cursor:pointer; }
-:is(#tasksSection,#tasksModal) button:not(:disabled):hover { background:var(--surface-soft);border-color:var(--line-strong);transform:none;box-shadow:none; }
+:is(#tasksSection,#tasksModal) button:where(:not(:disabled):hover) { background:var(--surface-soft);border-color:var(--line-strong);transform:none;box-shadow:none; }
 :is(#tasksSection,#tasksModal) button.tasks-primary,#tasksModal button.success { background:var(--orange);border-color:var(--orange);color:#fff; }
 #tasksModal button.danger { color:var(--bad);border-color:var(--bad); }
 :is(#tasksSection,#tasksModal) button:disabled { opacity:.55;cursor:not-allowed; }

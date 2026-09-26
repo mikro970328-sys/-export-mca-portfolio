@@ -10,6 +10,11 @@ const writes=page=>page.evaluate(()=>window.__fixtureCalls.filter(c=>c.method!==
 async function shot(page,info,name,fullPage=false){const path=info.outputPath(name+'.png');await page.screenshot({path,fullPage,animations:'disabled',scale:'css'});await info.attach(name,{path,contentType:'image/png'});}
 async function fits(page){expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize().width);}
 async function hit(page,selector){const n=page.locator(selector);await n.scrollIntoViewIfNeeded();expect(await n.evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===el;})).toBe(true);}
+async function primaryContrast(page,selector){
+ const button=page.locator(selector);await button.hover();
+ const contrast=await button.evaluate(el=>{const s=getComputedStyle(el);const l=color=>color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((a,v,i)=>a+v*[.2126,.7152,.0722][i],0);const a=l(s.color),b=l(s.backgroundColor);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);});
+ expect(contrast).toBeGreaterThanOrEqual(4.5);
+}
 const taskDetail=async page=>{await page.locator('[data-task-action="open"][data-id="task-0"]').click();await expect(page.locator('#tasksModalTitle')).toHaveText('Revisar documentación del contenedor');};
 for(const width of [1440,390]){
  test(`Tasks: queue metrics, keyboard filtering and linked context at ${width}`,async({page},info)=>{
@@ -33,7 +38,7 @@ for(const viewport of [{width:1440,height:700},{width:390,height:500}]){
   await page.locator('#tasksModalActions .tasks-primary').click();expect(await writes(page)).toEqual([]);
   await page.locator('[name="title"]').fill('Coordinar entrega nueva');await page.locator('[name="description"]').fill('Comprobar documentos y confirmar con el equipo.');await page.locator('[name="priority"]').selectOption('high');await page.locator('[name="due_at"]').fill('2026-09-30T16:00');
   await page.locator('#tasksFormTeam').selectOption('team-0');await expect(page.locator('#tasksFormAssignee option')).toHaveCount(2);await page.locator('#tasksFormAssignee').selectOption('operator-0');await page.locator('#tasksFormTeam').selectOption('team-1');await expect(page.locator('#tasksFormAssignee')).toHaveValue('');await page.locator('#tasksFormAssignee').selectOption('operator-1');
-  await page.locator('[name="entity_type"]').selectOption('shipment');await page.locator('[name="entity_id"]').fill('10000000-0000-4000-8000-000000000001');await hit(page,'[name="entity_id"]');await fits(page);await shot(page,info,'nueva-tarea');
+  await page.locator('[name="entity_type"]').selectOption('shipment');await page.locator('[name="entity_id"]').fill('10000000-0000-4000-8000-000000000001');await hit(page,'[name="entity_id"]');await fits(page);await primaryContrast(page,'#tasksModalActions .tasks-primary');await shot(page,info,'nueva-tarea');
   await page.evaluate(()=>window.__fixtureRejectWrites=true);await page.locator('#tasksModalActions .tasks-primary').click();await expect(page.locator('#tasksModalError')).toContainText('No se pudo crear');await expect(page.locator('[name="title"]')).toHaveValue('Coordinar entrega nueva');
   await page.evaluate(()=>window.__fixtureRejectWrites=false);await page.locator('#tasksModalActions .tasks-primary').click();await expect(page.locator('#tasksModal')).toBeHidden();await expect(page.locator('#taskMetricPending strong')).toHaveText('3');
   const sent=await writes(page);expect(sent).toHaveLength(2);expect(sent[1].body).toMatchObject({action:'create',title:'Coordinar entrega nueva',priority:'high',assigned_team_id:'team-1',assigned_admin_id:'operator-1',entity_type:'shipment',entity_id:'10000000-0000-4000-8000-000000000001'});
@@ -41,7 +46,7 @@ for(const viewport of [{width:1440,height:700},{width:390,height:500}]){
  });
  test(`Worker creation: required fields, focus and safe retry at ${viewport.width}`,async({page},info)=>{
   await page.setViewportSize(viewport);await open(page,'workers');await page.locator('#workersCreateButton').click();await expect(page.locator('#workerName')).toBeFocused();await page.locator('#saveWorker').click();expect(await writes(page)).toEqual([]);
-  await page.locator('#workerName').fill('María de ejemplo');await page.locator('#workerPhone').fill('+530000000003');await page.locator('#workerPosition').fill('Almacén');await hit(page,'#workerPosition');await fits(page);await shot(page,info,'nuevo-trabajador');
+  await page.locator('#workerName').fill('María de ejemplo');await page.locator('#workerPhone').fill('+530000000003');await page.locator('#workerPosition').fill('Almacén');await hit(page,'#workerPosition');await fits(page);await primaryContrast(page,'#saveWorker');await shot(page,info,'nuevo-trabajador');
   await page.evaluate(()=>window.__fixtureRejectWrites=true);await page.locator('#saveWorker').click();await expect(page.locator('#workerMsg')).toContainText('No se pudo guardar');await expect(page.locator('#workerName')).toHaveValue('María de ejemplo');await expect(page.locator('#workerPhone')).toBeEnabled();
   await page.evaluate(()=>window.__fixtureRejectWrites=false);await page.locator('#saveWorker').click();await expect(page.locator('#workersModal')).toBeHidden();await expect(page.locator('#workersMetricTotal strong')).toHaveText('4');expect((await writes(page)).at(-1).body).toEqual({full_name:'María de ejemplo',phone:'+530000000003',position:'Almacén'});
  });
