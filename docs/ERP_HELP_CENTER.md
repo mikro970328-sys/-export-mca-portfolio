@@ -37,7 +37,17 @@ Las instrucciones siguen el alcance actual: el seguimiento se mantiene en el ERP
 - `e2e/isolated/help-center.spec.mjs`: integración con el shell y control de acceso reales, administrador y cuenta restringida, navegación, filtros, accesibilidad del foco, impresión, copia fallida y pantallas de 1440/1024 px. Datos en memoria, tráfico externo bloqueado.
 - Se incluye en Browser Operator Acceptance. Las pruebas de navegación y los contratos de caché existentes conservan sus exigencias, actualizando únicamente las referencias de los archivos modificados.
 - Chequeos locales de ownership, integración P19 y los trece contratos de versión afectados aprobados. Composición completa en jsdom: ayuda visible para ambas cuentas, 43 artículos y enlace de administración bloqueado para la cuenta restringida.
-- Pendiente en este corte: resultado remoto de navegador, capturas y publicación exacta. No declarar publicada hasta completar esa evidencia.
+- Head final probado `d9dabb84350491368e6f7c482104332be6dee982`, árbol `2bc760c6b7ce3802b63d2b74a5910af48a8c09ef`: **37/37 workflows aprobados**. Browser Operator Acceptance `36257733293`: **22/22 trabajos**, **179/179 pruebas visuales/de interfaz en Chromium** y **179/179 en WebKit**. Capturas de índice, guía y reporte revisadas a 1440/1024 px.
+- Las pruebas generales detectaron y se corrigió un conflicto de arranque: Ayuda no participa como destino automático antes de que existan los módulos diferidos; sí se restaura cuando el usuario la eligió. `navigation-startup.spec.mjs` verifica apertura y recarga de Ayuda con un operador restringido; los recorridos existentes de Facturas, Gastos y Almacén conservan sus exigencias.
+- La impresión se aplica solo con Ayuda activa. La prueba comprueba que Mi cuenta sigue visible al imprimir fuera de Ayuda. Las capturas desactivan animaciones para registrar el estado final.
+
+## Publicación verificada
+
+- PR **#360** integrado en main `f802588c7e80b049ca7121b42874325e88a536a6`; árbol idéntico al candidato probado.
+- Vercel **`dpl_6uEJNkkvk2PCMUfn7zyaFDmth2gB` READY** el 26 de septiembre de 2026.
+- GET a `https://admin.exportmca.com`: siete archivos con HTTP 200 y bytes idénticos al código probado: `index.html`, `erp.js`, `navigation-shell.js`, `ui-icon-system.js`, `help-center.js`, `help-center.css`, `help-content.js` dentro de `/admin/`.
+- Ruta de uso: **ERP → Ayuda → Tu primer día en el ERP**. También se puede buscar una tarea o problema directamente.
+- Verificación en memoria y bases desechables; sin escrituras QA en producción/Preview, envíos reales ni cambios de datos o permisos. No certifica preparación operativa de los catálogos ni el iPhone físico.
 
 ## Mantenimiento
 
