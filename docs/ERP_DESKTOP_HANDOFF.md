@@ -42,4 +42,3 @@ Las pantallas usan los owners existentes, Inter local y los tokens compartidos. 
 No quedan bloques pendientes de este rediseño de escritorio. La validación WebKit es simulada y no acredita el iPhone físico, Safari con teclado nativo, PWA instalada ni push. La siguiente revisión debe realizarse sobre el iPhone de Daniel después del aviso de cierre. No comprar tiempo de BrowserStack ni reactivar pruebas físicas o envíos por cuenta propia.
 
 Las referencias detalladas de Figma, comportamiento y conservación de reglas están en `FIGMA_*.md`. Los estados anteriores se conservan como historial; esta entrega es el estado vigente.
-
