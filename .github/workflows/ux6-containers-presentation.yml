@@ -10,9 +10,12 @@ on:
       - 'admin/shipment-editor.css'
       - 'admin/native-workspace-foundation.css'
       - 'admin/erp.js'
+      - 'api/shipment-documents.js'
       - 'admin/registration-form-shell.js'
       - 'scripts/check-ux7-tracking-visual-owner.mjs'
       - 'scripts/check-ux6-containers-presentation.mjs'
+      - 'scripts/check-customs-upload-recovery.mjs'
+      - 'scripts/check-customs-delete-recovery.mjs'
       - '.github/workflows/ux6-containers-presentation.yml'
   workflow_dispatch:
 
@@ -26,12 +29,15 @@ jobs:
           node-version: '24'
       - run: node scripts/check-ux7-tracking-visual-owner.mjs
       - run: node scripts/check-ux6-containers-presentation.mjs
+      - run: node scripts/check-customs-upload-recovery.mjs
+      - run: node scripts/check-customs-delete-recovery.mjs
       - run: node scripts/check-ux6-shipment-editor-presentation.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check admin/containers-module.js
           node --check admin/shipment-editor.js
           node --check admin/erp.js
+          node --check api/shipment-documents.js
           node --check scripts/check-ux7-tracking-visual-owner.mjs
           node --check scripts/check-ux6-containers-presentation.mjs
       - run: node scripts/check-ux5-shipment-actions.mjs

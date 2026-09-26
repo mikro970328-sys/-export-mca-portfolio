@@ -1,3 +1,12 @@
+## Continuidad · 26 sep 2026 · Mejoras ERP listas para revisión local
+
+Daniel solicitó simplificar el uso diario para él y su equipo, sin empezar el trabajo de iPhone. La sección Ayuda ya estaba publicada; este bloque añade y documenta los cambios solicitados en clientes, ventas, documentos, rentabilidad y salarios.
+
+- Implementado localmente: campo NIT con detección de duplicados; un solo campo comercial Empresa o MIPYME; alta rápida de cliente desde ventas; listas En marcha/Historial; total acordado y fecha estimada de entrega; mercancía por encargo; documentos adicionales por contenedor; rentabilidad atribuida a cada contenedor y a la compañía por mes/año; salarios y propinas; visibilidad temporal al escribir contraseñas.
+- La rentabilidad de contenedor usa ventas y costos de mercancía asignados a sus Cargues o Direct Ship y cargos explícitos del contenedor/Cargue. No prorratea gastos de Operación entre contenedores; la vista de Operaciones mantiene los totales del expediente.
+- El resultado de Empresa separa monedas y se basa en facturas emitidas, gastos contabilizados, costo de mercancía reconocido y nómina ingresada. No declarar una cifra completa cuando el costo de una factura está pendiente.
+- Ayuda actualizada y regresiones locales aprobadas, incluida una prueba desechable de venta asignada a dos contenedores y Direct Ship. Falta publicar el cambio y aplicar las migraciones mediante el proceso normal de revisión. No se han escrito datos QA en producción ni Preview y no se ha iniciado iPhone.
+
 ## Continuidad · 26 sep 2026 · Centro de ayuda publicado
 
 Daniel solicitó una sección Ayuda dentro del ERP, con guía de trabajo y solución de problemas para su equipo. Se publicaron 43 artículos, buscador, temas, recorridos completos, impresión y plantilla de incidencias. Sin API ni escrituras comerciales. Detalles y validación en [ERP_HELP_CENTER.md](ERP_HELP_CENTER.md). PR #360, main `f802588c7e80b049ca7121b42874325e88a536a6`, Vercel `dpl_6uEJNkkvk2PCMUfn7zyaFDmth2gB` READY. CI final `d9dabb8`: 37/37 workflows, 22/22 trabajos de navegador y 179/179 pruebas visuales por motor. Capturas revisadas; siete archivos exactos en producción por GET. iPhone permanece fuera del alcance por instrucción posterior del usuario.

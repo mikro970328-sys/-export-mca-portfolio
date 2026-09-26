@@ -7,6 +7,7 @@ const read=p=>readFileSync(p,'utf8');
 const context={window:{}};vm.runInNewContext(read('admin/help-content.js'),context);
 const articles=context.window.ExportMcaHelpContent.articles;
 const ids=new Set(articles.map(a=>a.id));
+const byId=new Map(articles.map(article=>[article.id,article]));
 assert.equal(ids.size,articles.length,'Duplicate article id');
 const validSections=new Set(['accountSection','adminsSection','clientsSection','salesSection','publicationsSection','productsSection','suppliersSection','purchasesSection','warehouseSection','inventorySection','loadsSection','containersSection','invoicesSection','payablesSection','costsSection','reportsSection','tasksSection','workersSection','notificationsSection']);
 for(const article of articles){
@@ -16,6 +17,19 @@ for(const article of articles){
   for(const id of article.related)assert.ok(ids.has(id),article.id+' broken related: '+id);
 }
 for(const section of validSections)assert.ok(articles.some(a=>a.section===section),'Missing guide for '+section);
+const guide=id=>[byId.get(id)?.title,byId.get(id)?.summary,...(byId.get(id)?.steps||[]),byId.get(id)?.note].join(' ').toLocaleLowerCase('es');
+assert.match(guide('clientes'),/nit.*empresa o mipyme|empresa o mipyme.*nit/,'Client guide covers NIT and the single commercial name field');
+assert.match(guide('ventas'),/agregar cliente/,'Sales guide covers creating a customer from the picker');
+assert.match(guide('ventas'),/total acordado/,'Sales guide explains total-first pricing');
+assert.match(guide('ventas'),/por definir/,'Nationalization may remain undefined');
+assert.match(guide('documentos'),/otros archivos/,'Container guide covers supporting files');
+assert.match(guide('documentos'),/ready/,'Container guide explains official-document readiness');
+assert.match(guide('margen'),/salarios y propinas/,'Profitability guide covers payroll deductions');
+assert.match(guide('margen'),/cada contenedor/,'Profitability guide distinguishes actual containers from operations');
+assert.match(guide('margen'),/no se reparten automáticamente/,'Profitability guide explains non-allocated operation expenses');
+assert.match(guide('margen'),/empresa/,'Profitability guide covers company results');
+assert.match(guide('equipo'),/icono de ojo/,'User guide explains the temporary password visibility control');
+assert.match(guide('trabajadores'),/salarios y propinas/,'Worker guide links to monthly payroll entry');
 
 // UI behavior with no transport: finding help must not write operational data.
 const dom=new JSDOM('<section id="helpSection" class="app-section"><div id="helpRoot"></div></section><section id="invoicesSection" class="app-section"></section>',{url:'https://help-qa.invalid/',runScripts:'outside-only'});

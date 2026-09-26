@@ -47,8 +47,8 @@ const workflow = read(files.workflow);
 [
   '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/costs.css?v=20260922-figma2',
-  '/admin/costs.js?v=20260926-focus1',
+  '/admin/costs.css?v=20260926-business1',
+  '/admin/costs.js?v=20260926-business1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero costs-page-head"',
   'id="costsPageTitle">Gastos y rentabilidad',
@@ -68,7 +68,7 @@ const workflow = read(files.workflow);
 ].forEach(value => requireText(html, value, 'HTML canónico ' + value));
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerStylesIndex = html.indexOf('/admin/costs.css?v=20260922-figma2');
+const ownerStylesIndex = html.indexOf('/admin/costs.css?v=20260926-business1');
 if (foundationIndex < 0 || ownerStylesIndex < 0 || foundationIndex > ownerStylesIndex) {
   failures.push('la base visual compartida debe cargar antes de costs.css');
 }
@@ -471,9 +471,11 @@ if (fixtureNodes.get('detailActions').innerHTML.includes('data-detail-edit="cost
   "supabase('sales_order_profitability'",
   "supabase('issued_invoice_profitability'",
   "supabase('load_profitability'",
+  "supabase('shipment_profitability'",
   "supabase('operation_profitability'",
   "return fail(res, 500, 'No se pudo cargar la rentabilidad')"
 ].forEach(value => requireText(profitabilityApi, value, 'API canónica de Rentabilidad ' + value));
+requireText(profitabilityApi, 'shipments:shipments || []', 'Rentabilidad recibe cifras agrupadas por contenedor');
 [
   'cost_charge_action_capabilities',
   'loadCostChargeCapabilityMap',
@@ -494,9 +496,11 @@ requireText(profitabilityGate, 'no debe asignar/calcular métricas B6', 'gate fi
   'scripts/check-ux7-costs-visual-owner.mjs',
   'scripts/check-ux6-costs-presentation.mjs',
   'scripts/check-sales-order-profitability.mjs',
+  'scripts/check-container-profitability.mjs',
   'node scripts/check-ux7-costs-visual-owner.mjs',
   'node scripts/check-ux6-costs-presentation.mjs',
   'node scripts/check-sales-order-profitability.mjs',
+  'node scripts/check-container-profitability.mjs',
   'node scripts/check-frontend-ownership.mjs',
   'node scripts/check-admin-shell-resilience.mjs',
   'node scripts/audit-b9-api-boundaries.mjs',

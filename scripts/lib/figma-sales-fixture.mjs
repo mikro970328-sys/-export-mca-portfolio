@@ -20,7 +20,7 @@ export function salesFixture({ writable = true, workspace = false } = {}) {
   csp.httpEquiv = 'Content-Security-Policy';
   csp.content = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:";
   doc.head.prepend(csp);
-  const client = { id:'fixture-client', name:'Cliente ficticio', company:'Costa Sur Comercial' };
+  const client = { id:'fixture-client', name:'Cliente ficticio', company:'Costa Sur Comercial', nit:'987-654321' };
   const product = { id:'fixture-product', name:'Producto de demostración', sku:'DEMO-1', unit:'cajas', default_units_per_pallet:10 };
   const orders = ['confirmed','confirmed','confirmed','draft','closed'].map((status, index) => ({
     id:`fixture-sale-${index}`, so_number:`SO-DEMO-024${8-index}`, status,
@@ -47,18 +47,27 @@ export function salesFixture({ writable = true, workspace = false } = {}) {
   const harness = `
     localStorage.setItem('export_mca_token','isolated-fixture-only');
     window.__fixtureCalls=[];
+    window.ExportMcaAccessControl={can:permission=>permission==='clients.write'&&${writable}};
+    window.__fixtureQuickClient=null;
     window.SalesSupplyWorkspace={open:id=>window.__fixtureCalls.push({supply:id})};
     window.fetch=async(path,options={})=>{
       window.__fixtureCalls.push({path,method:options.method||'GET'});
-      if(options.method&&options.method!=='GET')throw Error('Fixture blocks writes');
       const url=new URL(path,'https://erp-visual.invalid');
       let data;
-      if(url.pathname==='/api/sales')data=${JSON.stringify(payload)};
+      if(options.method==='POST'&&url.pathname==='/api/clients'){
+        const input=JSON.parse(options.body||'{}');
+        window.__fixtureQuickClient={...input,id:'fixture-new-client',active:true,display_name:input.company||input.name};
+        data={client:window.__fixtureQuickClient};
+      }else if(options.method==='POST'&&url.pathname==='/api/sales-order-ux'){
+        const input=JSON.parse(options.body||'{}');
+        data={product:{id:'fixture-made-to-order',name:input.name,unit:input.unit,active:true},created:true};
+      }else if(options.method&&options.method!=='GET')throw Error('Fixture blocks unexpected writes');
+      else if(url.pathname==='/api/sales')data=${JSON.stringify(payload)};
       else if(url.pathname==='/api/sales-workspace')data={workspace:${JSON.stringify(workspaceData)}};
       else if(url.pathname==='/api/sales-order-ux'){
         const mode=url.searchParams.get('mode');
         if(mode==='clients')data={clients:[${JSON.stringify(client)}],has_more:false};
-        else if(mode==='client_context')data={client:${JSON.stringify(client)},importers:[]};
+        else if(mode==='client_context')data={client:url.searchParams.get('client_id')==='fixture-new-client'?window.__fixtureQuickClient:${JSON.stringify(client)},importers:[]};
         else if(mode==='pricing')data={items:[]};
         else if(mode==='inventory')data={warehouses:[],totals:{}};
         else throw Error('Unrecognized fixture query');

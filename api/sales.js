@@ -63,6 +63,7 @@ function cleanLines(lines) {
     if (!productId) throw new Error(`Selecciona el producto de la línea ${index + 1}`);
     if (lineTotal !== '' && (!Number.isFinite(Number(lineTotal)) || Number(lineTotal) < 0)) throw new Error('SO_LINE_TOTAL_INVALID');
     if (lineTotal === '' && unitPrice !== '' && (!Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0)) throw new Error('SO_UNIT_PRICE_INVALID');
+    if (lineTotal === '' && unitPrice === '') throw new Error('SO_LINE_PRICE_REQUIRED');
     return {
       product_id:productId,
       ordered_quantity:text(line.ordered_quantity, 80),
@@ -93,6 +94,7 @@ function translatedError(raw) {
     ['SO_UNITS_PER_PALLET_INVALID','Las unidades por pallet son inválidas.'],
     ['SO_UNIT_PRICE_INVALID','El precio unitario es inválido.'],
     ['SO_LINE_TOTAL_INVALID','El total de venta es inválido.'],
+    ['SO_LINE_PRICE_REQUIRED','Indica el total acordado de la mercancía.'],
     ['SO_NOT_DRAFT','Solo una Sales Order en borrador puede editarse o confirmarse.'],
     ['SO_ITEMS_LOCKED','Las líneas ya no pueden modificarse en el estado actual.'],
     ['SO_HAS_ACTIVE_CUSTOMER_ADVANCE','No se puede cancelar una Sales Order con un anticipo de cliente activo.'],

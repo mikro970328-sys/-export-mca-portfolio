@@ -518,6 +518,7 @@
 
   function latestDocument(documents,type){return documents.find(item=>item.document_type===type&&item.is_current)||null;}
   function versionsForType(documents,type){return documents.filter(item=>item.document_type===type).sort((a,b)=>Number(b.version||0)-Number(a.version||0));}
+  function isCustomsDocument(item){return CUSTOMS_TYPES.some(def=>def.type===item?.document_type);}
   function versionStateLabel(item){if(item.state==='deleted')return 'Eliminada';if(item.state==='superseded')return 'Sustituida';return 'Vigente';}
 
   function documentStatusText(readiness){
@@ -538,12 +539,13 @@
     if(error)return `<section class="container-customs"><div class="container-customs-head"><div><h3>Documentos Cuba</h3><div class="container-customs-summary">${esc(error)}</div></div></div></section>`;
     const readiness=payload?.readiness||readinessFor(shipment.id);
     const documents=payload?.documents||[];
+    const supporting=documents.filter(item=>!isCustomsDocument(item));
     const writable=window.ExportMcaAccessControl?.can?.('documents.write')===true;
     return `<section class="container-customs"><div class="container-customs-head"><div><h3>Documentos Cuba</h3><div class="container-customs-summary">${esc(documentStatusText(readiness))}</div></div>${docPill(readiness)}</div><div class="container-customs-grid"><div id="containerCustomsFeedback" class="container-customs-feedback" role="status" aria-live="polite"></div>${CUSTOMS_TYPES.map(def=>{
       const versions=versionsForType(documents,def.type);
       const item=latestDocument(documents,def.type);
       return `<div class="container-customs-card ${item?'complete':'pending'}"><div class="container-customs-title"><b>${esc(def.label)}</b>${item?'<span class="container-doc-state ready">VIGENTE</span>':'<span class="container-doc-state pending">PENDIENTE</span>'}</div>${item?`<div class="container-customs-meta">v${esc(item.version||1)} · ${esc(item.file_name)} · ${esc(formatDateTime(item.created_at))}${item.uploaded_by_username?` · ${esc(item.uploaded_by_username)}`:''}</div>`:'<div class="container-customs-meta">Debe ser el documento oficial preparado para Cuba, no el packing list del almacén.</div>'}<div class="container-customs-actions">${item?.signed_url?`<button class="alt" type="button" data-customs-open="${esc(item.id)}">Ver vigente</button>`:''}${writable?`<button class="orange" type="button" data-customs-upload="${esc(def.key)}">${item?'Subir nueva versión':'Subir archivo'}</button>`:''}${writable&&item?`<button class="danger" type="button" data-customs-delete="${esc(item.id)}">Eliminar vigente</button>`:''}</div>${versionHistoryHtml(versions)}</div>`;
-    }).join('')}<div class="container-customs-note">READY se calcula automáticamente usando únicamente la <b>versión vigente</b> de <b>Packing List Cuba</b> + <b>Factura comercial Cuba</b> cargadas manualmente.</div></div></section>`;
+    }).join('')}<div class="container-customs-card supporting-documents"><div class="container-customs-title"><b>Otros archivos del contenedor</b><span class="container-doc-state">${supporting.filter(item=>item.is_current).length} archivo(s)</span></div><div class="container-customs-meta">Puedes agregar contratos, certificados, comprobantes, fotos u otros archivos relacionados. Estos archivos no cambian el READY de Cuba.</div>${writable?`<label class="container-customs-label" for="containerAdditionalDocumentLabel">Descripción (opcional)</label><input id="containerAdditionalDocumentLabel" maxlength="1000" placeholder="Ej. Certificado de origen, pago, contrato">`:''}<div class="container-customs-actions">${writable?'<button class="orange" type="button" data-customs-related-upload>＋ Agregar archivo</button>':''}</div><div class="container-customs-related-list">${supporting.length?supporting.map(item=>`<div class="container-customs-version"><div class="container-customs-version-main"><b>${esc(item.notes||item.file_name)}</b><small>${esc(item.file_name)} · ${esc(formatDateTime(item.created_at))}${item.uploaded_by_username?` · ${esc(item.uploaded_by_username)}`:''}</small></div><div class="container-customs-version-actions"><span class="container-customs-version-state ${esc(item.state||'current')}">${esc(versionStateLabel(item))}</span>${item.signed_url?`<button class="alt" type="button" data-customs-open="${esc(item.id)}">Ver</button>`:''}${writable&&item.is_current?`<button class="danger" type="button" data-customs-delete="${esc(item.id)}">Eliminar</button>`:''}</div></div>`).join(''):'<div class="container-customs-meta">Todavía no se han agregado archivos.</div>'}</div></div><div class="container-customs-note">READY se calcula automáticamente usando únicamente la <b>versión vigente</b> de <b>Packing List Cuba</b> + <b>Factura comercial Cuba</b> cargadas manualmente.</div></div></section>`;
   }
 
   async function loadShipmentDocuments(shipment){
@@ -577,9 +579,9 @@
     await openDetails(findShipment(shipment.id)||shipment);
   }
 
-  async function uploadCustomsDocument(shipment,key){
+  async function uploadCustomsDocument(shipment,key,supporting=false){
     if(window.ExportMcaAccessControl?.can?.('documents.write')!==true)return setCustomsFeedback('No tienes permiso para subir documentos.',false);
-    const def=CUSTOMS_TYPES.find(item=>item.key===key);
+    const def=supporting?{key:'supporting',type:'Documento relacionado',label:'Documento relacionado'}:CUSTOMS_TYPES.find(item=>item.key===key);
     if(!def)return;
     const input=document.createElement('input');
     input.type='file';
@@ -590,6 +592,7 @@
       const file=input.files?.[0];
       input.remove();
       if(!file)return;
+      const description=supporting?String(byId('containerAdditionalDocumentLabel')?.value||'').trim():'';
       let prepared=null;
       let finalizationStarted=false;
       let saved=false;
@@ -597,7 +600,7 @@
       try{
         const result=await request('/api/shipment-documents',{
           method:'POST',
-          body:JSON.stringify({action:'prepare_upload',shipment_id:shipment.id,document_type:def.key,file_name:file.name,mime_type:file.type,file_size_bytes:file.size})
+          body:JSON.stringify({action:supporting?'prepare_supporting_upload':'prepare_upload',shipment_id:shipment.id,document_type:def.key,notes:description,file_name:file.name,mime_type:file.type,file_size_bytes:file.size})
         });
         prepared=result.upload;
         const form=new FormData();
@@ -614,11 +617,12 @@
         finalizationStarted=true;
         const finalized=await request('/api/shipment-documents',{
           method:'POST',
-          body:JSON.stringify({action:'finalize_upload',shipment_id:shipment.id,document_type:prepared.document_type,file_name:prepared.file_name,mime_type:prepared.mime_type,file_size_bytes:prepared.file_size_bytes,storage_path:prepared.storage_path})
+          body:JSON.stringify({action:supporting?'finalize_supporting_upload':'finalize_upload',shipment_id:shipment.id,document_type:prepared.document_type,notes:description,file_name:prepared.file_name,mime_type:prepared.mime_type,file_size_bytes:prepared.file_size_bytes,storage_path:prepared.storage_path})
         });
         saved=true;
         await refreshAfterCustomsChange(shipment,finalized);
-        setCustomsFeedback(`${def.label} actualizado correctamente.`,true);
+        if(supporting&&byId('containerAdditionalDocumentLabel'))byId('containerAdditionalDocumentLabel').value='';
+        setCustomsFeedback(supporting?'Archivo agregado al contenedor.':`${def.label} actualizado correctamente.`,true);
       }catch(error){
         console.error('CONTAINER_DOCUMENT_UPLOAD_FAILED',{shipment_id:shipment.id,document_type:def.key,error});
         if(saved){
@@ -632,7 +636,7 @@
             if(registered){
               saved=true;
               await refreshAfterCustomsChange(shipment,recovered);
-              setCustomsFeedback(registered.is_current?`${def.label} quedó guardado correctamente.`:'El documento quedó guardado; ya existe una versión posterior. Revisa el historial.',true);
+              setCustomsFeedback(supporting?'Archivo agregado al contenedor.':registered.is_current?`${def.label} quedó guardado correctamente.`:'El documento quedó guardado; ya existe una versión posterior. Revisa el historial.',true);
               return;
             }
           }catch(recoveryError){
@@ -650,10 +654,11 @@
   async function deleteCustomsDocument(shipment,item){
     if(window.ExportMcaAccessControl?.can?.('documents.write')!==true)return setCustomsFeedback('No tienes permiso para eliminar documentos.',false);
     if(!item?.is_current)return setCustomsFeedback('Solo puede retirarse la versión vigente.',false);
+    const supporting=!['Packing List Cuba','Commercial Invoice Cuba'].includes(item?.document_type);
     const accepted=await decision({
-      title:'Eliminar versión vigente',
-      text:`Se retirará ${item.file_name} del contenedor ${shipment.container_number}. La versión quedará registrada en el historial.`,
-      button:'Eliminar vigente',
+      title:supporting?'Eliminar archivo':'Eliminar versión vigente',
+      text:`Se retirará ${item.file_name} del contenedor ${shipment.container_number}. El registro quedará en el historial.`,
+      button:supporting?'Eliminar archivo':'Eliminar vigente',
       danger:true
     });
     if(!accepted)return;
@@ -666,7 +671,7 @@
       cleanupPending=Boolean(result.storage_cleanup_pending);
       await refreshAfterCustomsChange(shipment,result);
       if(cleanupPending)setCustomsFeedback('Documento retirado del ERP. La limpieza física quedó pendiente para reintento.',false);
-      else setCustomsFeedback('Versión vigente eliminada. El readiness fue recalculado.',true);
+      else setCustomsFeedback(supporting?'Archivo eliminado del contenedor.':'Versión vigente eliminada. El readiness fue recalculado.',true);
     }catch(error){
       console.error('CONTAINER_DOCUMENT_DELETE_FAILED',{shipment_id:shipment.id,document_id:item.id,error});
       if(!removed){
@@ -723,6 +728,7 @@
       if(item?.signed_url)window.open(item.signed_url,'_blank','noopener');
     }));
     document.querySelectorAll('[data-customs-upload]').forEach(button=>button.addEventListener('click',()=>uploadCustomsDocument(shipment,button.dataset.customsUpload)));
+    document.querySelectorAll('[data-customs-related-upload]').forEach(button=>button.addEventListener('click',()=>uploadCustomsDocument(shipment,'supporting',true)));
     document.querySelectorAll('[data-customs-delete]').forEach(button=>button.addEventListener('click',()=>{
       const item=documents.get(String(button.dataset.customsDelete));
       if(item)deleteCustomsDocument(shipment,item);

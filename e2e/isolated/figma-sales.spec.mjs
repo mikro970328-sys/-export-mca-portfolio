@@ -7,7 +7,7 @@ async function open(page, options) {
     ? route.fulfill({contentType:'text/html',body:html}) : route.abort());
   await page.goto('https://erp-visual.invalid/');
   await page.evaluate(()=>document.fonts.ready);
-  await expect(page.locator('.sales-order-row')).toHaveCount(3);
+  await expect(page.locator('.sales-order-row')).toHaveCount(4);
 }
 
 async function fits(page) {
@@ -38,11 +38,13 @@ test('Figma sales: white theme, real filters, accessible actions and form pricin
   await page.locator('#search').fill('sin coincidencias');
   await expect(page.locator('.sales-empty')).toBeVisible();
   await page.locator('#search').fill('');
-  await page.locator('[data-view="draft"]').click();
+  await page.locator('[data-view="history"]').click();
   await expect(page.locator('.sales-order-row')).toHaveCount(1);
-  await page.locator('.sales-order-row summary').click();
-  await expect(page.locator('[data-edit-order]')).toBeVisible();
-  await expect(page.locator('[data-load-order]')).toHaveCount(0);
+  await page.locator('[data-view="open"]').click();
+  const draftRow=page.locator('.sales-order-row').filter({hasText:'Borrador'});
+  await draftRow.locator('summary').click();
+  await expect(draftRow.locator('[data-edit-order]')).toBeVisible();
+  await expect(draftRow.locator('[data-load-order]')).toHaveCount(0);
   await page.locator('#newOrder').click();
   await expect(page.locator('#orderModal')).toBeVisible();
   await expect(page.locator('#oClientPickerButton')).toBeVisible();
@@ -60,7 +62,20 @@ test('Figma sales: white theme, real filters, accessible actions and form pricin
   await page.locator('#oNotes').fill('Notas de demostración\nSegunda línea');
   await page.locator('#oClientPickerButton').click();
   await page.locator('[data-client-id="fixture-client"]').click();
-  await expect(page.locator('#oClientPickerButton')).toContainText('Costa Sur');
+  await expect(page.locator('#oClientPickerButton')).toContainText('NIT 987-654321');
+  await page.locator('#oClientPickerButton').click();
+  await page.locator('#clientQuickAddToggle').click();
+  await page.locator('#clientQuickName').fill('Cliente agregado desde venta');
+  await page.locator('#clientQuickCompany').fill('Empresa rápida');
+  await page.locator('#clientQuickNIT').fill('555-888');
+  await page.locator('#clientQuickPhone').fill('+5351234567');
+  await page.locator('#clientQuickAddForm button[type="submit"]').click();
+  await expect(page.locator('#oClientPickerButton')).toContainText('NIT 555-888');
+  await page.locator('[data-sales-add-product]').click();
+  await page.locator('#salesQuickProductName').fill('Mercancía por encargo');
+  await page.locator('#salesQuickProductUnit').fill('cajas');
+  await page.locator('#salesQuickProductForm button[type="submit"]').click();
+  await expect(page.locator('.lProduct')).toHaveValue('fixture-made-to-order');
   await fits(page);
   await page.locator('#orderTitle').scrollIntoViewIfNeeded();
   await info.attach('nueva-venta', {body:await page.screenshot({fullPage:true}),contentType:'image/png'});
@@ -68,7 +83,7 @@ test('Figma sales: white theme, real filters, accessible actions and form pricin
   expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
   await page.locator('#orderModal [data-close="order"]').first().click();
   await expect(page.locator('#orderModal')).not.toBeVisible();
-  expect(await page.evaluate(()=>window.__fixtureCalls.every(call=>!call.method||call.method==='GET'))).toBe(true);
+  expect(await page.evaluate(()=>window.__fixtureCalls.filter(call=>call.method&&call.method!=='GET').length)).toBe(2);
 });
 
 test('Figma sales: read-only users keep their original capabilities', async ({page}) => {

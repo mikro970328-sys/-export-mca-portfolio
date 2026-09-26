@@ -11,6 +11,13 @@ on:
       - 'api/_cost-actions.js'
       - 'api/costs.js'
       - 'api/profitability.js'
+      - 'api/payroll.js'
+      - 'supabase/migrations/20260926190500_container_profitability.sql'
+      - 'supabase/migrations/20260926184210_worker_monthly_payroll.sql'
+      - 'scripts/check-container-profitability.mjs'
+      - 'scripts/check-company-profitability.mjs'
+      - 'scripts/lib/figma-costs-fixture.mjs'
+      - 'e2e/isolated/figma-costs.spec.mjs'
       - 'e2e/browserstack/**'
       - 'scripts/check-ux7-costs-visual-owner.mjs'
       - 'scripts/check-ux6-costs-presentation.mjs'
@@ -35,6 +42,8 @@ jobs:
           node scripts/check-ux7-costs-visual-owner.mjs
           node scripts/check-ux6-costs-presentation.mjs
           node scripts/check-sales-order-profitability.mjs
+          node scripts/check-company-profitability.mjs
+          node scripts/check-container-profitability.mjs
           node scripts/check-ux6b-finance-admin-foundation.mjs
           node scripts/check-browserstack-ios-readonly.mjs
       - name: Validate JavaScript syntax
@@ -43,11 +52,14 @@ jobs:
           node --check api/_cost-actions.js
           node --check api/costs.js
           node --check api/profitability.js
+          node --check api/payroll.js
+          node --check scripts/check-company-profitability.mjs
+          node --check scripts/check-container-profitability.mjs
           node --check scripts/check-ux7-costs-visual-owner.mjs
           node --check scripts/check-ux6-costs-presentation.mjs
           node --check scripts/check-sales-order-profitability.mjs
       - name: Validate API runtime imports
-        run: node --input-type=module -e "await Promise.all([import('./api/_cost-actions.js'),import('./api/costs.js'),import('./api/profitability.js')]); console.log('Costs runtime imports OK')"
+        run: node --input-type=module -e "await Promise.all([import('./api/_cost-actions.js'),import('./api/costs.js'),import('./api/profitability.js'),import('./api/payroll.js')]); console.log('Costs runtime imports OK')"
       - name: Validate frontend ownership
         run: node scripts/check-frontend-ownership.mjs
       - name: Validate admin shell

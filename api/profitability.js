@@ -1,10 +1,11 @@
 import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
 
 async function bootstrap() {
-  const [salesOrders, invoices, loads, operations, operationDirect, salesTrace, invoiceTrace, chargeTrace, products, clients] = await Promise.all([
+  const [salesOrders, invoices, loads, shipments, operations, operationDirect, salesTrace, invoiceTrace, chargeTrace, products, clients] = await Promise.all([
     supabase('sales_order_profitability', { query:'?select=*&order=so_number.desc&limit=3000' }),
     supabase('issued_invoice_profitability', { query:'?select=*&order=issue_date.desc,invoice_number.desc&limit=3000' }),
     supabase('load_profitability', { query:'?select=*&order=load_number.desc&limit=3000' }),
+    supabase('shipment_profitability', { query:'?select=*&order=container_number.desc&limit=3000' }),
     supabase('operation_profitability', { query:'?select=*&order=operation_code.desc&limit=3000' }),
     supabase('operation_descendant_direct_costs', { query:'?select=*&order=operation_code.desc,currency.asc&limit=10000' }),
     supabase('sales_order_cost_traceability', { query:'?select=*&order=so_number.desc&limit=20000' }),
@@ -19,6 +20,7 @@ async function bootstrap() {
       sales_orders:salesOrders || [],
       invoices:invoices || [],
       loads:loads || [],
+      shipments:shipments || [],
       operations:operations || [],
       operation_direct_costs:operationDirect || []
     },

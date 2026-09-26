@@ -23,6 +23,8 @@
 
   const byId = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  const eyeIcon = hidden => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>${hidden?'':'<path d="m3 3 18 18"/>'}</svg>`;
+  const passwordToggle = (id,label) => `<span class="access-password-control"><input id="${id}" name="password" type="password" minlength="10" autocomplete="new-password" required><button class="access-password-eye" type="button" data-access-password-toggle="${id}" aria-label="Mostrar ${label}" title="Mostrar contraseña" aria-pressed="false">${eyeIcon(true)}</button></span>`;
   const token = () => localStorage.getItem('export_mca_token') || '';
   const MANAGEMENT_KEYS = ['administration.users.manage','administration.roles.manage','administration.teams.manage'];
   const PERMISSION_MODULE_LABELS = Object.freeze({
@@ -577,7 +579,7 @@
   }
 
   function openCreateUser() {
-    openModal('Nuevo usuario', `<form id="accessCreateUserForm" class="access-form" autocomplete="off"><div class="access-form-grid"><div><label for="accessField_full_name">Nombre completo</label><input id="accessField_full_name" name="full_name" autocomplete="name" required></div><div><label for="accessField_username">Usuario</label><input id="accessField_username" name="username" autocomplete="username" required></div></div><div><label for="accessField_password">Contraseña temporal</label><input id="accessField_password" name="password" type="password" minlength="10" autocomplete="new-password" required><small class="access-field-help">Mínimo 10 caracteres. La persona podrá cambiarla desde Mi cuenta.</small></div><div><label for="accessField_access_role_id">Rol de acceso</label><select id="accessField_access_role_id" name="access_role_id" required><option value="">Seleccionar rol</option>${roleOptions()}</select>${roleSelectionMarkup()}</div><div><h4 class="access-group-label">Equipos</h4>${teamChecks()}</div></form>`, [
+    openModal('Nuevo usuario', `<form id="accessCreateUserForm" class="access-form" autocomplete="off"><div class="access-form-grid"><div><label for="accessField_full_name">Nombre completo</label><input id="accessField_full_name" name="full_name" autocomplete="name" required></div><div><label for="accessField_username">Usuario</label><input id="accessField_username" name="username" autocomplete="username" required></div></div><div><label for="accessField_password">Contraseña temporal</label>${passwordToggle('accessField_password','contraseña')}<small class="access-field-help">Mínimo 10 caracteres. Puedes verla mientras la escribes; después la persona podrá cambiarla desde Mi cuenta.</small></div><div><label for="accessField_access_role_id">Rol de acceso</label><select id="accessField_access_role_id" name="access_role_id" required><option value="">Seleccionar rol</option>${roleOptions()}</select>${roleSelectionMarkup()}</div><div><h4 class="access-group-label">Equipos</h4>${teamChecks()}</div></form>`, [
       { label:'Cancelar', className:'access-secondary', onClick:closeModal },
       { label:'Crear usuario', className:'access-primary', onClick:createUser }
     ]);
@@ -613,7 +615,7 @@
   function openPasswordEditor(id) {
     const user = state.usersData?.admins?.find(row => String(row.id) === String(id));
     if (!user) return;
-    openModal(`Contraseña · ${user.username}`, '<form id="accessPasswordForm" class="access-form"><div><label for="accessField_password">Nueva contraseña</label><input id="accessField_password" name="password" type="password" minlength="10" required></div><div class="access-panel-intro">Mínimo 10 caracteres.</div></form>', [
+    openModal(`Contraseña · ${user.username}`, `<form id="accessPasswordForm" class="access-form"><div><label for="accessField_password">Nueva contraseña</label>${passwordToggle('accessField_password','contraseña')}</div><div class="access-panel-intro">Mínimo 10 caracteres.</div></form>`, [
       { label:'Cancelar', className:'access-secondary', onClick:closeModal },
       { label:'Actualizar', onClick:async()=>{ const form=byId('accessPasswordForm'); const password=new FormData(form).get('password'); if(String(password||'').length<10) throw new Error('La contraseña debe tener al menos 10 caracteres'); await request('/api/admins',{method:'PATCH',body:JSON.stringify({id:user.id,password})}); closeModal(); setMessage('Contraseña actualizada.',true); } }
     ]);
@@ -873,6 +875,21 @@
   }
 
   async function handleWorkspaceClick(event){
+    const passwordButton=event.target.closest('[data-access-password-toggle]');
+    if(passwordButton){
+      const input=byId(passwordButton.dataset.accessPasswordToggle);
+      if(input){
+        const showing=input.type==='password';
+        input.type=showing?'text':'password';
+        passwordButton.setAttribute('aria-pressed',String(showing));
+        passwordButton.setAttribute('aria-label',`${showing?'Ocultar':'Mostrar'} contraseña`);
+        passwordButton.title=`${showing?'Ocultar':'Mostrar'} contraseña`;
+        passwordButton.innerHTML=eyeIcon(!showing);
+        input.focus();
+        try{input.setSelectionRange(input.value.length,input.value.length);}catch{}
+      }
+      return;
+    }
     const close=event.target.closest('[data-access-close]');if(close){if(!state.modalBusy)closeModal();return;}
     if(event.target===byId('accessModal')){if(!state.modalBusy)closeModal();return;}
     const view=event.target.closest('[data-access-view]');

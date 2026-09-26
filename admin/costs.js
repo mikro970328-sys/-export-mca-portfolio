@@ -16,9 +16,11 @@
       sales_orders: [],
       invoices: [],
       loads: [],
+      shipments: [],
       operations: [],
       operation_direct_costs: []
     },
+    payroll:{ workers:[], entries:[], write_access:false },
     traceability: {
       sales_orders: [],
       invoices: [],
@@ -37,6 +39,8 @@
     profitabilityLoaded: false,
     profitabilityLoading: false
   };
+  let payrollEditingId = null;
+  let companyYear = new Date().getFullYear();
 
   const categories = [
     ['domestic_trucking', 'Transporte terrestre'],
@@ -88,7 +92,7 @@
     no_issued_revenue: 'Sin ingreso emitido'
   };
   const SAFE_COST_ERROR_PATTERNS = [
-    /^(?:No tienes|No autorizado|La solicitud|Selecciona|Indica|Cada distribución|El monto|La moneda|La distribución|Cargo de costo|Solo un cargo|Distribuye el cargo|El cargo|Acción de Costos|Sesión vencida)/i,
+    /^(?:No tienes|No autorizado|La solicitud|Selecciona|Indica|Cada distribución|El monto|La moneda|La distribución|Cargo de costo|Solo un cargo|Distribuye el cargo|El cargo|Acción de Costos|Sesión vencida|El salario y las propinas|Ya existe un salario|El registro ya no está disponible|No se pudo guardar el salario)/i,
     /^No se pudo procesar Costos(?:\. Intenta nuevamente\.)?$/i
   ];
   const SAFE_PROFIT_ERROR_PATTERNS = [
@@ -554,8 +558,93 @@
       if (state.subview === 'sales_orders') return matches([row.so_number, row.sales_order_status, row.profitability_status, clientName(row.client_id), row.sales_currency, row.cogs_currency]);
       if (state.subview === 'invoices') return matches([row.invoice_number, row.profitability_status, row.invoice_currency, row.cogs_currency, row.sales_order_id, row.operation_id]);
       if (state.subview === 'loads') return matches([row.load_number, row.load_status, row.profitability_status, row.revenue_currency, row.cogs_currency, row.direct_cost_currency, row.operation_id]);
+      if (state.subview === 'shipments') return matches([row.container_number, row.profitability_status, row.revenue_currency, row.cogs_currency, row.direct_cost_currency, row.operation_id]);
       return matches([row.operation_code, row.operation_status, row.container_number, row.profitability_status, row.revenue_currency, row.cogs_currency, row.direct_cost_currency]);
     });
+  }
+
+  function companyPeriodRows() {
+    const slots = new Map();
+    const year = String(companyYear);
+    const getSlot = (period, currency) => {
+      const code = String(currency || 'USD').toUpperCase();
+      const key = `${period}|${code}`;
+      if (!slots.has(key)) slots.set(key, { period, currency:code, revenue:0, cogs:0, expenses:0, salary:0, tips:0, incompleteInvoices:0, estimatedInvoices:0 });
+      return slots.get(key);
+    };
+    for (const invoice of state.profitability.invoices || []) {
+      const period = String(invoice.issue_date || '').slice(0, 7);
+      if (!period.startsWith(`${year}-`)) continue;
+      const currency = invoice.invoice_currency || 'USD';
+      const sales = getSlot(period, currency);
+      sales.revenue += num(invoice.invoice_total);
+      if (invoice.profitability_status === 'comparable' && invoice.cogs_currency === currency && invoice.recognized_merchandise_cogs != null) {
+        sales.cogs += num(invoice.recognized_merchandise_cogs);
+        if (invoice.merchandise_cost_coverage !== 'actual') sales.estimatedInvoices += 1;
+      } else {
+        sales.incompleteInvoices += 1;
+        if (invoice.recognized_merchandise_cogs != null && invoice.cogs_currency) {
+          const cost = getSlot(period, invoice.cogs_currency);
+          cost.cogs += num(invoice.recognized_merchandise_cogs);
+          cost.incompleteInvoices += 1;
+        }
+      }
+    }
+    for (const charge of state.traceability.cost_charges || []) {
+      const period = String(charge.incurred_date || '').slice(0, 7);
+      if (period.startsWith(`${year}-`)) getSlot(period, charge.currency).expenses += num(charge.allocated_amount);
+    }
+    for (const entry of state.payroll.company_totals || []) {
+      const period = String(entry.period_start || '').slice(0, 7);
+      if (!period.startsWith(`${year}-`)) continue;
+      const slot = getSlot(period, entry.currency);
+      slot.salary += num(entry.salary_amount);
+      slot.tips += num(entry.tips_amount);
+    }
+    return [...slots.values()].sort((a,b) => a.period.localeCompare(b.period) || a.currency.localeCompare(b.currency)).map(row => ({
+      ...row,
+      net:row.incompleteInvoices ? null : row.revenue - row.cogs - row.expenses - row.salary - row.tips
+    }));
+  }
+
+  function companyYearOptions() {
+    const years = new Set([String(new Date().getFullYear()), String(companyYear)]);
+    for (const row of state.profitability.invoices || []) if (row.issue_date) years.add(String(row.issue_date).slice(0,4));
+    for (const row of state.traceability.cost_charges || []) if (row.incurred_date) years.add(String(row.incurred_date).slice(0,4));
+    for (const row of state.payroll.company_totals || []) if (row.period_start) years.add(String(row.period_start).slice(0,4));
+    return [...years].filter(value => /^\d{4}$/.test(value)).sort((a,b) => Number(b)-Number(a));
+  }
+
+  function profitabilityTabsMarkup() {
+    const tabs=[['sales_orders','Órdenes de venta'],['invoices','Facturas'],['loads','Cargues'],['shipments','Contenedores'],['operations','Operaciones'],['company','Empresa']];
+    return `<div class="profit-tabs" role="group" aria-label="Elegir nivel de rentabilidad">${tabs.map(([key,label])=>`<button class="btn ${state.subview===key?'active':''}" type="button" data-profit-subview="${key}" aria-pressed="${state.subview===key}">${label}</button>`).join('')}</div>`;
+  }
+
+  function renderCompanyProfitability() {
+    const rows = companyPeriodRows();
+    const annual = new Map();
+    for (const row of rows) {
+      if (!annual.has(row.currency)) annual.set(row.currency, { currency:row.currency, revenue:0, cogs:0, expenses:0, salary:0, tips:0, incompleteInvoices:0, estimatedInvoices:0 });
+      const total = annual.get(row.currency);
+      for (const field of ['revenue','cogs','expenses','salary','tips','incompleteInvoices','estimatedInvoices']) total[field] += row[field];
+    }
+    const annualCards = [...annual.values()].sort((a,b)=>a.currency.localeCompare(b.currency)).map(row=>{
+      const net = row.incompleteInvoices ? null : row.revenue-row.cogs-row.expenses-row.salary-row.tips;
+      const resultLabel = row.incompleteInvoices ? 'Pendiente: costo de mercancía incompleto' : row.estimatedInvoices ? 'Resultado estimado' : 'Resultado';
+      return `<article class="company-annual-card"><span>${esc(row.currency)} · ${esc(companyYear)}</span><b class="${net===null?'':net>=0?'company-net-positive':'company-net-negative'}">${net===null?'Pendiente de costo':esc(money(net,row.currency))}</b><small>${esc(resultLabel)}</small><div class="profit-sub profit-sub-spaced">Ingresos ${esc(money(row.revenue,row.currency))} · Mercancía ${esc(money(row.cogs,row.currency))} · Gastos ${esc(money(row.expenses,row.currency))} · Salarios y propinas ${esc(money(row.salary+row.tips,row.currency))}</div></article>`;
+    }).join('');
+    const tableRows = rows.map(row=>{
+      const month = new Date(Number(row.period.slice(0,4)),Number(row.period.slice(5,7))-1,1).toLocaleDateString('es-ES',{month:'long'});
+      const net = row.net===null?'Pendiente de costo':money(row.net,row.currency);
+      const netClass = row.net===null?'':row.net>=0?'company-net-positive':'company-net-negative';
+      return `<tr><td>${esc(month)}</td><td>${esc(row.currency)}</td><td>${esc(money(row.revenue,row.currency))}</td><td>${esc(money(row.cogs,row.currency))}${row.incompleteInvoices?`<small class="payroll-status"> · ${row.incompleteInvoices} factura(s) con costo pendiente</small>`:''}</td><td>${esc(money(row.expenses,row.currency))}</td><td>${esc(money(row.salary+row.tips,row.currency))}</td><td class="${netClass}">${esc(net)}${row.estimatedInvoices?'<small class="payroll-status"> estimado</small>':''}</td></tr>`;
+    }).join('');
+    const years = companyYearOptions().map(value=>`<option value="${esc(value)}" ${Number(value)===Number(companyYear)?'selected':''}>${esc(value)}</option>`).join('');
+    const entries=(state.payroll.entries||[]).filter(row=>String(row.period_start||'').startsWith(`${companyYear}-`)).sort((a,b)=>String(b.period_start).localeCompare(String(a.period_start)));
+    const workerLabel=id=>{const worker=(state.payroll.workers||[]).find(row=>String(row.id)===String(id));return worker?.full_name||'Trabajador';};
+    const payrollRows=entries.map(entry=>`<article class="payroll-row"><div><b>${esc(workerLabel(entry.worker_id))}</b><div class="payroll-status">${esc(String(entry.period_start).slice(0,7))} · ${esc(entry.status==='posted'?'Registrado':'Anulado')}</div></div><div><b>${esc(money(num(entry.salary_amount)+num(entry.tips_amount),entry.currency))}</b><div class="payroll-status">Salario ${esc(money(entry.salary_amount,entry.currency))} · Propinas ${esc(money(entry.tips_amount,entry.currency))}</div></div><div class="payroll-status">${esc(entry.notes||'Sin nota')}</div><div class="payroll-actions">${entry.status==='posted'&&state.payroll.write_access?`<button type="button" class="btn" data-payroll-edit="${esc(entry.id)}">Editar</button><button type="button" class="btn danger" data-payroll-void="${esc(entry.id)}">Anular</button>`:''}</div></article>`).join('');
+    const payrollControls=state.payroll.write_access?'<button type="button" class="btn orange" data-payroll-add>＋ Registrar salario</button>':'';
+    return `<div class="profit-shell"><div class="profit-note"><b>Resultado de la compañía.</b> Ingresos y costo de mercancía usan la fecha de factura; gastos usan la fecha registrada y los salarios el mes asignado. Cada moneda se calcula por separado.</div><div class="profit-toolbar">${profitabilityTabsMarkup()}</div><div class="company-profit-head"><h3>Resultado anual · ${esc(companyYear)}</h3><label class="company-profit-year" for="companyProfitYear">Año <select id="companyProfitYear">${years}</select></label></div><div class="company-annual-grid">${annualCards||'<div class="costs-empty">No hay movimientos financieros para este año.</div>'}</div><h3>Resultado mensual</h3><p class="company-section-note">La ganancia descuenta mercancía, gastos contabilizados, salario y propinas. Si falta costo real o estimado de una factura, el ERP deja el resultado pendiente para evitar una cifra engañosa.</p>${tableRows?`<div class="company-month-wrap"><table class="company-month-table"><thead><tr><th>Mes</th><th>Moneda</th><th>Ingresos</th><th>Costo mercancía</th><th>Gastos</th><th>Salarios y propinas</th><th>Ganancia</th></tr></thead><tbody>${tableRows}</tbody></table></div>`:'<div class="costs-empty">Aún no hay facturas, gastos ni salarios registrados para este año.</div>'}<section class="payroll-section"><div class="payroll-head"><div><h3>Salarios y propinas</h3><p class="company-section-note">Registra un total mensual por trabajador. Cada trabajador, mes y moneda admite un registro activo.</p></div>${payrollControls}</div>${state.payroll.write_access?'':'<div class="costs-readonly">El resumen de salarios y propinas ya está incluido en la ganancia. El detalle por trabajador requiere permiso de gestión financiera.</div>'}<div class="payroll-list">${payrollRows||`<div class="costs-empty">${state.payroll.write_access?'Todavía no hay salarios registrados para este año.':'No hay desglose individual disponible para tu perfil.'}</div>`}</div></section></div>`;
   }
 
   function profitabilityMetrics(rows) {
@@ -638,7 +727,7 @@
   function renderOperationProfit(row) {
     return [
       '<article class="profit-card"><div class="profit-card-head"><div><div class="profit-title">', esc(row.operation_code),
-      '</div><div class="profit-sub">', esc(entityStatusLabel(row.operation_status)), row.container_number ? ' · ' + esc(row.container_number) : '',
+      '</div><div class="profit-sub">', esc(entityStatusLabel(row.operation_status)), row.shipment_count != null ? ' · ' + esc(row.shipment_count) + ' contenedor(es)' : '',
       '</div></div>', profitabilityPill(row.profitability_status), '</div><div class="profit-grid">',
       profitCell('Ingreso facturado', money(row.issued_revenue, row.revenue_currency), 'emphasis'),
       profitCell('Costo de mercancía', money(row.recognized_merchandise_cogs, row.cogs_currency)),
@@ -651,15 +740,32 @@
     ].join('');
   }
 
+  function renderShipmentProfit(row) {
+    return [
+      '<article class="profit-card"><div class="profit-card-head"><div><div class="profit-title">', esc(row.container_number || 'Contenedor sin número'),
+      '</div><div class="profit-sub">', row.operation_id ? 'Operación ' + esc(short(row.operation_id)) : 'Sin operación vinculada',
+      '</div></div>', profitabilityPill(row.profitability_status), '</div><div class="profit-grid">',
+      profitCell('Venta acordada asignada', money(row.attributed_sales_revenue, row.revenue_currency), 'emphasis'),
+      profitCell('Costo de mercancía', money(row.recognized_merchandise_cogs, row.cogs_currency)),
+      profitCell('Margen antes de gastos', money(row.gross_margin_before_direct_costs, row.revenue_currency)),
+      profitCell('Gastos asignados', directCostText(row)),
+      profitCell('Ganancia del contenedor', money(row.contribution_margin, row.revenue_currency), row.contribution_margin != null ? 'positive' : 'warning'),
+      profitCell('Ganancia %', percent(row.contribution_margin_pct), row.contribution_margin_pct != null ? 'positive' : 'warning'),
+      '</div><div class="profit-sub profit-sub-spaced">El total de venta se asigna según las cantidades vinculadas al contenedor y el total acordado de cada línea. Incluye gastos asignados al contenedor o a sus cargues. Los gastos de una operación no se reparten entre sus contenedores automáticamente.</div></article>'
+    ].join('');
+  }
+
   function renderProfitability() {
     if (state.profitabilityLoading && !state.profitabilityLoaded) {
       return '<div class="profit-loading"><span class="costs-spinner" aria-hidden="true"></span>Consultando rentabilidad…</div>';
     }
+    if (state.subview === 'company') return renderCompanyProfitability();
     const rows = profitabilityRows();
     const renderers = {
       sales_orders: renderSalesOrderProfit,
       invoices: renderInvoiceProfit,
       loads: renderLoadProfit,
+      shipments: renderShipmentProfit,
       operations: renderOperationProfit
     };
     const cards = rows.length
@@ -667,12 +773,7 @@
       : emptyState(state.search ? 'Sin resultados' : 'Sin rentabilidad disponible', state.search ? 'Ajusta la búsqueda para consultar otros registros.' : 'Los márgenes aparecerán cuando el ERP pueda atribuir ventas y costos.', true);
     return [
       '<div class="profit-shell"><div class="profit-note"><b>Rentabilidad calculada por el ERP.</b> Las reglas financieras determinan cobertura, comparabilidad y margen. Esta vista no suma monedas incompatibles ni reparte cargos entre entidades.</div>',
-      '<div class="profit-toolbar"><div class="profit-tabs" role="group" aria-label="Elegir nivel de rentabilidad">',
-      '<button class="btn ', state.subview === 'sales_orders' ? 'active' : '', '" type="button" data-profit-subview="sales_orders" aria-pressed="', state.subview === 'sales_orders', '">Órdenes de venta</button>',
-      '<button class="btn ', state.subview === 'invoices' ? 'active' : '', '" type="button" data-profit-subview="invoices" aria-pressed="', state.subview === 'invoices', '">Facturas</button>',
-      '<button class="btn ', state.subview === 'loads' ? 'active' : '', '" type="button" data-profit-subview="loads" aria-pressed="', state.subview === 'loads', '">Cargues</button>',
-      '<button class="btn ', state.subview === 'operations' ? 'active' : '', '" type="button" data-profit-subview="operations" aria-pressed="', state.subview === 'operations', '">Operaciones</button>',
-      '</div><span class="costs-result-count">', esc(rows.length), ' resultado(s)</span></div>',
+      '<div class="profit-toolbar">', profitabilityTabsMarkup(), '<span class="costs-result-count">', esc(rows.length), ' resultado(s)</span></div>',
       profitabilityMetrics(rows), '<div class="profit-list">', cards, '</div></div>'
     ].join('');
   }
@@ -681,7 +782,7 @@
     if (state.view === 'charges') return state.charges.filter(chargeMatches).length;
     if (state.view === 'landed') return landedRows().length;
     if (state.view === 'cogs') return cogsRows().length;
-    return state.profitabilityLoaded ? profitabilityRows().length : 0;
+    return state.profitabilityLoaded ? (state.subview==='company'?companyPeriodRows().length:profitabilityRows().length) : 0;
   }
 
   function resultLabel(count) {
@@ -715,10 +816,11 @@
     state.profitabilityLoading = true;
     if (renderAfter && state.view === 'profitability') render();
     try {
-      const data = await request('/api/profitability');
+      const [data, payroll] = await Promise.all([request('/api/profitability'), request('/api/payroll')]);
       state.profitability = data.profitability || state.profitability;
       state.traceability = data.traceability || state.traceability;
       state.masters = data.masters || state.masters;
+      state.payroll = payroll || state.payroll;
       state.profitabilityLoaded = true;
       setPageMessage('');
       return true;
@@ -755,6 +857,65 @@
       openCost(id);
     }
     return true;
+  }
+
+  function openPayroll(entryId = '') {
+    if (!state.payroll.write_access) return setPageMessage('No tienes permiso para registrar salarios y propinas.');
+    const entry=(state.payroll.entries||[]).find(row=>String(row.id)===String(entryId));
+    if(entryId&&(!entry||entry.status!=='posted'))return setPageMessage('Ese salario ya no se puede corregir.');
+    payrollEditingId=entry?.id||null;
+    $('payrollTitle').textContent=entry?'Corregir salario y propinas':'Registrar salario';
+    $('savePayroll').textContent=entry?'Guardar cambios':'Guardar salario';
+    const workers=(state.payroll.workers||[]).filter(worker=>worker.is_active!==false||String(worker.id)===String(entry?.worker_id||''));
+    $('payrollWorker').innerHTML=workers.map(worker=>`<option value="${esc(worker.id)}" ${String(worker.id)===String(entry?.worker_id||'')?'selected':''}>${esc(worker.full_name)}${worker.is_active===false?' · inactivo':''}</option>`).join('');
+    $('payrollWorker').disabled=workers.length===0;
+    $('savePayroll').disabled=workers.length===0;
+    if(!workers.length)$('payrollMsg').textContent='Primero registra una persona activa en Administración → Trabajadores.';
+    const now=new Date();
+    $('payrollPeriod').value=String(entry?.period_start||`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`).slice(0,7);
+    $('payrollSalary').value=entry?.salary_amount??'';
+    $('payrollTips').value=entry?.tips_amount??0;
+    $('payrollCurrency').value=entry?.currency||'USD';
+    $('payrollNotes').value=entry?.notes||'';
+    $('payrollMsg').textContent='';
+    setModal('payrollModal',true,'#payrollWorker');
+  }
+
+  function safePayrollMessage(error) {
+    return safeCostMessage(error,'No se pudo guardar el salario. Intenta nuevamente.');
+  }
+
+  async function savePayroll() {
+    if(!state.payroll.write_access)return;
+    const button=$('savePayroll'),message=$('payrollMsg');
+    if(!(state.payroll.workers||[]).some(worker=>worker.is_active!==false||String(worker.id)===String((state.payroll.entries||[]).find(row=>String(row.id)===String(payrollEditingId||''))?.worker_id||'')))return message.textContent='Primero registra una persona activa en Administración → Trabajadores.';
+    if(button.disabled)return;
+      button.disabled=true;message.textContent='Guardando…';
+    try {
+      const body={action:payrollEditingId?'update':'create',id:payrollEditingId||undefined,worker_id:$('payrollWorker').value,period:$('payrollPeriod').value,salary_amount:$('payrollSalary').value,tips_amount:$('payrollTips').value,currency:$('payrollCurrency').value,notes:$('payrollNotes').value};
+      await request('/api/payroll',{method:'POST',body:JSON.stringify(body)});
+      setModal('payrollModal',false);payrollEditingId=null;
+      await loadProfitability(true,false);render();
+      setPageMessage('Salario y propinas guardados. Ya están incluidos en la rentabilidad de la compañía.','good');
+    } catch(error) {
+      console.error('[costs payroll save]',error);message.textContent=safePayrollMessage(error);
+    } finally {button.disabled=false;}
+  }
+
+  async function voidPayroll(entryId) {
+    if(!state.payroll.write_access)return;
+    const entry=(state.payroll.entries||[]).find(row=>String(row.id)===String(entryId));
+    if(!entry||entry.status!=='posted')return;
+    const worker=(state.payroll.workers||[]).find(row=>String(row.id)===String(entry.worker_id));
+    const accepted=await costDecision({title:'Anular salario',copy:`Se retirarán de la rentabilidad ${worker?.full_name||'este trabajador'} · ${String(entry.period_start).slice(0,7)}. El registro quedará en el historial.`,accept:'Anular salario',danger:true});
+    if(!accepted)return;
+    try {
+      await request('/api/payroll',{method:'POST',body:JSON.stringify({action:'void',id:entry.id})});
+      await loadProfitability(true,false);render();
+      setPageMessage('Salario anulado y retirado del cálculo de rentabilidad.','good');
+    } catch(error) {
+      setPageMessage(safePayrollMessage(error));
+    }
   }
 
   function showLoadFailure(error) {
@@ -1160,7 +1321,7 @@
   }
 
   function openProfitability(subview = 'sales_orders') {
-    if (['sales_orders', 'invoices', 'loads', 'operations'].includes(subview)) state.subview = subview;
+    if (['sales_orders', 'invoices', 'loads', 'operations','company'].includes(subview)) state.subview = subview;
     return selectView('profitability');
   }
 
@@ -1172,6 +1333,7 @@
 
   function bindEvents() {
     $('newCharge')?.addEventListener('click', openCreate);
+    $('savePayroll')?.addEventListener('click',savePayroll);
     $('addAllocation')?.addEventListener('click', () => addAllocation());
     $('saveCharge')?.addEventListener('click', saveCharge);
     $('chargeModal')?.addEventListener('input', renderAllocationPreview);
@@ -1277,6 +1439,18 @@
       }
       const navigation = event.target.closest?.('[data-profit-nav]');
       if (navigation) navigate(navigation.dataset.profitNav);
+      const payrollAdd = event.target.closest?.('[data-payroll-add]');
+      if (payrollAdd) return openPayroll();
+      const payrollEdit = event.target.closest?.('[data-payroll-edit]');
+      if (payrollEdit) return openPayroll(payrollEdit.dataset.payrollEdit);
+      const payrollVoid = event.target.closest?.('[data-payroll-void]');
+      if (payrollVoid) return voidPayroll(payrollVoid.dataset.payrollVoid);
+    });
+
+    document.addEventListener('change',event=>{
+      if(event.target?.id!=='companyProfitYear')return;
+      companyYear=Number(event.target.value)||new Date().getFullYear();
+      render();
     });
 
     document.addEventListener('keydown', event => {
@@ -1291,6 +1465,7 @@
       else if (!$('profitTraceModal').classList.contains('hidden')) closeTrace();
       else if (!$('detailModal').classList.contains('hidden')) setModal('detailModal', false);
       else if (!$('chargeModal').classList.contains('hidden')) setModal('chargeModal', false);
+      else if (!$('payrollModal').classList.contains('hidden')) setModal('payrollModal', false);
     });
   }
 
