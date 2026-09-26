@@ -1,0 +1,61 @@
+#helpSection{color:#17263b;background:#f5f7fb;min-height:calc(100vh - 60px)}
+#helpSection [hidden]{display:none!important}
+#helpSection *{box-sizing:border-box}
+#helpSection .help-workspace{max-width:1320px;margin:0 auto;padding:32px}
+#helpSection .help-hero{margin-bottom:26px}
+#helpSection .help-kicker{font-size:12px;font-weight:750;letter-spacing:.09em;text-transform:uppercase;color:#52647b}
+#helpSection h1{font-size:32px;line-height:1.2;margin:8px 0 12px;color:#17263b}
+#helpSection h2{color:#17263b}
+#helpSection p{line-height:1.65}
+#helpSection .help-hero p{font-size:16px;color:#52647b;margin:0;max-width:760px}
+#helpSection button{font:inherit;cursor:pointer;white-space:normal;border:1px solid #ccd5e1;border-radius:10px;background:#fff;color:#263952;padding:11px 15px;line-height:1.45;min-height:44px}
+#helpSection button:hover{background:#f0f5fc;border-color:#9baec7}
+#helpSection button:disabled{opacity:.65;cursor:not-allowed}
+#helpSection :is(button,input,textarea):focus-visible{outline:3px solid #2563eb;outline-offset:3px}
+#helpSection .help-search-panel{background:#fff;border:1px solid #dce3ed;border-radius:16px;padding:22px;margin-bottom:24px}
+#helpSection label{display:block;font-weight:700;margin-bottom:9px;color:#263952}
+#helpSection .help-search-row{display:flex;gap:10px}
+#helpSection input{font:inherit;color:#17263b;background:#fff;flex:1;min-width:0;padding:13px 15px;border:1px solid #aebdd0;border-radius:10px}
+#helpSection #helpCount{color:#52647b;font-size:13px;margin:12px 0 0}
+#helpSection .help-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;align-items:start}
+#helpSection .help-categories{background:#fff;border:1px solid #dce3ed;border-radius:14px;padding:18px;position:sticky;top:80px}
+#helpSection .help-categories h2{font-size:15px;margin:0 0 16px}
+#helpSection #helpCategories{display:grid;gap:5px}
+#helpSection #helpCategories button{text-align:left;border-color:transparent;padding:10px;font-size:14px}
+#helpSection #helpCategories button[aria-pressed=true]{background:#eaf1fc;border-color:#b9ccec;color:#174c98;font-weight:700}
+#helpSection .help-categories p{font-size:13px;color:#52647b;margin:24px 0 5px}
+#helpSection .help-text-button{border:0;padding:4px 0;color:#174c98;text-align:left;font-weight:700}
+#helpSection .help-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#helpSection .help-card{display:flex;flex-direction:column;align-items:flex-start;gap:9px;padding:22px;text-align:left;white-space:normal;border:1px solid #dce3ed;border-radius:14px;min-width:0;background:#fff}
+#helpSection .help-card-category{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:#52647b}
+#helpSection .help-card-title{font-size:18px;line-height:1.4;font-weight:750;color:#17263b}
+#helpSection .help-card-summary{font-size:14px;color:#52647b;line-height:1.6}
+#helpSection .help-card-link{font-size:13px;font-weight:700;color:#174c98;margin-top:auto;padding-top:12px}
+#helpSection .help-empty{padding:28px;border:1px dashed #aebdd0;border-radius:14px;background:#fff}
+#helpSection .help-empty h2{font-size:20px;margin-top:0}
+#helpSection .help-empty button{margin:5px 8px 0 0}
+#helpSection .help-article{max-width:900px;margin:0 auto;background:#fff;border:1px solid #dce3ed;border-radius:16px;padding:32px}
+#helpSection .help-article-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-bottom:30px}
+#helpSection .help-article h2{font-size:30px;line-height:1.25;margin:12px 0;scroll-margin-top:80px;overflow-wrap:anywhere}
+#helpSection .help-article h3{font-size:16px;color:#263952;margin:26px 0 12px}
+#helpSection .help-lead{font-size:17px;color:#52647b;margin-bottom:28px}
+#helpSection .help-steps{padding-left:25px;margin:0}
+#helpSection .help-steps li{padding-left:7px;margin-bottom:18px;line-height:1.8;font-size:16px}
+#helpSection .help-steps li::marker{font-weight:750;color:#174c98}
+#helpSection :is(.help-result,.help-note){padding:18px 22px;border-radius:12px;margin-top:24px}
+#helpSection .help-result{background:#f0f7f4;border:1px solid #c8e1d3}
+#helpSection .help-note{background:#fff8eb;border:1px solid #ead7ac}
+#helpSection :is(.help-result,.help-note) h3{margin:0 0 8px}
+#helpSection :is(.help-result,.help-note) p{margin:0;font-size:14px}
+#helpSection .help-module{margin-top:26px}
+#helpSection .help-primary{background:#174c98;border-color:#174c98;color:#fff;font-weight:700}
+#helpSection .help-primary:hover{background:#113d7d;border-color:#113d7d}
+#helpSection .help-module p{font-size:13px;color:#52647b}
+#helpSection .help-related{border-top:1px solid #dce3ed;margin-top:28px}
+#helpSection .help-related>div{display:flex;flex-wrap:wrap;gap:10px}
+#helpSection .help-related button{text-align:left;font-size:14px;white-space:normal}
+#helpSection .help-report textarea{font:inherit;line-height:1.7;color:#17263b;background:#f8fafc;padding:14px;border:1px solid #aebdd0;border-radius:10px;width:100%;resize:vertical;margin-bottom:12px}
+#helpSection .help-footer{font-size:12px;color:#52647b;margin-top:28px;line-height:1.7}
+@media(max-width:1100px){#helpSection .help-workspace{padding:24px}#helpSection .help-layout{grid-template-columns:190px minmax(0,1fr);gap:16px}#helpSection .help-results{grid-template-columns:1fr}}
+@media(max-width:700px){#helpSection .help-workspace{padding:18px}#helpSection .help-layout{display:block}#helpSection .help-categories{position:static;margin-bottom:18px}#helpSection #helpCategories{display:flex;flex-wrap:wrap}#helpSection .help-categories p,#helpSection .help-text-button{display:none}#helpSection .help-article{padding:20px}#helpSection h1{font-size:28px}#helpSection .help-article h2{font-size:26px}#helpSection .help-search-panel{padding:16px}}
+@media print{body:has(#helpSection:not(.hidden)){background:#fff!important}body:has(#helpSection:not(.hidden)) :is(.sidebar,.topbar,.mobile-overlay,.app-section:not(#helpSection)){display:none!important}body:has(#helpSection:not(.hidden)) .main-shell{margin:0!important;width:100%!important}body:has(#helpSection:not(.hidden)) .main-shell>main{margin:0!important;padding:0!important}#helpSection{background:#fff;min-height:0}#helpSection .help-workspace{padding:0;max-width:none}#helpSection .help-hero,#helpSection .help-article-actions,#helpSection .help-module,#helpSection .help-related,#helpSection .help-report button{display:none}#helpSection .help-article{padding:0;border:0;max-width:none}#helpSection .help-steps li{break-inside:avoid}#helpSection :is(.help-result,.help-note){break-inside:avoid}}

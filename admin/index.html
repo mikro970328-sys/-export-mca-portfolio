@@ -38,9 +38,11 @@
 <button class="nav-item" type="button" data-section="notificationsSection" data-nav-label="Notificaciones"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Notificaciones</span></button>
 <button class="nav-item" type="button" data-section="workersSection" data-nav-label="Trabajadores"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Trabajadores</span></button>
 <div id="adminNav" class="nav-group hidden" data-nav-group="administration"><button class="nav-group-btn" type="button" data-nav-label="Administración" aria-expanded="false"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Administración</span><span class="nav-chevron" aria-hidden="true"></span></button><div class="submenu"><button type="button" data-section="adminsSection" data-nav-label="Administradores"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Administradores</span></button></div></div>
+<button class="nav-item" type="button" data-section="helpSection" data-nav-label="Ayuda"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Ayuda</span></button>
 </nav><div class="sidebar-foot"><div class="sidebar-user"><div id="currentUser" class="sidebar-user-name"></div><div id="currentRole" class="muted sidebar-user-role"></div></div><button id="logout" class="danger sidebar-foot-action" type="button" data-nav-label="Cerrar sesión"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Cerrar sesión</span></button><div class="platform-version">© 2026 Export MCA LLC<br>Version 1.0</div></div></aside>
 <div id="mobileOverlay" class="mobile-overlay"></div><div class="main-shell"><header class="topbar"><div class="topbar-leading"><button id="mobileMenuBtn" class="menu-btn mobile-menu" type="button" aria-label="Abrir menú lateral" aria-expanded="false"></button><div class="topbar-heading"><span id="pageContext" class="topbar-eyebrow">Centro de operaciones</span><b id="pageTitle">Inicio</b></div></div><div class="topbar-actions"><button id="refresh">Actualizar</button><button id="exportCsv">Exportar CSV</button></div></header><main>
 <section id="dashboardSection" class="app-section"></section>
+<section id="helpSection" class="app-section hidden" aria-label="Centro de ayuda"><div id="helpRoot"><p id="helpLoadStatus" role="status">Cargando la guía de trabajo…</p></div></section>
 <section id="clientsSection" class="app-section hidden">
   <div class="clients-workspace native-workspace-shell">
     <header class="clients-hero native-workspace-hero">
@@ -233,5 +235,5 @@
 <section id="adminsSection" class="app-section hidden" aria-live="polite"></section>
 </main></div></div>
 <div id="modal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="modalTitle">Historial</h2><button id="closeModal" class="alt">Cerrar</button></div><div id="modalBody"></div></div></div>
-<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260926-integration1"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
+<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260926-help1"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
 </body></html>

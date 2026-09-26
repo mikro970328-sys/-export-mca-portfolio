@@ -73,7 +73,7 @@ for(const text of [
 requireText(styles,'.notification-preferences-actions { justify-content:flex-end;margin-top:8px; }','presentación dedicada de acciones de preferencias');
 requireText(loader,"/admin/notification-inbox.css?v=20260926-figma2",'revisión del CSS del Inbox');
 requireText(loader,"/admin/notification-inbox.js?v=20260926-figma2",'revisión del owner del Inbox');
-requireText(index,'/admin/erp.js?v=20260926-integration1','revisión del loader ERP');
+requireText(index,'/admin/erp.js?v=20260926-help1','revisión del loader ERP');
 
 for(const text of [
   "authorizeAdmin(req,res,'notifications.read')",

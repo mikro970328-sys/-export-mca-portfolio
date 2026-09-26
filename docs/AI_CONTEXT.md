@@ -1,3 +1,11 @@
+## Continuidad · 26 sep 2026 · Centro de ayuda en revisión
+
+Daniel solicitó una sección Ayuda dentro del ERP, con guía de trabajo y solución de problemas para su equipo. Se implementan 43 artículos, buscador, temas, recorridos completos, impresión y plantilla de incidencias. Sin API ni escrituras comerciales. Detalles y validación en [ERP_HELP_CENTER.md](ERP_HELP_CENTER.md). Pendiente confirmar CI/capturas y publicar; no declarar entrega productiva antes de ello. iPhone permanece fuera del alcance por instrucción posterior del usuario.
+
+Este nuevo pedido amplía el escritorio ya entregado; la auditoría posterior distinguió desarrollo terminado de preparación operativa completa. No confundir datos/catálogos pendientes con defectos de software ni cambiar operaciones para cerrar avisos.
+
+---
+
 ## Estado vigente · 26 sep 2026 · Escritorio terminado y publicado
 
 - La etapa de escritorio acordada con Daniel está cerrada. Avisarle antes de iniciar la revisión del iPhone físico. No reiniciar pendientes históricos ni detenerse en entregas intermedias ya resueltas.
