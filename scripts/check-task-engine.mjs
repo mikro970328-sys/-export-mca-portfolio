@@ -96,14 +96,14 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))) {
 
   for(const required of [
     "accessCan('tasks.read')",
-    '/admin/tasks-workspace.css?v=20260922-figma1',
-    '/admin/tasks-workspace.js?v=20260916-taskdialog1',
+    '/admin/tasks-workspace.css?v=20260926-figma2',
+    '/admin/tasks-workspace.js?v=20260926-figma2',
     '/admin/tasks-navigation.js?v=20260830-p4',
     '/admin/navigation-shell.js?v=20260926-figma5',
     '/admin/section-state.js?v=20260910-startup1'
   ]) if(!loader.includes(required))failures.push(`admin/erp.js: falta ${required}`);
   const navIndex=loader.indexOf('/admin/navigation-shell.js?v=20260926-figma5');
-  const taskIndex=loader.indexOf('/admin/tasks-workspace.js?v=20260916-taskdialog1');
+  const taskIndex=loader.indexOf('/admin/tasks-workspace.js?v=20260926-figma2');
   const taskNavIndex=loader.indexOf('/admin/tasks-navigation.js?v=20260830-p4');
   const stateIndex=loader.indexOf('/admin/section-state.js?v=20260910-startup1');
   if(navIndex<0||taskIndex<0||taskNavIndex<0||stateIndex<0||!(navIndex<taskIndex&&taskIndex<taskNavIndex&&taskNavIndex<stateIndex))failures.push('admin/erp.js: orden requerido Navigation Shell → Mis tareas → navegación tareas → section-state');

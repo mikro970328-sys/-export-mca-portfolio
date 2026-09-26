@@ -116,9 +116,8 @@
           <div class="native-workspace-heading">
             <span class="native-workspace-kicker">Administración de equipo</span>
             <h2>Trabajadores</h2>
-            <p>Consulta disponibilidad, conserva el historial laboral y administra quién puede recibir nuevas asignaciones.</p>
+            <p>Consulta el equipo, sus datos y su historial laboral.</p>
             <div class="workers-hero-state">
-              <span class="workers-state-dot" aria-hidden="true"></span>
               <span id="workersOperationalState">Preparando directorio laboral</span>
               <span id="workersLastUpdated">Preparando…</span>
             </div>
@@ -128,24 +127,23 @@
             <button id="workersCreateButton" type="button" class="workers-primary" data-worker-action="create" ${can('administration.workers.write') ? '' : 'hidden'}>Nuevo trabajador</button>
           </div>
         </div>
-        <div id="workersSummary" class="workers-summary native-workspace-summary" aria-label="Resumen de trabajadores"></div>
       </header>
+      <div id="workersSummary" class="workers-summary native-workspace-summary" aria-label="Resumen de trabajadores"></div>
 
       <section class="workers-command" aria-label="Buscar y filtrar trabajadores">
-        <label class="workers-search-field" for="workersSearch">
-          <span>Buscar</span>
-          <input id="workersSearch" type="search" placeholder="Nombre, cargo o teléfono" autocomplete="off">
-        </label>
         <div class="workers-tabs" role="tablist" aria-label="Estado laboral">
           <button type="button" role="tab" data-worker-filter="active" aria-selected="true" aria-controls="workersDirectory">Activos</button>
           <button type="button" role="tab" data-worker-filter="all" aria-selected="false" aria-controls="workersDirectory">Todos</button>
           <button type="button" role="tab" data-worker-filter="inactive" aria-selected="false" aria-controls="workersDirectory">Desactivados</button>
         </div>
-        <button type="button" class="workers-clear" data-worker-action="clear">Limpiar búsqueda</button>
+        <div class="workers-search-row">        <label class="workers-search-field" for="workersSearch">
+          <span>Buscar trabajadores</span>
+          <input id="workersSearch" type="search" placeholder="Nombre, cargo o teléfono" autocomplete="off">
+        </label>
+<button type="button" class="workers-clear" data-worker-action="clear">Limpiar búsqueda</button></div>
       </section>
 
       <div id="workersReadOnlyNote" class="workers-readonly" role="note" hidden>
-        <span class="workers-readonly-icon" aria-hidden="true">i</span>
         <span>Puedes consultar el equipo y su historial. La edición requiere permiso de administración de trabajadores.</span>
       </div>
       <div id="workersFeedback" class="workers-message" role="status" aria-live="polite"></div>
@@ -153,12 +151,11 @@
       <section id="workersPanel" class="workers-panel native-workspace-panel" aria-labelledby="workersDirectoryTitle">
         <div class="workers-panel-head">
           <div>
-            <span class="workers-eyebrow">Directorio laboral</span>
             <h3 id="workersDirectoryTitle">Equipo registrado</h3>
-            <p>Abre el historial o usa únicamente las acciones habilitadas por el backend para cada persona.</p>
           </div>
           <span id="workersResultCount" class="workers-result-count" aria-live="polite">Consultando…</span>
         </div>
+        <div class="workers-columns" aria-hidden="true"><span>Trabajador</span><span>Cargo</span><span>Contacto</span><span>Estado</span><span>Acciones</span></div>
         <div id="workersDirectory" class="workers-directory" role="list"></div>
       </section>
     </div>
@@ -204,12 +201,6 @@
     });
   }
 
-  function initials(value) {
-    const parts = String(value || '').trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return '?';
-    return `${parts[0][0] || ''}${parts.length > 1 ? parts.at(-1)[0] || '' : ''}`.toUpperCase();
-  }
-
   function actionAllowed(worker, action) {
     return worker?.capabilities?.actions?.[action]?.allowed === true;
   }
@@ -239,12 +230,12 @@
     if (!node) return;
     const metrics = workerMetrics(state.workers);
     const cards = [
-      ['workersMetricActive', 'Activos', metrics.active],
-      ['workersMetricInactive', 'Desactivados', metrics.inactive],
-      ['workersMetricTotal', 'Total', metrics.total],
-      ['workersMetricWithoutPosition', 'Activos sin cargo', metrics.withoutPosition]
+      ['workersMetricTotal', 'Registrados', metrics.total, 'En el directorio'],
+      ['workersMetricActive', 'Activos', metrics.active, 'Disponibles para asignar'],
+      ['workersMetricInactive', 'Desactivados', metrics.inactive, 'Historial conservado'],
+      ['workersMetricWithoutPosition', 'Activos sin cargo', metrics.withoutPosition, 'Pendientes de completar']
     ];
-    node.innerHTML = cards.map(([id, label, value]) => `<div id="${id}" class="workers-summary-card native-workspace-summary-card"><span>${label}</span><strong>${value}</strong></div>`).join('');
+    node.innerHTML = cards.map(([id, label, value, caption]) => `<div id="${id}" class="workers-summary-card native-workspace-summary-card"><span>${label}</span><strong>${value}</strong><small>${caption}</small></div>`).join('');
   }
 
   function renderAccessState() {
@@ -276,23 +267,14 @@
     const inactive = worker?.is_active === false;
     const position = String(worker?.position || '').trim() || 'Cargo sin especificar';
     return `<article class="workers-card ${inactive ? 'is-inactive' : ''}" role="listitem">
-      <div class="workers-card-main">
-        <span class="workers-avatar" aria-hidden="true">${esc(initials(worker?.full_name))}</span>
-        <div class="workers-identity">
-          <div class="workers-card-title-row">
-            <h4>${esc(worker?.full_name || 'Trabajador sin nombre')}</h4>
-            <span class="workers-status ${inactive ? 'inactive' : 'active'}">${inactive ? 'Desactivado' : 'Activo'}</span>
-          </div>
-          <p>${esc(position)}</p>
-        </div>
-      </div>
+      <div class="workers-identity"><h4>${esc(worker?.full_name || 'Trabajador sin nombre')}</h4><small>Actualizado ${esc(formatDate(worker?.updated_at || worker?.created_at))}</small></div>
       <dl class="workers-card-meta">
-        <div><dt>Contacto</dt><dd><a class="workers-phone" href="tel:${esc(worker?.phone || '')}">${esc(worker?.phone || 'Sin teléfono')}</a></dd></div>
         <div><dt>Cargo</dt><dd>${esc(position)}</dd></div>
-        <div><dt>Actualización</dt><dd>${esc(formatDate(worker?.updated_at || worker?.created_at))}</dd></div>
-        ${inactive ? `<div class="workers-card-reason"><dt>Motivo</dt><dd>${esc(worker?.deactivation_reason || 'Sin motivo registrado')}</dd></div>` : ''}
+        <div><dt>Contacto</dt><dd><a class="workers-phone" href="tel:${esc(worker?.phone || '')}">${esc(worker?.phone || 'Sin teléfono')}</a></dd></div>
       </dl>
+      <span class="workers-status ${inactive ? 'inactive' : 'active'}">${inactive ? 'Desactivado' : 'Activo'}</span>
       <div class="workers-card-foot">${workerActions(worker)}</div>
+      ${inactive ? `<p class="workers-card-reason">Motivo: ${esc(worker?.deactivation_reason || 'Sin motivo registrado')}</p>` : ''}
     </article>`;
   }
 
@@ -316,7 +298,7 @@
 
     if (state.loadError && !state.loaded) {
       if (result) result.textContent = 'Sin datos';
-      target.innerHTML = '<div class="workers-empty error" role="status"><span class="workers-empty-icon" aria-hidden="true">!</span><strong>No pudimos cargar los trabajadores</strong><p>Revisa tu conexión e inténtalo nuevamente.</p><button type="button" class="alt workers-secondary" data-worker-action="reload">Intentar nuevamente</button></div>';
+      target.innerHTML = '<div class="workers-empty error" role="status"><strong>No pudimos cargar los trabajadores</strong><p>Revisa tu conexión e inténtalo nuevamente.</p><button type="button" class="alt workers-secondary" data-worker-action="reload">Intentar nuevamente</button></div>';
       return;
     }
 
@@ -324,7 +306,7 @@
     if (result) result.textContent = `${rows.length} de ${state.workers.length}`;
     if (!rows.length) {
       const [title, detail] = emptyCopy();
-      target.innerHTML = `<div class="workers-empty"><span class="workers-empty-icon" aria-hidden="true">${state.status === 'inactive' ? '○' : '✓'}</span><strong>${esc(title)}</strong><p>${esc(detail)}</p>${state.query ? '<button type="button" class="alt workers-secondary" data-worker-action="clear">Limpiar búsqueda</button>' : ''}</div><div class="workers-footer">0 trabajadores visibles</div>`;
+      target.innerHTML = `<div class="workers-empty"><strong>${esc(title)}</strong><p>${esc(detail)}</p>${state.query ? '<button type="button" class="alt workers-secondary" data-worker-action="clear">Limpiar búsqueda</button>' : ''}</div><div class="workers-footer">0 trabajadores visibles</div>`;
       return;
     }
 
@@ -367,7 +349,7 @@
   function focusFirstModalControl() {
     const modal = byId('workersModal');
     if (!modal || modal.classList.contains('hidden')) return;
-    const target = modal.querySelector('input:not([disabled]),textarea:not([disabled]),button:not([disabled]),[tabindex]:not([tabindex="-1"])');
+    const target = byId('workersModalBody')?.querySelector('input:not([disabled]),textarea:not([disabled])') || modal.querySelector('[data-worker-modal-close]');
     target?.focus?.();
   }
 
@@ -386,7 +368,7 @@
     modal.setAttribute('aria-hidden', 'false');
     modal.removeAttribute('aria-busy');
     document.body.classList.add('workers-dialog-open');
-    setTimeout(focusFirstModalControl, 0);
+    focusFirstModalControl();
     return state.modalRequest;
   }
 
@@ -472,7 +454,7 @@
       content.className = 'workers-history';
       content.innerHTML = history.length ? history.map(event => {
         const deactivated = event.action === 'deactivated';
-        return `<article class="workers-history-event"><span class="workers-history-dot ${deactivated ? 'inactive' : 'active'}" aria-hidden="true"></span><div><strong>${deactivated ? 'Trabajador desactivado' : 'Trabajador reactivado'}</strong><p>${esc(event.reason || (deactivated ? 'Sin motivo registrado' : 'Sin nota de reactivación'))}</p><time>${esc(formatDate(event.created_at))}</time></div></article>`;
+        return `<article class="workers-history-event"><div><strong>${deactivated ? 'Trabajador desactivado' : 'Trabajador reactivado'}</strong><p>${esc(event.reason || (deactivated ? 'Sin motivo registrado' : 'Sin nota de reactivación'))}</p><time>${esc(formatDate(event.created_at))}</time></div></article>`;
       }).join('') : '<div class="workers-empty compact"><strong>Sin cambios de estado</strong><p>Este trabajador todavía no tiene movimientos en su historial.</p></div>';
     } catch (error) {
       if (requestId !== state.modalRequest || state.modalMode !== 'history') return;
@@ -530,7 +512,7 @@
     const worker = workerById(id);
     if (!worker || !actionAllowed(worker, 'deactivate')) return;
     openModal('Desactivar trabajador', `<form id="deactivateWorkerForm" class="workers-modal-form">
-      <div class="workers-decision"><span class="workers-decision-icon danger" aria-hidden="true">!</span><div><strong>${esc(worker.full_name)}</strong><p>Dejará de estar disponible para nuevas asignaciones. Su historial se conserva.</p></div></div>
+      <div class="workers-decision"><div><strong>${esc(worker.full_name)}</strong><p>Dejará de estar disponible para nuevas asignaciones. Su historial se conserva.</p></div></div>
       <label><span>Motivo de desactivación</span><textarea id="workerDeactivationReason" name="reason" rows="4" placeholder="Ejemplo: terminó la relación laboral" required></textarea></label>
       <div id="deactivateWorkerMsg" class="workers-message" role="status" aria-live="polite"></div>
       <div class="workers-modal-actions"><button type="button" class="alt workers-secondary" data-worker-modal-close>Cancelar</button><button id="confirmWorkerDeactivate" type="submit" class="workers-action danger">Desactivar trabajador</button></div>
@@ -566,7 +548,7 @@
     const worker = workerById(id);
     if (!worker || !actionAllowed(worker, 'reactivate')) return;
     openModal('Reactivar trabajador', `<form id="reactivateWorkerForm" class="workers-modal-form">
-      <div class="workers-decision"><span class="workers-decision-icon success" aria-hidden="true">✓</span><div><strong>${esc(worker.full_name)}</strong><p>Volverá a estar disponible para nuevas asignaciones.</p></div></div>
+      <div class="workers-decision"><div><strong>${esc(worker.full_name)}</strong><p>Volverá a estar disponible para nuevas asignaciones.</p></div></div>
       <label><span>Nota de reactivación</span><textarea id="workerReactivationReason" name="reason" rows="3" placeholder="Ejemplo: reincorporación o nuevo contrato"></textarea><small>La nota es opcional y quedará guardada en el historial.</small></label>
       <div id="reactivateWorkerMsg" class="workers-message" role="status" aria-live="polite"></div>
       <div class="workers-modal-actions"><button type="button" class="alt workers-secondary" data-worker-modal-close>Cancelar</button><button id="confirmWorkerReactivate" type="submit" class="workers-action success">Reactivar trabajador</button></div>
@@ -605,6 +587,7 @@
     const search = byId('workersSearch');
     if (search) search.value = '';
     render();
+    search?.focus({ preventScroll:true });
   }
 
   function handleClick(event) {
@@ -691,6 +674,10 @@
     if (!section) return false;
     section.dataset.workersOwner = 'workers-module.js';
     section.innerHTML = shellMarkup();
+    const modal=byId('workersModal');
+    document.body.appendChild(modal);
+    modal.addEventListener('click',handleClick);
+    modal.addEventListener('submit',handleSubmit);
     section.addEventListener('click', handleClick);
     section.addEventListener('input', handleInput);
     section.addEventListener('submit', handleSubmit);
@@ -707,6 +694,7 @@
     await loadWorkers();
     window.addEventListener('export-mca:section-changed', event => {
       if (event.detail?.id === 'workersSection' && !state.loaded) loadWorkers();
+      else if (event.detail?.id && event.detail.id !== 'workersSection') closeModal();
     });
   }
 

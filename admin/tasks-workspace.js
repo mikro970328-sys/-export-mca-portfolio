@@ -188,7 +188,6 @@
             <h2>Mis tareas</h2>
             <p>${manage?'Prioriza, asigna y da seguimiento al trabajo operativo de todo el equipo.':'Consulta el trabajo asignado a ti, a tus equipos o creado por ti.'}</p>
             <div class="tasks-hero-state">
-              <span class="tasks-state-dot" aria-hidden="true"></span>
               <span id="tasksOperationalState">Preparando cola de trabajo</span>
               <span id="tasksLastUpdated">Preparando…</span>
             </div>
@@ -198,30 +197,27 @@
             ${manage?'<button type="button" class="tasks-primary" data-task-action="create">Nueva tarea</button>':''}
           </div>
         </div>
-        <div id="tasksSummary" class="tasks-summary native-workspace-summary" aria-label="Resumen de tareas"></div>
       </header>
+      <div id="tasksSummary" class="tasks-summary native-workspace-summary" aria-label="Resumen de tareas"></div>
 
       <section class="tasks-command" aria-label="Buscar y filtrar tareas">
-        <label class="tasks-search-field" for="tasksSearch">
-          <span>Buscar</span>
+        <div class="tasks-search-row"><label class="tasks-search-field" for="tasksSearch">
+          <span>Buscar tareas</span>
           <input id="tasksSearch" class="tasks-search" type="search" placeholder="Título, responsable o trabajo vinculado" autocomplete="off">
-        </label>
+        </label><button type="button" class="tasks-filter-clear" data-task-action="clear">Limpiar filtros</button></div>
         <div class="tasks-filter-grid">
           <label><span>Estado</span><select id="tasksStatusFilter"><option value="all">Todos</option><option value="pending">Pendientes</option><option value="in_progress">En curso</option><option value="blocked">Bloqueadas</option><option value="completed">Completadas</option><option value="cancelled">Canceladas</option></select></label>
           <label><span>Prioridad</span><select id="tasksPriorityFilter"><option value="all">Todas</option><option value="critical">Crítica</option><option value="high">Alta</option><option value="normal">Normal</option><option value="low">Baja</option></select></label>
           <label><span>Equipo</span><select id="tasksTeamFilter"><option value="all">Todos</option></select></label>
           ${manage?'<label><span>Responsable</span><select id="tasksAssigneeFilter"><option value="all">Todos</option><option value="unassigned">Sin asignar</option></select></label>':''}
         </div>
-        <button type="button" class="tasks-filter-clear" data-task-action="clear">Limpiar filtros</button>
       </section>
 
       <div id="tasksMessage" class="tasks-message" aria-live="polite"></div>
       <section id="tasksPanel" class="tasks-panel native-workspace-panel" aria-labelledby="tasksPanelTitle">
         <div class="tasks-panel-head">
           <div>
-            <span class="tasks-eyebrow">Cola personal</span>
             <h3 id="tasksPanelTitle">Trabajo priorizado</h3>
-            <p>Abre una tarea para consultar su detalle, comentarios, historial y dependencias.</p>
           </div>
           <span id="tasksResultCount" class="tasks-result-count" aria-live="polite">Consultando…</span>
         </div>
@@ -269,6 +265,8 @@
     const node=byId('tasksSummary');
     if(!node)return;
     const metrics=taskCounts(state.tasks);
+    const focused=document.activeElement?.dataset?.taskFilter;
+    const captions={pending:'Por comenzar',in_progress:'En ejecución',blocked:'Requieren atención',overdue:'Fuera de plazo',completed:'Trabajo finalizado'};
     const cards=[
       ['pending','Pendientes','taskMetricPending'],
       ['in_progress','En curso','taskMetricInProgress'],
@@ -276,7 +274,8 @@
       ['overdue','Vencidas','taskMetricOverdue'],
       ['completed','Completadas','taskMetricCompleted']
     ];
-    node.innerHTML=cards.map(([key,label,id])=>`<button id="${id}" type="button" class="tasks-summary-card native-workspace-summary-card ${state.activeFilter===key?'active':''} ${key==='overdue'&&metrics[key]?'tasks-count-critical':''}" data-task-filter="${key}" aria-pressed="${state.activeFilter===key?'true':'false'}"><span>${label}</span><strong>${metrics[key]}</strong></button>`).join('');
+    node.innerHTML=cards.map(([key,label,id])=>`<button id="${id}" type="button" class="tasks-summary-card native-workspace-summary-card ${state.activeFilter===key?'active':''} ${key==='overdue'&&metrics[key]?'tasks-count-critical':''}" data-task-filter="${key}" aria-pressed="${state.activeFilter===key?'true':'false'}"><span>${label}</span><strong>${metrics[key]}</strong><small>${captions[key]}</small></button>`).join('');
+    if(focused)node.querySelector(`[data-task-filter="${focused}"]`)?.focus({preventScroll:true});
   }
 
   function populateFilters() {
@@ -414,7 +413,8 @@
   function focusFirstModalControl() {
     const modal=byId('tasksModal');
     if(!modal||modal.classList.contains('hidden'))return;
-    const target=modal.querySelector('input:not([disabled]),select:not([disabled]),textarea:not([disabled]),button:not([disabled])');
+    const form=byId('tasksEditForm')||byId('tasksReasonForm');
+    const target=form?.querySelector('input:not([disabled]),select:not([disabled]),textarea:not([disabled])')||modal.querySelector('[data-task-modal-close]');
     target?.focus?.();
   }
 
@@ -429,7 +429,7 @@
     setModalActions(actions);
     modal.classList.remove('hidden');
     document.body.classList.add('tasks-dialog-open');
-    setTimeout(focusFirstModalControl,0);
+    focusFirstModalControl();
   }
 
   function closeModal() {
@@ -526,14 +526,14 @@
     const teamId=task.assigned_team_id||'';
     const adminId=task.assigned_admin_id||'';
     return `<form id="tasksEditForm" class="tasks-form">
-      <label class="full"><span>Título</span><input name="title" maxlength="180" value="${esc(task.title||'')}" required></label>
+      <label class="full"><span>Título *</span><input name="title" maxlength="180" value="${esc(task.title||'')}" required></label>
       <label class="full"><span>Descripción</span><textarea name="description" rows="4">${esc(task.description||'')}</textarea></label>
       <label><span>Prioridad</span><select name="priority">${['normal','high','critical','low'].map(value=>option(value,priorityLabels[value],task.priority||'normal')).join('')}</select></label>
       <label><span>Vence</span><input name="due_at" type="datetime-local" value="${esc(localDateInput(task.due_at))}"></label>
       <label><span>Equipo</span><select name="assigned_team_id" id="tasksFormTeam"><option value="">Sin equipo</option>${(state.context?.teams||[]).map(row=>option(row.id,row.name,teamId)).join('')}</select></label>
       <label><span>Responsable</span><select name="assigned_admin_id" id="tasksFormAssignee"><option value="">Sin responsable</option>${eligibleUsers(teamId).map(row=>option(row.id,row.full_name||row.username,adminId)).join('')}</select></label>
       <label><span>Tipo de entidad</span><select name="entity_type"><option value="">Sin vínculo</option>${Object.entries(entityLabels).map(([value,label])=>option(value,label,task.entity_type||'')).join('')}</select></label>
-      <label><span>ID de entidad</span><input name="entity_id" value="${esc(task.entity_id||'')}" placeholder="UUID"></label>
+      <label><span>ID de entidad</span><input name="entity_id" value="${esc(task.entity_id||'')}" placeholder="Identificador del registro"></label>
       <p class="tasks-form-help full">Para vincular trabajo, selecciona un tipo e ingresa también su ID.</p>
     </form>`;
   }
@@ -574,6 +574,7 @@
         label:'Crear tarea',
         className:'tasks-primary',
         onClick:()=>runModalAction('create',async()=>{
+          if(!byId('tasksEditForm').reportValidity())return;
           await request('/api/tasks',{method:'POST',body:JSON.stringify({action:'create',...formPayload()})});
           closeModal();
           await load({successMessage:'Tarea creada correctamente.'});
@@ -646,7 +647,7 @@
           await openDetail(id);
         },'No se pudo agregar el comentario. Intenta nuevamente.');
       });
-      setTimeout(focusFirstModalControl,0);
+      focusFirstModalControl();
     } catch(error) {
       openModal('Tarea',`<div class="tasks-message bad">${esc(safeTaskMessage(error,'No se pudo abrir la tarea. Intenta nuevamente.'))}</div>`,[
         {label:'Cerrar',className:'alt tasks-secondary',close:true}
@@ -664,6 +665,7 @@
           label:'Guardar cambios',
           className:'tasks-primary',
           onClick:()=>runModalAction('edit',async()=>{
+            if(!byId('tasksEditForm').reportValidity())return;
             await request('/api/tasks',{method:'PATCH',body:JSON.stringify({id,...formPayload()})});
             await load({successMessage:'Cambios guardados.'});
             await openDetail(id);
@@ -735,6 +737,7 @@
     if(byId('tasksTeamFilter'))byId('tasksTeamFilter').value='all';
     if(byId('tasksAssigneeFilter'))byId('tasksAssigneeFilter').value='all';
     render();
+    byId('tasksSearch')?.focus({preventScroll:true});
   }
 
   async function handleClick(event) {
