@@ -105,14 +105,18 @@ test('Figma expenses in the real shell: persistence, history, permissions and se
       await expect(frame(session).locator('#costsPageTitle')).toHaveText('Gastos y rentabilidad');
     };
     const fits = async session => {
-      const header = await session.page.locator('.topbar').boundingBox();
-      const workspace = await session.page.locator('#costsSection iframe').boundingBox();
-      expect(workspace.y).toBeGreaterThanOrEqual(header.y + header.height - 1);
-      expect(workspace.y + workspace.height).toBeLessThanOrEqual(session.page.viewportSize().height + 1);
-      for (const locator of [session.page.locator('html'), frame(session).locator('html')]) {
-        const box = await locator.evaluate(el => ({ scroll: el.scrollWidth, width: el.clientWidth }));
-        expect(box.scroll).toBeLessThanOrEqual(box.width + 1);
-      }
+      // sectionEnter translates the workspace by 4px for 180ms. Keep the
+      // geometry limits unchanged and retry until the rendered layout settles.
+      await expect(async () => {
+        const header = await session.page.locator('.topbar').boundingBox();
+        const workspace = await session.page.locator('#costsSection iframe').boundingBox();
+        expect(workspace.y).toBeGreaterThanOrEqual(header.y + header.height - 1);
+        expect(workspace.y + workspace.height).toBeLessThanOrEqual(session.page.viewportSize().height + 1);
+        for (const locator of [session.page.locator('html'), frame(session).locator('html')]) {
+          const box = await locator.evaluate(el => ({ scroll: el.scrollWidth, width: el.clientWidth }));
+          expect(box.scroll).toBeLessThanOrEqual(box.width + 1);
+        }
+      }).toPass({ timeout: 5000 });
     };
     const shot = async (session, name) => {
       const path = info.outputPath(`${name}.png`);
