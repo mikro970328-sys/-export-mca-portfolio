@@ -1,3 +1,22 @@
+## Continuación Figma: Existencias y Productos — 2026-09-26
+
+Recepciones #349 está publicada en `471fe6441f6a550a743a2d5a060973812cb6c3ab`,
+con 39 workflows aprobados, 22/22 jobs de navegador y Vercel READY. Continúa
+`feat/figma-stock-catalog-white` con seis vistas de escritorio de Existencias,
+saldos WR, movimientos, catálogo y ficha de producto. Ver FIGMA_STOCK_CATALOG.md.
+La PR correspondiente registra el commit probado y la publicación definitivos.
+
+Daniel pidió continuar hasta terminar el ERP de escritorio y avisarle antes
+de pasar a iPhone. Pendientes siguientes: Cargues/Tracking/documentos;
+Facturación/cuentas por pagar/Reportes; Clientes/Proveedores/Tareas/admin;
+revisión integral de escritorio. No declarar el ERP terminado por cerrar este
+bloque. iPhone físico permanece diferido, sin abrir una nueva sesión de prueba.
+No reiniciar módulos publicados. No escribir datos QA en producción ni Preview.
+
+Este corte sustituye los pendientes históricos ya resueltos que figuran debajo.
+
+---
+
 ## Continuación Figma: Recepciones (WR) — 2026-09-26
 
 Compras #348 ya está publicada en `4c29b2dd8521c3c0ab1797089166a399ba251181`,

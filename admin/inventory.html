@@ -6,7 +6,7 @@
   <title>Existencias · Export MCA</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
-  <link rel="stylesheet" href="/admin/inventory.css?v=20260922-figma1">
+  <link rel="stylesheet" href="/admin/inventory.css?v=20260926-figma1">
 </head>
 <body class="erp-module-page erp-module-inventory" data-owner="inventory.js">
   <main class="wrap inventory-shell">
@@ -15,10 +15,6 @@
         <div class="module-kicker inventory-page-kicker">Operaciones · Control de existencias</div>
         <h1 id="inventoryPageTitle">Existencias</h1>
         <p>Consulta el saldo actual que dejaron los WR: físico menos reservado y despachado. Aquí no registras entradas; un Direct Ship tampoco aparece como stock propio.</p>
-      </div>
-      <div class="inventory-hero-state" aria-label="Estado del módulo">
-        <span class="inventory-hero-state-dot" aria-hidden="true"></span>
-        <div><strong>Lectura operativa</strong><span>Existencias y trazabilidad actualizadas</span></div>
       </div>
     </header>
 
@@ -33,30 +29,25 @@
 
     <nav class="inventory-view-switcher" aria-label="Áreas de Existencias">
       <div class="tabs inventory-tabs" role="tablist" aria-label="Vista de inventario">
-        <button class="tab active" id="stockTab" type="button" role="tab" data-inventory-view="stock" aria-controls="stockView" aria-selected="true">Existencias</button>
-        <button class="tab" id="traceTab" type="button" role="tab" data-inventory-view="trace" aria-controls="traceView" aria-selected="false" tabindex="-1">Movimientos y trazabilidad</button>
+        <button class="tab active" id="stockTab" type="button" role="tab" data-inventory-view="stock" aria-controls="stockView" aria-selected="true">Stock actual</button>
+        <button class="tab" id="traceTab" type="button" role="tab" data-inventory-view="trace" aria-controls="traceView" aria-selected="false" tabindex="-1">Trazabilidad</button>
       </div>
       <p id="stockLegend" class="inventory-view-note">Disponible = físico − reservado. Las recepciones anuladas no forman parte del inventario.</p>
       <p id="traceLegend" class="inventory-view-note hidden">Cada movimiento conserva el WR de entrada, la fecha, el almacén y la referencia operativa.</p>
     </nav>
 
     <section class="panel inventory-filter-panel" aria-labelledby="inventoryFiltersTitle">
-      <header class="inventory-panel-head compact">
-        <div>
-          <span class="inventory-eyebrow">Consulta</span>
-          <h2 id="inventoryFiltersTitle">Buscar y filtrar</h2>
-        </div>
-        <button id="clearFilters" class="alt inventory-clear-filters" type="button">Limpiar filtros</button>
-      </header>
+      <h2 id="inventoryFiltersTitle" class="inventory-visually-hidden">Buscar y filtrar</h2>
       <div class="inventory-filter-grid">
         <label class="inventory-field" for="search">
-          <span>Buscar</span>
+          <span>Buscar producto, SKU o WR</span>
           <input id="search" type="search" autocomplete="off" placeholder="Producto, SKU, marca, WR o almacén">
         </label>
         <label class="inventory-field" for="warehouseFilter">
           <span>Almacén</span>
           <select id="warehouseFilter"><option value="">Todos los almacenes</option></select>
         </label>
+        <button id="clearFilters" class="alt inventory-clear-filters" type="button">Limpiar</button>
       </div>
     </section>
 
@@ -96,7 +87,7 @@
     </section>
   </main>
 
-  <script src="/admin/inventory.js?v=20260902-ux7inventory1" defer></script>
+  <script src="/admin/inventory.js?v=20260926-figma1" defer></script>
   <script src="/admin/embedded-auto-refresh.js?v=20260920-speed3" defer></script>
 </body>
 </html>

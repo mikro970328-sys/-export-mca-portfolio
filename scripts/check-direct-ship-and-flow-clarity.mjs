@@ -84,7 +84,7 @@ for(const text of [
   "label:'Recepciones (WR)'",
   "label:'Existencias'",
   "src:'/admin/warehouse.html?embedded=1&v=20260926-figma1'",
-  "src:'/admin/inventory.html?embedded=1&v=20260904-flowclarity1'"
+  "src:'/admin/inventory.html?embedded=1&v=20260926-figma1'"
 ])requireText(navigation,text,`navegación clara ${text}`);
 requireText(operationalNavigation,"warehouse_receipt:{label:'Recepciones (WR)'",'nombre operativo de Recepciones');
 requireText(operationalNavigation,"'warehouse.write':'registrar Recepciones WR'",'permiso explicado como recepción');

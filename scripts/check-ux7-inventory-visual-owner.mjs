@@ -39,8 +39,8 @@ const workflow = read(files.workflow);
 for (const text of [
   '<body class="erp-module-page erp-module-inventory" data-owner="inventory.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/inventory.css?v=20260922-figma1',
-  '/admin/inventory.js?v=20260902-ux7inventory1',
+  '/admin/inventory.css?v=20260926-figma1',
+  '/admin/inventory.js?v=20260926-figma1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero inventory-page-head"',
   'id="stats" class="stats inventory-metrics"',
@@ -55,7 +55,7 @@ for (const text of [
 ]) requireText(html, text, `HTML canónico ${text}`);
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerCssIndex = html.indexOf('/admin/inventory.css?v=20260922-figma1');
+const ownerCssIndex = html.indexOf('/admin/inventory.css?v=20260926-figma1');
 if (foundationIndex < 0 || ownerCssIndex < 0 || foundationIndex > ownerCssIndex) {
   failures.push('la base visual compartida debe cargar antes de inventory.css');
 }

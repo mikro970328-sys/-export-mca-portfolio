@@ -6,7 +6,7 @@
   <title>Productos · Export MCA</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
-  <link rel="stylesheet" href="/admin/products.css?v=20260922-figma2">
+  <link rel="stylesheet" href="/admin/products.css?v=20260926-figma1">
   <link rel="stylesheet" href="/admin/form-drafts.css?v=20260909-drafts1">
 </head>
 <body class="erp-module-page erp-module-products" data-owner="products.js">
@@ -19,8 +19,7 @@
       </div>
       <div class="products-hero-actions">
         <div class="products-hero-state" aria-label="Estado del módulo">
-          <span class="products-live-dot" aria-hidden="true"></span>
-          <div><strong>Catálogo operativo</strong><span id="productsLastUpdated">Preparando productos…</span></div>
+          <span id="productsLastUpdated">Preparando productos…</span>
         </div>
         <div class="products-action-row">
           <button id="refreshProducts" type="button" class="btn products-refresh">Actualizar</button>
@@ -31,11 +30,9 @@
 
     <div id="productMessage" class="products-feedback" role="status" aria-live="polite"></div>
     <div class="products-boundary-note">
-      <span class="products-boundary-mark" aria-hidden="true">i</span>
       <div><strong>Catálogo e inventario son fuentes distintas.</strong><span>Crear una ficha no genera existencia física. La disponibilidad nace únicamente al recibir mercancía mediante un WR.</span></div>
     </div>
     <div id="productsReadOnlyNote" class="products-readonly" hidden>
-      <span class="products-readonly-mark" aria-hidden="true">i</span>
       <span>Tu acceso permite consultar el catálogo. Las altas y modificaciones requieren permiso de abastecimiento.</span>
     </div>
 
@@ -59,7 +56,7 @@
 
       <div class="products-toolbar">
         <label class="products-search" for="productSearch">
-          <span class="products-visually-hidden">Buscar productos</span>
+          <span>Buscar productos</span>
           <input id="productSearch" type="search" autocomplete="off" placeholder="Buscar SKU, nombre, marca, categoría, HS Code o país">
         </label>
         <div class="products-tabs" role="tablist" aria-label="Estado de productos">
@@ -86,20 +83,31 @@
         <button type="button" class="btn product-close" data-close="product">Cerrar</button>
       </header>
       <form id="productForm" novalidate>
-        <div class="product-form-grid">
+        <div class="product-form-body">
+          <fieldset class="product-form-section"><legend>Identidad</legend><p>Los campos marcados con * son obligatorios.</p>
+          <div class="product-form-grid">
           <label for="productSku"><span>SKU</span><input id="productSku" maxlength="120" placeholder="SOY-35LB"></label>
           <label for="productName"><span>Nombre <em aria-hidden="true">*</em></span><input id="productName" maxlength="250" required placeholder="Aceite de soya 35 lb"></label>
           <label for="productBrand"><span>Marca</span><input id="productBrand" maxlength="160"></label>
           <label for="productCategory"><span>Categoría</span><input id="productCategory" maxlength="160" placeholder="Aceites comestibles"></label>
+          </div></fieldset>
+          <fieldset class="product-form-section"><legend>Unidad y manejo</legend><p>Las cantidades de stock se registran en recepciones WR.</p>
+          <div class="product-form-grid">
           <label for="productUnit"><span>Unidad base <em aria-hidden="true">*</em></span><input id="productUnit" maxlength="80" required placeholder="unidades, cajas, paneles…"></label>
           <label for="productFormat"><span>Presentación / empaque</span><input id="productFormat" maxlength="250" placeholder="JIB 35 lb / 17.25 L"></label>
           <label for="productUnitsPallet"><span>Unidades por pallet</span><input id="productUnitsPallet" type="number" min="0.001" step="0.001" inputmode="decimal"></label>
           <label for="productWeight"><span>Peso por unidad (kg)</span><input id="productWeight" type="number" min="0" step="0.001" inputmode="decimal"></label>
           <label for="productVolume"><span>Volumen por unidad (m³)</span><input id="productVolume" type="number" min="0" step="0.000001" inputmode="decimal"></label>
+          </div></fieldset>
+          <fieldset class="product-form-section"><legend>Procedencia</legend>
+          <div class="product-form-grid">
           <label for="productOrigin"><span>País de origen</span><input id="productOrigin" maxlength="160"></label>
           <label for="productHs"><span>HS Code</span><input id="productHs" maxlength="120"></label>
+          </div></fieldset>
+          <div class="product-form-grid">
           <label class="product-field-wide" for="productDescription"><span>Descripción</span><textarea id="productDescription" maxlength="2000"></textarea></label>
           <label class="product-field-wide" for="productNotes"><span>Notas internas</span><textarea id="productNotes" maxlength="2000"></textarea></label>
+        </div>
         </div>
         <div id="productFormMessage" class="products-form-message" role="status" aria-live="polite"></div>
         <footer class="product-dialog-actions">
@@ -126,7 +134,6 @@
 
   <div id="productDecision" class="modal product-modal product-decision hidden" role="alertdialog" aria-modal="true" aria-hidden="true" aria-labelledby="productDecisionTitle" aria-describedby="productDecisionText">
     <div class="product-dialog product-decision-dialog">
-      <span class="product-decision-mark" aria-hidden="true">!</span>
       <h2 id="productDecisionTitle">Confirmar cambio</h2>
       <p id="productDecisionText"></p>
       <div class="product-dialog-actions">
@@ -137,7 +144,7 @@
   </div>
 
   <script src="/admin/form-drafts.js?v=20260909-drafts1" defer></script>
-  <script src="/admin/products.js?v=20260903-ux7products1" defer></script>
+  <script src="/admin/products.js?v=20260926-figma1" defer></script>
   <script src="/admin/embedded-auto-refresh.js?v=20260920-speed3" defer></script>
 </body>
 </html>
