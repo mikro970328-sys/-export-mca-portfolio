@@ -38,10 +38,12 @@ No se modifican APIs, SQL, permisos efectivos, validaciones de negocio, payloads
 - Fixture con owners reales, cuentas ficticias, API en memoria permitida por ruta y CSP sin red.
 - 22 pruebas por motor: directorios a 1440/980/390 px; formularios a 1440×700 y 390×500; alta, edición, contraseñas, plantillas y 29 permisos, membresías, estados, master/sistema, acceso limitado, errores y reintento, foco, doble activación y respuestas tardías.
 - El nuevo flujo de contraseña comprueba limpieza del formulario y renovación de token tras éxito. La revocación comprueba confirmación, cancelación, error retenido y renovación de la sesión propia.
-- CI y capturas pendientes de verificar sobre el head exacto antes de publicar.
+- El primer head pasó 121/121 pruebas visuales por motor. La inspección de capturas eliminó padding y sombra heredados del panel de acceso, fijó el espaciado de Mi cuenta y alineó las dos columnas de edición de usuario. Verificar CI y capturas del head corregido antes de publicar.
 
 ## Publicación anterior y continuación
 
 Tareas y Trabajadores: PR #354, main `1527d4af094c97179e4d696037e7d6e65ce73e11`, deployment `dpl_71heePGGFim5KypdWXhKKttFtRo2` READY. Head verificado `4c69c54e4d3748dbdfb9b8da62aeff22a4d5c80b`; 38 workflows y 22 trabajos correctos; 99/99 pruebas visuales por motor en CI `36224011949`. Seis archivos de producción idénticos por GET; endpoints sin sesión responden 401. Guía Figma `124:5` / estado `124:7` publicada.
 
 Después de este bloque: Inicio, alertas, notificaciones, Publicaciones y configuración/supervisión de workflow; revisión integrada del escritorio. Resolver el contenido relacionado asíncrono de Compras que inserta enlaces sobre las acciones del detalle. Avisar a Daniel cuando todo el escritorio esté cerrado, antes de iniciar iPhone físico.
+
+Revisión integrada pendiente: el main global conserva márgenes externos para vistas nativas, además del padding de sus owners. Unificar esa base con el shell real en el cierre de escritorio, conservando el viewport de los iframes.

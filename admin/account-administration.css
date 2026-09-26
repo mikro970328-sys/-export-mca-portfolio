@@ -19,7 +19,7 @@
 #accountSection .account-summary-card strong { order:-1;color:var(--text);font-size:32px;font-weight:600;line-height:40px;letter-spacing:-.8px;overflow-wrap:anywhere; }
 #accountSection .account-summary-card span { color:var(--text);font-size:14px;font-weight:600;line-height:20px; }
 .account-summary-card small { color:var(--muted);font-size:12px;line-height:18px; }
-.account-layout { display:grid;grid-template-columns:minmax(0,1fr);gap:24px;min-width:0; }
+#accountSection .account-layout { display:grid;grid-template-columns:minmax(0,1fr);gap:24px;min-width:0; }
 #accountSection .account-panel.account-card { min-width:0;margin:0;padding:32px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);box-shadow:none; }
 .account-panel-head { position:relative;display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin:0 0 24px; }
 .account-panel-head h3 { margin:0;color:var(--text);font-size:20px;font-weight:600;line-height:28px;letter-spacing:-.3px; }

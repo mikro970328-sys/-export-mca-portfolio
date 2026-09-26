@@ -24,7 +24,7 @@
 .access-tab { min-width:132px; }
 .access-create { min-width:208px;flex:none; }
 .access-view-tabs button { min-width:112px; }
-.access-directory-panel { display:grid;grid-template-columns:minmax(0,1fr);gap:24px;min-width:0;margin:0;padding:0;border:0;background:var(--surface); }
+#adminsSection .access-panel.access-directory-panel { display:grid;grid-template-columns:minmax(0,1fr);gap:24px;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:var(--surface);box-shadow:none; }
 .access-toolbar { display:grid;grid-template-columns:minmax(0,1fr) 132px;align-items:end;gap:16px; }
 .access-search { display:grid;gap:8px;min-width:0; }
 .access-search-label,.access-form label:not(.access-check):not(.access-member),.access-group-label { display:block;margin:0 0 8px;color:var(--text);font-size:14px;font-weight:600;line-height:20px; }
