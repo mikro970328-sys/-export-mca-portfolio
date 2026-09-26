@@ -155,7 +155,7 @@ test('financial cancellations preserve balances, permissions and history', async
     };
     const createPO=async(supplier,currency='USD')=>{
       await navigate(a,'purchases');await purchase.locator('[data-view="all"]').click();await purchase.locator('#newOrder').click();
-      await purchase.locator('#oSupplier').selectOption(supplier);await purchase.locator('#oDestinationMode').selectOption('direct');
+      await purchase.locator('#oSupplier').selectOption(supplier);await purchase.locator('[data-destination="direct"]').click();
       await purchase.locator('#oCurrency').fill(currency);await purchase.locator('.lProduct').selectOption(f.product);
       await purchase.locator('.lQty').fill('100');await purchase.locator('.lPallets').fill('10');await purchase.locator('.lPriceValue').fill('2.5');
       await mutation('purchases',()=>purchase.locator('#saveOrder').click());await expect(purchase.locator('#orderModal')).toBeHidden();

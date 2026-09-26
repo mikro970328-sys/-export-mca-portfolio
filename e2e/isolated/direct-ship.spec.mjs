@@ -124,7 +124,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     await step('DS-01 Direct Ship purchase 840 does not create WR or inventory',async()=>{
       await purchases.locator('[data-view="all"]').click();await purchases.locator('#newOrder').click();
       await purchases.locator('#oSupplier').selectOption(f.supplier);
-      await purchases.locator('#oDestinationMode').selectOption('direct');
+      await purchases.locator('[data-destination="direct"]').click();
       await expect(purchases.locator('#oWarehouseField')).toBeHidden();
       await purchases.locator('.lProduct').selectOption(f.product);
       await purchases.locator('.lQty').fill('840');
@@ -137,6 +137,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await expect(purchases.locator('.lUpp')).toHaveValue('84');
       await expect(purchases.locator('.lMeasurementHelp')).not.toHaveClass(/is-error/);
       await purchases.locator('.lPriceValue').fill('2.5');
+      await expect(purchases.locator('#orderTotalPreview')).toHaveText('USD 2,100.00');
+      await purchases.locator('#purchaseDestinationTitle').scrollIntoViewIfNeeded();
+      await shot('01-direct-purchase-destination');
       await mutation('purchases',()=>purchases.locator('#saveOrder').click());
       await expect(purchases.locator('#orderModal')).toBeHidden();
       po=await f.one('select * from purchase_orders');evidence.documents.purchase=po.po_number;

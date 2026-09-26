@@ -115,7 +115,7 @@ test('repeat purchase creates an independent draft with current permissions', as
     const {page,ui}=await enter('a');
     const close=async()=>{await ui.locator('[data-close="order"]').first().click();await expect(ui.locator('#orderModal')).toBeHidden();};
     const repeat=async id=>{
-      await ui.locator('[data-view="all"]').click();await ui.locator(`[data-repeat-order="${id}"]`).click();
+      await ui.locator('[data-view="all"]').click();await ui.locator(`[data-purchase-more="${id}"] > summary`).click();await ui.locator(`[data-repeat-order="${id}"]`).click();
       await expect(ui.locator('#orderModal')).toBeVisible();
     };
     const save=async(status=200)=>{
