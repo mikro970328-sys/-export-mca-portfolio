@@ -150,6 +150,6 @@
   .product-dialog { overflow:auto;overscroll-behavior:contain;scroll-padding:16px; }
   #productForm { flex:none;overflow:visible; }
   .product-form-body,.product-detail-body { flex:none;overflow:visible; }
-  .product-dialog-actions { position:sticky;bottom:0;z-index:1;border-top:1px solid var(--line); }
+  .product-dialog-actions { border-top:1px solid var(--line); }
 }
 @media(prefers-reduced-motion:reduce) { .products-spinner { animation:none; } }

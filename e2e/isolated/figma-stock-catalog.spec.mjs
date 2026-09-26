@@ -84,6 +84,7 @@ for(const viewport of [{width:1440,height:700},{width:390,height:500}]){
     await expect(page.locator('#saveProduct')).toBeEnabled();await expect(page.locator('body')).not.toContainText('Internal write');
     await page.locator('#productName').scrollIntoViewIfNeeded();
     const inputBox=await page.locator('#productName').boundingBox();expect(inputBox.y).toBeGreaterThanOrEqual(0);expect(inputBox.y+inputBox.height).toBeLessThanOrEqual(viewport.height+1);
+    expect(await page.locator('#productName').evaluate(el=>{const r=el.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===el;})).toBe(true);
     await page.locator('#productName').fill('Producto nuevo');
     await page.locator('#productFormMessage').scrollIntoViewIfNeeded();await shot(page,info,'producto-error-recuperable');await page.evaluate(()=>{window.__fixtureRejectWrites=false});await page.locator('#saveProduct').click();
     await expect(page.locator('#productModal')).toBeHidden();await expect(page.locator('.product-card')).toHaveCount(3);
