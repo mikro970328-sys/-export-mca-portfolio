@@ -1,6 +1,6 @@
-## Continuidad · 26 sep 2026 · Centro de ayuda en revisión
+## Continuidad · 26 sep 2026 · Centro de ayuda publicado
 
-Daniel solicitó una sección Ayuda dentro del ERP, con guía de trabajo y solución de problemas para su equipo. Se implementan 43 artículos, buscador, temas, recorridos completos, impresión y plantilla de incidencias. Sin API ni escrituras comerciales. Detalles y validación en [ERP_HELP_CENTER.md](ERP_HELP_CENTER.md). Pendiente confirmar CI/capturas y publicar; no declarar entrega productiva antes de ello. iPhone permanece fuera del alcance por instrucción posterior del usuario.
+Daniel solicitó una sección Ayuda dentro del ERP, con guía de trabajo y solución de problemas para su equipo. Se publicaron 43 artículos, buscador, temas, recorridos completos, impresión y plantilla de incidencias. Sin API ni escrituras comerciales. Detalles y validación en [ERP_HELP_CENTER.md](ERP_HELP_CENTER.md). PR #360, main `f802588c7e80b049ca7121b42874325e88a536a6`, Vercel `dpl_6uEJNkkvk2PCMUfn7zyaFDmth2gB` READY. CI final `d9dabb8`: 37/37 workflows, 22/22 trabajos de navegador y 179/179 pruebas visuales por motor. Capturas revisadas; siete archivos exactos en producción por GET. iPhone permanece fuera del alcance por instrucción posterior del usuario.
 
 Este nuevo pedido amplía el escritorio ya entregado; la auditoría posterior distinguió desarrollo terminado de preparación operativa completa. No confundir datos/catálogos pendientes con defectos de software ni cambiar operaciones para cerrar avisos.
 
