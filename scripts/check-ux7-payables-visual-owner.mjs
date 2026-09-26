@@ -50,8 +50,8 @@ const workflow = read(files.workflow);
 for (const text of [
   '<body class="erp-module-page erp-module-payables" data-owner="payables.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/payables.css?v=20260922-figma2',
-  '/admin/payables.js?v=20260916-supplier-retry1',
+  '/admin/payables.css?v=20260926-figma1',
+  '/admin/payables.js?v=20260926-figma1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero payables-page-head"',
   'id="payablesLastUpdated"',
@@ -69,7 +69,7 @@ for (const text of [
 
 if ((html.match(/id="detailTraceability"/g) || []).length !== 1) failures.push('el HTML debe contener exactamente una sección canónica de Trazabilidad AP');
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerCssIndex = html.indexOf('/admin/payables.css?v=20260922-figma2');
+const ownerCssIndex = html.indexOf('/admin/payables.css?v=20260926-figma1');
 if (foundationIndex < 0 || ownerCssIndex < 0 || foundationIndex > ownerCssIndex) failures.push('la base visual compartida debe cargar antes de payables.css');
 
 forbid(html, /<style(?:\s|>)/i, 'payables.html conserva CSS incrustado');
@@ -80,7 +80,6 @@ forbid(html, /purchases\.css|ap-traceability-bootstrap/i, 'Cuentas por pagar vue
 
 for (const selector of [
   '.payables-page-head',
-  '.payables-hero-state',
   '.payables-metrics',
   '.payables-list-panel',
   '.payables-list-toolbar',
@@ -103,7 +102,7 @@ for (const selector of [
 ]) requireText(styles, selector, `CSS propietario ${selector}`);
 
 requireText(styles, 'overflow-x:auto;', 'scroll horizontal interno de la tabla');
-requireText(styles, 'min-width:1190px;', 'ancho interno controlado de la tabla');
+requireText(styles, 'min-width:1152px;', 'ancho interno controlado de la tabla');
 requireText(styles, 'overflow-x:hidden;', 'protección contra desbordamiento del documento');
 forbid(styles, /@import|!important|font-family\s*:\s*Arial|linear-gradient/i, 'payables.css conserva estilos legacy, una importación tardía o una sobrescritura');
 forbid(styles, /\b(?:fetch|MutationObserver|prompt|alert|confirm)\b/, 'payables.css mezcla comportamiento de JavaScript');

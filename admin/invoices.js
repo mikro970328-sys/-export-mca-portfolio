@@ -333,7 +333,7 @@
       return `<div class="invoice-line" data-invoice-line="${esc(item.id)}">
         <div class="invoice-line-title">${esc(label)}</div>
         <div class="invoice-line-meta">Ordenado ${esc(item.ordered_quantity)} ${esc(item.unit)} · Disponible ${esc(available)} · Precio ${esc(money(item.unit_price, order.currency))}</div>
-        <div class="grid"><div><label>Cantidad a facturar</label><input data-qty type="number" min="0" max="${esc(available)}" step="any" value="${esc(quantity)}"></div><div><label>Nota</label><input data-note value="${esc(own?.notes || '')}" placeholder="Opcional"></div></div>
+        <div class="grid"><div><label for="invoice-qty-${esc(item.id)}">Cantidad a facturar</label><input id="invoice-qty-${esc(item.id)}" data-qty type="number" min="0" max="${esc(available)}" step="any" value="${esc(quantity)}"></div><div><label for="invoice-note-${esc(item.id)}">Nota</label><input id="invoice-note-${esc(item.id)}" data-note value="${esc(own?.notes || '')}" placeholder="Opcional"></div></div>
       </div>`;
     }).filter(Boolean);
     $('invoiceLines').innerHTML = rows.length ? rows.join('') : emptyState('Sin saldo disponible', 'Esta venta no tiene cantidades pendientes de facturar.');

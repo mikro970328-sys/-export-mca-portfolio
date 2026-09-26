@@ -14,8 +14,8 @@ const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
 for(const text of [
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/invoices.css?v=20260922-figma1',
-  '/admin/invoices.js?v=20260916-payment1',
+  '/admin/invoices.css?v=20260926-figma1',
+  '/admin/invoices.js?v=20260926-figma1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'data-owner="invoices.js"',
   'invoices-table-wrap',
@@ -26,7 +26,6 @@ forbid(html,/purchases\.css/i,'Facturas vuelve a depender del CSS de Compras');
 
 for(const text of [
   '.invoices-page-head',
-  '.invoices-hero-state',
   '.invoices-metrics',
   '.invoices-list-panel',
   '.invoices-table-wrap',

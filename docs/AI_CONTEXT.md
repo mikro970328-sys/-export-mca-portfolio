@@ -1,3 +1,15 @@
+## Continuidad · 26/09/2026 · Finanzas desde Figma
+
+- Daniel pidió terminar escritorio y avisar antes del iPhone físico. Continuar sin confirmaciones rutinarias; no cerrar la tarea al publicar un bloque.
+- Logística publicada: PR #351, main `c15459f61ff19755e5fa0c0f20585eb63bc50b86`, tree `532875b5b5e429ba35922a29524beb627da46bf0`, Vercel `dpl_Ao7GVtchdtYvVxNRVBpLxHkK7JVZ` READY. 45/45 workflows; Browser Operator Acceptance `36218460503`, 22/22 jobs y 50/50 pruebas visuales por motor. Doce archivos de producción exactos; APIs sin sesión 401. Guía Figma `101:2` actualizada.
+- Bloque actual: `feat/figma-finance-white`, Facturación, Cuentas por pagar y Reportes. Dieciséis vistas revisadas y tres componentes; guía Figma `112:5`. Implementación y pruebas en `docs/FIGMA_FINANCE.md`.
+- APIs/SQL/cálculos/permisos/payloads permanecen en sus owners. Nunca escribir datos QA en producción ni Preview.
+- Después: Clientes, Proveedores, Tareas y administración, revisión integrada y publicación final. No comenzar iPhone físico ni afirmar que todo el ERP está terminado antes de resolver ese alcance.
+
+Este corte sustituye los pendientes históricos ya resueltos que aparecen debajo.
+
+---
+
 ## Continuación Figma: Existencias y Productos — 2026-09-26
 
 ## Continuidad · 26/09/2026 · Logística desde Figma

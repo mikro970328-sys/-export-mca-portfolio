@@ -40,12 +40,11 @@ const workflow = read(files.workflow);
 [
   '<body class="erp-module-page erp-module-reports" data-owner="reports.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/reports.css?v=20260922-figma2',
-  '/admin/reports.js?v=20260916-queue1',
+  '/admin/reports.css?v=20260926-figma1',
+  '/admin/reports.js?v=20260926-figma1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero reports-page-head"',
   'id="reportsPageTitle">Reportes',
-  'class="reports-hero-state"',
   'id="reportLastUpdated"',
   'id="reportsMetrics" class="metrics reports-metrics"',
   'id="reportDatasetMetric"',
@@ -69,7 +68,7 @@ const workflow = read(files.workflow);
 ].forEach(value => requireText(html,value,`HTML canónico ${value}`));
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerStylesIndex = html.indexOf('/admin/reports.css?v=20260922-figma2');
+const ownerStylesIndex = html.indexOf('/admin/reports.css?v=20260926-figma1');
 if (foundationIndex < 0 || ownerStylesIndex < 0 || foundationIndex > ownerStylesIndex) {
   failures.push('la base visual compartida debe cargar antes de reports.css');
 }
@@ -82,7 +81,6 @@ forbid(html, /(?:↻|✕|☰|▧|▨|📊|📈|📉)/u, 'Reportes conserva glifo
 
 [
   '.reports-page-head',
-  '.reports-hero-state',
   '.reports-action-row',
   '.reports-feedback',
   '.reports-metrics',
@@ -167,7 +165,7 @@ forbid(owner, /method\s*:\s*['"](?:POST|PUT|PATCH|DELETE)['"]/i, 'Reportes intro
 ].forEach(value => requireText(api,value,`API autoritativa ${value}`));
 [
   "id:'reportsSection'",
-  "src:'/admin/reports.html?embedded=1'",
+  "src:'/admin/reports.html?embedded=1&v=20260926-figma1'",
   "permission:'reports.read'",
   "sections:['invoicesSection','payablesSection','costsSection','reportsSection']"
 ].forEach(value => requireText(navigation,value,`navegación de Reportes ${value}`));
@@ -216,11 +214,13 @@ class FakeElement {
   setAttribute(name, value) { this.attributes.set(name,String(value)); }
   click() { this.listeners.get('click')?.(); }
   remove() {}
+  contains(node) { for (; node; node = node.parentElement) if (node === this) return true; return false; }
   querySelectorAll(selector) {
     if (selector !== '[data-dataset]') return [];
     return [...this.innerHTML.matchAll(/data-dataset="([^"]+)"/g)].map(match => {
       const button = new FakeElement(`dataset-${match[1]}`);
       button.dataset.dataset = match[1];
+      button.parentElement = this;
       return button;
     });
   }
