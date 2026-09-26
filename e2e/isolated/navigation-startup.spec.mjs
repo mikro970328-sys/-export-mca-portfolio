@@ -106,6 +106,16 @@ test('startup completion cannot discard an already opened mobile menu', async ({
         await expect(page.locator('#mobileMenuBtn')).toHaveAttribute('aria-expanded','false');
         await page.locator('#mobileMenuBtn').click();await expect(page.locator('#sidebar')).toHaveClass(/mobile-open/);
         await page.keyboard.press('Escape');await expect(page.locator('#sidebar')).not.toHaveClass(/mobile-open/);
+        // Help is an explicit destination, never the startup fallback. Once
+        // selected it must restore normally, even for a restricted operator.
+        await page.locator('#mobileMenuBtn').click();
+        await page.locator('[data-section="helpSection"]').click();
+        await expect(page.locator('#helpSection')).toBeVisible();
+        await expect(page.locator('#helpResults .help-card')).toHaveCount(43);
+        await page.reload();
+        await page.waitForFunction(()=>window.__qaModulesReady===true);
+        await expect(page.locator('#helpSection')).toBeVisible();
+        await expect(page.locator('.app-section:visible')).toHaveCount(1);
         await context.close();assetGate=null;
       });
     }

@@ -169,7 +169,10 @@
       saved,
       firstAllowed,
       accessCan('dashboard.read') ? 'dashboardSection' : null,
-      ...[...document.querySelectorAll('[data-section]')].map(button => button.dataset.section)
+      // Help is available before lazy operational sections exist. Only open it
+      // when explicitly saved/selected; an automatic fallback here would replace
+      // the saved business route before navigation-shell can restore it.
+      ...[...document.querySelectorAll('[data-section]')].map(button => button.dataset.section).filter(id => id !== 'helpSection')
     ].filter(Boolean);
     for (const id of [...new Set(candidates)]) {
       const section = document.getElementById(id);
