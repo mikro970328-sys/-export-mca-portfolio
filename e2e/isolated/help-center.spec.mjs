@@ -10,7 +10,7 @@ async function start(page,{master=true}={}){
   await expect(page.locator('#helpSection')).toBeVisible();
   return errors;
 }
-async function shot(page,info,name){const path=info.outputPath(name+'.png');await page.screenshot({path,scale:'css'});await info.attach(name,{path,contentType:'image/png'});}
+async function shot(page,info,name){const path=info.outputPath(name+'.png');await page.screenshot({path,scale:'css',animations:'disabled'});await info.attach(name,{path,contentType:'image/png'});}
 
 for(const width of [1440,1024])test(`Help index and article fit desktop ${width}`,async({page},info)=>{
   await page.setViewportSize({width,height:1000});const errors=await start(page);
