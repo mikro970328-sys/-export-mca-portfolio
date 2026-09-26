@@ -48,7 +48,8 @@ Los recorridos comerciales existentes ejercitan las APIs y PostgreSQL/PostgREST
 desechables: compra, recepción parcial/exceso, repetición, cancelación y venta
 Direct Ship. La compra se guarda dentro del iframe real con pantalla de 500 px
 de alto y el botón completamente visible. Resultados de Chromium/WebKit,
-integración y despliegue definitivos constan en la PR de esta entrega.
+integración y despliegue definitivos constan en la
+[PR #348](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/348).
 
 Escritorio sigue siendo prioritario. WebKit simulado no certifica Safari en
 iPhone físico, teclado nativo, PWA instalada ni push. BrowserStack físico sigue

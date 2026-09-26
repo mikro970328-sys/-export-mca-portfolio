@@ -3,8 +3,8 @@
 Gastos ya está publicado por PR #347 en `9847906669e098dc88883f2ec7e59ab65276f2d1`,
 con 22/22 jobs de navegador aprobados y producción Vercel READY. La continuación
 actual implementa las seis vistas de Compras en `feat/figma-purchases-white`.
-Ver `FIGMA_PURCHASES.md` para diseños, comportamiento y validación. La PR de esta
-entrega registra el commit probado, integración y publicación definitivos.
+Ver `FIGMA_PURCHASES.md` para diseños, comportamiento y validación. La PR #348
+registra el commit probado, integración y publicación definitivos.
 Daniel autorizó continuar la implementación y publicación. No reiniciar módulos.
 
 Este estado sustituye pendientes históricos ya resueltos que figuran debajo.

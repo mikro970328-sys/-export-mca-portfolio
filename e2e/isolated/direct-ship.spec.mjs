@@ -139,7 +139,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await purchases.locator('.lPriceValue').fill('2.5');
       await expect(purchases.locator('#orderTotalPreview')).toHaveText('USD 2,100.00');
       await purchases.locator('#purchaseDestinationTitle').scrollIntoViewIfNeeded();
-      await screenshot('01-direct-purchase-destination');
+      await shot('01-direct-purchase-destination');
       await mutation('purchases',()=>purchases.locator('#saveOrder').click());
       await expect(purchases.locator('#orderModal')).toBeHidden();
       po=await f.one('select * from purchase_orders');evidence.documents.purchase=po.po_number;

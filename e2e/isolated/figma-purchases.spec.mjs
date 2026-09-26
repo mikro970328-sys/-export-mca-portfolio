@@ -64,6 +64,8 @@ for(const viewport of [{width:390,height:500},{width:1440,height:700}]){
     });
     expect(chevron).toEqual({width:18,height:18,size:'18px 18px'});
     await page.locator('[data-destination="direct"]').click();await expect(page.locator('#oWarehouseField')).not.toBeVisible();
+    await expect(page.locator('[data-destination="direct"]')).toHaveCSS('background-color','rgb(255, 241, 232)');
+    await expect(page.locator('[data-destination="direct"]')).toHaveCSS('color','rgb(181, 71, 8)');
     await expect(page.locator('#oWarehouse')).toHaveValue('');await expect(page.locator('#oDestinationHelp')).toContainText('Proveedor → cliente');
     await page.locator('#purchaseDestinationTitle').scrollIntoViewIfNeeded();await shot(page,info,'compra-direct-ship');
     await page.locator('#saveOrder').scrollIntoViewIfNeeded();

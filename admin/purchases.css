@@ -120,7 +120,7 @@
 .erp-module-purchases .purchase-field textarea { min-height:80px;resize:vertical; }
 .erp-module-purchases .purchase-destination-section { display:grid;gap:12px;min-width:0; }
 .erp-module-purchases .purchase-destination-options { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
-.erp-module-purchases .purchase-destination-options [aria-pressed=true] { border-color:var(--orange-strong);background:#fff1e8;color:var(--orange-strong); }
+.erp-module-page.erp-module-purchases .purchase-destination-options .btn[aria-pressed=true] { border-color:var(--orange-strong);background:#fff1e8;color:var(--orange-strong); }
 .erp-module-purchases .purchase-destination-help { margin:0;color:var(--muted);font-size:14px;line-height:20px; }
 .erp-module-purchases .purchase-destination-help.direct { border-radius:var(--radius-sm);padding:16px;background:var(--orange-soft);color:var(--text); }
 .erp-module-purchases .purchase-destination-help strong { display:block;margin-bottom:8px;color:var(--orange-strong);font-weight:600; }
@@ -240,7 +240,7 @@
   .erp-module-purchases .purchase-order-secondary-fields { grid-template-columns:1fr;gap:24px; }
   .erp-module-purchases .purchase-product-row { grid-template-columns:1fr;gap:16px; }
   .erp-module-purchases .purchase-form-section-head { align-items:center;flex-wrap:nowrap; }
-  .erp-module-purchases .purchase-form-section-head > .btn { flex:none; }
+  .erp-module-page.erp-module-purchases .purchase-form-section-head > button.btn { flex:none; }
   .erp-module-purchases .purchase-order-footer { flex-direction:column;align-items:stretch;gap:16px;padding:24px 16px calc(24px + env(safe-area-inset-bottom)); }
   .erp-module-purchases .purchase-order-footer .purchase-modal-actions { flex-direction:row; }
   .erp-module-purchases .purchase-order-footer .purchase-modal-actions > .btn { flex:1;min-width:0; }
