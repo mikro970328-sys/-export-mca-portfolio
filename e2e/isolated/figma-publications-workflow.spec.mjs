@@ -2,8 +2,8 @@ import {test,expect} from '@playwright/test';
 import {publicationsWorkflowFixture,fixturePhoto} from '../../scripts/lib/figma-publications-workflow-fixture.mjs';
 async function open(page,module,options={}){
  const url='https://erp-visual.invalid/?embedded=1',html=publicationsWorkflowFixture({module,...options});
- await page.route('**/*',route=>{const requested=route.request().url();if(requested===url)return route.fulfill({contentType:'text/html',body:html});if(/^https:\/\/erp-visual\.invalid\/storage\/v1\/object\/public\/publication-images\/photo-\d+\.png$/.test(requested))return route.fulfill({contentType:'image/png',body:Buffer.from(fixturePhoto,'base64')});return route.abort();});
- await page.goto(url);await page.evaluate(()=>document.fonts.ready);
+ await page.route('**/*',route=>{const requested=route.request().url();if(requested.startsWith('blob:'))return route.continue();if(requested===url)return route.fulfill({contentType:'text/html',body:html});if(/^https:\/\/erp-visual\.invalid\/storage\/v1\/object\/public\/publication-images\/photo-\d+\.png$/.test(requested))return route.fulfill({contentType:'image/png',body:Buffer.from(fixturePhoto,'base64')});return route.abort();});
+ page.on('console',message=>{if(message.type()==='error')console.log('Fixture browser diagnostic:',message.text().slice(0,400));});await page.goto(url);await page.evaluate(()=>document.fonts.ready);
  if(module==='publications'){if(!options.failRead)await expect(page.locator('#totalMetric')).toHaveText('4');}
  else if(options.writable!==false){await page.locator(module==='routes'?'[data-workflow-routes-open]':'[data-task-supervisor-open]').click();if(!options.failRead)await expect(page.locator(module==='routes'?'#workflowRoutesModal':'#taskSupervisorModal')).toHaveAttribute('aria-busy','false');}
 }
