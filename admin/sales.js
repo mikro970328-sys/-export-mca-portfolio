@@ -51,7 +51,7 @@ async function load(){
   render();
 }
 function fillMasters(){
-  $('oClient').innerHTML='<option value="">Seleccionar cliente</option>'+clients.map(c=>`<option value="${c.id}">${esc(clientName(c))}</option>`).join('');
+  $('oClient').innerHTML='<option value="">Seleccionar cliente</option>'+clients.map(c=>`<option value="${c.id}">${esc(clientName(c))}${c.nit?` · NIT ${esc(c.nit)}`:''}</option>`).join('');
   syncImporters();
 }
 function syncImporters(selected=''){

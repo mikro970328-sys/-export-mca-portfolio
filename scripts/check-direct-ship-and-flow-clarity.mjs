@@ -63,7 +63,7 @@ for(const text of ['create_direct_sale_from_purchase_order','assign_sales_supply
 
 for(const text of [
   'Asignar mercancía',
-  '/admin/sales.js?v=20260926-business1',
+  '/admin/sales.js?v=20260926-business2',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3'
 ])requireText(salesHtml,text,`ruta visible desde Ventas ${text}`);
 for(const text of [

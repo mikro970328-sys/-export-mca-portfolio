@@ -4,7 +4,7 @@ import { loadSalesActionCapabilityMap, loadSalesWriteAccess } from './_sales-act
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
 const rpcRow = value => Array.isArray(value) ? (value[0] || null) : (value || null);
 
-const SO_SELECT = 'id,so_number,client_id,importer_id,order_date,requested_at,currency,customer_reference,nationalization_status,status,notes,created_by,created_at,updated_at,client:clients(id,name,company,mipyme_name,active),importer:importers(id,name,active)';
+const SO_SELECT = 'id,so_number,client_id,importer_id,order_date,requested_at,currency,customer_reference,nationalization_status,status,notes,created_by,created_at,updated_at,client:clients(id,name,company,mipyme_name,nit,active),importer:importers(id,name,active)';
 
 async function listOrders(admin, writableOverride = null) {
   const [orders, progress, items, itemProgress, allocations, capabilityMap] = await Promise.all([
@@ -46,7 +46,7 @@ async function bootstrap(admin) {
   const writeAccess = await loadSalesWriteAccess(admin);
   const [orders, clients, importers, clientImporters, products] = await Promise.all([
     listOrders(admin, writeAccess),
-    supabase('clients', { query:'?select=id,name,company,mipyme_name,active&active=eq.true&order=name.asc&limit=1000' }),
+    supabase('clients', { query:'?select=id,name,company,mipyme_name,nit,active&active=eq.true&order=name.asc&limit=1000' }),
     supabase('importers', { query:'?select=id,name,active&active=eq.true&order=name.asc&limit=1000' }),
     supabase('client_importers', { query:'?select=client_id,importer_id&limit=5000' }),
     supabase('products', { query:'?select=id,sku,name,brand,category,unit,package_format,default_units_per_pallet,active&active=eq.true&order=name.asc&limit=2000' })

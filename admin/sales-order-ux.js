@@ -111,7 +111,7 @@
     if (!select || !button) return;
     const edit = currentEditing();
     if (!select.value && edit?.client_id) {
-      const label = edit?.client?.company || edit?.client?.mipyme_name || edit?.client?.name || 'Cliente seleccionado';
+      const label = `${edit?.client?.company || edit?.client?.mipyme_name || edit?.client?.name || 'Cliente seleccionado'}${edit?.client?.nit?` · NIT ${edit.client.nit}`:''}`;
       if (![...select.options].some(option => option.value === edit.client_id)) {
         select.add(new Option(label, edit.client_id));
       }
@@ -158,7 +158,9 @@
       if(!result.client?.id)throw new Error('No se pudo guardar el cliente.');
       const client=result.client,select=byId('oClient');
       if(select){
-        if(![...select.options].some(option=>String(option.value)===String(client.id)))select.add(new Option(`${client.display_name||client.company||client.name||'Cliente'}${client.nit?` · NIT ${client.nit}`:''}`,client.id));
+        let option=[...select.options].find(item=>String(item.value)===String(client.id));
+        if(!option){option=new Option('',client.id);select.add(option)}
+        option.textContent=`${client.display_name||client.company||client.name||'Cliente'}${client.nit?` · NIT ${client.nit}`:''}`;
         select.value=client.id;
       }
       const importerSelect=byId('oImporter');
@@ -254,9 +256,9 @@
       const client = data.client;
       const select = byId('oClient');
       if (!client || !select) return;
-      if (![...select.options].some(option => option.value === client.id)) {
-        select.add(new Option(`${client.display_name || client.company || client.mipyme_name || client.name || 'Cliente'}${client.nit?` · NIT ${client.nit}`:''}`, client.id));
-      }
+      let option=[...select.options].find(row=>String(row.value)===String(client.id));
+      if(!option){option=new Option('',client.id);select.add(option)}
+      option.textContent=`${client.display_name || client.company || client.mipyme_name || client.name || 'Cliente'}${client.nit?` · NIT ${client.nit}`:''}`;
       select.value = client.id;
       const importerSelect = byId('oImporter');
       if (importerSelect) {
