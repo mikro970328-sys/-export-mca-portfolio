@@ -352,8 +352,7 @@ function renderLoadDetail(load){
   const actions=actionButtons(load);
   const pending=load.capabilities?.container_pending===true?'<div class="pending-note">Contenedor pendiente de asignar. El despacho se habilitará únicamente cuando el backend confirme un contenedor elegible.</div>':'';
   const notes=String(load.notes||'').trim()||'Sin notas operativas.';
-  return `<section class="load-detail-hero"><div><span>Operación</span><strong>${esc(load.load_number||'Cargue')}</strong></div><span class="pill ${esc(statusKey(load.status))}">${esc(statusLabel(load.status))}</span></section>
-    <section class="load-detail-section"><header class="load-detail-section-head"><h3>Estado y acciones disponibles</h3><span class="loads-result-count">Control por etapas</span></header><div class="load-detail-section-body">${flow(load.status)}${nextStageMarkup(load)}<div class="actions load-detail-actions">${actions.length?actions.map(action=>`<button class="${esc(action[2]||'alt')}" type="button" data-action="${esc(action[0])}">${esc(action[1])}</button>`).join(''):'<span class="loads-context-empty">No hay acciones adicionales habilitadas.</span>'}</div>${pending}<div id="actionMsg" class="load-action-feedback" role="status" aria-live="polite"></div></div></section>
+  return `<section class="load-detail-section"><header class="load-detail-section-head loads-visually-hidden"><h3>Estado y acciones disponibles</h3></header><div class="load-detail-section-body">${flow(load.status)}${nextStageMarkup(load)}<div class="actions load-detail-actions">${actions.length?actions.map(action=>`<button class="${esc(action[2]||'alt')}" type="button" data-action="${esc(action[0])}">${esc(action[1])}</button>`).join(''):'<span class="loads-context-empty">No hay acciones adicionales habilitadas.</span>'}</div>${pending}<div id="actionMsg" class="load-action-feedback" role="status" aria-live="polite"></div></div></section>
     <section class="load-detail-section"><header class="load-detail-section-head"><h3>Resumen operativo</h3></header><div class="load-detail-section-body"><div class="load-summary-grid"><div><small>Almacén</small><strong>${esc(warehouseLabel(load))}</strong></div><div><small>Contenedor</small><strong>${esc(containerLabel(load))}</strong></div><div><small>Programado</small><strong>${esc(date(load.scheduled_at))}</strong></div><div><small>Booking</small><strong>${esc(load.shipment?.booking_number||'—')}</strong></div><div><small>B/L</small><strong>${esc(load.shipment?.bol_number||'—')}</strong></div><div><small>Notas</small><strong>${esc(notes)}</strong></div></div></div></section>
     <section class="load-detail-section"><header class="load-detail-section-head"><h3>Mercancía por WR</h3><span class="loads-result-count">${(load.items||[]).length} línea${(load.items||[]).length===1?'':'s'}</span></header><div class="load-detail-section-body">${itemHtml||'<div class="loads-context-empty">Este cargue todavía no tiene mercancía planificada.</div>'}</div></section>
     <section class="load-detail-section"><header class="load-detail-section-head"><h3>Trazabilidad física</h3></header><div class="load-detail-section-body">${trace}</div></section>
@@ -413,6 +412,12 @@ function showModal(id,trigger=document.activeElement){
   modalTriggers.set(id,trigger);
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden','false');
+  requestAnimationFrame(()=>focusLoadModal(modal));
+}
+
+function focusLoadModal(modal){
+  const target=modal.querySelector('button:not(:disabled),input:not(:disabled),select:not(:disabled),[tabindex]');
+  target?.focus?.();
 }
 
 function hideModal(id,{restoreFocus=true}={}){
@@ -423,7 +428,13 @@ function hideModal(id,{restoreFocus=true}={}){
   if(id==='drawerModal')contextRequest+=1;
   const trigger=modalTriggers.get(id);
   modalTriggers.delete(id);
-  if(restoreFocus&&trigger?.focus)trigger.focus();
+  if(restoreFocus){
+    if(trigger?.isConnected)trigger.focus?.();
+    else {
+      const open=['decisionModal','containerModal','planModal','drawerModal'].map($).find(node=>!node.classList.contains('hidden'));
+      if(open)focusLoadModal(open);else $('newLoad')?.focus?.();
+    }
+  }
 }
 
 function updateStatsFromLoads(){
@@ -576,7 +587,7 @@ function renderSources(load){
     <header class="product-head"><strong>${esc(group[0].product_name||'Producto')}</strong><span class="muted">${esc(unitLabel(group[0].product_unit||group[0].receipt_unit||'unidades'))}</span></header>
     <div class="product-body">${group.map(source=>{
       const current=existing.get(source.receipt_item_id)||{};
-      return `<div class="source" data-source="${esc(source.receipt_item_id)}" data-product="${esc(source.product_id)}" data-unit="${esc(unitLabel(source.product_unit||source.receipt_unit||'unidades'))}" data-receipt="${esc(source.receipt_number||'WR')}"><div class="source-top"><span><strong>${esc(source.receipt_number||'WR')}</strong>${source.lot_number?` · Lote ${esc(source.lot_number)}`:''}</span><small>Disponible: ${quantityText(source.available_quantity,source.product_unit||source.receipt_unit,source.available_pallets)}</small></div><div class="alloc-grid"><input type="number" step="0.001" min="0" max="${esc(source.available_quantity)}" data-q value="${esc(current.q||'')}" aria-label="Cantidad de ${esc(source.receipt_number||'WR')}" placeholder="Cantidad"><input type="number" step="0.001" min="0" max="${esc(source.available_pallets)}" data-p value="${esc(current.p||'')}" aria-label="Pallets de ${esc(source.receipt_number||'WR')}" placeholder="Pallets"></div></div>`;
+      return `<div class="source" data-source="${esc(source.receipt_item_id)}" data-product="${esc(source.product_id)}" data-unit="${esc(unitLabel(source.product_unit||source.receipt_unit||'unidades'))}" data-receipt="${esc(source.receipt_number||'WR')}"><div class="source-top"><span><strong>${esc(source.receipt_number||'WR')}</strong>${source.lot_number?` · Lote ${esc(source.lot_number)}`:''}</span><small>Disponible: ${quantityText(source.available_quantity,source.product_unit||source.receipt_unit,source.available_pallets)}</small></div><div class="alloc-grid"><label class="loads-field"><span>Cantidad (${esc(unitLabel(source.product_unit||source.receipt_unit))})</span><input type="number" step="0.001" min="0" max="${esc(source.available_quantity)}" data-q value="${esc(current.q||'')}" aria-label="Cantidad de ${esc(source.receipt_number||'WR')}" placeholder="Cantidad"></label><label class="loads-field"><span>Pallets</span><input type="number" step="0.001" min="0" max="${esc(source.available_pallets)}" data-p value="${esc(current.p||'')}" aria-label="Pallets de ${esc(source.receipt_number||'WR')}" placeholder="Pallets"></label></div></div>`;
     }).join('')}</div>
   </article>`).join('')||`<div class="loads-empty">${emptyState('Sin mercancía disponible','Selecciona un almacén que tenga inventario disponible por WR.')}</div>`;
 }
@@ -774,6 +785,15 @@ function bindEvents(){
     else hideModal(modal.id);
   }));
   document.addEventListener('keydown',event=>{
+    if(event.key==='Tab'){
+      const modal=['decisionModal','containerModal','planModal','drawerModal'].map($).find(node=>!node.classList.contains('hidden'));
+      if(!modal)return;
+      const nodes=[...modal.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter(node=>!node.hidden&&node.getClientRects().length);
+      const first=nodes[0],last=nodes.at(-1);
+      if(!first)return;
+      if(!modal.contains(document.activeElement)||(event.shiftKey&&document.activeElement===first)||(!event.shiftKey&&document.activeElement===last)){event.preventDefault();(event.shiftKey?last:first).focus();}
+      return;
+    }
     if(event.key!=='Escape')return;
     if(!$('decisionModal').classList.contains('hidden'))return closeDecision(false);
     const open=['containerModal','planModal','drawerModal'].find(id=>!$(id).classList.contains('hidden'));

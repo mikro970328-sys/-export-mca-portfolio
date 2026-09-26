@@ -127,13 +127,9 @@
   <div class="tracking-register-workspace">
     <header class="tracking-hero tracking-register-hero">
       <div class="tracking-hero-copy">
-        <span class="tracking-kicker">Operaciones · Salida logística</span>
+        <span class="tracking-kicker">Operaciones · Logística</span>
         <h2 id="registerContainerTitle">Registrar contenedor</h2>
-        <p>Crea la referencia operativa inicial. Cliente, importadora y documentos de transporte pueden completarse cuando estén confirmados.</p>
-      </div>
-      <div class="tracking-hero-state" aria-label="Requisito del registro">
-        <span class="tracking-live-dot" aria-hidden="true"></span>
-        <div><strong>Registro manual</strong><span>Solo el número de contenedor es obligatorio</span></div>
+        <p>Agrega los datos confirmados de la operación. Solo el número de contenedor es obligatorio.</p>
       </div>
     </header>
 
@@ -141,25 +137,21 @@
 
     <div class="tracking-registration-layout">
       <aside class="registration-guide" aria-labelledby="registrationGuideTitle">
-        <span class="tracking-eyebrow">Antes de guardar</span>
+
         <h3 id="registrationGuideTitle">Un registro listo para continuar</h3>
         <p>El contenedor permanecerá dentro del ERP y podrá relacionarse con Cargues, clientes, documentos Cuba y su historial.</p>
         <ol class="registration-guide-steps">
-          <li><span>1</span><div><strong>Identifica la operación</strong><small>Usa cuatro letras y siete números.</small></div></li>
-          <li><span>2</span><div><strong>Agrega lo confirmado</strong><small>No inventes booking, B/L ni fechas.</small></div></li>
-          <li><span>3</span><div><strong>Continúa en Tracking</strong><small>Las acciones dependerán del estado y tus permisos.</small></div></li>
+          <li><div><strong>Identifica la operación</strong><small>Usa cuatro letras y siete números.</small></div></li>
+          <li><div><strong>Agrega lo confirmado</strong><small>No inventes booking, B/L ni fechas.</small></div></li>
+          <li><div><strong>Continúa en Tracking</strong><small>Las acciones dependerán del estado y tus permisos.</small></div></li>
         </ol>
         <div class="registration-guide-note"><strong>Sin comprador todavía</strong><span>Puedes dejar el cliente vacío y asignarlo después.</span></div>
       </aside>
 
       <form id="shipmentRegistrationForm" class="registration-form-panel" novalidate>
-        <header class="tracking-panel-head">
-          <div><span class="tracking-eyebrow">Nuevo registro</span><h3>Datos del contenedor</h3><p>Completa únicamente la información real disponible.</p></div>
-          <span class="registration-required">* Obligatorio</span>
-        </header>
 
         <section class="registration-block" aria-labelledby="registrationAssignmentTitle">
-          <div class="registration-block-head"><span class="registration-step">1</span><div><h4 id="registrationAssignmentTitle">Asignación comercial</h4><p>Comprador e importadora vinculados a esta salida.</p></div></div>
+          <div class="registration-block-head"><div><h4 id="registrationAssignmentTitle">Asignación comercial</h4><p>Comprador e importadora vinculados a esta salida.</p></div></div>
           <div class="registration-fields">
             <label class="tracking-field" for="shipmentClient"><span>Cliente</span><select id="shipmentClient"><option value="">Sin cliente / Disponible para venta</option></select><small>Puedes asignarlo posteriormente.</small></label>
             <label class="tracking-field" for="shipmentImporter"><span>Importadora cubana</span><input id="shipmentImporter" list="shipmentImporterOptions" placeholder="Ej. Cítricos Caribe, Quimimport"><datalist id="shipmentImporterOptions"></datalist><small>Importadora concreta de este contenedor; no depende de las registradas para el cliente.</small></label>
@@ -167,7 +159,7 @@
         </section>
 
         <section class="registration-block" aria-labelledby="registrationTransportTitle">
-          <div class="registration-block-head"><span class="registration-step">2</span><div><h4 id="registrationTransportTitle">Identificación y transporte</h4><p>Referencias que permiten localizar la operación marítima.</p></div></div>
+          <div class="registration-block-head"><div><h4 id="registrationTransportTitle">Identificación y transporte</h4><p>Referencias que permiten localizar la operación marítima.</p></div></div>
           <div class="registration-fields">
             <label class="tracking-field registration-field-full" for="shipmentContainer"><span>Número de contenedor *</span><input id="shipmentContainer" placeholder="ABCD1234567" maxlength="11" autocomplete="off" inputmode="text" required><small id="registrationContainerHelp" class="registration-container-help">Formato requerido: 4 letras + 7 números. Ejemplo: ABCD1234567.</small></label>
             <label class="tracking-field" for="shipmentBooking"><span>Booking</span><input id="shipmentBooking" autocomplete="off"></label>
@@ -178,7 +170,7 @@
         </section>
 
         <section class="registration-block" aria-labelledby="registrationCargoTitle">
-          <div class="registration-block-head"><span class="registration-step">3</span><div><h4 id="registrationCargoTitle">Mercancía</h4><p>Descripción comercial y cantidad transportada.</p></div></div>
+          <div class="registration-block-head"><div><h4 id="registrationCargoTitle">Mercancía</h4><p>Descripción comercial y cantidad transportada.</p></div></div>
           <div class="registration-fields registration-cargo-fields">
             <label class="tracking-field registration-field-full" for="shipmentProduct"><span>Producto</span><input id="shipmentProduct" placeholder="Paneles solares, aceite, huevos…" autocomplete="off"></label>
             <label class="tracking-field" for="shipmentQuantity"><span>Cantidad</span><input id="shipmentQuantity" type="number" min="0" step="0.001" inputmode="decimal"></label>
@@ -199,12 +191,12 @@
   <div class="tracking-workspace">
     <header class="tracking-hero">
       <div class="tracking-hero-copy">
-        <span class="tracking-kicker">Operaciones · Visibilidad logística</span>
+        <span class="tracking-kicker">Operaciones · Logística</span>
         <h2 id="trackingTitle">Tracking</h2>
         <p>Controla cada contenedor, sus hitos, la relación con Cargues y la documentación oficial preparada para Cuba.</p>
       </div>
       <div class="tracking-hero-actions">
-        <div class="tracking-hero-state" aria-label="Estado del módulo"><span class="tracking-live-dot" aria-hidden="true"></span><div><strong>Seguimiento ERP</strong><span id="trackingLastUpdated">Preparando operaciones…</span></div></div>
+        <span id="trackingLastUpdated" class="tracking-visually-hidden" role="status">Preparando operaciones…</span>
         <button id="trackingRegisterShortcut" class="tracking-primary" type="button" hidden>Registrar contenedor</button>
       </div>
     </header>
@@ -220,12 +212,9 @@
     <div id="trackingFeedback" class="tracking-feedback" role="status" aria-live="polite"></div>
 
     <section class="tracking-panel tracking-filter-panel" aria-labelledby="trackingFiltersTitle">
-      <header class="tracking-panel-head">
-        <div><span class="tracking-eyebrow">Consulta operativa</span><h3 id="trackingFiltersTitle">Buscar y filtrar</h3><p>Localiza por contenedor, cliente, importadora, producto, booking o B/L.</p></div>
-        <button id="trackingClearFilters" class="alt" type="button">Limpiar filtros</button>
-      </header>
+      <h3 id="trackingFiltersTitle" class="tracking-visually-hidden">Buscar y filtrar</h3>
       <div class="tracking-filter-controls">
-        <label class="tracking-search" for="shipmentSearch"><span class="tracking-search-icon" aria-hidden="true">⌕</span><span class="tracking-visually-hidden">Buscar contenedores</span><input id="shipmentSearch" type="search" placeholder="Buscar contenedor, cliente, producto o documento" autocomplete="off"></label>
+        <div class="tracking-search-row"><label class="tracking-search tracking-field" for="shipmentSearch"><span>Buscar contenedores</span><input id="shipmentSearch" type="search" placeholder="Contenedor, cliente, importadora, producto, booking o B/L" autocomplete="off"></label><button id="trackingClearFilters" class="alt" type="button">Limpiar</button></div>
         <div class="tracking-tabs" role="group" aria-label="Filtrar contenedores por estado">
           <button class="active" type="button" data-container-filter="active" aria-pressed="true">Activos</button>
           <button type="button" data-container-filter="delivered" aria-pressed="false">Entregados</button>
@@ -235,7 +224,7 @@
     </section>
 
     <section class="tracking-panel tracking-list-panel" aria-labelledby="trackingListTitle">
-      <header class="tracking-panel-head tracking-list-head"><div><span class="tracking-eyebrow">Operaciones marítimas</span><h3 id="trackingListTitle">Contenedores</h3><p>Abre un registro para consultar su origen, documentos Cuba, historial y acciones habilitadas.</p></div><span id="trackingResultCount" class="tracking-result-count">Consultando…</span></header>
+      <header class="tracking-panel-head tracking-list-head"><div><h3 id="trackingListTitle">Contenedores registrados</h3></div><span id="trackingResultCount" class="tracking-result-count">Consultando…</span></header>
       <div id="shipments" class="tracking-results" aria-live="polite"><div class="tracking-loading" role="status"><span aria-hidden="true"></span>Consultando contenedores…</div></div>
     </section>
   </div>
@@ -246,5 +235,5 @@
 <section id="adminsSection" class="app-section hidden" aria-live="polite"></section>
 </main></div></div>
 <div id="modal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="modalTitle">Historial</h2><button id="closeModal" class="alt">Cerrar</button></div><div id="modalBody"></div></div></div>
-<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260926-figma2"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
+<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260926-figma3"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
 </body></html>

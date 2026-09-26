@@ -48,7 +48,7 @@ const workflow = read(files.workflow);
   '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/costs.css?v=20260922-figma2',
-  '/admin/costs.js?v=20260922-figma2',
+  '/admin/costs.js?v=20260926-focus1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero costs-page-head"',
   'id="costsPageTitle">Gastos y rentabilidad',

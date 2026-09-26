@@ -140,6 +140,16 @@
     setTimeout(()=>node.remove(),5000);
   }
 
+  function containDialogFocus(overlay,event){
+    if(event.key!=='Tab'||overlay!==[...document.querySelectorAll('.container-overlay')].at(-1))return;
+    const controls=[...overlay.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter(node=>!node.hidden&&node.getClientRects().length);
+    const first=controls[0],last=controls.at(-1);
+    if(!first)return;
+    if(!overlay.contains(document.activeElement)||(event.shiftKey&&document.activeElement===first)||(!event.shiftKey&&document.activeElement===last)){
+      event.preventDefault();(event.shiftKey?last:first).focus();
+    }
+  }
+
   function decision({title,text,button='Confirmar',danger=false,typed=null}){
     return new Promise(resolve=>{
       document.querySelector('.container-overlay[data-decision]')?.remove();
@@ -151,7 +161,8 @@
       document.body.appendChild(overlay);
 
       const onKeydown=event=>{
-        if(event.key==='Escape')finish(false);
+        containDialogFocus(overlay,event);
+        if(event.key==='Escape'){event.preventDefault();event.stopPropagation();finish(false);}
       };
       const finish=value=>{
         document.removeEventListener('keydown',onKeydown);
@@ -291,12 +302,12 @@
   }
 
   function actionButton(shipment){
-    return `<button type="button" class="container-actions-trigger" data-container-menu="${esc(shipment.id)}" aria-label="Acciones de ${esc(shipment.container_number)}" aria-haspopup="dialog" aria-expanded="false">⋯</button>`;
+    return `<button type="button" class="container-actions-trigger" data-container-menu="${esc(shipment.id)}" aria-label="Acciones de ${esc(shipment.container_number)}" aria-haspopup="dialog" aria-expanded="false">Acciones</button>`;
   }
 
   function tableRow(shipment){
     const canOpen=actionAllowed(shipment,'view_info')||actionAllowed(shipment,'view_documents');
-    return `<tr class="${!shipment.client_id?'container-unassigned-row':''}" data-shipment-row="${esc(shipment.id)}" ${canOpen?'tabindex="0"':''}><td><span class="container-reference">${esc(shipment.container_number)}</span><span class="container-reference-meta">${esc(shipment.carrier||'Naviera sin definir')}</span></td><td>${clientHtml(shipment)}</td><td>${importerHtml(shipment)}</td><td>${esc(shipment.product||'—')}</td><td>${esc(formatQuantity(shipment))}</td><td>${esc(formatDate(shipment.departure_date))}</td><td>${esc(shipment.booking_number||'—')}<span class="container-reference-meta">B/L ${esc(shipment.bol_number||'—')}</span></td><td>${documentsHtml(shipment)}</td><td><span class="container-status ${statusClass(shipment)}">${esc(statusText(shipment))}</span>${fulfillmentHtml(shipment)}</td><td class="container-actions-cell">${actionButton(shipment)}</td></tr>`;
+    return `<tr class="${!shipment.client_id?'container-unassigned-row':''}" data-shipment-row="${esc(shipment.id)}" ${canOpen?'tabindex="0"':''}><td><span class="container-reference">${esc(shipment.container_number)}</span><span class="container-reference-meta">${esc(shipment.carrier||'Naviera sin definir')}</span></td><td>${clientHtml(shipment)}<span class="container-reference-meta">${importerHtml(shipment)}</span></td><td><strong>${esc(shipment.product||'—')}</strong><span class="container-reference-meta">${esc(formatQuantity(shipment))}</span></td><td>${esc(formatDate(shipment.departure_date))}<span class="container-reference-meta">Booking ${esc(shipment.booking_number||'—')} · B/L ${esc(shipment.bol_number||'—')}</span></td><td>${documentsHtml(shipment)}</td><td><span class="container-status ${statusClass(shipment)}">${esc(statusText(shipment))}</span>${fulfillmentHtml(shipment)}</td><td class="container-actions-cell">${actionButton(shipment)}</td></tr>`;
   }
 
   function mobileCard(shipment){
@@ -322,7 +333,7 @@
       return;
     }
 
-    target.innerHTML=`<div class="tracking-table-wrap"><table class="tracking-table"><thead><tr><th>Contenedor</th><th>Cliente</th><th>Importadora</th><th>Producto</th><th>Cantidad</th><th>Fecha salida</th><th>Booking / B/L</th><th>Docs Cuba</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${list.map(tableRow).join('')}</tbody></table></div><div class="tracking-mobile-list">${list.map(mobileCard).join('')}</div><div class="container-list-footer">${list.length} contenedor${list.length===1?'':'es'}${list.length!==rows().length?` visibles · ${rows().length} registrados`:''}</div>`;
+    target.innerHTML=`<div class="tracking-table-wrap"><table class="tracking-table"><thead><tr><th>Contenedor</th><th>Cliente / importadora</th><th>Mercancía</th><th>Salida / referencias</th><th>Docs Cuba</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${list.map(tableRow).join('')}</tbody></table></div><div class="tracking-mobile-list">${list.map(mobileCard).join('')}</div><div class="container-list-footer">${list.length} contenedor${list.length===1?'':'es'}${list.length!==rows().length?` visibles · ${rows().length} registrados`:''}</div>`;
   }
 
   function syncContainerGuidance(){
@@ -796,10 +807,10 @@
     const overlay=document.createElement('div');
     overlay.className='container-overlay';
     overlay.dataset.manualTrack='1';
-    overlay.innerHTML=`<div class="container-dialog" role="dialog" aria-modal="true" aria-labelledby="manualTrackingTitle"><div class="manual-track-head"><div><h3 id="manualTrackingTitle">Actualizar / corregir tracking</h3><div class="muted">${esc(shipment.container_number)}</div></div><button type="button" class="alt manual-track-close">Cerrar</button></div><div class="manual-track-current-box"><small>Estado actual</small><br><b>${esc(currentLabel)}</b></div><div class="manual-track-list">${EVENTS.map((event,index)=>`<label class="manual-track-step ${index===currentIndex?'current selected':''}" data-index="${index}"><div class="manual-track-step-index">${index===currentIndex?'●':index+1}</div><div><div class="manual-track-step-title">${esc(event.label)}</div><div class="manual-track-step-note">${index===currentIndex?'Estado actual':event.whatsapp?'WhatsApp automático':'Sin WhatsApp'}</div></div><input class="manual-track-radio" type="radio" name="manualTrackingEvent" value="${event.key}" ${index===defaultIndex?'checked':''}></label>`).join('')}</div><div class="manual-track-field"><label for="manualTrackingLocation">Puerto o ubicación</label><input id="manualTrackingLocation" value="${esc(shipment.last_location||'')}" autocomplete="off"></div><div id="manualTrackingNotice" class="manual-track-notice" role="status" aria-live="polite"></div><div class="manual-track-actions"><button type="button" class="tracking-primary manual-track-confirm">Guardar estado</button><button type="button" class="alt manual-track-cancel">Cancelar</button></div></div>`;
+    overlay.innerHTML=`<div class="container-dialog" role="dialog" aria-modal="true" aria-labelledby="manualTrackingTitle"><div class="manual-track-head"><div><h3 id="manualTrackingTitle">Actualizar / corregir tracking</h3><div class="muted">${esc(shipment.container_number)}</div></div><button type="button" class="alt manual-track-close">Cerrar</button></div><div class="manual-track-current-box"><small>Estado actual</small><br><b>${esc(currentLabel)}</b></div><div class="manual-track-list">${EVENTS.map((event,index)=>`<label class="manual-track-step ${index===currentIndex?'current selected':''}" data-index="${index}"><div><div class="manual-track-step-title">${esc(event.label)}</div><div class="manual-track-step-note">${index===currentIndex?'Estado actual':event.whatsapp?'WhatsApp automático':'Sin WhatsApp'}</div></div><input class="manual-track-radio" type="radio" name="manualTrackingEvent" value="${event.key}" ${index===defaultIndex?'checked':''}></label>`).join('')}</div><div class="manual-track-field"><label for="manualTrackingLocation">Puerto o ubicación</label><input id="manualTrackingLocation" value="${esc(shipment.last_location||'')}" autocomplete="off"></div><div id="manualTrackingNotice" class="manual-track-notice" role="status" aria-live="polite"></div><div class="manual-track-actions"><button type="button" class="alt manual-track-cancel">Cancelar</button><button type="button" class="tracking-primary manual-track-confirm">Guardar estado</button></div></div>`;
     document.body.appendChild(overlay);
 
-    const onKeydown=event=>{if(event.key==='Escape')closeManualWorkflow();};
+    const onKeydown=event=>{containDialogFocus(overlay,event);if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeManualWorkflow();}};
     manualCleanup=restoreFocus=>{
       document.removeEventListener('keydown',onKeydown);
       overlay.remove();
@@ -825,7 +836,7 @@
     overlay.querySelector('.manual-track-close').addEventListener('click',()=>closeManualWorkflow());
     overlay.querySelector('.manual-track-cancel').addEventListener('click',()=>closeManualWorkflow());
     overlay.addEventListener('click',event=>{if(event.target===overlay)closeManualWorkflow();});
-    overlay.querySelectorAll('.manual-track-step').forEach(step=>step.addEventListener('click',()=>{
+    overlay.querySelectorAll('.manual-track-step').forEach(step=>step.addEventListener('change',()=>{
       const input=step.querySelector('input');
       if(input)input.checked=true;
       overlay.querySelectorAll('.manual-track-step').forEach(item=>item.classList.toggle('selected',item===step));

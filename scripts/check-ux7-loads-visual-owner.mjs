@@ -35,8 +35,8 @@ const workflow=read(files.workflow);
 for(const text of [
   '<body class="erp-module-page erp-module-loads" data-owner="loads.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/loads.css?v=20260922-figma1',
-  '/admin/loads.js?v=20260909-loadcard1',
+  '/admin/loads.css?v=20260926-figma1',
+  '/admin/loads.js?v=20260926-figma1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero loads-page-head"',
   'id="metrics" class="metrics loads-metrics"',
@@ -48,7 +48,7 @@ for(const text of [
 ])requireText(html,text,`HTML canónico ${text}`);
 
 const foundationIndex=html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerCssIndex=html.indexOf('/admin/loads.css?v=20260922-figma1');
+const ownerCssIndex=html.indexOf('/admin/loads.css?v=20260926-figma1');
 if(foundationIndex<0||ownerCssIndex<0||foundationIndex>ownerCssIndex){
   failures.push('la base visual compartida debe cargar antes de loads.css');
 }
@@ -138,6 +138,7 @@ const embeddedWindow={
 
 vm.runInNewContext(owner,{
   URLSearchParams,
+  requestAnimationFrame:callback=>callback(),
   console,
   document:{getElementById:()=>null},
   fetch:async()=>{
@@ -181,6 +182,7 @@ function fakeElement(id,...classes){
     addEventListener(type,handler){this.listeners.set(type,handler);},
     setAttribute(name,value){this.attributes.set(name,String(value));},
     focus(){},
+    querySelector(){return null;},
     closest(){return null;}
   };
 }
@@ -252,6 +254,7 @@ const detailLoad={
 
 vm.runInNewContext(owner,{
   URLSearchParams,
+  requestAnimationFrame:callback=>callback(),
   console,
   document:{
     activeElement:fakeElement('active'),

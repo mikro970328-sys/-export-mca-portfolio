@@ -240,17 +240,17 @@
         await loadScript('/admin/dashboard-operational-state.js?v=20260921-ux8clarity1', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
-        await loadStylesheet('/admin/containers-module.css?v=20260922-figma1', 'data-containers-module-style');
-        await loadScript('/admin/containers-module.js?v=20260916-deleterecovery1', 'data-containers-module');
+        await loadStylesheet('/admin/containers-module.css?v=20260926-figma1', 'data-containers-module-style');
+        await loadScript('/admin/containers-module.js?v=20260926-figma1', 'data-containers-module');
       }
       if (accessCan('logistics.write')) {
-        await loadStylesheet('/admin/shipment-editor.css?v=20260903-ux7tracking2', 'data-shipment-editor-style');
-        await loadScript('/admin/shipment-editor.js?v=20260903-ux7tracking2', 'data-shipment-editor');
+        await loadStylesheet('/admin/shipment-editor.css?v=20260926-figma1', 'data-shipment-editor-style');
+        await loadScript('/admin/shipment-editor.js?v=20260926-figma1', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
       await loadStylesheet('/admin/account-administration.css?v=20260922-figma1', 'data-account-administration-style');
       await loadScript('/admin/account-administration.js?v=20260903-ux7account1', 'data-account-administration');
-      await loadScript('/admin/navigation-shell.js?v=20260926-figma2', 'data-navigation-shell');
+      await loadScript('/admin/navigation-shell.js?v=20260926-figma3', 'data-navigation-shell');
 
       if (accessCan('tasks.read')) {
         await loadStylesheet('/admin/tasks-workspace.css?v=20260922-figma1', 'data-tasks-workspace-style');

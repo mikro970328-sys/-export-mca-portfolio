@@ -1,5 +1,14 @@
 ## Continuación Figma: Existencias y Productos — 2026-09-26
 
+## Continuidad · 26/09/2026 · Logística desde Figma
+
+- Instrucción vigente de Daniel: terminar escritorio y avisar antes de pasar al iPhone físico; continuar sin pedir confirmaciones rutinarias.
+- Existencias y Productos publicados: PR #350, main `6f5b19a54e69eb719cbb0f82994cb5b28a36c6a1`, deployment `dpl_CuMyosMVLGkjkZyQQqHt14MPEsya`. 40 workflows aprobados; Browser Operator Acceptance `36216056815` con 22/22 jobs y 40/40 pruebas visuales por motor. Nueve assets de producción idénticos; APIs sin sesión responden 401.
+- Bloque actual: Cargues, Tracking, registro/edición, documentos e historial y actualización de seguimiento. Nueve vistas Figma y cuatro componentes nuevos; implementación en rama `feat/figma-logistics-white`. Detalles en `docs/FIGMA_LOGISTICS.md`.
+- Las validaciones de negocio usan datos ficticios y PostgreSQL/PostgREST desechables. Nunca usar producción ni Preview para escrituras QA.
+- Continúan finanzas/reportes, clientes/proveedores/tareas/administración y revisión integrada. No declarar todo el ERP terminado al cerrar un bloque.
+
+
 Recepciones #349 está publicada en `471fe6441f6a550a743a2d5a060973812cb6c3ab`,
 con 39 workflows aprobados, 22/22 jobs de navegador y Vercel READY. Continúa
 `feat/figma-stock-catalog-white` con seis vistas de escritorio de Existencias,

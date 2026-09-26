@@ -6,21 +6,18 @@
   <title>Cargues · Export MCA</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
-  <link rel="stylesheet" href="/admin/loads.css?v=20260922-figma1">
+  <link rel="stylesheet" href="/admin/loads.css?v=20260926-figma1">
 </head>
 <body class="erp-module-page erp-module-loads" data-owner="loads.js">
   <main class="wrap loads-shell">
     <header class="module-hero loads-page-head" aria-labelledby="loadsPageTitle">
       <div class="module-heading loads-page-heading">
-        <div class="module-kicker loads-page-kicker">Operaciones · Logística de salida</div>
+        <div class="module-kicker loads-page-kicker">Operaciones · Logística</div>
         <h1 id="loadsPageTitle">Cargues</h1>
         <p>Planifica la mercancía desde sus WR, controla la reserva física y acompaña cada salida hasta su contenedor.</p>
       </div>
       <div class="loads-hero-actions">
-        <div class="loads-hero-state" aria-label="Estado del módulo">
-          <span class="loads-hero-state-dot" aria-hidden="true"></span>
-          <div><strong id="loadModuleMode">Control operativo</strong><span id="loadLastUpdated">Consultando cargues…</span></div>
-        </div>
+        <div class="loads-visually-hidden" role="status"><strong id="loadModuleMode">Control operativo</strong><span id="loadLastUpdated">Consultando cargues…</span></div>
         <button class="primary loads-primary-action" id="newLoad" type="button">Nuevo cargue</button>
       </div>
     </header>
@@ -37,42 +34,22 @@
     </section>
 
     <section class="panel loads-filter-panel" aria-labelledby="loadsFiltersTitle">
-      <header class="loads-panel-head compact">
-        <div>
-          <span class="loads-eyebrow">Consulta</span>
-          <h2 id="loadsFiltersTitle">Buscar y filtrar</h2>
-        </div>
-        <div class="loads-filter-actions">
-          <button class="alt" id="clearFilters" type="button">Limpiar filtros</button>
-          <button class="alt" id="refresh" type="button">Actualizar</button>
-        </div>
-      </header>
+      <h2 id="loadsFiltersTitle" class="loads-visually-hidden">Buscar y filtrar</h2>
       <div class="loads-filter-grid">
-        <label class="loads-field" for="search">
-          <span>Buscar</span>
-          <input id="search" type="search" autocomplete="off" placeholder="Cargue, contenedor o almacén">
-        </label>
-        <label class="loads-field" for="statusFilter">
-          <span>Estado</span>
-          <select id="statusFilter">
-            <option value="">Todos los estados</option>
-            <option value="draft">Borrador</option>
-            <option value="reserved">Reservado</option>
-            <option value="loading">En carga</option>
-            <option value="loaded">Cargado</option>
-            <option value="dispatched">Despachado</option>
-            <option value="cancelled">Cancelado</option>
-          </select>
-        </label>
+        <label class="loads-field" for="search"><span>Buscar</span><input id="search" type="search" autocomplete="off" placeholder="Cargue, contenedor o almacén"></label>
+        <label class="loads-field" for="statusFilter"><span>Estado</span><select id="statusFilter">
+          <option value="">Todos los estados</option><option value="draft">Borrador</option><option value="reserved">Reservado</option><option value="loading">En carga</option><option value="loaded">Cargado</option><option value="dispatched">Despachado</option><option value="cancelled">Cancelado</option>
+        </select></label>
+        <button class="alt" id="clearFilters" type="button">Limpiar</button><button class="alt" id="refresh" type="button">Actualizar</button>
       </div>
     </section>
 
     <section class="panel loads-list-panel" aria-labelledby="loadsListTitle">
       <header class="loads-panel-head">
         <div>
-          <span class="loads-eyebrow">Flujo de salida</span>
+
           <h2 id="loadsListTitle">Operaciones de cargue</h2>
-          <p id="loadListContext">Abre un cargue para revisar mercancía, WR, acciones habilitadas y contenedor.</p>
+          <p id="loadListContext" class="loads-visually-hidden">Abre un cargue para revisar mercancía, WR, acciones habilitadas y contenedor.</p>
         </div>
         <span id="loadCount" class="loads-result-count">Consultando…</span>
       </header>
@@ -91,7 +68,7 @@
     <section class="drawer loads-drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
       <header class="drawer-head loads-drawer-head">
         <div><span class="loads-dialog-kicker">Detalle operativo</span><h2 id="drawerTitle">Cargue</h2><div class="muted" id="drawerSub"></div></div>
-        <button class="alt icon-btn" type="button" data-close aria-label="Cerrar detalle">✕</button>
+        <button class="alt icon-btn" type="button" data-close aria-label="Cerrar detalle">Cerrar</button>
       </header>
       <div class="drawer-body" id="drawerBody"></div>
     </section>
@@ -101,7 +78,7 @@
     <section class="drawer loads-drawer" role="dialog" aria-modal="true" aria-labelledby="planTitle">
       <header class="drawer-head loads-drawer-head">
         <div><span class="loads-dialog-kicker">Planificación física</span><h2 id="planTitle">Nuevo cargue</h2><div class="muted">Selecciona cantidades de uno o varios WR del mismo almacén.</div></div>
-        <button class="alt icon-btn" type="button" data-close aria-label="Cerrar planificación">✕</button>
+        <button class="alt icon-btn" type="button" data-close aria-label="Cerrar planificación">Cerrar</button>
       </header>
       <div class="drawer-body">
         <section class="loads-form-section">
@@ -112,11 +89,11 @@
           <label class="loads-field load-form-notes" for="planNotes"><span>Notas</span><textarea id="planNotes" rows="3" placeholder="Información operativa opcional"></textarea></label>
         </section>
         <section class="loads-source-section" aria-labelledby="loadsSourceTitle">
-          <header class="loads-inline-head"><div><span class="loads-eyebrow">Origen físico</span><h3 id="loadsSourceTitle">Mercancía disponible por WR</h3></div></header>
+          <header class="loads-inline-head"><div><h3 id="loadsSourceTitle">Mercancía disponible por WR</h3></div></header>
           <div id="sourceGroups"></div>
         </section>
-        <div class="actions load-form-actions"><button class="alt" type="button" data-close>Cancelar</button><button class="primary" id="savePlan" type="button">Guardar cargue</button></div>
         <div id="planMsg" class="load-feedback" role="status" aria-live="polite"></div>
+        <div class="actions load-form-actions"><button class="alt" type="button" data-close>Cancelar</button><button class="primary" id="savePlan" type="button">Guardar cargue</button></div>
       </div>
     </section>
   </div>
@@ -125,11 +102,11 @@
     <section class="drawer loads-drawer" role="dialog" aria-modal="true" aria-labelledby="containerTitle">
       <header class="drawer-head loads-drawer-head">
         <div><span class="loads-dialog-kicker">Continuidad logística</span><h2 id="containerTitle">Asignar contenedor</h2><div class="muted" id="containerLoadLabel"></div></div>
-        <button class="alt icon-btn" type="button" data-close aria-label="Cerrar asignación">✕</button>
+        <button class="alt icon-btn" type="button" data-close aria-label="Cerrar asignación">Cerrar</button>
       </header>
       <div class="drawer-body">
         <section class="loads-form-section">
-          <header class="loads-inline-head"><div><span class="loads-eyebrow">Nueva operación</span><h3>Crear contenedor</h3><p>Registra la referencia y los datos disponibles; Tracking continuará el flujo.</p></div></header>
+          <header class="loads-inline-head"><div><h3>Crear contenedor</h3><p>Registra la referencia y los datos disponibles; Tracking continuará el flujo.</p></div></header>
           <div class="form-grid loads-form-grid">
             <label class="loads-field" for="containerNumber"><span>Número o referencia</span><input id="containerNumber" placeholder="ABCD1234567"></label>
             <label class="loads-field" for="containerCarrier"><span>Naviera</span><input id="containerCarrier"></label>
@@ -141,7 +118,7 @@
           <div class="actions load-section-actions"><button class="primary" id="createContainer" type="button">Crear y vincular</button></div>
         </section>
         <section class="loads-form-section loads-existing-container">
-          <header class="loads-inline-head"><div><span class="loads-eyebrow">Operación existente</span><h3>Vincular contenedor</h3><p>Usa un contenedor activo que todavía sea elegible para este cargue.</p></div></header>
+          <header class="loads-inline-head"><div><h3>Vincular contenedor</h3><p>Usa un contenedor activo que todavía sea elegible para este cargue.</p></div></header>
           <label class="loads-field" for="existingContainer"><span>Contenedor disponible</span><select id="existingContainer"></select></label>
           <div class="actions load-section-actions"><button class="alt" id="assignExisting" type="button">Vincular seleccionado</button></div>
         </section>
@@ -159,7 +136,7 @@
     </section>
   </div>
 
-  <script src="/admin/loads.js?v=20260909-loadcard1" defer></script>
+  <script src="/admin/loads.js?v=20260926-figma1" defer></script>
   <script src="/admin/embedded-auto-refresh.js?v=20260920-speed3" defer></script>
 </body>
 </html>
