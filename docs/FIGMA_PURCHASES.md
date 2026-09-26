@@ -1,5 +1,7 @@
 # Compras: implementación del diseño de Figma
 
+> Cierre publicado en #358: detalle `138:4515` / `138:4559`, relaciones estables, estados AP en español y navegación mediante el owner. Conserva todos los datos, capacidades y acciones. Ver [FIGMA_DESKTOP_INTEGRATION.md](FIGMA_DESKTOP_INTEGRATION.md).
+
 Fuente: archivo `aq38kVEYDEmmNlUOAOvfYg`, página `03 · Pantallas`.
 
 | Vista | Nodo |

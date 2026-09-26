@@ -1,5 +1,7 @@
 # Diseño blanco aprobado en Figma
 
+> Esta nota describe la entrega inicial de Ventas y la base visual. El cierre de todos los módulos de escritorio está publicado en #358; consultar [ERP_DESKTOP_HANDOFF.md](ERP_DESKTOP_HANDOFF.md) para el estado vigente.
+
 Daniel aprobó la propuesta «EXPORT MCA · Rediseño visual del ERP» el
 2026-09-22. Referencia editable:
 https://www.figma.com/design/aq38kVEYDEmmNlUOAOvfYg?node-id=14-2
@@ -14,8 +16,8 @@ capa visual. Base de esta rama: `2d8b3de`.
 - Fondo blanco fijo, texto carbón, superficies neutras y naranja de acción
   `#b54708`, incluso con el sistema operativo en modo oscuro.
 - Navegación blanca con los grupos, búsqueda, permisos y destinos actuales.
-  Se mantiene una anchura de 248 px para los nombres y grupos completos del
-  ERP. Los SVG conservan exactamente la geometría utilizada en Figma.
+  La entrega inicial usaba 248 px; el cierre integrado #358 adopta los
+  224 px de Figma. Los SVG conservan exactamente la geometría utilizada en Figma.
 - Cabeceras de los módulos: fondo, título, descripción y tarjetas de resumen
   se adaptan conjuntamente en sus owners para evitar blanco sobre blanco.
 - Ventas: resumen compacto, tabla en escritorio y tarjetas en móvil,
