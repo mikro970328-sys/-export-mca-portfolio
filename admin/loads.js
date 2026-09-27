@@ -655,8 +655,8 @@ function openContainer(load){
   $('containerCarrier').value='';
   $('containerBooking').value='';
   $('containerBol').value='';
-  $('containerClient').value='';
-  $('containerImporter').value='';
+  $('containerClient').value=load.client_id||'';
+  $('containerImporter').value=load.importer_id||'';
   $('existingContainer').value='';
   setFeedback('containerMsg');
   $('createContainer').hidden=!can(load,'create_container');
