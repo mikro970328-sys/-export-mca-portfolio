@@ -154,7 +154,7 @@ export default async function handler(req, res) {
       if (body.email !== undefined) patch.email = String(body.email).trim().toLowerCase() || null;
       const nitDuplicate = await findDuplicateNit(patch.nit ?? current.nit, id);
       if (nitDuplicate) return fail(res, 409, 'Ese NIT ya pertenece a otro cliente.');
-      const duplicate = await findDuplicate({ phone: patch.phone || current.phone, email: patch.email ?? current.email, excludeId: id });
+      const duplicate = await findDuplicate({ phone: body.phone !== undefined ? patch.phone : current.phone, email: patch.email ?? current.email, excludeId: id });
       if (duplicate) return fail(res, 409, 'Otro cliente ya utiliza ese WhatsApp o correo', JSON.stringify({ existing_client: duplicate }));
       const updated = await supabase('clients', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}&select=*`, body: patch });
       await audit('client_updated', id, patch);
