@@ -30,7 +30,6 @@
     { key:'logistics', label:'Logística', sections:['loadsSection','containersSection','registerContainerSection'] },
     { key:'finance', label:'Finanzas', sections:['invoicesSection','payablesSection','costsSection','reportsSection'] },
     { key:'administration', label:'Administración', sections:['workersSection','adminsSection','accountSection'] },
-    { key:'help', label:'Ayuda', sections:['helpSection'] }
   ];
 
   const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
@@ -168,7 +167,7 @@
 
     const fragment = document.createDocumentFragment();
     for (const config of NAV_GROUPS) {
-      if (config.key === 'home' || config.key === 'help') {
+      if (config.key === 'home') {
         config.sections.forEach(sectionId => {
           const button = sectionButtons.get(sectionId);
           if (!button) return;

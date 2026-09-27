@@ -57,12 +57,14 @@ test('two operators see committed finance changes without a manual reload',async
     await expect(rowA.locator('.invoice-money.balance')).toHaveText('USD 400.00');
     await expect(rowB.locator('.invoice-money.balance')).toHaveText('USD 400.00');
 
-    await rowA.getByRole('button',{name:'Registrar cobro'}).click();
+    await rowA.getByRole('button',{name:'Abrir factura'}).click();
+    await frameA.locator('#detailActions').getByRole('button',{name:'Registrar cobro'}).click();
     await frameA.locator('#pAmount').fill('120');
     await frameA.locator('#pReference').fill('QA-VISUAL-1');
     const firstWrite=pageA.waitForResponse(item=>new URL(item.url()).pathname==='/api/invoice-payments'&&item.request().method()==='POST');
     await frameA.locator('#savePayment').click();
     expect((await firstWrite).status()).toBe(200);
+    await expect(frameA.locator('#detailModal')).toBeHidden();
     await expect(rowB.locator('.invoice-money.balance')).toHaveText('USD 280.00',{timeout:12000});
     expect(diagnostics.b.mainNavigations).toBe(stableMainNavigations);
     expect(await pageB.evaluate(()=>performance.getEntriesByType('navigation').length)).toBe(1);
@@ -72,8 +74,8 @@ test('two operators see committed finance changes without a manual reload',async
     await expect(frameB.locator('#detailModal')).toBeVisible();
     await expect(frameB.locator('#detailBody')).toContainText('USD 280.00');
     const liveBeforeSecondWrite=diagnostics.b.live;
-    await frameA.locator('[data-close="detail"]').click();
-    await rowA.getByRole('button',{name:'Registrar cobro'}).click();
+    await rowA.getByRole('button',{name:'Abrir factura'}).click();
+    await frameA.locator('#detailActions').getByRole('button',{name:'Registrar cobro'}).click();
     await frameA.locator('#pAmount').fill('80');
     await frameA.locator('#pReference').fill('QA-VISUAL-2');
     const secondWrite=pageA.waitForResponse(item=>new URL(item.url()).pathname==='/api/invoice-payments'&&item.request().method()==='POST');
