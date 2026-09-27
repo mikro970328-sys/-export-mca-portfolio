@@ -308,7 +308,9 @@
       await loadAll();
       await loadImporters();
       render();
-      setCreateMessage('Cliente guardado. La bienvenida se envía desde sus acciones.', true);
+      setCreateMessage('');
+      byId('clientCreateDialog')?.close();
+      setClientMessage('Cliente guardado. La bienvenida se envía desde sus acciones.', true);
       window.dispatchEvent(new CustomEvent('export-mca:clients-changed'));
     } catch (error) {
       console.error('CLIENT_CREATE_FAILED', error);
@@ -490,8 +492,19 @@
   function bindEvents() {
     byId('newClient')?.addEventListener('click', () => {
       if (!canWriteClients()) return;
-      byId('clientCreateTitle')?.scrollIntoView({ block:'start' });
+      byId('clientCreateDialog').showModal();
+      byId('newClient').setAttribute('aria-expanded','true');
       byId('clientName')?.focus({ preventScroll:true });
+    });
+    byId('closeClientCreate')?.addEventListener('click', () => {
+      if (!byId('saveClient')?.disabled) byId('clientCreateDialog').close();
+    });
+    byId('clientCreateDialog')?.addEventListener('cancel', event => {
+      if (byId('saveClient')?.disabled) event.preventDefault();
+    });
+    byId('clientCreateDialog')?.addEventListener('close', () => {
+      byId('newClient')?.setAttribute('aria-expanded','false');
+      byId('newClient')?.focus();
     });
     byId('clearClientSearch')?.addEventListener('click', () => {
       state.query = '';

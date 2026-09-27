@@ -178,3 +178,5 @@
   .erp-module-sales .client-quick-grid{grid-template-columns:1fr}
   .sales-total-preview > div{width:100%;min-width:0}
 }
+
+.client-new-button { margin-top:8px; }

@@ -51,7 +51,7 @@
         <h2>Clientes</h2>
         <p>Consulta contactos, empresas e importadoras de tus clientes.</p>
       </div>
-      <div class="clients-header-actions"><button id="refreshClients" type="button">Actualizar</button><button id="newClient" type="button" class="clients-primary">Nuevo cliente</button></div>
+      <div class="clients-header-actions"><button id="refreshClients" type="button">Actualizar</button><button id="newClient" aria-haspopup="dialog" aria-controls="clientCreateDialog" aria-expanded="false" type="button" class="clients-primary">Nuevo cliente</button></div>
     </header>
 
       <div class="clients-summary native-workspace-summary" aria-label="Resumen de clientes">
@@ -81,9 +81,10 @@
         </div>
       </section>
 
+      <dialog id="clientCreateDialog" aria-labelledby="clientCreateTitle">
       <aside id="clientCreatePanel" class="clients-create-panel" aria-labelledby="clientCreateTitle">
         <div class="clients-panel-head">
-          <h3 id="clientCreateTitle">Nuevo cliente</h3>
+          <div class="clients-create-heading"><h3 id="clientCreateTitle">Nuevo cliente</h3><button id="closeClientCreate" type="button" aria-label="Cerrar nuevo cliente">Cerrar</button></div>
           <p>Completa los datos de contacto. La bienvenida se envía por separado.</p>
         </div>
         <form id="clientCreateForm" class="clients-form">
@@ -120,6 +121,7 @@
           <button id="saveClient" class="clients-primary" type="submit">Guardar cliente</button>
         </form>
       </aside>
+      </dialog>
     </div>
   </div>
 </section>
@@ -235,5 +237,5 @@
 <section id="adminsSection" class="app-section hidden" aria-live="polite"></section>
 </main></div></div>
 <div id="modal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="modalTitle">Historial</h2><button id="closeModal" class="alt">Cerrar</button></div><div id="modalBody"></div></div></div>
-<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260926-help2"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
+<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260927-clients1"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
 </body></html>

@@ -24,10 +24,10 @@ for(const width of [1440,390]){
 }
 for(const viewport of [{width:1440,height:700},{width:390,height:500}]){
  test(`Client creation: direct focus and failed save retain entered work at ${viewport.width}`,async({page},info)=>{
-  await page.setViewportSize(viewport);await open(page,'clients');await page.locator('#newClient').click();await expect(page.locator('#clientName')).toBeFocused();
+  await page.setViewportSize(viewport);await open(page,'clients');await expect(page.locator('#clientCreateDialog')).toBeHidden();await page.locator('#newClient').click();await expect(page.locator('#clientCreateDialog')).toBeVisible();await expect(page.locator('#clientName')).toBeFocused();
   await page.locator('#clientName').fill('María de ejemplo');await page.locator('#clientCompany').fill('Empresa nueva');await page.locator('#clientPhone').fill('+530000000002');await page.locator('#clientEmail').fill('nuevo@example.test');await page.locator('#clientImporters').fill('Importadora nueva');await hit(page,'#clientEmail');await fits(page);
   await page.evaluate(()=>window.__fixtureRejectWrites=true);await page.locator('#saveClient').click();await expect(page.locator('#clientCreateMsg')).toContainText('No se pudo guardar');await expect(page.locator('#clientName')).toHaveValue('María de ejemplo');await hit(page,'#clientEmail');await shot(page,info,'nuevo-cliente-error');
-  await page.evaluate(()=>window.__fixtureRejectWrites=false);await page.locator('#saveClient').click();await expect(page.locator('#clientCreateMsg')).toContainText('Cliente guardado');await expect(page.locator('#clientName')).toHaveValue('');await expect(page.locator('#clientTotal')).toHaveText('3');
+  await page.evaluate(()=>window.__fixtureRejectWrites=false);await page.locator('#saveClient').click();await expect(page.locator('#clientCreateDialog')).toBeHidden();await expect(page.locator('#clientMsg')).toContainText('Cliente guardado');await expect(page.locator('#clientName')).toHaveValue('');await expect(page.locator('#clientTotal')).toHaveText('3');
   const sent=await writes(page);expect(sent.filter(c=>c.path==='/api/clients'&&c.method==='POST')).toHaveLength(2);expect(sent[1].body).toMatchObject({name:'María de ejemplo',company:'Empresa nueva',phone:'+530000000002',email:'nuevo@example.test'});expect(sent.some(c=>c.body?.action==='resend_welcome')).toBe(false);
  });
 }
@@ -64,4 +64,20 @@ test('Suppliers: consultation capabilities hide mutations',async({page})=>{
 });
 test('Suppliers: failed reads provide a safe retry',async({page})=>{
  await open(page,'suppliers',{failRead:true});await expect(page.locator('[data-empty-action="retry"]')).toBeVisible();await expect(page.locator('body')).not.toContainText('Internal fixture');await page.evaluate(()=>window.__fixtureReadError=false);await page.locator('[data-empty-action="retry"]').click();await expect(page.locator('[data-supplier-row]')).toHaveCount(2);expect(await writes(page)).toEqual([]);
+});
+
+
+test('Client form opens only on demand and closing retains the draft',async({page})=>{
+ await open(page,'clients');
+ await expect(page.locator('#clientCreateDialog')).toBeHidden();
+ await page.locator('#newClient').click();
+ await page.locator('#clientName').fill('Datos pendientes');
+ await page.locator('#closeClientCreate').click();
+ await expect(page.locator('#clientCreateDialog')).toBeHidden();
+ await expect(page.locator('#newClient')).toBeFocused();
+ await page.locator('#newClient').click();
+ await expect(page.locator('#clientName')).toHaveValue('Datos pendientes');
+ await page.keyboard.press('Escape');
+ await expect(page.locator('#clientCreateDialog')).toBeHidden();
+ expect(await writes(page)).toEqual([]);
 });

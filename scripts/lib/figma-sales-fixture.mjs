@@ -7,7 +7,7 @@ const read = path => readFileSync(`${root}${path}`, 'utf8');
 const font = readFileSync(`${root}admin/fonts/InterVariable.woff2`).toString('base64');
 
 // Presentation fixture only: authored owners, fictional records, no network or writes.
-export function salesFixture({ writable = true, workspace = false } = {}) {
+export function salesFixture({ writable = true, clientWritable = writable, workspace = false } = {}) {
   const dom = new JSDOM(read('admin/sales.html'));
   const doc = dom.window.document;
   doc.querySelectorAll('script,link:not([rel="stylesheet"])').forEach(node => node.remove());
@@ -31,7 +31,7 @@ export function salesFixture({ writable = true, workspace = false } = {}) {
     progress:{order_total:28400-index*1500,fulfillment_status:['prepared','planned','partial','pending','dispatched'][index],fully_dispatched_items:index===4?1:0,item_count:1},
     capabilities:{actions:{edit:{allowed:writable&&status==='draft'},allocate_load:{allowed:writable&&status==='confirmed'}}}
   }));
-  const payload = {orders,clients:[client],products:[product],importers:[],client_importers:[],write_access:writable};
+  const payload = {orders,clients:[client],products:[product],importers:[],client_importers:[],write_access:writable,client_write_access:clientWritable};
   const workspaceData = { summary: { so_number:'SO-DEMO-0248', client_company:client.company,
     commercial_status:'confirmed', sales_currency:'USD', order_total:39916,
     profitability_status:'comparable', contribution_status:'comparable', billing_currency_comparable:true,
@@ -47,7 +47,7 @@ export function salesFixture({ writable = true, workspace = false } = {}) {
   const harness = `
     localStorage.setItem('export_mca_token','isolated-fixture-only');
     window.__fixtureCalls=[];
-    window.ExportMcaAccessControl={can:permission=>permission==='clients.write'&&${writable}};
+    // Sales runs standalone: permissions must come from its server response.
     window.__fixtureQuickClient=null;
     window.SalesSupplyWorkspace={open:id=>window.__fixtureCalls.push({supply:id})};
     window.fetch=async(path,options={})=>{
@@ -55,6 +55,7 @@ export function salesFixture({ writable = true, workspace = false } = {}) {
       const url=new URL(path,'https://erp-visual.invalid');
       let data;
       if(options.method==='POST'&&url.pathname==='/api/clients'){
+        if(window.__fixtureClientConflict)return {ok:false,status:409,json:async()=>({error:'Ese NIT ya pertenece a otro cliente.'})};
         const input=JSON.parse(options.body||'{}');
         window.__fixtureQuickClient={...input,id:'fixture-new-client',active:true,display_name:input.company||input.name};
         data={client:window.__fixtureQuickClient};

@@ -109,3 +109,8 @@
 }
 @media(max-width:390px) { #clientsSection .clients-workspace { padding:24px 12px; } #clientsSection .clients-search-wrap { grid-template-columns:1fr; } }
 @media(prefers-reduced-motion:reduce) { #clientsSection *,.client-dialog-root * { animation:none;transition:none;scroll-behavior:auto; } }
+
+#clientsSection #clientCreateDialog { width:min(760px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); box-sizing:border-box; margin:auto; padding:28px; border:1px solid var(--line); border-radius:16px; background:var(--surface); color:var(--text); overflow:auto; }
+#clientsSection #clientCreateDialog::backdrop { background:rgba(15,23,42,.5); }
+#clientsSection .clients-create-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+#clientsSection #closeClientCreate { flex:none; }

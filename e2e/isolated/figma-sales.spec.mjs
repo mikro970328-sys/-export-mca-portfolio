@@ -128,3 +128,43 @@ test('Sales posted expense revision respects read-only capability',async({page})
   await page.locator('[data-ws-tab="costs"]').click();
   await expect(page.locator('[data-ws-action="edit_cost"]')).toHaveCount(0);
 });
+
+
+test('Create a client directly from a sale without shell permissions or lost sale fields', async ({page}) => {
+  await open(page);
+  expect(await page.evaluate(()=>typeof window.ExportMcaAccessControl)).toBe('undefined');
+  await page.locator('#newOrder').click();
+  await page.locator('#oReference').fill('Pedido pendiente');
+  await page.locator('#oNotes').fill('Conservar esta venta');
+  await page.locator('.lTotal').fill('2300');
+  await page.locator('#oClientNewButton').click();
+  await expect(page.locator('#clientQuickName')).toBeFocused();
+  await page.locator('#clientQuickName').fill('Cliente nuevo');
+  await page.locator('#clientQuickNIT').fill('123-456');
+  await page.locator('#clientQuickPhone').fill('+5351234567');
+  await page.evaluate(()=>window.__fixtureClientConflict=true);
+  await page.locator('#clientQuickAddSave').click();
+  await expect(page.locator('#clientQuickAddMsg')).toContainText('Ese NIT ya pertenece');
+  await expect(page.locator('#clientQuickName')).toHaveValue('Cliente nuevo');
+  await page.evaluate(()=>window.__fixtureClientConflict=false);
+  await page.locator('#clientQuickAddSave').click();
+  await expect(page.locator('#clientPickerModal')).toBeHidden();
+  await expect(page.locator('#orderModal')).toBeVisible();
+  await expect(page.locator('#oClientPickerButton')).toContainText('NIT 123-456');
+  await expect(page.locator('#oReference')).toHaveValue('Pedido pendiente');
+  await expect(page.locator('#oNotes')).toHaveValue('Conservar esta venta');
+  await expect(page.locator('.lTotal')).toHaveValue('2300');
+  await page.locator('#oClientPickerButton').click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#clientPickerModal')).toBeHidden();
+  await expect(page.locator('#orderModal')).toBeVisible();
+});
+
+test('Sales permission does not grant client creation permission', async ({page}) => {
+  await open(page,{writable:true,clientWritable:false});
+  await page.locator('#newOrder').click();
+  await expect(page.locator('#oClientNewButton')).toBeHidden();
+  await page.locator('#oClientPickerButton').click();
+  await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
+  expect(await page.evaluate(()=>window.__fixtureCalls.filter(call=>call.method==='POST'))).toEqual([]);
+});

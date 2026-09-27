@@ -8,6 +8,7 @@ const money=(v,c='USD')=>(v===null||v===undefined||v==='')?'—':new Intl.Number
 const pad=v=>String(v).padStart(2,'0');
 let orders=[],clients=[],importers=[],clientImporters=[],products=[],writeAccess=false,view='open',editing=null,detailOrder=null,lineSeq=0,loadOrder=null,loadOptions=null;
 let salesOrderDraft=null;
+let clientWriteAccess=false;
 
 async function api(path,opt={}){
   const r=await fetch(path,{...opt,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',...(opt.headers||{})}});
@@ -45,6 +46,8 @@ async function load(){
   const d=await api('/api/sales');
   orders=d.orders||[];clients=d.clients||[];importers=d.importers||[];clientImporters=d.client_importers||[];products=d.products||[];
   writeAccess=d.write_access===true;
+  clientWriteAccess=d.client_write_access===true;
+  window.SalesOrderUX?.refreshClientAccess?.();
   $('newOrder').hidden=!writeAccess;
   if($('salesAccessNote'))$('salesAccessNote').hidden=writeAccess;
   fillMasters();

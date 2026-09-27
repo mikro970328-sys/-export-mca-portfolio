@@ -187,8 +187,8 @@
 
     if (accessCan('clients.read')) {
       tasks.push(
-        loadStylesheet('/admin/clients-module.css?v=20260926-business1', 'data-clients-module-style')
-          .then(() => loadScript('/admin/clients-module.js?v=20260926-business1', 'data-clients-module'))
+        loadStylesheet('/admin/clients-module.css?v=20260927-clients1', 'data-clients-module-style')
+          .then(() => loadScript('/admin/clients-module.js?v=20260927-clients1', 'data-clients-module'))
       );
     }
     if (accessCan('administration.workers.read')) {
@@ -258,7 +258,7 @@
       // Help is informational and must not prevent the operational shell booting.
       try {
         await loadStylesheet('/admin/help-center.css?v=20260926-help2', 'data-help-center-style');
-        await loadScript('/admin/help-content.js?v=20260926-help2', 'data-help-content');
+        await loadScript('/admin/help-content.js?v=20260927-clients1', 'data-help-content');
         await loadScript('/admin/help-center.js?v=20260926-help2', 'data-help-center');
       } catch {
         const status = document.getElementById('helpLoadStatus');
