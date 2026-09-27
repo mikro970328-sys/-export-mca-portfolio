@@ -187,4 +187,410 @@
       const client=result.client,select=byId('oClient');
       if (typeof clients !== 'undefined' && !clients.some(row=>row.id===client.id)) clients.push(client);
       if(select){
-        let option=[...select.options].find(item=>String(item.value)===String(client
+        let option=[...select.options].find(item=>String(item.value)===String(client.id));
+        if(!option){option=new Option('',client.id);select.add(option)}
+        option.textContent=`${client.display_name||client.company||client.name||'Cliente'}${client.nit?` · NIT ${client.nit}`:''}`;
+        select.value=client.id;
+      }
+      const importerSelect=byId('oImporter');
+      if(importerSelect)importerSelect.innerHTML='<option value="">Sin importador definido</option>';
+      syncClientButton();
+      window.SalesOrderDrafts?.touch?.();
+      window.dispatchEvent(new CustomEvent('export-mca:clients-changed'));
+      closeClientPicker();
+      byId('clientQuickAddForm').reset();
+      byId('clientQuickAddForm').hidden=true;
+    } catch(error) {
+      const raw=String(error?.message||'');
+      const safe=new Set(['El nombre del cliente es obligatorio','Ese cliente ya existe','Ese NIT ya pertenece a otro cliente.','Número de WhatsApp inválido. Usa formato internacional, por ejemplo +5351234567.','No tienes permiso para realizar esta acción','No autorizado']);
+      message.textContent=safe.has(raw)?raw:reportOrderError('client-create',error,'No se pudo guardar el cliente. Revisa los datos e intenta nuevamente.');
+    } finally {button.disabled=false;}
+  }
+
+  function ensureQuickProductModal() {
+    const modal=byId('salesQuickProductModal');
+    if(!modal||modal.dataset.salesQuickProductBound==='1')return;
+    modal.dataset.salesQuickProductBound='1';
+    modal.querySelectorAll('[data-quick-product-close]').forEach(button=>button.addEventListener('click',closeQuickProduct));
+    modal.addEventListener('click',event=>{if(event.target===modal)closeQuickProduct();});
+    byId('salesQuickProductForm')?.addEventListener('submit',saveQuickProduct);
+  }
+
+  function openQuickProduct(line) {
+    ensureQuickProductModal();quickProductLine=line;
+    byId('salesQuickProductName').value='';byId('salesQuickProductUnit').value='unidades';byId('salesQuickProductMsg').textContent='';
+    byId('salesQuickProductModal')?.classList.remove('hidden');byId('salesQuickProductName')?.focus();
+  }
+
+  function closeQuickProduct() {
+    byId('salesQuickProductModal')?.classList.add('hidden');
+    quickProductLine?.querySelector('[data-sales-add-product]')?.focus();quickProductLine=null;
+  }
+
+  function currentProductList() {
+    try { return typeof products!=='undefined'&&Array.isArray(products)?products:[]; } catch { return []; }
+  }
+
+  async function saveQuickProduct(event) {
+    event.preventDefault();
+    const button=byId('salesQuickProductSave'),message=byId('salesQuickProductMsg'),line=quickProductLine;
+    if(!button||button.disabled||!line)return;
+    button.disabled=true;message.textContent='Agregando mercancía…';
+    try {
+      const result=await uxApi('/api/sales-order-ux',{method:'POST',body:JSON.stringify({action:'create_product',name:byId('salesQuickProductName').value,unit:byId('salesQuickProductUnit').value})});
+      const product=result.product;
+      if(!product?.id)throw new Error('No se pudo agregar la mercancía.');
+      const list=currentProductList();
+      if(!list.some(row=>String(row.id)===String(product.id)))list.unshift(product);
+      const select=line.querySelector('.lProduct');
+      if(select&&!Array.from(select.options).some(option=>option.value===product.id))select.add(new Option(`${product.sku?product.sku+' · ':''}${product.name}`,product.id));
+      if(select){select.value=product.id;select.dispatchEvent(new Event('change',{bubbles:true}));}
+      if(typeof syncProduct==='function')syncProduct(line);
+      window.SalesOrderDrafts?.touch?.();
+      closeQuickProduct();
+    } catch(error) {
+      message.textContent=reportOrderError('quick-product',error,'No se pudo agregar la mercancía. Intenta nuevamente.');
+    } finally {button.disabled=false;}
+  }
+
+  async function loadClientPage() {
+    const list = byId('clientPickerList');
+    if (!list) return;
+    list.innerHTML = '<div class="empty">Cargando clientes…</div>';
+    byId('clientPickerMsg').textContent = '';
+    try {
+      const params = new URLSearchParams({mode:'clients',page:String(clientPage),page_size:'25'});
+      if (clientQuery) params.set('q',clientQuery);
+      const data = await uxApi(`/api/sales-order-ux?${params.toString()}`);
+      clientHasMore = Boolean(data.has_more);
+      const rows = Array.isArray(data.clients) ? data.clients : [];
+      list.innerHTML = rows.length ? rows.map(row => `<button type="button" class="client-picker-row" data-client-id="${esc(row.id)}">
+        <div><b>${esc(row.display_name || row.company || row.mipyme_name || row.name || 'Cliente')}</b><div class="small">${esc(row.name || '')}${row.nit?` · NIT ${esc(row.nit)}`:''}</div></div>
+        <div class="secondary small">${esc(row.company || row.mipyme_name || '')}</div><span class="choose">Seleccionar</span>
+      </button>`).join('') : '<div class="empty">No se encontraron clientes.</div>';
+      list.querySelectorAll('[data-client-id]').forEach(button => button.onclick = () => chooseClient(button.dataset.clientId));
+      byId('clientPageLabel').textContent = `Página ${clientPage}`;
+      byId('clientPrev').disabled = clientPage <= 1;
+      byId('clientNext').disabled = !clientHasMore;
+    } catch (error) {
+      list.innerHTML = '<div class="empty">No se pudieron cargar los clientes.</div>';
+      byId('clientPickerMsg').textContent = reportOrderError('clients',error,'No se pudieron cargar los clientes. Intenta nuevamente.');
+    }
+  }
+
+  async function chooseClient(clientId) {
+    try {
+      byId('clientPickerMsg').textContent = 'Seleccionando…';
+      const data = await uxApi(`/api/sales-order-ux?mode=client_context&client_id=${encodeURIComponent(clientId)}`);
+      const client = data.client;
+      const select = byId('oClient');
+      if (!client || !select) return;
+      let option=[...select.options].find(row=>String(row.value)===String(client.id));
+      if(!option){option=new Option('',client.id);select.add(option)}
+      option.textContent=`${client.display_name || client.company || client.mipyme_name || client.name || 'Cliente'}${client.nit?` · NIT ${client.nit}`:''}`;
+      select.value = client.id;
+      const importerSelect = byId('oImporter');
+      if (importerSelect) {
+        importerSelect.innerHTML = '<option value="">Sin importador definido</option>' + (data.importers || []).map(row => `<option value="${esc(row.id)}">${esc(row.name)}</option>`).join('');
+      }
+      syncClientButton();
+      window.SalesOrderDrafts?.touch?.();
+      closeClientPicker();
+    } catch (error) {
+      byId('clientPickerMsg').textContent = reportOrderError('client-context',error,'No se pudo seleccionar el cliente. Intenta nuevamente.');
+    }
+  }
+
+  function decorateAllLines() {
+    document.querySelectorAll('#orderLines .line').forEach(decorateLine);
+    ensureOrderTotalPreview();
+    refreshOrderTotalPreview();
+  }
+
+  function decorateLine(line) {
+    if (!line || line.dataset.salesUxReady === '1') return;
+    line.dataset.salesUxReady = '1';
+    const price = line.querySelector('.lPrice');
+    const qty = line.querySelector('.lQty');
+    const pallets = line.querySelector('.lPallets');
+    const upp = line.querySelector('.lUpp');
+    const product = line.querySelector('.lProduct');
+    if (!price || !qty || !pallets || !upp || !product) return;
+
+    const priceLabel = price.closest('div')?.querySelector('label');
+    if (priceLabel) priceLabel.textContent = 'Precio unitario (opcional)';
+    const secondGrid = price.closest('.grid3');
+    if (secondGrid) secondGrid.classList.add('sales-price-grid');
+    const totalWrap = document.createElement('div');
+    totalWrap.innerHTML = `<label for="${price.id}-total">Total acordado *</label><input id="${price.id}-total" class="lTotal" type="number" min="0" step="0.01" placeholder="0.00"><div class="pricing-hint">Escribe cuánto pagará el cliente por esta mercancía.</div>`;
+    price.closest('div').insertAdjacentElement('afterend', totalWrap);
+    const total = totalWrap.querySelector('.lTotal');
+    const modeWrap = document.createElement('div');
+    modeWrap.innerHTML = `<label for="${price.id}-mode">Valor para la venta</label><select id="${price.id}-mode" class="lPriceMode"><option value="total">Total acordado</option><option value="unit">Precio unitario</option></select>`;
+    secondGrid?.prepend(modeWrap);
+    modeWrap.querySelector('select').addEventListener('change', event => {
+      line.dataset.priceMode = event.target.value;
+      syncPricing(line, line.dataset.priceMode);
+      window.SalesOrderDrafts?.touch?.();
+    });
+
+    const stock = document.createElement('div');
+    stock.className = 'sales-stock';
+    stock.innerHTML = '<div class="sales-stock-title">Existencia por almacén</div><div class="muted">Selecciona un producto para consultar inventario.</div>';
+    const info = line.querySelector('.lProductInfo');
+    (info || secondGrid || line).insertAdjacentElement('afterend', stock);
+
+    line.dataset.priceMode = price.value !== '' ? 'unit' : 'total';
+    if (price.value !== '' && qty.value !== '') total.value = inputNumber(num(qty.value) * num(price.value));
+
+    price.addEventListener('input', () => {
+      line.dataset.priceMode = 'unit';
+      syncPricing(line,'unit');
+    });
+    total.addEventListener('input', () => {
+      line.dataset.priceMode = 'total';
+      syncPricing(line,'total');
+    });
+    qty.addEventListener('input', () => {
+      line.dataset.quantityMode = 'quantity';
+      syncPalletsFromQuantity(line);
+      syncPricing(line,line.dataset.priceMode);
+      updateStockWarning(line);
+    });
+    pallets.addEventListener('input', () => {
+      line.dataset.quantityMode = 'pallets';
+      syncQuantityFromPallets(line);
+      syncPricing(line,line.dataset.priceMode);
+      updateStockWarning(line);
+    });
+    upp.addEventListener('input', () => {
+      if (line.dataset.quantityMode === 'pallets' || (!qty.value && pallets.value)) syncQuantityFromPallets(line);
+      else if (qty.value) syncPalletsFromQuantity(line);
+      syncPricing(line,line.dataset.priceMode);
+    });
+    product.addEventListener('change', () => {
+      setTimeout(() => {
+        if (!upp.value) {
+          try {
+            const p = typeof products !== 'undefined' ? products.find(row => row.id === product.value) : null;
+            if (p?.default_units_per_pallet) upp.value = p.default_units_per_pallet;
+          } catch {}
+        }
+        loadInventory(line);
+      },0);
+    });
+    if (product.value) loadInventory(line);
+  }
+
+  function syncPalletsFromQuantity(line) {
+    const qty = num(line.querySelector('.lQty')?.value);
+    const upp = num(line.querySelector('.lUpp')?.value);
+    if (upp > 0) line.querySelector('.lPallets').value = qty > 0 ? inputNumber(qty / upp) : '';
+  }
+
+  function syncQuantityFromPallets(line) {
+    const pallets = num(line.querySelector('.lPallets')?.value);
+    const upp = num(line.querySelector('.lUpp')?.value);
+    if (upp > 0) line.querySelector('.lQty').value = pallets > 0 ? inputNumber(pallets * upp) : '';
+  }
+
+  function syncPricing(line, mode) {
+    const modeSelect = line.querySelector('.lPriceMode');
+    if (modeSelect && mode) modeSelect.value = mode;
+    const qty = num(line.querySelector('.lQty')?.value);
+    const price = line.querySelector('.lPrice');
+    const total = line.querySelector('.lTotal');
+    if (!price || !total) return;
+    if (mode === 'total') {
+      if (qty > 0 && total.value !== '') price.value = inputNumber(num(total.value) / qty);
+    } else if (mode === 'unit') {
+      if (qty > 0 && price.value !== '') total.value = inputNumber(qty * num(price.value));
+    }
+    const hint = total.parentElement.querySelector('.pricing-hint');
+    if (hint) {
+      hint.classList.toggle('active',Boolean(mode));
+      hint.textContent = mode === 'total' ? 'Total manda; unitario calculado.' : mode === 'unit' ? 'Unitario manda; total calculado.' : 'Usa unitario o total.';
+    }
+    refreshOrderTotalPreview();
+  }
+
+  async function loadInventory(line) {
+    const productId = line.querySelector('.lProduct')?.value;
+    const stock = line.querySelector('.sales-stock');
+    if (!stock) return;
+    if (!productId) {
+      stock.innerHTML = '<div class="sales-stock-title">Existencia por almacén</div><div class="muted">Selecciona un producto para consultar inventario.</div>';
+      return;
+    }
+    stock.innerHTML = '<div class="sales-stock-title">Existencia por almacén</div><div class="muted">Consultando inventario real…</div>';
+    try {
+      let data = inventoryCache.get(productId);
+      if (!data) {
+        data = await uxApi(`/api/sales-order-ux?mode=inventory&product_id=${encodeURIComponent(productId)}`);
+        inventoryCache.set(productId,data);
+      }
+      line.dataset.availableQuantity = String(data.totals?.available_quantity || 0);
+      line.dataset.availablePallets = String(data.totals?.available_pallets || 0);
+      const rows = Array.isArray(data.inventory) ? data.inventory : [];
+      const unit = rows[0]?.unit || '';
+      const totals = data.totals || {};
+      stock.innerHTML = `<div class="sales-stock-head"><div><div class="sales-stock-title">Existencia por almacén</div><div class="sales-stock-totals">Total: <b>${fmt(totals.physical_quantity)} ${esc(unit)}</b> físico · <b>${fmt(totals.reserved_quantity)}</b> reservado · <b>${fmt(totals.available_quantity)}</b> disponible · <b>${fmt(totals.available_pallets)}</b> pallets disponibles</div></div></div>
+        ${rows.length ? `<div class="sales-stock-warehouses">${rows.map(row => `<div class="sales-stock-row"><div><b>${esc(row.warehouse_code || '')}</b> · ${esc(row.warehouse_name || '')}</div><div>Físico <b>${fmt(row.physical_quantity)}</b></div><div>Reservado <b>${fmt(row.reserved_quantity)}</b></div><div>Disponible <b>${fmt(row.available_quantity)}</b> · ${fmt(row.available_pallets)} pallets</div></div>`).join('')}</div>` : '<div class="sales-stock-warning">No hay existencia física registrada para este producto.</div>'}
+        <div class="sales-stock-warning" data-stock-warning></div><div class="sales-stock-note">La Sales Order no reserva inventario. La reserva ocurre después al crear el Cargue.</div>`;
+      updateStockWarning(line);
+    } catch (error) {
+      stock.innerHTML = `<div class="sales-stock-title">Existencia por almacén</div><div class="sales-stock-warning">${esc(reportOrderError('inventory',error,'No se pudo consultar la existencia. Intenta nuevamente.'))}</div>`;
+    }
+  }
+
+  function updateStockWarning(line) {
+    const warning = line.querySelector('[data-stock-warning]');
+    if (!warning) return;
+    const qty = num(line.querySelector('.lQty')?.value);
+    const available = num(line.dataset.availableQuantity);
+    warning.textContent = qty > available ? `Aviso: estás vendiendo ${fmt(qty)} y actualmente hay ${fmt(available)} disponibles. La SO puede guardarse, pero el Cargue no podrá reservar más inventario del disponible.` : '';
+  }
+
+  function ensureOrderTotalPreview() {
+    if (byId('salesOrderTotalPreview')) return;
+    const lines = byId('orderLines');
+    if (!lines) return;
+    const box = document.createElement('div');
+    box.id = 'salesOrderTotalPreview';
+    box.className = 'sales-total-preview';
+    box.innerHTML = '<div><span>Total de venta</span><b>USD 0.00</b></div>';
+    lines.insertAdjacentElement('afterend',box);
+  }
+
+  function refreshOrderTotalPreview() {
+    const box = byId('salesOrderTotalPreview');
+    if (!box) return;
+    const total = [...document.querySelectorAll('#orderLines .lTotal')].reduce((sum,input) => sum + num(input.value),0);
+    box.querySelector('b').textContent = money(total,byId('oCurrency')?.value || 'USD');
+  }
+
+  async function hydrateExactPricing() {
+    const edit = currentEditing();
+    if (!edit?.id) return;
+    try {
+      const data = await uxApi(`/api/sales-order-ux?mode=pricing&sales_order_id=${encodeURIComponent(edit.id)}`);
+      const exactById = new Map((data.items || []).map(item => [item.id,item.entered_line_total]));
+      const domLines = [...document.querySelectorAll('#orderLines .line')];
+      (edit.items || []).forEach((item,index) => {
+        const exact = exactById.get(item.id);
+        const line = domLines[index];
+        if (!line || exact === null || exact === undefined) return;
+        const total = line.querySelector('.lTotal');
+        if (!total) return;
+        total.value = inputNumber(exact);
+        line.dataset.priceMode = 'total';
+        syncPricing(line,'total');
+      });
+      refreshOrderTotalPreview();
+    } catch {}
+  }
+
+  function collectUxLines() {
+    return [...document.querySelectorAll('#orderLines .line')].map((line,index) => {
+      const productId = line.querySelector('.lProduct')?.value || '';
+      const qty = line.querySelector('.lQty')?.value || '';
+      const pallets = line.querySelector('.lPallets')?.value || '';
+      const upp = line.querySelector('.lUpp')?.value || '';
+      const price = line.querySelector('.lPrice')?.value ?? '';
+      const total = line.querySelector('.lTotal')?.value ?? '';
+      const mode = line.dataset.priceMode || (total !== '' ? 'total' : price !== '' ? 'unit' : '');
+      if (!productId) throw new Error(`Selecciona o agrega la mercancía de la línea ${index+1}.`);
+      if (num(qty) <= 0 && !(num(pallets) > 0 && num(upp) > 0)) throw new Error(`Indica cantidad o pallets válidos en la línea ${index+1}.`);
+      if (!mode || (mode === 'total' && total === '') || (mode === 'unit' && price === '')) throw new Error(`Indica el total acordado o el precio unitario de la línea ${index+1}.`);
+      return {
+        product_id:productId,
+        ordered_quantity:qty,
+        ordered_pallets:pallets,
+        units_per_pallet:upp,
+        unit_price:price,
+        line_total:mode === 'total' ? total : '',
+        notes:line.querySelector('.lNotes')?.value || ''
+      };
+    });
+  }
+
+  function toIso(value) {
+    if (!value) return null;
+    const dateOnly=String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const d=dateOnly?new Date(Number(dateOnly[1]),Number(dateOnly[2])-1,Number(dateOnly[3]),12,0,0):new Date(value);
+    if (Number.isNaN(d.getTime())) throw new Error('Fecha y hora inválida');
+    return d.toISOString();
+  }
+
+  async function saveOrderUx() {
+    const button = byId('saveOrder');
+    const msg = byId('orderMsg');
+    try {
+      button.disabled = true;
+      msg.textContent = '';
+      const edit = currentEditing();
+      let writable = false;
+      try { writable = typeof writeAccess !== 'undefined' && writeAccess === true; } catch {}
+      if (!writable) throw new Error('No tienes permiso para modificar ventas.');
+      if (edit && edit?.capabilities?.actions?.edit?.allowed !== true) throw new Error('Esta Sales Order ya no admite edición.');
+      const clientId = byId('oClient')?.value || '';
+      if (!clientId) throw new Error('Selecciona un cliente.');
+      const nationalizationStatus = byId('oNationalization')?.value || null;
+      const body = {
+        action:edit ? 'replace_plan' : 'create_plan',
+        sales_order_id:edit?.id || null,
+        client_id:clientId,
+        importer_id:byId('oImporter')?.value || null,
+        nationalization_status:nationalizationStatus,
+        order_date:byId('oDate')?.value || null,
+        requested_at:toIso(byId('oRequested')?.value),
+        currency:byId('oCurrency')?.value || 'USD',
+        customer_reference:byId('oReference')?.value || null,
+        notes:byId('oNotes')?.value || null,
+        lines:collectUxLines()
+      };
+      await uxApi('/api/sales-order-ux',{method:'POST',body:JSON.stringify(body)});
+      window.SalesOrderDrafts?.saved?.();
+      try { closeModal('order'); } catch { byId('orderModal')?.classList.add('hidden'); }
+      try { await load(); } catch (error) { console.error('SALES_ORDER_REFRESH_FAILED',{error}); location.reload(); }
+    } catch (error) {
+      msg.textContent = reportOrderError('save',error,'No se pudo guardar la venta. Revisa los datos e intenta nuevamente.');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function onOrderOpen() {
+    ensureClientPickerButton();
+    ensureClientPickerModal();
+    syncClientButton();
+    decorateAllLines();
+    return hydrateExactPricing();
+  }
+
+  function bind() {
+    ensureClientPickerButton();
+    ensureClientPickerModal();
+    decorateAllLines();
+    if (byId('saveOrder')) byId('saveOrder').onclick = saveOrderUx;
+    ensureQuickProductModal();
+    document.addEventListener('keydown',event=>{
+      if (event.key === 'Escape' && !byId('clientPickerModal')?.classList.contains('hidden')) {
+        event.preventDefault(); event.stopImmediatePropagation(); closeClientPicker();
+      }
+    },true);
+    byId('orderLines')?.addEventListener('click',event=>{const button=event.target.closest?.('[data-sales-add-product]');if(button)openQuickProduct(button.closest('.line'));});
+    if (byId('oCurrency')) byId('oCurrency').addEventListener('input',refreshOrderTotalPreview);
+    const modal = byId('orderModal');
+    if (modal && !modal.classList.contains('hidden')) onOrderOpen();
+  }
+
+  window.SalesOrderUX = Object.freeze({
+    mountLine:decorateLine,
+    onOrderOpen,
+    refreshClientAccess,
+    refreshTotal:refreshOrderTotalPreview,
+    owner:'sales-order-ux.js'
+  });
+  bind();
+})();

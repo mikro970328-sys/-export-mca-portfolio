@@ -71,4 +71,84 @@
 .erp-module-invoices .dialog { width:min(1080px,100%);max-height:calc(100dvh - 48px);margin:auto;padding:32px;overflow:auto;overscroll-behavior:contain;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);box-shadow:none; }
 .erp-module-page.erp-module-invoices .dialog.compact { width:min(700px,100%); }
 .erp-module-invoices .dialog-head { display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:space-between;gap:24px;margin:0 0 48px;padding:0;border:0;background:var(--surface); }
-.erp-module-invoices .dialog-head > div 
+.erp-module-invoices .dialog-head > div { flex:1;min-width:0; }
+.erp-module-invoices .dialog-head .muted { margin:8px 0 0;color:var(--muted);font-size:14px;line-height:20px; }
+.erp-module-page.erp-module-invoices .invoices-close-button { flex:none;min-width:116px; }
+.erp-module-invoices .grid,.erp-module-invoices .grid3 { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-bottom:24px; }
+.erp-module-invoices .grid4 { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:16px 0 0; }
+.invoice-form-section { display:grid;gap:24px;min-width:0;margin:0 0 24px;padding:0;border:0;background:var(--surface); }
+.invoice-form-section .grid,.invoice-form-section .grid3 { margin:0; }
+.invoice-form-section-head { display:flex;align-items:flex-start;justify-content:space-between;gap:16px; }
+.invoice-form-section-head p { margin:8px 0 0;color:var(--muted);font-size:14px;line-height:20px; }
+.invoice-lines,.detail-items { display:grid;gap:16px; }
+.invoice-line { padding:16px;border:1px solid var(--line);background:var(--surface); }
+.invoice-line-title { font-weight:600; }
+.invoice-line-meta,.invoice-line-hint { margin-top:4px;color:var(--muted);font-size:12px;line-height:18px; }
+.invoice-line .grid { margin:16px 0 0; }
+.erp-module-invoices .actions { display:flex;flex-wrap:wrap;gap:16px; }
+.erp-module-invoices .invoices-modal-actions,.erp-module-invoices .invoice-modal-actions { position:static;justify-content:flex-end;gap:16px;margin:48px 0 0;padding:0;border:0;background:var(--surface); }
+.erp-module-invoices .invoices-modal-actions button,.erp-module-invoices .invoice-modal-actions button { min-width:132px; }
+.erp-module-invoices .invoices-dialog-message,.erp-module-invoices .invoice-dialog-message { margin:24px 0 0; }
+.invoice-detail-summary { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin:0 0 24px; }
+.invoice-detail-summary > article { display:flex;flex-direction:column;gap:4px;min-width:0; }
+.invoice-detail-summary span { color:var(--muted);font-size:12px;line-height:18px; }
+.invoice-detail-summary strong { order:-1;font-size:14px;font-weight:600;overflow-wrap:anywhere; }
+.invoice-detail-section { display:grid;gap:16px;min-width:0;margin-bottom:24px; }
+.invoice-detail-section-head { display:flex;justify-content:space-between;gap:16px; }
+.invoice-detail-section-head span { color:var(--muted);font-size:12px; }
+.invoice-detail-items { display:grid;gap:16px; }
+.invoice-detail-item { display:flex;justify-content:space-between;align-items:flex-start;gap:24px;min-width:0; }
+.invoice-detail-item > div:first-child { flex:1;min-width:0; }
+.invoice-detail-item-title,.invoice-detail-item-value { font-weight:600;overflow-wrap:anywhere; }
+.invoice-detail-item-meta { margin-top:4px;color:var(--muted);font-size:12px;line-height:18px;overflow-wrap:anywhere; }
+.invoice-payment-actions { display:grid;gap:8px; }
+.invoice-notes { margin:24px 0;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere; }
+.invoices-decision-copy,.invoice-decision-copy { margin:24px 0;color:var(--muted);font-size:14px;line-height:20px; }
+.invoices-visually-hidden { position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap; }
+@media(max-width:1180px) {
+  .erp-module-page.erp-module-invoices .invoices-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .erp-module-invoices .invoices-page-head { flex-wrap:wrap; }
+}
+@media(max-width:900px) {
+  .erp-module-page.erp-module-invoices .invoices-shell { width:calc(100% - 32px);margin:24px auto; }
+  .invoices-table-head { display:none; }
+  .invoices-table-wrap { overflow:visible; }
+  .invoice-row { min-width:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px; }
+  .invoice-cell-label { display:block;color:var(--muted);font-size:12px;line-height:18px; }
+  .invoice-row-actions { grid-column:1/-1;grid-template-columns:minmax(0,1fr); }
+}
+@media(max-width:720px) {
+  .erp-module-page.erp-module-invoices .invoices-page-head h1,.erp-module-invoices .dialog h2 { font-size:26px;line-height:34px; }
+  .erp-module-page.erp-module-invoices .invoices-metrics { grid-template-columns:repeat(3,minmax(0,1fr));gap:8px; }
+  .erp-module-invoices .modal { padding:8px; }
+  .erp-module-invoices .dialog { max-height:calc(100dvh - 16px);padding:24px;border-radius:var(--radius-md); }
+  .erp-module-invoices .dialog-head { gap:16px;margin-bottom:32px; }
+  .erp-module-page.erp-module-invoices .invoices-close-button { min-width:72px;padding-inline:12px; }
+  .erp-module-invoices .grid,.erp-module-invoices .grid3,.erp-module-invoices .grid4 { grid-template-columns:1fr;gap:16px; }
+  .invoice-detail-item { flex-direction:column;gap:16px; }
+  .invoices-panel-head { align-items:flex-start;flex-wrap:wrap; }
+  .erp-module-page.erp-module-invoices input,.erp-module-page.erp-module-invoices select,.erp-module-page.erp-module-invoices textarea { font-size:16px; }
+}
+@media(max-width:560px) {
+  .invoices-list-toolbar { grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
+  .invoices-search-field { grid-column:1/-1; }
+  .invoices-filter-field { grid-column:1/-1; }
+  .invoices-hero-actions,.invoices-primary-actions { width:100%;flex-wrap:wrap; }
+  .erp-module-invoices .invoices-metrics .metric { padding:12px 8px; }
+  .erp-module-page.erp-module-invoices .invoices-metrics .metric b { font-size:21px;line-height:28px; }
+  .invoice-form-section-head { flex-wrap:wrap; }
+  .invoice-detail-summary { grid-template-columns:1fr;gap:16px; }
+  .erp-module-invoices .invoices-modal-actions,.erp-module-invoices .invoice-modal-actions { margin-top:32px; }
+}
+@media(max-width:390px) {
+  .erp-module-page.erp-module-invoices .invoices-shell { width:calc(100% - 24px); }
+  .erp-module-invoices .dialog { padding:16px; }
+}
+@media(prefers-reduced-motion:reduce) { .erp-module-invoices * { scroll-behavior:auto;transition:none;animation:none; } }
+
+#creditLines { display:grid;gap:16px;margin-bottom:24px; }
+#creditLines .invoice-form-section { gap:8px;margin:0;padding:16px;border:1px solid var(--line); }
+#creditLines .invoice-form-section label { margin:0; }
+#creditLines .invoice-form-section input { margin-top:8px; }
+#creditSummary,#balanceSummary { margin:24px 0 0;color:var(--muted);line-height:20px; }
+#balanceTargetWrap { margin-bottom:24px; }

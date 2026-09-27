@@ -167,4 +167,19 @@ test('Create a client directly from a sale without shell permissions or lost sal
   await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
   await page.locator('#clientQuickAddCancel').click();
   await expect(page.locator('#clientQuickAddToggle')).toBeVisible();
-  await expect(page
+  await expect(page.locator('#oClientNewButton')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#clientPickerModal')).toBeHidden();
+  await expect(page.locator('#oClientNewButton')).toHaveCount(0);
+  await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
+  await expect(page.locator('#orderModal')).toBeVisible();
+});
+
+test('Sales permission does not grant client creation permission', async ({page}) => {
+  await open(page,{writable:true,clientWritable:false});
+  await page.locator('#newOrder').click();
+  await expect(page.locator('#oClientNewButton')).toHaveCount(0);
+  await page.locator('#oClientPickerButton').click();
+  await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
+  expect(await page.evaluate(()=>window.__fixtureCalls.filter(call=>call.method==='POST'))).toEqual([]);
+});

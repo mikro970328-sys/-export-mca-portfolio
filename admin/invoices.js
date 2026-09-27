@@ -229,4 +229,776 @@
       <div class="invoice-cell"><span class="invoice-cell-label">Venta</span><span class="invoice-cell-main">${esc(invoice.sales_order?.so_number || 'Sin venta')}</span><span class="invoice-cell-sub">Vence ${esc(date(invoice.due_date))}</span></div>
       <div class="invoice-cell"><span class="invoice-cell-label">Estado</span>${statusPill(invoice)}</div>
       <div class="invoice-cell"><span class="invoice-cell-label">Total</span><span class="invoice-money">${esc(money(financial.total, invoice.currency))}</span><span class="invoice-cell-sub">${num(financial.credited_amount)>0?'Neto tras notas de crédito':'Facturado'}</span></div>
-      <div class="invoice-cell"><span class="invoice-cell-label">Saldo</span><span class="invoice-money balance">${esc(money(financial.balance_due, invoice.currency))}</span><span class="invoice-cell-sub">${num(financ
+      <div class="invoice-cell"><span class="invoice-cell-label">Saldo</span><span class="invoice-money balance">${esc(money(financial.balance_due, invoice.currency))}</span><span class="invoice-cell-sub">${num(financial.customer_credit_balance)>0?`A favor: ${esc(money(financial.customer_credit_balance,invoice.currency))}`:'Pendiente'}</span></div>
+      <div class="invoice-row-actions" aria-label="Acciones de ${esc(invoice.invoice_number || 'factura')}">${invoiceActions(invoice)}</div>
+    </article>`;
+  }
+
+  function emptyState(title, copy) {
+    return `<div class="invoices-empty"><strong>${esc(title)}</strong><span>${esc(copy)}</span></div>`;
+  }
+
+  function renderList() {
+    const rows = filteredInvoices();
+    updateFilterControls();
+    $('invoiceResultCount').textContent = `${rows.length} factura${rows.length === 1 ? '' : 's'}${rows.length !== state.invoices.length ? ` · ${state.invoices.length} totales` : ''}`;
+    if (!rows.length) {
+      $('invoiceList').innerHTML = emptyState(
+        state.invoices.length ? 'Sin resultados' : 'Aún no hay facturas',
+        state.invoices.length ? 'Ajusta la búsqueda o cambia el filtro para consultar otras facturas.' : 'Las facturas creadas desde una venta aparecerán aquí con sus cobros y saldo.'
+      );
+      return;
+    }
+    $('invoiceList').innerHTML = rows.map(invoiceRow).join('');
+  }
+
+  function updateFilterControls() {
+    const clear = $('clearInvoiceFilters');
+    if (clear) clear.hidden = !state.search.trim() && state.view === 'open';
+  }
+
+  function render() {
+    renderMetrics();
+    renderList();
+  }
+
+  function modalId(name) {
+    return name.endsWith('Modal') ? name : `${name}Modal`;
+  }
+
+  function openModal(name, focusId = '') {
+    const id = modalId(name);
+    const modal = $(id);
+    if (!modal) return false;
+    if (modal.classList.contains('hidden')) modalReturnFocus.set(id, document.activeElement);
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    requestAnimationFrame(() => {
+      // Opening focus must not interrupt an operator who already chose a field.
+      if (modal.classList.contains('hidden') || modal.contains(document.activeElement)) return;
+      const target = focusId ? $(focusId) : modal.querySelector('button,select,input,textarea');
+      target?.focus();
+    });
+    return true;
+  }
+
+  function closeModal(name, restoreFocus = true) {
+    const id = modalId(name);
+    if (id === 'paymentModal' && state.paymentSaving) return;
+    if (id === 'creditModal' && state.creditSaving) return;
+    if (id === 'balanceModal' && state.balanceSaving) return;
+    const modal = $(id);
+    if (!modal) return;
+    if (id === 'invoiceModal') {
+      invoiceDraft?.destroy({ flush:true });
+      invoiceDraft = null;
+    }
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+    if (!document.querySelector('.modal:not(.hidden)')) document.body.classList.remove('modal-open');
+    const trigger = modalReturnFocus.get(id);
+    modalReturnFocus.delete(id);
+    if (restoreFocus && trigger instanceof HTMLElement) trigger.focus();
+  }
+
+  function eligibleOrders(editingInvoice = null) {
+    return state.salesOrders.filter(order => order.items?.some(item => {
+      const own = editingInvoice?.items?.find(line => line.sales_order_item_id === item.id);
+      return num(item.invoice_progress?.available_to_invoice_quantity) + num(own?.quantity) > 0;
+    }));
+  }
+
+  function fillSalesOrderOptions(editingInvoice = null) {
+    const orders = eligibleOrders(editingInvoice);
+    $('iSalesOrder').innerHTML = '<option value="">Selecciona una venta</option>' + orders.map(order => `<option value="${esc(order.id)}">${esc(order.so_number)} · ${esc(clientName(order))}</option>`).join('');
+  }
+
+  function renderInvoiceLines(editingInvoice = null) {
+    const order = state.salesOrders.find(row => String(row.id) === String($('iSalesOrder').value));
+    if (!order) {
+      $('invoiceLines').innerHTML = emptyState('Selecciona una venta', 'Mostraremos únicamente las cantidades disponibles para facturar.');
+      return;
+    }
+    const rows = (order.items || []).map(item => {
+      const own = editingInvoice?.items?.find(line => line.sales_order_item_id === item.id);
+      const available = num(item.invoice_progress?.available_to_invoice_quantity) + num(own?.quantity);
+      if (available <= 0 && !own) return '';
+      const product = item.product || {};
+      const label = product.sku ? `${product.sku} · ${product.name || ''}` : (product.name || 'Producto');
+      const quantity = own ? num(own.quantity) : available;
+      return `<div class="invoice-line" data-invoice-line="${esc(item.id)}">
+        <div class="invoice-line-title">${esc(label)}</div>
+        <div class="invoice-line-meta">Ordenado ${esc(item.ordered_quantity)} ${esc(item.unit)} · Disponible ${esc(available)} · Precio ${esc(money(item.unit_price, order.currency))}</div>
+        <div class="grid"><div><label for="invoice-qty-${esc(item.id)}">Cantidad a facturar</label><input id="invoice-qty-${esc(item.id)}" data-qty type="number" min="0" max="${esc(available)}" step="any" value="${esc(quantity)}"></div><div><label for="invoice-note-${esc(item.id)}">Nota</label><input id="invoice-note-${esc(item.id)}" data-note value="${esc(own?.notes || '')}" placeholder="Opcional"></div></div>
+      </div>`;
+    }).filter(Boolean);
+    $('invoiceLines').innerHTML = rows.length ? rows.join('') : emptyState('Sin saldo disponible', 'Esta venta no tiene cantidades pendientes de facturar.');
+  }
+
+  function captureInvoiceDraft() {
+    return {
+      sales_order_id:$('iSalesOrder').value,
+      issue_date:$('iIssueDate').value,
+      due_date:$('iDueDate').value,
+      notes:$('iNotes').value,
+      lines:[...document.querySelectorAll('[data-invoice-line]')].map(node => ({
+        sales_order_item_id:node.dataset.invoiceLine,
+        quantity:node.querySelector('[data-qty]')?.value || '',
+        notes:node.querySelector('[data-note]')?.value || ''
+      }))
+    };
+  }
+
+  function restoreInvoiceDraft(data = {}) {
+    $('iSalesOrder').value = data.sales_order_id || '';
+    if (data.sales_order_id && $('iSalesOrder').value !== String(data.sales_order_id)) throw new Error('La venta del borrador ya no está disponible.');
+    $('iIssueDate').value = data.issue_date || '';
+    $('iDueDate').value = data.due_date || '';
+    $('iNotes').value = data.notes || '';
+    const editing = state.editingId ? state.invoices.find(row => row.id === state.editingId) : null;
+    renderInvoiceLines(editing);
+    const saved = new Map((Array.isArray(data.lines) ? data.lines : []).map(line => [String(line.sales_order_item_id), line]));
+    document.querySelectorAll('[data-invoice-line]').forEach(node => {
+      const line = saved.get(String(node.dataset.invoiceLine));
+      if (!line) return;
+      const quantity = node.querySelector('[data-qty]');
+      const notes = node.querySelector('[data-note]');
+      if (quantity) quantity.value = line.quantity || '';
+      if (notes) notes.value = line.notes || '';
+    });
+  }
+
+  function activateInvoiceDraft(invoice = null, entrySalesOrderId = '') {
+    const suffix = invoice ? invoice.id : entrySalesOrderId ? `sale-${entrySalesOrderId}` : 'general';
+    invoiceDraft = window.ExportMcaDrafts?.register({
+      root:document.querySelector('#invoiceModal .invoice-form-dialog'),
+      key:`invoice:${invoice ? 'edit' : 'new'}:${suffix}`,
+      title:invoice ? `edición de ${invoice.invoice_number}` : 'nueva factura',
+      capture:captureInvoiceDraft,
+      restore:restoreInvoiceDraft
+    }) || null;
+  }
+
+  function openCreate(salesOrderId = '') {
+    if (!state.writeAccess) {
+      setPageMessage('No tienes permiso para crear facturas financieras.');
+      return false;
+    }
+    invoiceDraft?.destroy({ flush:true });
+    invoiceDraft = null;
+    state.editingId = null;
+    $('invoiceTitle').textContent = 'Facturar una venta';
+    fillSalesOrderOptions();
+    $('iSalesOrder').disabled = false;
+    $('iSalesOrder').value = salesOrderId ? String(salesOrderId) : '';
+    $('iIssueDate').value = localDateToday();
+    $('iDueDate').value = '';
+    $('iNotes').value = '';
+    message('invoiceMsg', '');
+    renderInvoiceLines();
+    if (salesOrderId && $('iSalesOrder').value !== String(salesOrderId)) {
+      message('invoiceMsg', 'La venta ya no tiene cantidades disponibles para facturar.');
+    }
+    activateInvoiceDraft(null, salesOrderId);
+    openModal('invoice', 'iSalesOrder');
+    return true;
+  }
+
+  function openEdit(id) {
+    const invoice = state.invoices.find(row => String(row.id) === String(id));
+    if (!invoice || !can(invoice, 'edit')) return false;
+    invoiceDraft?.destroy({ flush:true });
+    invoiceDraft = null;
+    state.editingId = invoice.id;
+    $('invoiceTitle').textContent = `Editar ${invoice.invoice_number}`;
+    fillSalesOrderOptions(invoice);
+    $('iSalesOrder').value = invoice.sales_order_id;
+    $('iSalesOrder').disabled = false;
+    $('iIssueDate').value = String(invoice.issue_date || '').slice(0, 10);
+    $('iDueDate').value = String(invoice.due_date || '').slice(0, 10);
+    $('iNotes').value = invoice.notes || '';
+    renderInvoiceLines(invoice);
+    message('invoiceMsg', '');
+    activateInvoiceDraft(invoice);
+    openModal('invoice', 'iIssueDate');
+    return true;
+  }
+
+  function collectLines() {
+    return [...document.querySelectorAll('[data-invoice-line]')].map(node => ({
+      sales_order_item_id: node.dataset.invoiceLine,
+      quantity: node.querySelector('[data-qty]')?.value || '',
+      notes: node.querySelector('[data-note]')?.value || ''
+    })).filter(line => num(line.quantity) > 0);
+  }
+
+  async function saveInvoice() {
+    message('invoiceMsg', '');
+    if (!state.writeAccess) return message('invoiceMsg', 'No tienes permiso para modificar facturas.');
+    const editing = state.editingId ? state.invoices.find(row => row.id === state.editingId) : null;
+    if (editing && !can(editing, 'edit')) return message('invoiceMsg', 'Esta factura ya no admite edición.');
+    const salesOrderId = $('iSalesOrder').value;
+    const lines = collectLines();
+    if (!salesOrderId) return message('invoiceMsg', 'Selecciona una venta.');
+    if (!lines.length) return message('invoiceMsg', 'Indica al menos una cantidad a facturar.');
+    const button = $('saveInvoice');
+    button.disabled = true;
+    try {
+      await request('/api/invoices', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: state.editingId ? 'replace_plan' : 'create_plan',
+          invoice_id: state.editingId,
+          sales_order_id: salesOrderId,
+          issue_date: $('iIssueDate').value || null,
+          due_date: $('iDueDate').value || null,
+          notes: $('iNotes').value || null,
+          lines
+        })
+      });
+      invoiceDraft?.clear({ silent:true });
+      invoiceDraft?.destroy({ flush:false });
+      invoiceDraft = null;
+      closeModal('invoice', false);
+      setPageMessage(state.editingId ? 'Factura actualizada correctamente.' : 'Borrador de factura creado correctamente.', 'ok');
+      await refresh();
+    } catch (error) {
+      message('invoiceMsg', reportInvoiceError('save_invoice', error));
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function paymentRows(invoice) {
+    return (invoice.payments || []).map(payment => `<div class="invoice-detail-item">
+      <div><div class="invoice-detail-item-title">${esc(date(payment.payment_date))} · ${esc(payment.method || 'Cobro')}</div><div class="invoice-detail-item-meta">${esc(payment.reference_number || 'Sin referencia')} · ${esc(paymentStatusLabel(payment.status))}</div></div>
+      <div class="invoice-payment-actions"><span class="invoice-detail-item-value">${esc(money(payment.amount, payment.currency))}</span>${canPayment(payment, 'reverse') ? `<button class="btn danger" type="button" data-reverse-payment="${esc(payment.id)}" data-invoice-id="${esc(invoice.id)}">Revertir cobro</button>` : ''}</div>
+    </div>`).join('');
+  }
+
+  function openDetail(id) {
+    const invoice = state.invoices.find(row => String(row.id) === String(id));
+    if (!invoice) return false;
+    const financial = invoice.financial || {};
+    $('detailTitle').textContent = invoice.invoice_number || 'Factura';
+    $('detailSubtitle').textContent = `${clientName(invoice)} · ${invoice.sales_order?.so_number || 'Sin venta'} · ${date(invoice.issue_date)}`;
+    const items = (invoice.items || []).map(item => `<div class="invoice-detail-item"><div><div class="invoice-detail-item-title">${esc(item.description || 'Producto')}</div><div class="invoice-detail-item-meta">${esc(item.quantity)} ${esc(item.unit)} × ${esc(money(item.unit_price, invoice.currency))}</div></div><span class="invoice-detail-item-value">${esc(money(item.line_total, invoice.currency))}</span></div>`).join('');
+    const payments = paymentRows(invoice);
+    $('detailBody').innerHTML = `
+      <div class="invoice-detail-summary">
+        <article><span>Total neto</span><strong>${esc(money(financial.total, invoice.currency))}</strong></article>
+        <article><span>Aplicado neto</span><strong>${esc(money(financial.paid_amount, invoice.currency))}</strong></article>
+        <article><span>Saldo</span><strong>${esc(money(financial.balance_due, invoice.currency))}</strong></article>
+        <article><span>Estado</span><strong>${statusPill(invoice)}</strong></article>
+      </div>
+      ${invoice.credit_notes?.length ? `<div class="invoice-detail-summary"><article><span>Total original</span><strong>${esc(money(financial.original_total,invoice.currency))}</strong></article><article><span>Notas de crédito</span><strong>${esc(money(financial.credited_amount,invoice.currency))}</strong></article><article><span>Saldo a favor del cliente</span><strong>${esc(money(financial.customer_credit_balance,invoice.currency))}</strong></article></div>` : ''}
+      <section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Líneas de la factura original</h3><span>${invoice.items?.length || 0} registro${invoice.items?.length === 1 ? '' : 's'}</span></header><div class="invoice-detail-items">${items || emptyState('Sin líneas', 'Esta factura no contiene líneas disponibles.')}</div></section>
+      ${creditNoteSection(invoice)}
+      ${creditMovementSection(invoice)}
+      <section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Cobros aplicados</h3><span>${invoice.payments?.length || 0} registro${invoice.payments?.length === 1 ? '' : 's'}</span></header><div class="invoice-detail-items">${payments || emptyState('Sin cobros', 'Todavía no hay dinero registrado contra esta factura.')}</div></section>
+      ${invoice.notes ? `<div class="invoice-notes"><strong>Notas</strong><br>${esc(invoice.notes)}</div>` : ''}`;
+    const available = [];
+    if (can(invoice, 'record_payment')) available.push(['payment', 'Registrar cobro', 'orange']);
+    else if (can(invoice, 'issue')) available.push(['issue', 'Emitir factura', 'primary']);
+    else if (can(invoice, 'edit')) available.push(['edit', 'Editar borrador', 'primary']);
+    const primary = available[0];
+    const secondary = [];
+    if (can(invoice, 'credit')) secondary.push(invoiceActionButton(invoice, 'credit', 'Crear nota de crédito'));
+    for (const action of balanceActions(invoice)) secondary.push(action);
+    if (can(invoice, 'edit') && primary?.[0] !== 'edit') secondary.push(invoiceActionButton(invoice, 'edit', 'Editar borrador'));
+    if (can(invoice, 'issue') && primary?.[0] !== 'issue') secondary.push(invoiceActionButton(invoice, 'issue', 'Emitir factura'));
+    if (can(invoice, 'void')) secondary.push(invoiceActionButton(invoice, 'void', 'Anular factura', 'danger'));
+    const actions = primary ? [invoiceActionButton(invoice, primary[0], primary[1], primary[2])] : [];
+    if (secondary.length) actions.push(`<details class="invoice-more-actions"><summary>Más acciones</summary><div class="invoice-secondary-actions">${secondary.join('')}</div></details>`);
+    $('detailActions').innerHTML = actions.join('');
+    message('detailMsg', '');
+    openModal('detail');
+    return true;
+  }
+
+  function balanceActions(invoice) {
+    const actions=[];
+    if (can(invoice,'apply_credit')) actions.push(invoiceActionButton(invoice,'apply_credit','Aplicar saldo a favor'));
+    if (can(invoice,'refund_credit')) actions.push(invoiceActionButton(invoice,'refund_credit','Registrar devolución'));
+    return actions;
+  }
+
+  function creditMovementSection(invoice) {
+    const movements=invoice.credit_movements||[],f=invoice.financial||{};
+    if (!movements.length) return '';
+    const summary=[['Cobros registrados',f.cash_payment_amount],['Anticipos aplicados',f.advance_applied_amount],['Crédito recibido',f.credit_received_amount],['Aplicado a otras facturas',f.credit_transferred_amount],['Saldo devuelto',f.credit_refunded_amount]];
+    return `<section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Movimientos del saldo a favor</h3><span>${movements.length} registro(s)</span></header><div class="invoice-detail-summary">${summary.map(([label,value])=>`<article><span>${esc(label)}</span><strong>${esc(money(value,invoice.currency))}</strong></article>`).join('')}</div><div class="invoice-detail-items">${movements.map(row=>`<div class="invoice-detail-item"><div><div class="invoice-detail-item-title">${esc(row.movement_number)} · ${row.movement_type==='refund'?'Devolución':'Aplicación entre facturas'} · ${esc(paymentStatusLabel(row.status))}</div><div class="invoice-detail-item-meta">${esc(date(row.effective_date))} · ${esc(row.source_invoice_number)}${row.target_invoice_number?` → ${esc(row.target_invoice_number)}`:''}</div><div class="invoice-detail-item-meta">${esc(row.reason)}${row.reference?` · ${esc(row.reference)}`:''}</div>${row.reversal_reason?`<div class="invoice-detail-item-meta">Reverso: ${esc(row.reversal_reason)}</div>`:''}${capability(row,'reverse').reason==='INVOICE_CREDIT_BALANCE_USED'?'<div class="invoice-detail-item-meta">Revierte primero los usos posteriores de ese saldo.</div>':''}</div><div class="invoice-payment-actions"><strong>${esc(money(row.amount,row.currency))}</strong>${can(row,'reverse')?`<button class="btn danger" type="button" data-reverse-credit-movement="${esc(row.id)}" data-invoice-id="${esc(invoice.id)}">Revertir movimiento</button>`:''}</div></div>`).join('')}</div></section>`;
+  }
+
+  function openCreditBalance(id,kind) {
+    const invoice=state.invoices.find(row=>String(row.id)===String(id));
+    if (!invoice||state.balanceSaving||!can(invoice,kind==='application'?'apply_credit':'refund_credit')) return false;
+    state.balanceInvoice=invoice;state.balanceKind=kind;state.balanceRequestId=crypto.randomUUID();
+    state.balanceTargets=state.invoices.filter(row=>row.id!==invoice.id&&row.status==='issued'&&row.client_id===invoice.client_id&&row.currency===invoice.currency&&num(row.financial?.balance_due)>0);
+    const application=kind==='application';
+    $('balanceTitle').textContent=`${application?'Aplicar saldo a favor':'Registrar devolución'} · ${invoice.invoice_number}`;
+    $('balanceCopy').textContent=application?'El saldo se aplica a otra factura del mismo cliente y moneda. Esta operación no registra un nuevo ingreso de dinero.':'Registra aquí una devolución que ya realizaste al cliente. El ERP anotará la salida de caja; no ejecuta transferencias bancarias.';
+    $('balanceTargetWrap').hidden=!application;
+    $('balanceRefundWrap').hidden=application;
+    $('balanceTarget').innerHTML=state.balanceTargets.length?state.balanceTargets.map(row=>`<option value="${esc(row.id)}">${esc(row.invoice_number)} · Pendiente ${esc(money(row.financial.balance_due,row.currency))}</option>`).join(''):'<option value="">No hay facturas compatibles con saldo pendiente</option>';
+    $('balanceDate').value=localDateToday();$('balanceMethod').value='wire';$('balanceReference').value='';$('balanceReason').value='';
+    $('saveBalance').textContent=application?'Aplicar saldo':'Registrar devolución';
+    $('saveBalance').disabled=application&&!state.balanceTargets.length;
+    message('balanceMsg','');
+    setBalanceAmount();closeModal('detail',false);openModal('balance','balanceAmount');
+    return true;
+  }
+
+  function balanceLimit() {
+    const available=num(state.balanceInvoice?.financial?.customer_credit_balance);
+    if (state.balanceKind==='refund') return available;
+    const target=state.balanceTargets.find(row=>row.id===$('balanceTarget').value);
+    return Math.min(available,num(target?.financial?.balance_due));
+  }
+
+  function setBalanceAmount() {
+    $('balanceAmount').value=String(balanceLimit());$('balanceAmount').max=String(balanceLimit());updateBalanceSummary();
+  }
+
+  function updateBalanceSummary() {
+    const invoice=state.balanceInvoice,amount=num($('balanceAmount').value),available=num(invoice.financial.customer_credit_balance);
+    const target=state.balanceTargets.find(row=>row.id===$('balanceTarget').value);
+    $('balanceSummary').textContent=`Disponible: ${money(available,invoice.currency)} · Saldo a favor restante: ${money(Math.max(available-amount,0),invoice.currency)}${state.balanceKind==='application'&&target?` · Pendiente en ${target.invoice_number}: ${money(Math.max(num(target.financial.balance_due)-amount,0),invoice.currency)}`:''}`;
+  }
+
+  async function saveCreditBalance() {
+    if (state.balanceSaving) return;
+    const invoice=state.balanceInvoice,amount=$('balanceAmount').value.trim(),reason=$('balanceReason').value.trim();
+    if (!/^\d+(?:\.\d{1,2})?$/.test(amount)||num(amount)<=0||num(amount)>balanceLimit()) return message('balanceMsg','Indica un monto válido que no supere el saldo disponible o pendiente.');
+    if (reason.length<3) return message('balanceMsg','Indica un motivo de al menos 3 caracteres.');
+    if (!$('balanceDate').value) return message('balanceMsg','Indica la fecha del movimiento.');
+    state.balanceSaving=true;$('saveBalance').disabled=true;message('balanceMsg','');
+    try {
+      await request('/api/invoices',{method:'POST',body:JSON.stringify({action:'credit_settlement',movement_type:state.balanceKind,invoice_id:invoice.id,target_invoice_id:state.balanceKind==='application'?$('balanceTarget').value:null,amount,reason,request_id:state.balanceRequestId,expected_available:String(invoice.financial.customer_credit_balance),effective_date:$('balanceDate').value,method:$('balanceMethod').value,reference:$('balanceReference').value})});
+      await refresh();state.balanceSaving=false;closeModal('balance',false);openDetail(invoice.id);
+      setPageMessage(state.balanceKind==='application'?'Saldo aplicado correctamente.':'Devolución registrada correctamente.','ok');
+    } catch(error) {message('balanceMsg',reportInvoiceError('credit_settlement',error));}
+    finally {state.balanceSaving=false;$('saveBalance').disabled=false;}
+  }
+
+  function reverseCreditMovement(invoiceId,movementId) {
+    const invoice=state.invoices.find(row=>row.id===invoiceId),movement=invoice?.credit_movements?.find(row=>row.id===movementId);
+    if (!movement||!can(movement,'reverse')) return;
+    const requestId=crypto.randomUUID(),effectiveDate=localDateToday();
+    askDecision({title:'Revertir movimiento de saldo',copy:`Se revertirá ${movement.movement_number} por ${money(movement.amount,movement.currency)} y se restablecerán sus saldos. El historial se conserva.`,acceptLabel:'Revertir movimiento',reason:true,danger:true,onAccept:async reason=>{
+      if(reason.length<3)throw new Error('Indica un motivo de al menos 3 caracteres.');
+      await request('/api/invoices',{method:'POST',body:JSON.stringify({action:'credit_settlement',movement_type:'reversal',movement_id:movementId,reason,request_id:requestId,effective_date:effectiveDate})});
+      await refresh();openDetail(invoiceId);setPageMessage('Movimiento revertido correctamente.','ok');
+    }});
+  }
+
+  function creditNoteSection(invoice) {
+    if (!invoice.credit_notes?.length) return '';
+    const hints={INVOICE_CREDIT_LATER_NOTE_ACTIVE:'Revierte primero las notas posteriores de estos mismos productos.',INVOICE_CREDIT_BALANCE_USED:'Revierte primero las aplicaciones o devoluciones que usaron este saldo.',INVOICE_CREDIT_QUANTITY_REUSED:'Estas cantidades ya se usaron en otra factura. Corrige o anula esa factura antes de revertir esta nota.'};
+    return `<section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Notas de crédito</h3><span>${invoice.credit_notes.length} registro(s)</span></header><div class="invoice-detail-items">${invoice.credit_notes.map(note=>`<div class="invoice-detail-item" data-credit-note-id="${esc(note.id)}"><div><div class="invoice-detail-item-title">${esc(note.credit_number)} · ${esc(date(note.created_at))} · ${note.status==='reversed'?'Revertida':'Vigente'}</div><div class="invoice-detail-item-meta">${esc(note.reason)}</div>${note.lines.map(line=>{const item=invoice.items.find(item=>item.id===line.invoice_item_id);return `<div class="invoice-detail-item-meta">${esc(item?.description||'Producto')}: ${esc(line.quantity)} ${esc(item?.unit||'')} ${note.status==='reversed'?'restauradas':'descontadas'} · ${esc(money(line.amount,note.currency))}</div>`;}).join('')}${note.reversal_id?`<div class="invoice-detail-item-meta">${esc(note.reversal_number)} · ${esc(date(note.reversed_at))} · ${esc(note.reversal_reason)}</div>`:''}${hints[capability(note,'reverse').reason]?`<div class="invoice-detail-item-meta">${esc(hints[capability(note,'reverse').reason])}</div>`:''}</div><div class="invoice-payment-actions"><strong>${esc(money(note.total,note.currency))}</strong>${can(note,'reverse')?`<button class="btn danger" type="button" data-reverse-credit-note="${esc(note.id)}" data-invoice-id="${esc(invoice.id)}">Revertir nota</button>`:''}</div></div>`).join('')}</div></section>`;
+  }
+
+  function reverseCreditNote(invoiceId,noteId) {
+    const invoice=state.invoices.find(row=>row.id===invoiceId),note=invoice?.credit_notes?.find(row=>row.id===noteId);
+    if (!note||!can(note,'reverse')) return;
+    const requestId=crypto.randomUUID();
+    askDecision({title:'Revertir nota de crédito',copy:`Se restaurarán las cantidades y el importe de ${note.credit_number} (${money(note.total,note.currency)}). Puede aumentar el saldo pendiente. La nota y el motivo del reverso quedarán en el historial. Los cobros registrados no cambian.`,acceptLabel:'Revertir nota',reason:true,danger:true,onAccept:async reason=>{
+      if(reason.length<3||reason.length>2000)throw new Error('Indica un motivo de entre 3 y 2000 caracteres.');
+      await request('/api/invoices',{method:'POST',body:JSON.stringify({action:'reverse_credit_note',credit_note_id:noteId,reason,request_id:requestId})});
+      await refresh();openDetail(invoiceId);setPageMessage('Nota de crédito revertida. El historial y los cobros se conservan.','ok');
+    }});
+  }
+
+  function openCredit(id) {
+    const invoice=state.invoices.find(row=>String(row.id)===String(id));
+    if (!invoice || !can(invoice,'credit') || state.creditSaving) return false;
+    state.creditInvoice=invoice;
+    state.creditRequestId=crypto.randomUUID();
+    $('creditTitle').textContent=`Nota de crédito · ${invoice.invoice_number}`;
+    $('creditLines').innerHTML=invoice.items.filter(item=>num(item.quantity)>num(item.credited_quantity)).map(item=>`<div class="invoice-form-section" data-credit-line="${esc(item.id)}"><label for="credit-${esc(item.id)}">${esc(item.description||'Producto')} · Cantidad a descontar</label><div class="muted">Original: ${esc(item.quantity)} ${esc(item.unit)} · Ya descontadas: ${esc(item.credited_quantity||0)} · Precio: ${esc(money(item.unit_price,invoice.currency))}</div><input id="credit-${esc(item.id)}" data-credit-qty type="number" min="0" max="${esc(num(item.quantity)-num(item.credited_quantity))}" step="any" inputmode="decimal" value="0"></div>`).join('');
+    $('creditReason').value='';
+    message('creditMsg','');
+    updateCreditSummary();
+    closeModal('detail',false);
+    openModal('credit', $('creditLines').querySelector('input')?.id);
+    return true;
+  }
+
+  function creditInput() {
+    const invoice=state.creditInvoice;
+    let amount=0,invalid=false;
+    const lines=[...$('creditLines').querySelectorAll('[data-credit-line]')].map(node=>{
+      const item=invoice.items.find(row=>row.id===node.dataset.creditLine);
+      const input=node.querySelector('[data-credit-qty]'),quantity=Number(input.value);
+      const remaining=num(item.quantity)-num(item.credited_quantity);
+      if (!input.value.trim()||!Number.isFinite(quantity)||quantity<0||quantity>remaining) invalid=true;
+      // Preview only; SQL performs the authoritative decimal rounding.
+      if (quantity>0&&quantity<=remaining) amount+=(Math.round((remaining*num(item.unit_price)+Number.EPSILON)*100)-Math.round(((remaining-quantity)*num(item.unit_price)+Number.EPSILON)*100))/100;
+      return {invoice_item_id:item.id,quantity:input.value,expected_credited_quantity:String(item.credited_quantity||0)};
+    }).filter(line=>Number(line.quantity)>0);
+    return {lines,amount,invalid};
+  }
+
+  function updateCreditSummary() {
+    const {amount,invalid}=creditInput(),invoice=state.creditInvoice;
+    const net=num(invoice.financial.total)-amount,paid=num(invoice.financial.paid_amount);
+    $('creditSummary').textContent=invalid?'Indica cantidades entre cero y el máximo disponible.':`Crédito: ${money(amount,invoice.currency)} · Total neto: ${money(net,invoice.currency)} · Pendiente: ${money(Math.max(net-paid,0),invoice.currency)} · Saldo a favor: ${money(Math.max(paid-net,0),invoice.currency)}`;
+  }
+
+  async function saveCredit() {
+    if (state.creditSaving) return;
+    const invoice=state.creditInvoice,{lines,invalid}=creditInput(),reason=$('creditReason').value.trim();
+    if (invalid||!lines.length) return message('creditMsg','Indica una cantidad válida para descontar.');
+    if (reason.length<3||reason.length>2000) return message('creditMsg','Indica un motivo de entre 3 y 2000 caracteres.');
+    state.creditSaving=true;
+    $('saveCredit').disabled=true;
+    message('creditMsg','');
+    try {
+      await request('/api/invoices',{method:'POST',body:JSON.stringify({action:'credit_quantity',invoice_id:invoice.id,request_id:state.creditRequestId,lines,reason})});
+      await refresh();
+      state.creditSaving=false;
+      closeModal('credit',false);
+      openDetail(invoice.id);
+      setPageMessage('Nota de crédito emitida. Los cobros registrados se conservan.','ok');
+    } catch(error) {
+      message('creditMsg',reportInvoiceError('credit_quantity',error));
+    } finally {
+      state.creditSaving=false;
+      $('saveCredit').disabled=false;
+    }
+  }
+
+  function openPayment(id) {
+    const invoice = state.invoices.find(row => String(row.id) === String(id));
+    if (!invoice || !can(invoice, 'record_payment')) return false;
+    const balance = num(invoice.financial?.balance_due);
+    state.paymentInvoiceId = invoice.id;
+    state.paymentRequestId = crypto.randomUUID();
+    state.paymentAttempted = false;
+    $('paymentTitle').textContent = `Registrar cobro · ${invoice.invoice_number}`;
+    $('paymentSubtitle').textContent = `Saldo pendiente: ${money(balance, invoice.currency)}`;
+    $('pAmount').max = String(balance);
+    $('pAmount').value = String(balance);
+    $('pDate').value = localDateToday();
+    $('pMethod').value = 'wire';
+    $('pReference').value = '';
+    $('pNotes').value = '';
+    message('paymentMsg', '');
+    closeModal('detail', false);
+    openModal('payment', 'pAmount');
+    return true;
+  }
+
+  async function savePayment() {
+    if (state.paymentSaving) return;
+    const invoice = state.invoices.find(row => row.id === state.paymentInvoiceId);
+    if (!invoice) return message('paymentMsg', 'Factura no encontrada.');
+    if (!state.paymentAttempted && !can(invoice, 'record_payment')) return message('paymentMsg', 'Esta factura ya no admite cobros.');
+    const amount = num($('pAmount').value);
+    if (amount <= 0) return message('paymentMsg', 'El monto debe ser mayor que cero.');
+    const button = $('savePayment');
+    state.paymentSaving = true;
+    state.paymentAttempted = true;
+    button.disabled = true;
+    message('paymentMsg', '');
+    let payment;
+    try {
+      const data = await request('/api/invoice-payments', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'register',
+          request_id: state.paymentRequestId,
+          invoice_id: invoice.id,
+          amount,
+          payment_date: $('pDate').value || null,
+          method: $('pMethod').value || null,
+          reference_number: $('pReference').value || null,
+          notes: $('pNotes').value || null
+        })
+      });
+      if (!data.payment?.id || data.payment.invoice_id !== invoice.id) throw new Error('PAYMENT_CONFIRMATION_MISSING');
+      payment = data.payment;
+    } catch (error) {
+      message('paymentMsg', reportInvoiceError('save_payment', error,
+        'No se pudo confirmar el cobro. Conserva este formulario y vuelve a intentar sin cambiar los datos; no se repetirá el mismo cobro.'));
+    } finally {
+      state.paymentSaving = false;
+      button.disabled = false;
+    }
+    if (!payment) return;
+    closeModal('payment', false);
+    const reversed = payment.status === 'reversed';
+    const confirmation = reversed ? 'Este cobro ya fue revertido. No se registró uno nuevo.' : 'Cobro registrado correctamente.';
+    setPageMessage(confirmation, reversed ? 'bad' : 'ok');
+    try {
+      await refresh();
+      openDetail(invoice.id);
+      setPageMessage(confirmation, reversed ? 'bad' : 'ok');
+    } catch (error) {
+      console.error('INVOICES_PAYMENT_REFRESH_FAILED', error);
+      setPageMessage(confirmation + ' No se pudo actualizar la pantalla; pulsa Actualizar Facturación.', reversed ? 'bad' : 'ok');
+    }
+  }
+
+  function closeDecision() {
+    state.decisionAction = null;
+    closeModal('decision');
+    message('decisionMsg', '');
+    $('decisionReason').value = '';
+  }
+
+  function askDecision({ title, copy, acceptLabel = 'Continuar', reason = false, danger = false, onAccept }) {
+    state.decisionAction = onAccept;
+    $('decisionTitle').textContent = title;
+    $('decisionCopy').textContent = copy;
+    $('decisionAccept').textContent = acceptLabel;
+    $('decisionAccept').className = `btn ${danger ? 'danger' : 'orange'}`;
+    $('decisionReasonWrap').classList.toggle('hidden', !reason);
+    $('decisionReason').value = '';
+    message('decisionMsg', '');
+    openModal('decision', reason ? 'decisionReason' : 'decisionAccept');
+  }
+
+  async function acceptDecision() {
+    if (typeof state.decisionAction !== 'function') return;
+    const button = $('decisionAccept');
+    button.disabled = true;
+    try {
+      await state.decisionAction($('decisionReason').value.trim());
+      closeDecision();
+    } catch (error) {
+      message('decisionMsg', reportInvoiceError('decision', error));
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function transition(id, action) {
+    const invoice = state.invoices.find(row => String(row.id) === String(id));
+    if (!invoice || !can(invoice, action)) return;
+    const issue = action === 'issue';
+    askDecision({
+      title: issue ? 'Emitir factura' : 'Anular factura',
+      copy: issue ? `Se emitirá ${invoice.invoice_number}. Después sus líneas y estructura quedan bloqueadas.` : `Se anulará ${invoice.invoice_number}. Esta acción solo está disponible sin cobros ni anticipos aplicados.`,
+      acceptLabel: issue ? 'Emitir factura' : 'Anular factura',
+      danger: !issue,
+      onAccept: async () => {
+        await request('/api/invoices', { method: 'POST', body: JSON.stringify({ action, invoice_id: id }) });
+        closeModal('detail', false);
+        setPageMessage(issue ? 'Factura emitida correctamente.' : 'Factura anulada correctamente.', 'ok');
+        await refresh();
+      }
+    });
+  }
+
+  function reversePayment(paymentId, invoiceId) {
+    const invoice = state.invoices.find(row => String(row.id) === String(invoiceId));
+    const payment = invoice?.payments?.find(row => String(row.id) === String(paymentId));
+    if (!payment || !canPayment(payment, 'reverse')) return;
+    askDecision({
+      title: 'Revertir cobro',
+      copy: `Se revertirá el cobro de ${money(payment.amount, payment.currency)}. La factura recuperará ese saldo pendiente.`,
+      acceptLabel: 'Revertir cobro',
+      reason: true,
+      danger: true,
+      onAccept: async reason => {
+        await request('/api/invoice-payments', { method: 'POST', body: JSON.stringify({ action: 'reverse', payment_id: paymentId, reason }) });
+        setPageMessage('Cobro revertido correctamente.', 'ok');
+        await refresh();
+        openDetail(invoiceId);
+      }
+    });
+  }
+
+  function handleInvoiceAction(target) {
+    const button = target.closest('[data-invoice-action]');
+    if (!button) return false;
+    const { invoiceAction: action, invoiceId: id } = button.dataset;
+    if (action === 'detail') return openDetail(id);
+    if (action === 'payment') return openPayment(id);
+    if (action === 'credit') return openCredit(id);
+    if (action === 'apply_credit') return openCreditBalance(id,'application');
+    if (action === 'refund_credit') return openCreditBalance(id,'refund');
+    if (action === 'edit') {
+      closeModal('detail', false);
+      return openEdit(id);
+    }
+    if (action === 'issue' || action === 'void') return transition(id, action);
+    return false;
+  }
+
+  function bindEvents() {
+    $('newInvoice').addEventListener('click', () => openCreate());
+    $('refresh').addEventListener('click', () => refresh().catch(showLoadFailure));
+    $('clearInvoiceFilters').addEventListener('click', () => {
+      state.search = '';
+      state.view = 'open';
+      $('search').value = '';
+      $('invoiceView').value = 'open';
+      renderList();
+      $('search').focus();
+    });
+    $('search').addEventListener('input', event => {
+      state.search = event.target.value || '';
+      renderList();
+    });
+    $('invoiceView').addEventListener('change', event => {
+      state.view = event.target.value || 'open';
+      renderList();
+    });
+    $('iSalesOrder').addEventListener('change', () => renderInvoiceLines(state.editingId ? state.invoices.find(row => row.id === state.editingId) : null));
+    $('saveInvoice').addEventListener('click', saveInvoice);
+    $('savePayment').addEventListener('click', savePayment);
+    $('saveCredit').addEventListener('click', saveCredit);
+    $('saveBalance').addEventListener('click', saveCreditBalance);
+    $('balanceTarget').addEventListener('change', setBalanceAmount);
+    $('balanceAmount').addEventListener('input', updateBalanceSummary);
+    $('creditLines').addEventListener('input', updateCreditSummary);
+    $('decisionAccept').addEventListener('click', acceptDecision);
+    document.addEventListener('click', event => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target) return;
+      const close = target.closest('[data-close]');
+      if (close) {
+        if (close.dataset.close === 'decision') closeDecision();
+        else closeModal(close.dataset.close);
+        return;
+      }
+      if (handleInvoiceAction(target)) return;
+      const note = target.closest('[data-reverse-credit-note]');
+      if (note) return reverseCreditNote(note.dataset.invoiceId,note.dataset.reverseCreditNote);
+      const movement = target.closest('[data-reverse-credit-movement]');
+      if (movement) return reverseCreditMovement(movement.dataset.invoiceId,movement.dataset.reverseCreditMovement);
+      const reverse = target.closest('[data-reverse-payment]');
+      if (reverse) reversePayment(reverse.dataset.reversePayment, reverse.dataset.invoiceId);
+    });
+    document.querySelectorAll('.modal').forEach(modal => modal.addEventListener('click', event => {
+      if (event.target !== modal) return;
+      if (modal.id === 'decisionModal') closeDecision();
+      else closeModal(modal.id);
+    }));
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      const open = ['decisionModal', 'balanceModal', 'creditModal', 'paymentModal', 'invoiceModal', 'detailModal'].find(id => !$(id).classList.contains('hidden'));
+      if (!open) return;
+      event.stopImmediatePropagation();
+      if (open === 'decisionModal') closeDecision();
+      else closeModal(open);
+    }, true);
+  }
+
+  async function handlePendingNavigation() {
+    if (pendingCollectionId) {
+      const id = pendingCollectionId;
+      pendingCollectionId = '';
+      return openCollection(id);
+    }
+    if (pendingInvoiceId) {
+      const id = pendingInvoiceId;
+      pendingInvoiceId = '';
+      return openInvoice(id);
+    }
+    if (pendingSalesOrderId) {
+      const id = pendingSalesOrderId;
+      pendingSalesOrderId = '';
+      return openForSalesOrder(id);
+    }
+    return false;
+  }
+
+  async function refresh() {
+    const data = await request();
+    state.invoices = Array.isArray(data.invoices) ? data.invoices : [];
+    state.salesOrders = Array.isArray(data.sales_orders) ? data.sales_orders : [];
+    state.metrics = data.metrics || null;
+    state.writeAccess = data.write_access === true;
+    state.loaded = true;
+    $('newInvoice').hidden=!state.writeAccess;
+    $('invoicesReadOnlyNote').hidden = state.writeAccess;
+    $('invoiceLastUpdated').textContent = `Actualizado ${new Date().toLocaleTimeString('es-US', { hour: '2-digit', minute: '2-digit' })}`;
+    setPageMessage('');
+    render();
+    window.parent?.dispatchEvent?.(new CustomEvent('export-mca:data-loaded'));
+    await handlePendingNavigation();
+    return true;
+  }
+
+  function showLoadFailure(error) {
+    const value = reportInvoiceError('bootstrap', error, 'No se pudieron cargar las facturas. Intenta nuevamente.');
+    setPageMessage(value);
+    $('invoiceResultCount').textContent = 'No disponible';
+    $('invoiceList').innerHTML = `${emptyState('Facturación no disponible', value)}<div class="invoices-empty"><button id="invoiceRetry" class="btn" type="button">Reintentar</button></div>`;
+    $('invoiceRetry')?.addEventListener('click', () => {
+      $('invoiceList').innerHTML = '<div class="invoices-loading" role="status"><span class="invoices-spinner" aria-hidden="true"></span>Consultando facturas…</div>';
+      refresh().catch(showLoadFailure);
+    });
+  }
+
+  function openInvoice(id) {
+    if (!state.loaded) {
+      pendingInvoiceId = String(id || '');
+      return true;
+    }
+    const opened = openDetail(id);
+    if (!opened) setPageMessage('La factura solicitada ya no está disponible.');
+    return opened;
+  }
+
+  function openCollection(id) {
+    if (!state.loaded) {
+      pendingCollectionId = String(id || '');
+      return true;
+    }
+    const invoice = state.invoices.find(row => String(row.id) === String(id));
+    if (!invoice) {
+      setPageMessage('La factura solicitada ya no está disponible.');
+      return false;
+    }
+    if (can(invoice, 'record_payment')) return openPayment(invoice.id);
+    return openDetail(invoice.id);
+  }
+
+  function openForSalesOrder(salesOrderId) {
+    if (!state.loaded) {
+      pendingSalesOrderId = String(salesOrderId || '');
+      return true;
+    }
+    return openCreate(salesOrderId);
+  }
+
+  function startInvoices(sessionToken = token) {
+    if (moduleStarted) return true;
+    token = String(sessionToken || '');
+    if (!token) return false;
+    moduleStarted = true;
+    bindEvents();
+    refresh().catch(showLoadFailure);
+    return true;
+  }
+
+  function handleStoredSession(event) {
+    if (event.key !== 'export_mca_token' || !event.newValue) return;
+    window.removeEventListener('storage', handleStoredSession);
+    startInvoices(event.newValue);
+  }
+
+  window.load = refresh;
+  window.openOperationalInvoice = openInvoice;
+  window.openOperationalInvoiceCollection = openCollection;
+  window.openOperationalInvoiceForSalesOrder = openForSalesOrder;
+  window.InvoicesModule = Object.freeze({
+    owner: 'invoices.js',
+    embedded: embeddedMode,
+    safeInvoiceMessage,
+    refresh,
+    openInvoice,
+    openCollection,
+    openForSalesOrder
+  });
+
+  if (!startInvoices()) {
+    if (embeddedMode) window.addEventListener('storage', handleStoredSession);
+    else redirectToAdminLogin();
+  }
+})();
