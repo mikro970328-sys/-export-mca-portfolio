@@ -4,6 +4,8 @@ const read=file=>fs.readFileSync(file,'utf8');
 const js=read('admin/clients-module.js');
 const css=read('admin/clients-module.css');
 const api=read('api/clients.js');
+const salesOrderUx=read('admin/sales-order-ux.js');
+const clientPhoneMigration=read('supabase/migrations/20260927225057_client_phone_optional.sql');
 const erp=read('admin/erp.js');
 const index=read('admin/index.html');
 const failures=[];
@@ -71,6 +73,17 @@ requireText(api,"console.error('CLIENTS_API_FAILED', error)",'diagnóstico segur
 requireText(api,"return fail(res, 500, 'No se pudo completar la operación del cliente')",'boundary 500 estable');
 forbid(api,/return\s+fail\([^\n]*error\.message/,'API de Clientes no puede devolver error.message crudo');
 
+requireText(api,'function optionalPhone(value)','normalización de teléfono opcional');
+requireText(api,'const phone = optionalPhone(body.phone)','alta de cliente sin teléfono');
+requireText(api,'patch.phone = optionalPhone(body.phone)','edición de cliente sin teléfono');
+requireText(api,'phone: body.phone !== undefined ? patch.phone : current.phone','al borrar un teléfono deja de comparar el número anterior');
+requireText(index,'WhatsApp (opcional)','teléfono opcional en Clientes');
+requireText(js,'WhatsApp (opcional)','teléfono opcional al editar cliente');
+requireText(salesOrderUx,'WhatsApp (opcional)','teléfono opcional al crear cliente desde una venta');
+forbid(index,/id="clientPhone"[^>]*\srequired(?:\s|>)/,'El formulario de Clientes no debe exigir teléfono');
+forbid(js,/id="clientEditPhone"[^>]*\srequired(?:\s|>)/,'La edición de Clientes no debe exigir teléfono');
+forbid(salesOrderUx,/id="clientQuickPhone"[^>]*\srequired(?:\s|>)/,'El formulario rápido no debe exigir teléfono');
+requireText(clientPhoneMigration,'alter column phone drop not null','migración que permite teléfono vacío en clientes');
 if(failures.length){
   console.error('UX6 Clients owner gate failed:\n'+failures.map(x=>`- ${x}`).join('\n'));
   process.exit(1);

@@ -68,7 +68,7 @@ test('Figma sales: white theme, real filters, accessible actions and form pricin
   await page.locator('#clientQuickName').fill('Cliente agregado desde venta');
   await page.locator('#clientQuickCompany').fill('Empresa rápida');
   await page.locator('#clientQuickNIT').fill('555-888');
-  await page.locator('#clientQuickPhone').fill('+5351234567');
+  await expect(page.locator('#clientQuickPhone')).not.toHaveAttribute('required','');
   await page.locator('#clientQuickAddForm button[type="submit"]').click();
   await expect(page.locator('#oClientPickerButton')).toContainText('NIT 555-888');
   await page.locator('[data-sales-add-product]').click();

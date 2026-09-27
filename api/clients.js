@@ -12,6 +12,11 @@ function normalizeNit(value) {
   return cleanNit(value)?.toUpperCase().replace(/[\s.\/-]/g, '') || null;
 }
 
+function optionalPhone(value) {
+  const raw = String(value ?? '').trim();
+  return raw ? normalizePhone(raw) : null;
+}
+
 function publicClient(value) {
   const safe = publicNotificationData(value);
   if (Array.isArray(safe)) return safe.map(publicClient);
@@ -106,7 +111,7 @@ export default async function handler(req, res) {
       const body = await readJson(req);
       const name = String(body.name || '').trim();
       if (!name) return fail(res, 400, 'El nombre del cliente es obligatorio');
-      const phone = normalizePhone(body.phone);
+      const phone = optionalPhone(body.phone);
       const email = String(body.email || '').trim().toLowerCase() || null;
       const nit = cleanNit(body.nit);
       if (await findDuplicateNit(nit)) return fail(res, 409, 'Ese NIT ya pertenece a otro cliente.');
@@ -145,11 +150,11 @@ export default async function handler(req, res) {
       if (body.mipyme_name !== undefined) patch.mipyme_name = String(body.mipyme_name).trim() || null;
       if (body.nit !== undefined) patch.nit = cleanNit(body.nit);
       if (body.importer_name !== undefined) patch.importer_name = String(body.importer_name).trim() || null;
-      if (body.phone !== undefined) patch.phone = normalizePhone(body.phone);
+      if (body.phone !== undefined) patch.phone = optionalPhone(body.phone);
       if (body.email !== undefined) patch.email = String(body.email).trim().toLowerCase() || null;
       const nitDuplicate = await findDuplicateNit(patch.nit ?? current.nit, id);
       if (nitDuplicate) return fail(res, 409, 'Ese NIT ya pertenece a otro cliente.');
-      const duplicate = await findDuplicate({ phone: patch.phone || current.phone, email: patch.email ?? current.email, excludeId: id });
+      const duplicate = await findDuplicate({ phone: body.phone !== undefined ? patch.phone : current.phone, email: patch.email ?? current.email, excludeId: id });
       if (duplicate) return fail(res, 409, 'Otro cliente ya utiliza ese WhatsApp o correo', JSON.stringify({ existing_client: duplicate }));
       const updated = await supabase('clients', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}&select=*`, body: patch });
       await audit('client_updated', id, patch);
