@@ -75,7 +75,11 @@
     const quickAdd = byId('clientQuickAddToggle');
     refreshClientAccess();
     quickAdd.onclick = showQuickClient;
-    byId('clientQuickAddCancel').onclick = () => { byId('clientQuickAddForm').hidden = true; quickAdd.focus(); };
+    byId('clientQuickAddCancel').onclick = () => {
+      byId('clientQuickAddForm').hidden = true;
+      refreshClientAccess();
+      quickAdd.focus();
+    };
     byId('clientQuickAddForm').addEventListener('submit',saveQuickClient);
     byId('clientPickerSearch').addEventListener('input', event => {
       clearTimeout(clientTimer);
@@ -92,15 +96,18 @@
   }
 
   function refreshClientAccess() {
-    for (const id of ['clientQuickAddToggle','oClientNewButton']) {
-      if (byId(id)) byId(id).hidden = !canCreateClient();
-    }
+    const allowed = canCreateClient();
+    const pickerOpen = Boolean(byId('clientPickerModal') && !byId('clientPickerModal').classList.contains('hidden'));
+    const quickFormOpen = Boolean(byId('clientQuickAddForm') && !byId('clientQuickAddForm').hidden);
+    if (byId('oClientNewButton')) byId('oClientNewButton').hidden = !allowed || pickerOpen;
+    if (byId('clientQuickAddToggle')) byId('clientQuickAddToggle').hidden = !allowed || !pickerOpen || quickFormOpen;
   }
 
   function showQuickClient() {
     if (!canCreateClient()) return;
     byId('clientQuickAddForm').hidden = false;
     byId('clientQuickAddMsg').textContent = '';
+    refreshClientAccess();
     byId('clientQuickName').focus();
   }
 
@@ -158,6 +165,7 @@
     byId('clientPickerMsg').textContent = '';
     byId('clientPickerModal').classList.remove('hidden');
     byId('oClientPickerButton')?.setAttribute('aria-expanded','true');
+    refreshClientAccess();
     if (createNew === true) showQuickClient();
     await loadClientPage();
     if (createNew !== true) byId('clientPickerSearch')?.focus();
@@ -165,6 +173,7 @@
 
   function closeClientPicker() {
     byId('clientPickerModal')?.classList.add('hidden');
+    refreshClientAccess();
     const button=byId('oClientPickerButton');
     button?.setAttribute('aria-expanded','false');
     button?.focus();

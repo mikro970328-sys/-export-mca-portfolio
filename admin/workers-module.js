@@ -116,7 +116,7 @@
           <div class="native-workspace-heading">
             <span class="native-workspace-kicker">Administración de equipo</span>
             <h2>Trabajadores</h2>
-            <p>Consulta el equipo, sus datos y su historial laboral.</p>
+            <p>Consulta el equipo y registra sus salarios y propinas por mes desde Finanzas → Rentabilidad → Empresa.</p>
             <div class="workers-hero-state">
               <span id="workersOperationalState">Preparando directorio laboral</span>
               <span id="workersLastUpdated">Preparando…</span>
@@ -124,6 +124,7 @@
           </div>
           <div class="workers-head-actions native-workspace-actions">
             <button type="button" class="alt workers-secondary" data-worker-action="reload">Actualizar</button>
+            <button id="workersPayrollLink" type="button" class="alt workers-secondary" data-worker-action="payroll" title="Consultar o registrar pagos mensuales del equipo" ${can('finance.read') ? '' : 'hidden'}>Salarios y propinas</button>
             <button id="workersCreateButton" type="button" class="workers-primary" data-worker-action="create" ${can('administration.workers.write') ? '' : 'hidden'}>Nuevo trabajador</button>
           </div>
         </div>
@@ -406,6 +407,7 @@
   function openCreateWorker() {
     if (!state.writeAccess) return;
     openModal('Nuevo trabajador', `<form id="workerCreateForm" class="workers-modal-form">
+      <p class="workers-payroll-note">Después de guardar, usa “Salarios y propinas” para abrir Rentabilidad → Empresa y registrar el pago de cada mes. Puedes ajustar el salario y las propinas por separado.</p>
       <label><span>Nombre completo</span><input id="workerName" name="full_name" autocomplete="name" placeholder="Nombre y apellidos" required></label>
       <div class="workers-form-grid">
         <label><span>Teléfono / WhatsApp</span><input id="workerPhone" name="phone" autocomplete="tel" inputmode="tel" placeholder="+5351234567" required></label>
@@ -590,6 +592,17 @@
     search?.focus({ preventScroll:true });
   }
 
+  function openPayrollWorkspace() {
+    if (!can('finance.read')) return false;
+    window.showSection?.('costsSection');
+    const frame = document.querySelector('#costsSection iframe');
+    if (!frame) return false;
+    const openCompanyProfitability = () => frame.contentWindow?.CostsModule?.openProfitability?.('company');
+    if (typeof frame.contentWindow?.CostsModule?.openProfitability === 'function') openCompanyProfitability();
+    else frame.addEventListener('load', openCompanyProfitability, { once:true });
+    return true;
+  }
+
   function handleClick(event) {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
@@ -606,6 +619,7 @@
     const id = button.dataset.workerId;
     const action = button.dataset.workerAction;
     if (action === 'reload') return loadWorkers();
+    if (action === 'payroll') return openPayrollWorkspace();
     if (action === 'clear') return resetSearch();
     if (action === 'create') return openCreateWorker();
     if (action === 'history') return openWorkerHistory(id);

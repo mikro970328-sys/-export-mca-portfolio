@@ -32,6 +32,29 @@ for(const width of [1440,390]){
   await page.keyboard.press('Escape');await expect(page.locator('[data-worker-action="history"][data-worker-id="worker-0"]')).toBeFocused();expect(await writes(page)).toEqual([]);
  });
 }
+test('Workers open monthly salary and tips without writing payroll data',async({page})=>{
+ await open(page,'workers');
+ await page.evaluate(()=>{
+  window.__workerNavigation=[];window.__profitabilityRequested=[];
+  window.showSection=id=>window.__workerNavigation.push(id);
+  const section=document.createElement('section');section.id='costsSection';
+  const frame=document.createElement('iframe');section.append(frame);document.body.append(section);
+  frame.contentWindow.CostsModule={openProfitability:view=>window.__profitabilityRequested.push(view)};
+ });
+ await expect(page.locator('#workersPayrollLink')).toBeVisible();
+ await page.locator('#workersPayrollLink').click();
+ expect(await page.evaluate(()=>window.__workerNavigation)).toEqual(['costsSection']);
+ expect(await page.evaluate(()=>window.__profitabilityRequested)).toEqual(['company']);
+ await page.locator('#workersCreateButton').click();
+ await expect(page.locator('.workers-payroll-note')).toContainText('cada mes');
+ await page.locator('[data-worker-modal-close]').click();
+ expect(await writes(page)).toEqual([]);
+});
+test('Workers hide the salary shortcut without finance read access',async({page})=>{
+ await open(page,'workers',{financeRead:false});
+ await expect(page.locator('#workersPayrollLink')).toBeHidden();
+ expect(await writes(page)).toEqual([]);
+});
 for(const viewport of [{width:1440,height:700},{width:390,height:500}]){
  test(`Task creation: assignment validation and failed save preserve work at ${viewport.width}`,async({page},info)=>{
   await page.setViewportSize(viewport);await open(page,'tasks');await page.locator('[data-task-action="create"]').click();await expect(page.locator('#tasksEditForm [name="title"]')).toBeFocused();

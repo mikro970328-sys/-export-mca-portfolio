@@ -6,7 +6,7 @@ const read=p=>readFileSync(root+p,'utf8');
 const font=readFileSync(root+'admin/fonts/InterVariable.woff2').toString('base64');
 
 // Actual native owners with fictional records; the memory API and CSP deny network.
-export function tasksWorkersFixture({module='tasks',writable=true,manage=writable,failRead=false,restricted=false}={}){
+export function tasksWorkersFixture({module='tasks',writable=true,manage=writable,failRead=false,restricted=false,financeRead=true}={}){
   if(!['tasks','workers'].includes(module))throw Error('Unsupported workspace');
   const dom=new JSDOM(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><section id="${module}Section" class="app-section"></section></body></html>`),doc=dom.window.document;
   const owner=module==='tasks'?'tasks-workspace':'workers-module';
@@ -29,7 +29,7 @@ export function tasksWorkersFixture({module='tasks',writable=true,manage=writabl
   ];
   const harness=`
     localStorage.setItem('export_mca_token','fixture-token');localStorage.setItem('export_mca_user',JSON.stringify({id:'operator-0',username:'operador'}));
-    window.ExportMcaAccessControl={can:key=>key.endsWith('.read')||(key==='tasks.manage'?${manage}:${writable})};
+    window.ExportMcaAccessControl={can:key=>key==='finance.read'?${financeRead}:key.endsWith('.read')||(key==='tasks.manage'?${manage}:${writable})};
     window.__fixtureTasks=${JSON.stringify(tasks)};window.__fixtureWorkers=${JSON.stringify(workers)};window.__fixtureContext=${JSON.stringify(context)};
     window.__fixtureCalls=[];window.__fixtureRejectWrites=false;window.__fixtureReadError=${failRead};window.__fixtureBlockCompletion=false;window.__fixtureHistory=[];
     const response=data=>({ok:true,status:200,json:async()=>data});

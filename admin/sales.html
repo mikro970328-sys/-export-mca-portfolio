@@ -7,7 +7,7 @@
 <link rel="icon" href="/logo.png">
 <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
 <link rel="stylesheet" href="/admin/sales.css?v=20260922-figma1">
-<link rel="stylesheet" href="/admin/sales-order-ux.css?v=20260927-clients1">
+<link rel="stylesheet" href="/admin/sales-order-ux.css?v=20260927-feedback1">
 <link rel="stylesheet" href="/admin/sales-workspace.css?v=20260922-scroll1">
 <link rel="stylesheet" href="/admin/sales-supply-workspace.css?v=20260902-ux7sales1">
 <link rel="stylesheet" href="/admin/sales-customer-finance.css?v=20260902-ux7sales1">
@@ -56,14 +56,14 @@ document.__financialSalesContextInstalled = true;
 <div id="orderModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="orderTitle">
   <div class="dialog sales-order-dialog">
     <div class="dialog-head">
-      <div><span class="sales-dialog-kicker">Operación comercial</span><h2 id="orderTitle">Nueva venta</h2><div class="muted">Define el cliente, la mercancía y el valor de la operación.</div></div>
+      <div><span class="sales-dialog-kicker">Operación comercial</span><h2 id="orderTitle">Nueva venta</h2><div class="muted">Registra lo acordado con el cliente. La factura se prepara después desde esta venta, cuando corresponda.</div></div>
       <button class="btn sales-close-button" type="button" data-close="order" aria-label="Cerrar formulario de venta">Cerrar</button>
     </div>
     <h3>Datos comerciales</h3>
     <div class="grid3">
       <div><label for="oClient">Cliente *</label><select id="oClient"></select></div>
       <div><label for="oImporter">Importador</label><select id="oImporter"></select></div>
-      <div><label for="oNationalization">Nacionalización</label><select id="oNationalization"><option value="">Por definir</option><option value="nationalized">Nacionalizada</option><option value="not_nationalized">No nacionalizada</option></select></div>
+      <div><label for="oNationalization">Nacionalización (opcional)</label><select id="oNationalization"><option value="">Por definir</option><option value="nationalized">Nacionalizada</option><option value="not_nationalized">No nacionalizada</option></select></div>
     </div>
     <div class="grid4 sales-order-dates">
       <div><label for="oCurrency">Moneda *</label><input id="oCurrency" value="USD" maxlength="3"></div>
@@ -74,7 +74,7 @@ document.__financialSalesContextInstalled = true;
     <label for="oNotes">Notas</label><textarea id="oNotes" placeholder="Información adicional de la venta (opcional)"></textarea>
     <div class="toolbar sales-form-section-head"><b>Mercancía vendida</b><button id="addOrderLine" class="btn" type="button">+ Línea</button></div>
     <div id="orderLines"></div>
-    <p class="sales-form-hint">Puedes crear la venta antes de comprar la mercancía. Registra primero el total acordado; la existencia aparece después de registrar la compra y recepción.</p>
+    <p class="sales-form-hint">Puedes registrar la venta antes de comprar. Si la mercancía no aparece, pulsa “Agregar mercancía”: se añade al catálogo sin crear existencia. Escribe el total acordado; el inventario se actualizará cuando registres la compra y la recepción.</p>
     <div class="sales-order-footer">
       <div id="salesOrderTotalPreview" class="sales-total-preview"><div><span>Total de venta</span><b>USD 0.00</b></div></div>
       <div class="actions sales-modal-actions"><button class="btn" type="button" data-close="order">Cancelar</button><button id="saveOrder" class="btn orange" type="button">Guardar venta</button></div>
@@ -104,8 +104,8 @@ document.__financialSalesContextInstalled = true;
 <div class="actions sales-modal-actions"><button class="btn" data-close="load">Cancelar</button><button id="saveLoad" class="btn orange">Crear Cargue</button></div><div id="loadMsg" class="msg" role="status" aria-live="polite"></div></div></div>
 
 <script src="/admin/form-drafts.js?v=20260909-drafts1"></script>
-<script src="/admin/sales.js?v=20260927-clients1"></script>
-<script src="/admin/sales-order-ux.js?v=20260927-clients1"></script>
+<script src="/admin/sales.js?v=20260927-feedback1"></script>
+<script src="/admin/sales-order-ux.js?v=20260927-feedback1"></script>
 <script src="/admin/sales-workspace.js?v=20260921-costedit1"></script>
 <script src="/admin/sales-supply-workspace.js?v=20260921-balance1"></script>
 <script src="/admin/sales-customer-finance.js?v=20260902-ux6owner1"></script>

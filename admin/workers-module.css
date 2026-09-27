@@ -89,4 +89,5 @@ body.workers-dialog-open { overflow:hidden; }
 @media(max-width:560px) { .workers-form-grid { grid-template-columns:1fr;gap:16px; } .workers-modal-actions { flex-wrap:wrap; } .workers-modal-actions button { flex:1; } .workers-head-actions { flex-wrap:wrap; } }
 @media(max-width:480px) { .workers-search-row { grid-template-columns:1fr; } .workers-panel-head { flex-wrap:wrap;gap:8px; } }
 @media(max-width:390px) { #workersSection .workers-shell { padding:24px 12px; } .workers-card-foot { grid-template-columns:1fr; } }
+#workersModal .workers-payroll-note { margin:0;padding:12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-soft);color:var(--muted);font-size:13px;line-height:18px; }
 @media(prefers-reduced-motion:reduce) { #workersSection *,#workersModal * { animation:none;transition:none;scroll-behavior:auto; } }
