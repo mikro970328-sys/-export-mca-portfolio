@@ -240,8 +240,8 @@
         await loadScript('/admin/dashboard-operational-state.js?v=20260926-figma2', 'data-dashboard-operational-state');
       }
       if (accessCan('logistics.read')) {
-        await loadStylesheet('/admin/containers-module.css?v=20260926-business1', 'data-containers-module-style');
-        await loadScript('/admin/containers-module.js?v=20260926-business1', 'data-containers-module');
+        await loadStylesheet('/admin/containers-module.css?v=20260927-containerflow1', 'data-containers-module-style');
+        await loadScript('/admin/containers-module.js?v=20260927-containerflow1', 'data-containers-module');
       }
       if (accessCan('logistics.write')) {
         await loadStylesheet('/admin/shipment-editor.css?v=20260926-figma1', 'data-shipment-editor-style');
