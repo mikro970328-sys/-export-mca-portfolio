@@ -138,6 +138,8 @@ test('Create a client directly from a sale without shell permissions or lost sal
   await page.locator('#oNotes').fill('Conservar esta venta');
   await page.locator('.lTotal').fill('2300');
   await page.locator('#oClientNewButton').click();
+  await expect(page.locator('#oClientNewButton')).toBeHidden();
+  await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
   await expect(page.locator('#clientQuickName')).toBeFocused();
   await page.locator('#clientQuickName').fill('Cliente nuevo');
   await page.locator('#clientQuickNIT').fill('123-456');
@@ -151,12 +153,23 @@ test('Create a client directly from a sale without shell permissions or lost sal
   await expect(page.locator('#clientPickerModal')).toBeHidden();
   await expect(page.locator('#orderModal')).toBeVisible();
   await expect(page.locator('#oClientPickerButton')).toContainText('NIT 123-456');
+  await expect(page.locator('#oClientNewButton')).toBeVisible();
+  await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
   await expect(page.locator('#oReference')).toHaveValue('Pedido pendiente');
   await expect(page.locator('#oNotes')).toHaveValue('Conservar esta venta');
   await expect(page.locator('.lTotal')).toHaveValue('2300');
   await page.locator('#oClientPickerButton').click();
+  await expect(page.locator('#oClientNewButton')).toBeHidden();
+  await expect(page.locator('#clientQuickAddToggle')).toBeVisible();
+  await page.locator('#clientQuickAddToggle').click();
+  await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
+  await page.locator('#clientQuickAddCancel').click();
+  await expect(page.locator('#clientQuickAddToggle')).toBeVisible();
+  await expect(page.locator('#oClientNewButton')).toBeHidden();
   await page.keyboard.press('Escape');
   await expect(page.locator('#clientPickerModal')).toBeHidden();
+  await expect(page.locator('#oClientNewButton')).toBeVisible();
+  await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
   await expect(page.locator('#orderModal')).toBeVisible();
 });
 

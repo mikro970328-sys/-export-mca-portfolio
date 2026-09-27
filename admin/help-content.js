@@ -152,8 +152,8 @@
       "section": "salesSection",
       "steps": [
         "En Comercial → Ventas, abre Nueva venta. La lista separa las ventas En marcha del Historial; abre una venta para continuar trabajando dentro de su espacio.",
-        "Selecciona al cliente. Si aún no existe, pulsa + Nuevo cliente junto al selector y regístralo desde ahí. Al guardar queda seleccionado sin perder los datos de la venta; el NIT también detecta duplicados. Esta opción requiere permiso para gestionar clientes.",
-        "Añade la mercancía y la cantidad. Si trabajarás por encargo y todavía no existe en el catálogo, usa Agregar mercancía: se agrega al catálogo sin crear existencias. Después registra la compra real y vincúlala desde Origen / abastecimiento.",
+        "Selecciona al cliente. Si aún no existe, pulsa + Nuevo cliente desde la venta; si ya abriste la lista, la misma opción está dentro del selector. Al guardar queda seleccionado sin perder los datos de la venta; el NIT también detecta duplicados. Esta opción requiere permiso para gestionar clientes.",
+        "Añade la mercancía y la cantidad. Si trabajarás por encargo y todavía no existe en el catálogo, usa Agregar mercancía: se registra en el catálogo, pero no crea existencias ni exige comprar antes. Después registra la compra real y vincúlala desde Origen / abastecimiento.",
         "Escribe el total acordado de cada línea; no necesitas calcular un precio por unidad. Revisa la moneda y la fecha estimada de entrega. Nacionalización puede quedar Por definir.",
         "Guarda y revisa el resumen dentro de la venta. Desde ese espacio puedes seguir abastecimiento, costos, facturación y cobros según los permisos de tu cuenta.",
         "La venta registra lo acordado con el cliente. La factura es el documento de cobro que se prepara desde esa venta cuando corresponda; emitir una factura no significa que ya recibiste el dinero."
@@ -621,9 +621,10 @@
       "section": "workersSection",
       "steps": [
         "Abre Administración → Trabajadores y busca a la persona antes de crearla.",
-        "Registra sus datos y puesto según los campos disponibles. Para añadir salario y propinas, primero debe existir aquí el trabajador.",
+        "Registra sus datos y puesto según los campos disponibles. El pago no es fijo en esta ficha porque puedes cambiarlo cada mes.",
+        "Pulsa Salarios y propinas para abrir Finanzas en Rentabilidad → Empresa. Baja hasta Salarios y propinas, pulsa Registrar salario e indica trabajador, mes, salario y propinas. Cada mes queda separado y puedes editar el registro de ese mes.",
         "Revisa su estado y datos de contacto. Si deja de trabajar, utiliza la desactivación con el motivo correspondiente.",
-        "Si necesita entrar al ERP, gestiona además su cuenta y rol en Usuarios y acceso. Para registrar el sueldo mensual y las propinas, ve a Finanzas → Costos y rentabilidad → Rentabilidad → Empresa."
+        "Si necesita entrar al ERP, gestiona además su cuenta y rol en Usuarios y acceso. Los pagos mensuales y propinas reducen el resultado de la compañía del mes indicado."
       ],
       "result": "El directorio conserva los datos y estados del personal sin duplicar identidades.",
       "note": "Crear un trabajador no le concede automáticamente una cuenta ni permisos en el ERP. Los salarios y propinas solo los pueden consultar o registrar los perfiles con permisos financieros.",
