@@ -73,8 +73,8 @@
     byId('clientPrev').onclick = () => { if (clientPage > 1) { clientPage--; loadClientPage(); } };
     byId('clientNext').onclick = () => { if (clientHasMore) { clientPage++; loadClientPage(); } };
     const quickAdd = byId('clientQuickAddToggle');
-    quickAdd.hidden = window.ExportMcaAccessControl?.can?.('clients.write') !== true;
-    quickAdd.onclick = () => { byId('clientQuickAddForm').hidden = false; byId('clientQuickAddMsg').textContent=''; byId('clientQuickName').focus(); };
+    refreshClientAccess();
+    quickAdd.onclick = showQuickClient;
     byId('clientQuickAddCancel').onclick = () => { byId('clientQuickAddForm').hidden = true; quickAdd.focus(); };
     byId('clientQuickAddForm').addEventListener('submit',saveQuickClient);
     byId('clientPickerSearch').addEventListener('input', event => {
@@ -85,6 +85,23 @@
         loadClientPage();
       }, 220);
     });
+  }
+
+  function canCreateClient() {
+    return typeof clientWriteAccess !== 'undefined' && clientWriteAccess === true;
+  }
+
+  function refreshClientAccess() {
+    for (const id of ['clientQuickAddToggle','oClientNewButton']) {
+      if (byId(id)) byId(id).hidden = !canCreateClient();
+    }
+  }
+
+  function showQuickClient() {
+    if (!canCreateClient()) return;
+    byId('clientQuickAddForm').hidden = false;
+    byId('clientQuickAddMsg').textContent = '';
+    byId('clientQuickName').focus();
   }
 
   function ensureClientPickerButton() {
@@ -102,6 +119,16 @@
     select.insertAdjacentElement('afterend', button);
     select.hidden = true;
     button.onclick = openClientPicker;
+    const create = document.createElement('button');
+    create.id = 'oClientNewButton';
+    create.type = 'button';
+    create.className = 'btn client-new-button';
+    create.textContent = '+ Nuevo cliente';
+    create.setAttribute('aria-haspopup','dialog');
+    create.setAttribute('aria-controls','clientPickerModal');
+    button.insertAdjacentElement('afterend',create);
+    create.onclick = () => { openClientPicker(true); };
+    refreshClientAccess();
     syncClientButton();
   }
 
@@ -122,16 +149,18 @@
     button.innerHTML = `<strong>${esc(label)}</strong><span>${select.value ? 'Cambiar ›' : 'Buscar ›'}</span>`;
   }
 
-  async function openClientPicker() {
+  async function openClientPicker(createNew = false) {
     ensureClientPickerModal();
+    refreshClientAccess();
     clientPage = 1;
     clientQuery = '';
     byId('clientPickerSearch').value = '';
     byId('clientPickerMsg').textContent = '';
     byId('clientPickerModal').classList.remove('hidden');
     byId('oClientPickerButton')?.setAttribute('aria-expanded','true');
+    if (createNew === true) showQuickClient();
     await loadClientPage();
-    setTimeout(() => byId('clientPickerSearch')?.focus(), 0);
+    if (createNew !== true) byId('clientPickerSearch')?.focus();
   }
 
   function closeClientPicker() {
@@ -143,6 +172,7 @@
 
   async function saveQuickClient(event) {
     event.preventDefault();
+    if (!canCreateClient()) return;
     const button=byId('clientQuickAddSave'),message=byId('clientQuickAddMsg');
     if(!button||button.disabled)return;
     button.disabled=true;message.textContent='Guardando cliente…';
@@ -157,6 +187,7 @@
       })});
       if(!result.client?.id)throw new Error('No se pudo guardar el cliente.');
       const client=result.client,select=byId('oClient');
+      if (typeof clients !== 'undefined' && !clients.some(row=>row.id===client.id)) clients.push(client);
       if(select){
         let option=[...select.options].find(item=>String(item.value)===String(client.id));
         if(!option){option=new Option('',client.id);select.add(option)}
@@ -545,6 +576,11 @@
     decorateAllLines();
     if (byId('saveOrder')) byId('saveOrder').onclick = saveOrderUx;
     ensureQuickProductModal();
+    document.addEventListener('keydown',event=>{
+      if (event.key === 'Escape' && !byId('clientPickerModal')?.classList.contains('hidden')) {
+        event.preventDefault(); event.stopImmediatePropagation(); closeClientPicker();
+      }
+    },true);
     byId('orderLines')?.addEventListener('click',event=>{const button=event.target.closest?.('[data-sales-add-product]');if(button)openQuickProduct(button.closest('.line'));});
     if (byId('oCurrency')) byId('oCurrency').addEventListener('input',refreshOrderTotalPreview);
     const modal = byId('orderModal');
@@ -554,6 +590,7 @@
   window.SalesOrderUX = Object.freeze({
     mountLine:decorateLine,
     onOrderOpen,
+    refreshClientAccess,
     refreshTotal:refreshOrderTotalPreview,
     owner:'sales-order-ux.js'
   });

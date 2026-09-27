@@ -19,7 +19,7 @@ for(const article of articles){
 for(const section of validSections)assert.ok(articles.some(a=>a.section===section),'Missing guide for '+section);
 const guide=id=>[byId.get(id)?.title,byId.get(id)?.summary,...(byId.get(id)?.steps||[]),byId.get(id)?.note].join(' ').toLocaleLowerCase('es');
 assert.match(guide('clientes'),/nit.*empresa o mipyme|empresa o mipyme.*nit/,'Client guide covers NIT and the single commercial name field');
-assert.match(guide('ventas'),/agregar cliente/,'Sales guide covers creating a customer from the picker');
+assert.match(guide('ventas'),/nuevo cliente/,'Sales guide covers creating a customer from the picker');
 assert.match(guide('ventas'),/total acordado/,'Sales guide explains total-first pricing');
 assert.match(guide('ventas'),/por definir/,'Nationalization may remain undefined');
 assert.match(guide('documentos'),/otros archivos/,'Container guide covers supporting files');

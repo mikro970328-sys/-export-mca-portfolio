@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, readJson, supabase, writeAudit } from './_lib.js';
+import { authorizeAdmin, fail, loadAdminAccessContext, ok, readJson, supabase, writeAudit } from './_lib.js';
 import { loadSalesActionCapabilityMap, loadSalesWriteAccess } from './_sales-actions.js';
 
 const text = (value, max = 2000) => String(value ?? '').trim().slice(0, max);
@@ -43,7 +43,9 @@ async function listOrders(admin, writableOverride = null) {
 }
 
 async function bootstrap(admin) {
+  const access = admin.role === 'master_admin' ? null : await loadAdminAccessContext(admin.admin_id);
   const writeAccess = await loadSalesWriteAccess(admin);
+  const clientWriteAccess = admin.role === 'master_admin' || access?.permissions?.includes('clients.write') === true;
   const [orders, clients, importers, clientImporters, products] = await Promise.all([
     listOrders(admin, writeAccess),
     supabase('clients', { query:'?select=id,name,company,mipyme_name,nit,active&active=eq.true&order=name.asc&limit=1000' }),
@@ -51,7 +53,7 @@ async function bootstrap(admin) {
     supabase('client_importers', { query:'?select=client_id,importer_id&limit=5000' }),
     supabase('products', { query:'?select=id,sku,name,brand,category,unit,package_format,default_units_per_pallet,active&active=eq.true&order=name.asc&limit=2000' })
   ]);
-  return { orders, clients:clients || [], importers:importers || [], client_importers:clientImporters || [], products:products || [], write_access:writeAccess };
+  return { orders, clients:clients || [], importers:importers || [], client_importers:clientImporters || [], products:products || [], write_access:writeAccess, client_write_access:clientWriteAccess };
 }
 
 function cleanLines(lines) {
@@ -126,7 +128,7 @@ export default async function handler(req, res) {
       if (!id) return ok(res, data);
       const order = data.orders.find(item => String(item.id) === id);
       if (!order) return fail(res, 404, 'Sales Order no encontrada');
-      return ok(res, { order, clients:data.clients, importers:data.importers, client_importers:data.client_importers, products:data.products, write_access:data.write_access });
+      return ok(res, { order, clients:data.clients, importers:data.importers, client_importers:data.client_importers, products:data.products, write_access:data.write_access, client_write_access:data.client_write_access });
     }
 
     if (req.method !== 'POST') return fail(res, 405, 'Método no permitido');

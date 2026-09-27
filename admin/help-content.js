@@ -130,7 +130,7 @@
       "section": "clientsSection",
       "steps": [
         "Abre Comercial → Clientes y busca por nombre, empresa, contacto o NIT antes de crear otro registro.",
-        "Utiliza Nuevo cliente para registrar sus datos. El campo Empresa o MIPYME guarda el nombre comercial en un solo lugar; añade el NIT si está disponible.",
+        "Pulsa Nuevo cliente para abrir la ventana de registro. Al guardar, la ventana se cierra y el cliente aparece en el directorio. Cerrar sin guardar conserva lo escrito para continuar. El campo Empresa o MIPYME guarda el nombre comercial en un solo lugar; añade el NIT si está disponible.",
         "El ERP avisa si el NIT ya está asociado a otro cliente, incluso cuando cambian espacios, puntos, guiones o barras. Abre el registro existente si es la misma empresa.",
         "Abre la ficha y revisa las importadoras asociadas al cliente cuando correspondan a la operación.",
         "Si cambió un dato, edita el cliente existente y verifica después su ficha. No crees un cliente nuevo para corregir un teléfono.",
@@ -152,7 +152,7 @@
       "section": "salesSection",
       "steps": [
         "En Comercial → Ventas, abre Nueva venta. La lista separa las ventas En marcha del Historial; abre una venta para continuar trabajando dentro de su espacio.",
-        "Selecciona al cliente. Si aún no existe, usa Agregar cliente junto al selector y regístralo desde ahí; el NIT también detecta duplicados.",
+        "Selecciona al cliente. Si aún no existe, pulsa + Nuevo cliente junto al selector y regístralo desde ahí. Al guardar queda seleccionado sin perder los datos de la venta; el NIT también detecta duplicados. Esta opción requiere permiso para gestionar clientes.",
         "Añade la mercancía y la cantidad. Si trabajarás por encargo y todavía no existe en el catálogo, usa Agregar mercancía: se agrega al catálogo sin crear existencias. Después registra la compra real y vincúlala desde Origen / abastecimiento.",
         "Escribe el total acordado de cada línea; no necesitas calcular un precio por unidad. Revisa la moneda y la fecha estimada de entrega. Nacionalización puede quedar Por definir.",
         "Guarda y revisa el resumen dentro de la venta. Desde ese espacio puedes seguir abastecimiento, costos, facturación y cobros según los permisos de tu cuenta.",
