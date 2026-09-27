@@ -183,11 +183,9 @@
   function renderMetrics() {
     const metrics = state.metrics || {};
     $('metrics').innerHTML = [
-      ['Facturas', metrics.invoice_count ?? '—', 'Activas en cartera', 'invoice-metric-total'],
-      ['Borradores', metrics.draft_count ?? '—', 'Pendientes de emisión', 'invoice-metric-draft'],
-      ['Pagadas', metrics.paid_count ?? '—', 'Saldo liquidado', 'invoice-metric-paid'],
+      ['Por cobrar', receivableLabel(), 'Saldo emitido pendiente', 'invoice-metric-receivable'],
       ['Vencidas', metrics.overdue_count ?? '—', 'Requieren seguimiento', 'invoice-metric-overdue'],
-      ['Por cobrar', receivableLabel(), 'Saldo emitido pendiente', 'invoice-metric-receivable']
+      ['Borradores', metrics.draft_count ?? '—', 'Pendientes de emisión', 'invoice-metric-draft']
     ].map(values => metric(...values)).join('');
   }
 
@@ -195,7 +193,7 @@
     if (state.view === 'all') return true;
     if (state.view === 'draft') return invoice.status === 'draft';
     if (state.view === 'paid') return invoice.status === 'issued' && invoice.financial?.payment_status === 'paid';
-    return invoice.status !== 'void' && !(invoice.status === 'issued' && invoice.financial?.payment_status === 'paid');
+    return invoice.status === 'issued' && invoice.financial?.payment_status !== 'paid';
   }
 
   function filteredInvoices() {
@@ -219,14 +217,7 @@
   }
 
   function invoiceActions(invoice) {
-    const actions = [invoiceActionButton(invoice, 'detail', 'Ver detalle')];
-    actions.push(balanceActions(invoice));
-    if (can(invoice, 'credit')) actions.push(invoiceActionButton(invoice, 'credit', 'Nota de crédito'));
-    if (can(invoice, 'record_payment')) actions.push(invoiceActionButton(invoice, 'payment', 'Registrar cobro', 'orange'));
-    if (can(invoice, 'edit')) actions.push(invoiceActionButton(invoice, 'edit', 'Editar'));
-    if (can(invoice, 'issue')) actions.push(invoiceActionButton(invoice, 'issue', 'Emitir', 'primary'));
-    if (can(invoice, 'void')) actions.push(invoiceActionButton(invoice, 'void', 'Anular', 'danger'));
-    return actions.join('');
+    return invoiceActionButton(invoice, 'detail', 'Abrir factura');
   }
 
   function invoiceRow(invoice) {
@@ -249,6 +240,7 @@
 
   function renderList() {
     const rows = filteredInvoices();
+    updateFilterControls();
     $('invoiceResultCount').textContent = `${rows.length} factura${rows.length === 1 ? '' : 's'}${rows.length !== state.invoices.length ? ` · ${state.invoices.length} totales` : ''}`;
     if (!rows.length) {
       $('invoiceList').innerHTML = emptyState(
@@ -258,6 +250,11 @@
       return;
     }
     $('invoiceList').innerHTML = rows.map(invoiceRow).join('');
+  }
+
+  function updateFilterControls() {
+    const clear = $('clearInvoiceFilters');
+    if (clear) clear.hidden = !state.search.trim() && state.view === 'open';
   }
 
   function render() {
@@ -391,7 +388,7 @@
     invoiceDraft?.destroy({ flush:true });
     invoiceDraft = null;
     state.editingId = null;
-    $('invoiceTitle').textContent = 'Nueva factura de cobro';
+    $('invoiceTitle').textContent = 'Facturar una venta';
     fillSalesOrderOptions();
     $('iSalesOrder').disabled = false;
     $('iSalesOrder').value = salesOrderId ? String(salesOrderId) : '';
@@ -501,13 +498,19 @@
       ${creditMovementSection(invoice)}
       <section class="invoice-detail-section"><header class="invoice-detail-section-head"><h3>Cobros aplicados</h3><span>${invoice.payments?.length || 0} registro${invoice.payments?.length === 1 ? '' : 's'}</span></header><div class="invoice-detail-items">${payments || emptyState('Sin cobros', 'Todavía no hay dinero registrado contra esta factura.')}</div></section>
       ${invoice.notes ? `<div class="invoice-notes"><strong>Notas</strong><br>${esc(invoice.notes)}</div>` : ''}`;
-    const actions = [];
-    actions.push(balanceActions(invoice));
-    if (can(invoice, 'credit')) actions.push(invoiceActionButton(invoice, 'credit', 'Nota de crédito'));
-    if (can(invoice, 'record_payment')) actions.push(invoiceActionButton(invoice, 'payment', 'Registrar cobro', 'orange'));
-    if (can(invoice, 'edit')) actions.push(invoiceActionButton(invoice, 'edit', 'Editar'));
-    if (can(invoice, 'issue')) actions.push(invoiceActionButton(invoice, 'issue', 'Emitir factura', 'primary'));
-    if (can(invoice, 'void')) actions.push(invoiceActionButton(invoice, 'void', 'Anular factura', 'danger'));
+    const available = [];
+    if (can(invoice, 'record_payment')) available.push(['payment', 'Registrar cobro', 'orange']);
+    else if (can(invoice, 'issue')) available.push(['issue', 'Emitir factura', 'primary']);
+    else if (can(invoice, 'edit')) available.push(['edit', 'Editar borrador', 'primary']);
+    const primary = available[0];
+    const secondary = [];
+    if (can(invoice, 'credit')) secondary.push(invoiceActionButton(invoice, 'credit', 'Crear nota de crédito'));
+    for (const action of balanceActions(invoice)) secondary.push(action);
+    if (can(invoice, 'edit') && primary?.[0] !== 'edit') secondary.push(invoiceActionButton(invoice, 'edit', 'Editar borrador'));
+    if (can(invoice, 'issue') && primary?.[0] !== 'issue') secondary.push(invoiceActionButton(invoice, 'issue', 'Emitir factura'));
+    if (can(invoice, 'void')) secondary.push(invoiceActionButton(invoice, 'void', 'Anular factura', 'danger'));
+    const actions = primary ? [invoiceActionButton(invoice, primary[0], primary[1], primary[2])] : [];
+    if (secondary.length) actions.push(`<details class="invoice-more-actions"><summary>Más acciones</summary><div class="invoice-secondary-actions">${secondary.join('')}</div></details>`);
     $('detailActions').innerHTML = actions.join('');
     message('detailMsg', '');
     openModal('detail');
@@ -518,7 +521,7 @@
     const actions=[];
     if (can(invoice,'apply_credit')) actions.push(invoiceActionButton(invoice,'apply_credit','Aplicar saldo a favor'));
     if (can(invoice,'refund_credit')) actions.push(invoiceActionButton(invoice,'refund_credit','Registrar devolución'));
-    return actions.join('');
+    return actions;
   }
 
   function creditMovementSection(invoice) {
@@ -832,16 +835,16 @@
       state.search = '';
       state.view = 'open';
       $('search').value = '';
-      document.querySelectorAll('[data-view]').forEach(button => {
-        const active = button.dataset.view === 'open';
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', String(active));
-      });
+      $('invoiceView').value = 'open';
       renderList();
       $('search').focus();
     });
     $('search').addEventListener('input', event => {
       state.search = event.target.value || '';
+      renderList();
+    });
+    $('invoiceView').addEventListener('change', event => {
+      state.view = event.target.value || 'open';
       renderList();
     });
     $('iSalesOrder').addEventListener('change', () => renderInvoiceLines(state.editingId ? state.invoices.find(row => row.id === state.editingId) : null));
@@ -853,15 +856,6 @@
     $('balanceAmount').addEventListener('input', updateBalanceSummary);
     $('creditLines').addEventListener('input', updateCreditSummary);
     $('decisionAccept').addEventListener('click', acceptDecision);
-    document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
-      state.view = button.dataset.view;
-      document.querySelectorAll('[data-view]').forEach(tab => {
-        const active = tab === button;
-        tab.classList.toggle('active', active);
-        tab.setAttribute('aria-pressed', String(active));
-      });
-      renderList();
-    }));
     document.addEventListener('click', event => {
       const target = event.target instanceof Element ? event.target : null;
       if (!target) return;

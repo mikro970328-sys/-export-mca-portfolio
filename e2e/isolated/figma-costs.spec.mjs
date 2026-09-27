@@ -79,6 +79,18 @@ test('Company monthly and annual profit subtract worker salary and tips; void pa
   expect(calls.filter(call=>call.action==='void')).toHaveLength(1);
 });
 
+test('Workers shortcut opens the monthly salary form directly and leaves read-only access view-only',async({page})=>{
+  await open(page);
+  await page.evaluate(()=>window.CostsModule.openPayrollEntry());
+  await expect(page.locator('#payrollModal')).toBeVisible();
+  await expect(page.locator('#payrollTitle')).toHaveText('Registrar salario mensual');
+  await expect(page.locator('#payrollWorker')).toHaveValue('fixture-worker');
+  await expect(page.locator('#payrollPeriod')).not.toHaveValue('');
+  await expect(page.locator('.payroll-section')).toContainText('Se descuentan de la ganancia');
+  await page.locator('[data-close="payroll"]').first().click();
+  expect(await posts(page)).toEqual([]);
+});
+
 test('Company profit stays pending when an issued invoice has no recognized merchandise cost',async({page})=>{
   await open(page,{companyPending:true});
   await page.locator('[data-view="profitability"]').click();
@@ -89,8 +101,9 @@ test('Company profit stays pending when an issued invoice has no recognized merc
 
 test('Finance readers see the company deduction without employee salary details',async({page})=>{
   await open(page,{writable:false});
-  await page.locator('[data-view="profitability"]').click();
-  await page.locator('[data-profit-subview="company"]').click();
+  await page.evaluate(()=>window.CostsModule.openPayrollEntry());
+  await expect(page.locator('#payrollModal')).toBeHidden();
+  await expect(page.locator('.payroll-section')).toBeVisible();
   await expect(page.locator('.company-month-table tbody tr').last()).toContainText('125.00');
   await expect(page.locator('.payroll-row')).toHaveCount(0);
   await expect(page.locator('[data-payroll-add]')).toHaveCount(0);

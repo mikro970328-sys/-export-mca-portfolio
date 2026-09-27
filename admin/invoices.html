@@ -6,20 +6,20 @@
   <title>Facturación y cobros · Export MCA</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
-  <link rel="stylesheet" href="/admin/invoices.css?v=20260926-figma1">
+  <link rel="stylesheet" href="/admin/invoices.css?v=20260927-simple1">
   <link rel="stylesheet" href="/admin/form-drafts.css?v=20260909-drafts1">
 </head>
 <body class="erp-module-page erp-module-invoices" data-owner="invoices.js">
   <main class="wrap invoices-shell">
     <header class="module-hero invoices-page-head" aria-labelledby="invoicesPageTitle">
       <div class="module-heading invoices-page-heading">
-        <div class="module-kicker invoices-page-kicker">Comercial · Cartera del cliente</div>
-        <h1 id="invoicesPageTitle">Facturación y cobros</h1>
-        <p>Consulta facturas, cobros y saldos por cliente y moneda.</p>
+        <div class="module-kicker invoices-page-kicker">Ventas</div>
+        <h1 id="invoicesPageTitle">Facturas</h1>
+        <p>Aquí preparas la factura de una venta y registras lo que te van pagando.</p>
       </div>
       <div class="invoices-hero-actions">
         <span id="invoiceLastUpdated" class="invoices-visually-hidden">Preparando…</span>
-        <button id="newInvoice" class="btn orange invoices-primary-action" type="button">Nueva factura</button>
+        <button id="newInvoice" class="btn orange invoices-primary-action" type="button">Facturar una venta</button>
       </div>
     </header>
 
@@ -31,43 +31,44 @@
     </div>
 
     <section id="metrics" class="metrics invoices-metrics" aria-label="Resumen de facturación" aria-live="polite">
-      <article class="metric invoice-metric-total"><span>Facturas</span><b>—</b><small>Activas en cartera</small></article>
-      <article class="metric invoice-metric-draft"><span>Borradores</span><b>—</b><small>Pendientes de emisión</small></article>
-      <article class="metric invoice-metric-paid"><span>Pagadas</span><b>—</b><small>Saldo liquidado</small></article>
-      <article class="metric invoice-metric-overdue"><span>Vencidas</span><b>—</b><small>Requieren seguimiento</small></article>
       <article class="metric invoice-metric-receivable"><span>Por cobrar</span><b>—</b><small>Saldo emitido pendiente</small></article>
+      <article class="metric invoice-metric-overdue"><span>Vencidas</span><b>—</b><small>Requieren seguimiento</small></article>
+      <article class="metric invoice-metric-draft"><span>Borradores</span><b>—</b><small>Pendientes de emisión</small></article>
     </section>
 
     <section class="panel invoices-list-panel" aria-labelledby="invoicesListTitle">
 
-      <div class="tabs invoices-view-tabs" role="group" aria-label="Filtrar facturas">
-          <button class="btn active" type="button" data-view="open" aria-pressed="true">Abiertas</button>
-          <button class="btn" type="button" data-view="draft" aria-pressed="false">Borradores</button>
-          <button class="btn" type="button" data-view="paid" aria-pressed="false">Pagadas</button>
-          <button class="btn" type="button" data-view="all" aria-pressed="false">Todas</button>
-        </div>
       <div class="invoices-list-toolbar">
+        <label class="invoices-filter-field" for="invoiceView">
+          <span>Ver</span>
+          <select id="invoiceView" aria-label="Filtrar facturas">
+            <option value="open">Por cobrar</option>
+            <option value="draft">Borradores</option>
+            <option value="paid">Pagadas</option>
+            <option value="all">Todas</option>
+          </select>
+        </label>
         <label class="invoices-search-field" for="search">
           <span>Buscar facturas</span>
 
           <input id="search" class="search" type="search" autocomplete="off" placeholder="Buscar factura, venta, referencia o cliente">
         </label>
 
-        <button id="clearInvoiceFilters" class="btn invoices-clear" type="button">Limpiar</button>
+        <button id="clearInvoiceFilters" class="btn invoices-clear" type="button" hidden>Quitar filtros</button>
         <button id="refresh" class="btn invoices-refresh" type="button" aria-label="Actualizar Facturación" title="Actualizar Facturación">Actualizar</button>
       </div>
 
       <header class="invoices-panel-head">
         <div>
 
-          <h2 id="invoicesListTitle">Facturas financieras</h2>
-          <p>Consulta la venta de origen, vencimiento, total, cobros aplicados y saldo pendiente.</p>
+          <h2 id="invoicesListTitle">Todas tus facturas</h2>
+          <p>Abre una factura para ver sus pagos y otras opciones.</p>
         </div>
         <span id="invoiceResultCount" class="invoices-result-count">Consultando…</span>
       </header>
       <div class="invoices-table-wrap">
         <div class="invoices-table-head" aria-hidden="true">
-          <span>Factura</span><span>Cliente</span><span>Venta</span><span>Estado</span><span>Total</span><span>Saldo</span><span>Acciones</span>
+          <span>Factura</span><span>Cliente</span><span>Venta</span><span>Estado</span><span>Total</span><span>Saldo</span><span>Ver</span>
         </div>
         <div id="invoiceList" class="invoices-list" aria-live="polite">
           <div class="invoices-loading" role="status"><span class="invoices-spinner" aria-hidden="true"></span>Consultando facturas…</div>
@@ -79,7 +80,7 @@
   <div id="invoiceModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="invoiceTitle" aria-hidden="true">
     <div class="dialog invoice-form-dialog">
       <div class="dialog-head">
-        <div><span class="invoices-dialog-kicker">Plan financiero</span><h2 id="invoiceTitle">Nueva factura de cobro</h2><div class="muted">Selecciona la venta y las cantidades a facturar. Esta factura financiera es independiente de los documentos aduanales del contenedor.</div></div>
+        <div><span class="invoices-dialog-kicker">Facturación</span><h2 id="invoiceTitle">Facturar una venta</h2><div class="muted">Selecciona la venta y las cantidades que vas a cobrar.</div></div>
         <button class="btn invoices-close-button" type="button" data-close="invoice" aria-label="Cerrar formulario de factura">Cerrar</button>
       </div>
 
@@ -106,9 +107,9 @@
   <div id="detailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailTitle" aria-hidden="true">
     <div class="dialog invoice-detail-dialog">
       <div class="dialog-head"><div><span class="invoices-dialog-kicker">Cuenta por cobrar</span><h2 id="detailTitle">Detalle de factura</h2><div id="detailSubtitle" class="muted"></div></div><button class="btn invoices-close-button" type="button" data-close="detail" aria-label="Cerrar detalle de factura">Cerrar</button></div>
-      <div id="detailBody"></div>
       <div id="detailActions" class="actions invoice-modal-actions"></div>
       <div id="detailMsg" class="msg invoice-dialog-message" role="status" aria-live="polite"></div>
+      <div id="detailBody"></div>
     </div>
   </div>
 
@@ -165,7 +166,7 @@
   </div>
 
   <script src="/admin/form-drafts.js?v=20260909-drafts1" defer></script>
-  <script src="/admin/invoices.js?v=20260926-figma1" defer></script>
+  <script src="/admin/invoices.js?v=20260927-simple1" defer></script>
   <script src="/admin/embedded-auto-refresh.js?v=20260920-speed3" defer></script>
 </body>
 </html>

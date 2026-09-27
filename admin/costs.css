@@ -945,7 +945,7 @@
 .erp-module-costs .company-net-positive{color:var(--ok);font-weight:800}
 .erp-module-costs .company-net-negative{color:var(--bad);font-weight:800}
 .erp-module-costs .company-section-note{color:var(--muted);font-size:12px;line-height:1.5;margin:8px 0 14px}
-.erp-module-costs .payroll-section{margin-top:22px}
+.erp-module-costs .payroll-section{margin:14px 0 22px;padding:18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-soft)}
 .erp-module-costs .payroll-list{display:grid;gap:8px;margin-top:12px}
 .erp-module-costs .payroll-row{display:grid;grid-template-columns:minmax(160px,1.2fr) minmax(130px,.8fr) minmax(160px,1fr) auto;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
 .erp-module-costs .payroll-row b{color:var(--navy)}

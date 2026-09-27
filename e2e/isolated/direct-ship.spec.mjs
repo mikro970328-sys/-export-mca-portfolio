@@ -369,10 +369,24 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     });
     const billing=await navigate('invoices');
     const creditedInvoice=await f.one('select * from invoices');
+    const invoiceDetail=async id=>{
+      await navigate('invoices');
+      await billing.locator('#invoiceView').selectOption('all');
+      const row=billing.locator(`[data-invoice-row="${id}"]`),number=(await row.locator('.invoice-number').innerText()).trim();
+      const modal=billing.locator('#detailModal');
+      if(await modal.isVisible()&&(await billing.locator('#detailTitle').innerText()).trim()!==number)await billing.locator('[data-close="detail"]').click();
+      if(!await modal.isVisible())await row.locator('[data-invoice-action="detail"]').click();
+    };
+    const invoiceDetailAction=async(id,action)=>{
+      await invoiceDetail(id);
+      const button=billing.locator(`#detailActions [data-invoice-action="${action}"][data-invoice-id="${id}"]`);
+      if(!await button.isVisible())await billing.locator('#detailActions .invoice-more-actions summary').click();
+      return button;
+    };
     let lastCreditBody;
     await step('DS-16 quantity credit preserves original invoice and cash, updates reader AR and margin',async()=>{
       await reports.locator('[data-dataset="invoices"]').click();
-      await billing.locator(`[data-invoice-action="credit"][data-invoice-id="${creditedInvoice.id}"]`).click();
+      await (await invoiceDetailAction(creditedInvoice.id,'credit')).click();
       await billing.locator('#saveCredit').click();await expect(billing.locator('#creditMsg')).toContainText('cantidad válida');
       await billing.locator('[data-credit-qty]').fill('841');await billing.locator('#saveCredit').click();await expect(billing.locator('#creditMsg')).toContainText('cantidad válida');
       await billing.locator('[data-credit-qty]').fill('30');await billing.locator('#creditReason').fill('El proveedor entregó 810 de las 840 unidades facturadas.');
@@ -388,9 +402,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       evidence.creditCorrection={original:3360,credit:120,net:3240,paid:1000,receivable:2240,cogs:2025,margin:1215};await shot('16-credit-note-detail');
     });
     await step('DS-17 paid invoice credit shows customer balance without moving cash',async()=>{
-      await billing.locator('#detailActions [data-invoice-action="payment"]').click();await expect(billing.locator('#pAmount')).toHaveValue('2240');
+      await (await invoiceDetailAction(creditedInvoice.id,'payment')).click();await expect(billing.locator('#pAmount')).toHaveValue('2240');
       await mutation('invoice-payments',()=>billing.locator('#savePayment').click());await expect(billing.locator('#paymentModal')).toBeHidden();
-      await billing.locator('#detailActions [data-invoice-action="credit"]').click();await billing.locator('[data-credit-qty]').fill('10');await billing.locator('#creditReason').fill('QA ajuste adicional de diez unidades.');
+      await (await invoiceDetailAction(creditedInvoice.id,'credit')).click();await billing.locator('[data-credit-qty]').fill('10');await billing.locator('#creditReason').fill('QA ajuste adicional de diez unidades.');
       await expect(billing.locator('#creditSummary')).toContainText('Saldo a favor: USD 40.00');
       await mutation('invoices',()=>billing.locator('#saveCredit').click());await expect(billing.locator('#creditModal')).toBeHidden();
       await expect(billing.locator('#detailBody')).toContainText('Saldo a favor del cliente');await expect(billing.locator('#detailBody')).toContainText('USD 40.00');
@@ -418,12 +432,12 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       const value=await row.locator(`[data-label="${label}"]`).textContent();return Number(value.replace(/[^0-9.-]/g,''));
     };
     await step('DS-19 apply credit to another invoice without another cash receipt',async()=>{
-      await billing.locator('[data-close="detail"]').click();await billing.locator('[data-view="all"]').click();
+      await billing.locator('[data-close="detail"]').click();await billing.locator('#invoiceView').selectOption('all');
       await billing.locator('#newInvoice').click();await billing.locator('#iSalesOrder').selectOption(so.id);await billing.locator('[data-invoice-line] [data-qty]').fill('10');
       const result=await mutation('invoices',()=>billing.locator('#saveInvoice').click());settlementTarget=result.invoice;await expect(billing.locator('#invoiceModal')).toBeHidden();
-      await billing.locator(`#invoiceList [data-invoice-action="issue"][data-invoice-id="${settlementTarget.id}"]`).click();await mutation('invoices',()=>billing.locator('#decisionAccept').click());await expect(billing.locator('#decisionModal')).toBeHidden();
+      await (await invoiceDetailAction(settlementTarget.id,'issue')).click();await mutation('invoices',()=>billing.locator('#decisionAccept').click());await expect(billing.locator('#decisionModal')).toBeHidden();
       const before=await f.report('cash');
-      await billing.locator(`#invoiceList [data-invoice-action="apply_credit"][data-invoice-id="${creditedInvoice.id}"]`).click();await expect(billing.locator('#balanceRefundWrap')).toBeHidden();
+      await (await invoiceDetailAction(creditedInvoice.id,'apply_credit')).click();await expect(billing.locator('#balanceRefundWrap')).toBeHidden();
       await billing.locator('#balanceTarget').selectOption(settlementTarget.id);await expect(billing.locator('#balanceAmount')).toHaveValue('40');await billing.locator('#balanceReason').fill('Aplicar saldo a la siguiente factura del cliente.');
       applicationMovement=(await mutation('invoices',()=>billing.locator('#saveBalance').click())).movement;await expect(billing.locator('#balanceModal')).toBeHidden();
       await expect(billing.locator('#detailBody')).toContainText('Aplicación entre facturas');await expect(billing.locator('#detailBody')).toContainText('USD 4.00');
@@ -434,14 +448,13 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     });
     await step('DS-20 record actual refund in cash and in the other operators reports',async()=>{
       // Choose another field before the opening frame: deferred autofocus must not steal it.
-      const keepsChosenField=await billing.locator('#detailActions [data-invoice-action="refund_credit"]').evaluate(async button=>{
+      const keepsChosenField=await (await invoiceDetailAction(creditedInvoice.id,'refund_credit')).evaluate(async button=>{
         const doc=button.ownerDocument;button.click();const reference=doc.getElementById('balanceReference');reference.focus();
         await new Promise(resolve=>doc.defaultView.requestAnimationFrame(resolve));return doc.activeElement===reference;
       });
       expect(keepsChosenField,'opening the refund must preserve the field selected by the operator').toBe(true);
       await billing.locator('#balanceModal [data-close="balance"]').first().click();
-      await billing.locator('#invoiceList [data-invoice-action="detail"][data-invoice-id="'+creditedInvoice.id+'"]').click();
-      await billing.locator('#detailActions [data-invoice-action="refund_credit"]').click();await expect(billing.locator('#balanceTargetWrap')).toBeHidden();await expect(billing.locator('#balanceCopy')).toContainText('ya realizaste');
+      await (await invoiceDetailAction(creditedInvoice.id,'refund_credit')).click();await expect(billing.locator('#balanceTargetWrap')).toBeHidden();await expect(billing.locator('#balanceCopy')).toContainText('ya realizaste');
       await expect(billing.locator('#balanceAmount')).toHaveValue('4');await billing.locator('#balanceReference').fill('QA-REFUND-004');await billing.locator('#balanceReason').fill('Devolución del saldo restante realizada al cliente.');
       await expect(billing.locator('#balanceReference')).toHaveValue('QA-REFUND-004');await expect(billing.locator('#balanceAmount')).toHaveValue('4');
       refundMovement=(await mutation('invoices',()=>billing.locator('#saveBalance').click())).movement;await expect(billing.locator('#balanceModal')).toBeHidden();
@@ -496,7 +509,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await reverseNoteUi(creditNotesForReversal[1]);const last=creditNotesForReversal[2],row=billing.locator('[data-credit-note-id="'+last.id+'"]');
       await expect(row).toContainText('ya se usaron en otra factura');await expect(row.locator('[data-reverse-credit-note]')).toHaveCount(0);
       const blocked=await api.request('invoices',{method:'POST',token:master.body.token,body:noteReversalBody(last)});expect(blocked.status).toBe(400);expect(blocked.body.details.code).toBe('INVOICE_CREDIT_QUANTITY_REUSED');
-      await billing.locator('[data-close="detail"]').click();await billing.locator('#invoiceList [data-invoice-action="void"][data-invoice-id="'+settlementTarget.id+'"]').click();await mutation('invoices',()=>billing.locator('#decisionAccept').click());await expect(billing.locator('#decisionModal')).toBeHidden();
+      await billing.locator('[data-close="detail"]').click();await (await invoiceDetailAction(settlementTarget.id,'void')).click();await mutation('invoices',()=>billing.locator('#decisionAccept').click());await expect(billing.locator('#decisionModal')).toBeHidden();
       await billing.locator('#invoiceList [data-invoice-action="detail"][data-invoice-id="'+creditedInvoice.id+'"]').click();await reverseNoteUi(last);
       await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Total'),{timeout:45_000}).toBe(3360);await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'Notas de crédito')).toBe(0);await expect.poll(()=>reportInvoiceValue(creditedInvoice.invoice_number,'AR actual')).toBe(120);
       expect(await f.report('cash')).toEqual(cashBeforeNoteReversal);expect(Number((await f.one('select quantity from invoice_items where invoice_id=$1',[creditedInvoice.id])).quantity)).toBe(840);

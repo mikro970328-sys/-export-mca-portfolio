@@ -39,12 +39,13 @@ test('Workers open monthly salary and tips without writing payroll data',async({
   window.showSection=id=>window.__workerNavigation.push(id);
   const section=document.createElement('section');section.id='costsSection';
   const frame=document.createElement('iframe');section.append(frame);document.body.append(section);
-  frame.contentWindow.CostsModule={openProfitability:view=>window.__profitabilityRequested.push(view)};
+  frame.contentWindow.CostsModule={openPayrollEntry:()=>window.__profitabilityRequested.push('payroll-entry')};
  });
  await expect(page.locator('#workersPayrollLink')).toBeVisible();
+ await expect(page.locator('#workersPayrollLink')).toHaveText('Registrar salario mensual');
  await page.locator('#workersPayrollLink').click();
  expect(await page.evaluate(()=>window.__workerNavigation)).toEqual(['costsSection']);
- expect(await page.evaluate(()=>window.__profitabilityRequested)).toEqual(['company']);
+ expect(await page.evaluate(()=>window.__profitabilityRequested)).toEqual(['payroll-entry']);
  await page.locator('#workersCreateButton').click();
  await expect(page.locator('.workers-payroll-note')).toContainText('cada mes');
  await page.locator('.workers-modal-actions [data-worker-modal-close]').click();
@@ -53,6 +54,12 @@ test('Workers open monthly salary and tips without writing payroll data',async({
 test('Workers hide the salary shortcut without finance read access',async({page})=>{
  await open(page,'workers',{financeRead:false});
  await expect(page.locator('#workersPayrollLink')).toBeHidden();
+ expect(await writes(page)).toEqual([]);
+});
+test('Workers show a view-only salary shortcut without finance write access',async({page})=>{
+ await open(page,'workers',{writable:false});
+ await expect(page.locator('#workersPayrollLink')).toBeVisible();
+ await expect(page.locator('#workersPayrollLink')).toHaveText('Ver salarios y propinas');
  expect(await writes(page)).toEqual([]);
 });
 for(const viewport of [{width:1440,height:700},{width:390,height:500}]){

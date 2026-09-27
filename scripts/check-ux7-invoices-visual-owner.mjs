@@ -44,8 +44,8 @@ const workflow = read(files.workflow);
 for (const text of [
   '<body class="erp-module-page erp-module-invoices" data-owner="invoices.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/invoices.css?v=20260926-figma1',
-  '/admin/invoices.js?v=20260926-figma1',
+  '/admin/invoices.css?v=20260927-simple1',
+  '/admin/invoices.js?v=20260927-simple1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero invoices-page-head"',
   'id="invoiceLastUpdated"',
@@ -54,7 +54,8 @@ for (const text of [
   'id="invoiceResultCount"',
   'id="clearInvoiceFilters"',
   'class="invoices-table-wrap"',
-  'role="group" aria-label="Filtrar facturas"',
+  'id="invoiceView" aria-label="Filtrar facturas"',
+  'Facturar una venta',
   'role="dialog" aria-modal="true"',
   'id="decisionModal"',
   'id="decisionReason"',
@@ -62,7 +63,7 @@ for (const text of [
 ]) requireText(html, text, `HTML canónico ${text}`);
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerCssIndex = html.indexOf('/admin/invoices.css?v=20260926-figma1');
+const ownerCssIndex = html.indexOf('/admin/invoices.css?v=20260927-simple1');
 if (foundationIndex < 0 || ownerCssIndex < 0 || foundationIndex > ownerCssIndex) {
   failures.push('la base visual compartida debe cargar antes de invoices.css');
 }
@@ -82,6 +83,7 @@ for (const selector of [
   '.invoices-table-head',
   '.invoice-row',
   '.invoice-row-actions',
+  '.invoice-more-actions',
   '.invoice-form-section',
   '.invoice-detail-summary',
   '.invoice-detail-section',
@@ -111,6 +113,8 @@ for (const text of [
   "console.error('INVOICES_UI_FAILED'",
   'function renderMetrics()',
   'function renderList()',
+  'function updateFilterControls()',
+  "invoiceActionButton(invoice, 'detail', 'Abrir factura')",
   'function openDetail(id)',
   'function openPayment(id)',
   'function openForSalesOrder(salesOrderId)',
@@ -124,7 +128,7 @@ for (const text of [
   "can(invoice, 'issue')",
   "can(invoice, 'void')",
   "canPayment(payment, 'reverse')",
-  "tab.setAttribute('aria-pressed', String(active))"
+  "$('invoiceView').addEventListener('change'"
 ]) requireText(owner, text, `owner de Facturación ${text}`);
 
 if ((owner.match(/error\?\.message/g) || []).length !== 1) {
@@ -211,7 +215,7 @@ class FakeElement {
 const fixtureNodes = new Map();
 for (const id of [
   'invoicePageMsg', 'metrics', 'invoiceResultCount', 'invoiceList', 'newInvoice',
-  'invoicesReadOnlyNote', 'invoiceLastUpdated', 'search', 'clearInvoiceFilters', 'refresh',
+  'invoicesReadOnlyNote', 'invoiceLastUpdated', 'search', 'invoiceView', 'clearInvoiceFilters', 'refresh',
   'iSalesOrder', 'iIssueDate', 'iDueDate', 'iNotes', 'invoiceLines', 'invoiceMsg',
   'saveInvoice', 'detailTitle', 'detailSubtitle', 'detailBody', 'detailActions', 'detailMsg',
   'paymentTitle', 'paymentSubtitle', 'pAmount', 'pDate', 'pMethod', 'pReference', 'pNotes',
@@ -311,9 +315,11 @@ await new Promise(resolve => setTimeout(resolve, 0));
 if (fixtureFetches !== 1) failures.push(`Facturación debe consultar una vez su bootstrap al iniciar; consultó ${fixtureFetches}`);
 if (!fixtureNodes.get('invoiceList').innerHTML.includes('INV-&lt;100&gt;')) failures.push('Facturación no escapa ni presenta la factura del bootstrap');
 if (!fixtureNodes.get('invoiceList').innerHTML.includes('Cliente &lt;Prueba&gt;')) failures.push('Facturación no escapa ni presenta el cliente');
-if (!fixtureNodes.get('invoiceList').innerHTML.includes('data-invoice-action="payment"')) failures.push('Facturación no presenta la acción permitida record_payment');
+if (!fixtureNodes.get('invoiceList').innerHTML.includes('data-invoice-action="detail"')) failures.push('Facturación no deja abrir el detalle de cada factura');
+if (fixtureNodes.get('invoiceList').innerHTML.includes('data-invoice-action="payment"')) failures.push('Facturación muestra acciones financieras avanzadas en la lista');
 if (fixtureNodes.get('invoiceList').innerHTML.includes('data-invoice-action="void"')) failures.push('Facturación presenta la acción void denegada por capabilities');
-if (!fixtureNodes.get('metrics').innerHTML.includes('Por cobrar')) failures.push('Facturación no presenta las cinco métricas financieras');
+if (!fixtureNodes.get('metrics').innerHTML.includes('Por cobrar')) failures.push('Facturación no presenta el saldo por cobrar');
+if ((fixtureNodes.get('metrics').innerHTML.match(/<article/g) || []).length !== 3) failures.push('Facturación debe presentar tres resúmenes prioritarios');
 if (fixtureNodes.get('invoiceResultCount').textContent !== '1 factura') failures.push('Facturación no actualiza el contador de resultados');
 if (fixtureNodes.get('newInvoice').hidden) failures.push('Facturación oculta la creación pese a write_access');
 
@@ -321,6 +327,7 @@ fixtureWindow.InvoicesModule?.openInvoice('invoice-1');
 if (fixtureNodes.get('detailModal').classList.contains('hidden')) failures.push('El owner canónico no abre el detalle de Facturación');
 if (!fixtureNodes.get('detailBody').innerHTML.includes('Producto &lt;Prueba&gt;')) failures.push('El detalle no escapa ni presenta las líneas facturadas');
 if (!fixtureNodes.get('detailBody').innerHTML.includes('WIRE-1')) failures.push('El detalle no conserva los cobros aplicados');
+if (!fixtureNodes.get('detailActions').innerHTML.includes('data-invoice-action="payment"')) failures.push('El detalle no presenta el cobro permitido');
 
 fixtureWindow.InvoicesModule?.openCollection('invoice-1');
 if (fixtureNodes.get('paymentModal').classList.contains('hidden')) failures.push('El owner canónico no abre el cobro permitido');

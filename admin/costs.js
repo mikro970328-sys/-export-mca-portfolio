@@ -40,6 +40,7 @@
     profitabilityLoading: false
   };
   let payrollEditingId = null;
+  let profitabilityPromise = null;
   let companyYear = new Date().getFullYear();
 
   const categories = [
@@ -643,8 +644,9 @@
     const entries=(state.payroll.entries||[]).filter(row=>String(row.period_start||'').startsWith(`${companyYear}-`)).sort((a,b)=>String(b.period_start).localeCompare(String(a.period_start)));
     const workerLabel=id=>{const worker=(state.payroll.workers||[]).find(row=>String(row.id)===String(id));return worker?.full_name||'Trabajador';};
     const payrollRows=entries.map(entry=>`<article class="payroll-row"><div><b>${esc(workerLabel(entry.worker_id))}</b><div class="payroll-status">${esc(String(entry.period_start).slice(0,7))} · ${esc(entry.status==='posted'?'Registrado':'Anulado')}</div></div><div><b>${esc(money(num(entry.salary_amount)+num(entry.tips_amount),entry.currency))}</b><div class="payroll-status">Salario ${esc(money(entry.salary_amount,entry.currency))} · Propinas ${esc(money(entry.tips_amount,entry.currency))}</div></div><div class="payroll-status">${esc(entry.notes||'Sin nota')}</div><div class="payroll-actions">${entry.status==='posted'&&state.payroll.write_access?`<button type="button" class="btn" data-payroll-edit="${esc(entry.id)}">Editar</button><button type="button" class="btn danger" data-payroll-void="${esc(entry.id)}">Anular</button>`:''}</div></article>`).join('');
-    const payrollControls=state.payroll.write_access?'<button type="button" class="btn orange" data-payroll-add>＋ Registrar salario</button>':'';
-    return `<div class="profit-shell"><div class="profit-note"><b>Resultado de la compañía.</b> Ingresos y costo de mercancía usan la fecha de factura; gastos usan la fecha registrada y los salarios el mes asignado. Cada moneda se calcula por separado.</div><div class="profit-toolbar">${profitabilityTabsMarkup()}</div><div class="company-profit-head"><h3>Resultado anual · ${esc(companyYear)}</h3><label class="company-profit-year" for="companyProfitYear">Año <select id="companyProfitYear">${years}</select></label></div><div class="company-annual-grid">${annualCards||'<div class="costs-empty">No hay movimientos financieros para este año.</div>'}</div><h3>Resultado mensual</h3><p class="company-section-note">La ganancia descuenta mercancía, gastos contabilizados, salario y propinas. Si falta costo real o estimado de una factura, el ERP deja el resultado pendiente para evitar una cifra engañosa.</p>${tableRows?`<div class="company-month-wrap"><table class="company-month-table"><thead><tr><th>Mes</th><th>Moneda</th><th>Ingresos</th><th>Costo mercancía</th><th>Gastos</th><th>Salarios y propinas</th><th>Ganancia</th></tr></thead><tbody>${tableRows}</tbody></table></div>`:'<div class="costs-empty">Aún no hay facturas, gastos ni salarios registrados para este año.</div>'}<section class="payroll-section"><div class="payroll-head"><div><h3>Salarios y propinas</h3><p class="company-section-note">Registra un total mensual por trabajador. Cada trabajador, mes y moneda admite un registro activo.</p></div>${payrollControls}</div>${state.payroll.write_access?'':'<div class="costs-readonly">El resumen de salarios y propinas ya está incluido en la ganancia. El detalle por trabajador requiere permiso de gestión financiera.</div>'}<div class="payroll-list">${payrollRows||`<div class="costs-empty">${state.payroll.write_access?'Todavía no hay salarios registrados para este año.':'No hay desglose individual disponible para tu perfil.'}</div>`}</div></section></div>`;
+    const payrollControls=state.payroll.write_access?'<button type="button" class="btn orange" data-payroll-add>＋ Registrar salario mensual</button>':'';
+    const payrollSection=`<section class="payroll-section"><div class="payroll-head"><div><h3>Salario mensual del equipo</h3><p class="company-section-note">Elige trabajador, mes, salario y propinas. Se descuentan de la ganancia del mes que indiques.</p></div>${payrollControls}</div>${state.payroll.write_access?'':'<div class="costs-readonly">Los salarios ya están incluidos en la ganancia. El detalle por trabajador requiere permiso de gestión financiera.</div>'}<div class="payroll-list">${payrollRows||`<div class="costs-empty">${state.payroll.write_access?'Todavía no hay salarios registrados para este año.':'No hay desglose individual disponible para tu perfil.'}</div>`}</div></section>`;
+    return `<div class="profit-shell"><div class="profit-note"><b>Resultado de la compañía.</b> Ingresos y costo de mercancía usan la fecha de factura; gastos usan la fecha registrada y los salarios el mes asignado. Cada moneda se calcula por separado.</div>${payrollSection}<div class="profit-toolbar">${profitabilityTabsMarkup()}</div><div class="company-profit-head"><h3>Resultado anual · ${esc(companyYear)}</h3><label class="company-profit-year" for="companyProfitYear">Año <select id="companyProfitYear">${years}</select></label></div><div class="company-annual-grid">${annualCards||'<div class="costs-empty">No hay movimientos financieros para este año.</div>'}</div><h3>Resultado mensual</h3><p class="company-section-note">La ganancia descuenta mercancía, gastos contabilizados, salario y propinas. Si falta costo real o estimado de una factura, el ERP deja el resultado pendiente para evitar una cifra engañosa.</p>${tableRows?`<div class="company-month-wrap"><table class="company-month-table"><thead><tr><th>Mes</th><th>Moneda</th><th>Ingresos</th><th>Costo mercancía</th><th>Gastos</th><th>Salarios y propinas</th><th>Ganancia</th></tr></thead><tbody>${tableRows}</tbody></table></div>`:'<div class="costs-empty">Aún no hay facturas, gastos ni salarios registrados para este año.</div>'}</div>`;
   }
 
   function profitabilityMetrics(rows) {
@@ -812,29 +814,34 @@
   }
 
   async function loadProfitability(force = false, renderAfter = true) {
-    if (state.profitabilityLoading || (state.profitabilityLoaded && !force)) return true;
+    if (state.profitabilityLoading) return profitabilityPromise || true;
+    if (state.profitabilityLoaded && !force) return true;
     state.profitabilityLoading = true;
     if (renderAfter && state.view === 'profitability') render();
-    try {
-      const [data, payroll] = await Promise.all([request('/api/profitability'), request('/api/payroll')]);
-      state.profitability = data.profitability || state.profitability;
-      state.traceability = data.traceability || state.traceability;
-      state.masters = data.masters || state.masters;
-      state.payroll = payroll || state.payroll;
-      state.profitabilityLoaded = true;
-      setPageMessage('');
-      return true;
-    } catch (error) {
-      const value = reportCostError('profitability', error, 'No se pudo cargar la rentabilidad. Intenta nuevamente.');
-      if (state.view === 'profitability') {
-        $('content').innerHTML = emptyState('Rentabilidad no disponible', value) + '<div class="costs-empty compact"><button id="profitabilityRetry" class="btn" type="button">Reintentar</button></div>';
-        $('profitabilityRetry')?.addEventListener('click', () => loadProfitability(true));
+    profitabilityPromise = (async () => {
+      try {
+        const [data, payroll] = await Promise.all([request('/api/profitability'), request('/api/payroll')]);
+        state.profitability = data.profitability || state.profitability;
+        state.traceability = data.traceability || state.traceability;
+        state.masters = data.masters || state.masters;
+        state.payroll = payroll || state.payroll;
+        state.profitabilityLoaded = true;
+        setPageMessage('');
+        return true;
+      } catch (error) {
+        const value = reportCostError('profitability', error, 'No se pudo cargar la rentabilidad. Intenta nuevamente.');
+        if (state.view === 'profitability') {
+          $('content').innerHTML = emptyState('Rentabilidad no disponible', value) + '<div class="costs-empty compact"><button id="profitabilityRetry" class="btn" type="button">Reintentar</button></div>';
+          $('profitabilityRetry')?.addEventListener('click', () => loadProfitability(true));
+        }
+        return false;
+      } finally {
+        state.profitabilityLoading = false;
+        profitabilityPromise = null;
+        if (renderAfter && state.view === 'profitability' && state.profitabilityLoaded) render();
       }
-      return false;
-    } finally {
-      state.profitabilityLoading = false;
-      if (renderAfter && state.view === 'profitability' && state.profitabilityLoaded) render();
-    }
+    })();
+    return profitabilityPromise;
   }
 
   async function refresh() {
@@ -864,8 +871,8 @@
     const entry=(state.payroll.entries||[]).find(row=>String(row.id)===String(entryId));
     if(entryId&&(!entry||entry.status!=='posted'))return setPageMessage('Ese salario ya no se puede corregir.');
     payrollEditingId=entry?.id||null;
-    $('payrollTitle').textContent=entry?'Corregir salario y propinas':'Registrar salario';
-    $('savePayroll').textContent=entry?'Guardar cambios':'Guardar salario';
+    $('payrollTitle').textContent=entry?'Editar salario mensual':'Registrar salario mensual';
+    $('savePayroll').textContent=entry?'Guardar cambios':'Guardar registro';
     const workers=(state.payroll.workers||[]).filter(worker=>worker.is_active!==false||String(worker.id)===String(entry?.worker_id||''));
     $('payrollWorker').innerHTML=workers.map(worker=>`<option value="${esc(worker.id)}" ${String(worker.id)===String(entry?.worker_id||'')?'selected':''}>${esc(worker.full_name)}${worker.is_active===false?' · inactivo':''}</option>`).join('');
     $('payrollWorker').disabled=workers.length===0;
@@ -1325,6 +1332,17 @@
     return selectView('profitability');
   }
 
+  async function openPayrollEntry() {
+    state.view = 'profitability';
+    state.subview = 'company';
+    setPageMessage('');
+    render();
+    if (!await loadProfitability(true, false)) return false;
+    render();
+    if (state.payroll.write_access) openPayroll();
+    return true;
+  }
+
   function closeNamedModal(name) {
     if (name === 'profitTrace') return closeTrace();
     if (name === 'costDecision') return closeCostDecision(false);
@@ -1494,7 +1512,8 @@
     safeProfitabilityMessage,
     refresh,
     openCost,
-    openProfitability
+    openProfitability,
+    openPayrollEntry
   });
 
   if (!startCosts()) {

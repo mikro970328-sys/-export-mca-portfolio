@@ -56,18 +56,18 @@ for (const writable of [true,false]) {
     check(one('.lProduct').value==='fixture-made-to-order','Quick-created merchandise is attached to the current line');
     one('#oClientPickerButton').click();
     check(one('#clientQuickAddToggle').hidden===false,'Client creation is available inside the picker to authorized users');
-    check(one('#oClientNewButton').hidden===true,'Only one new-client action is visible while the picker is open');
+    check(!one('#oClientNewButton'),'The sale form does not render a duplicate new-client button');
     one('#clientQuickAddToggle').click();
     check(one('#clientQuickAddToggle').hidden===true,'The add-client action disappears while its form is open');
     check(one('#clientQuickAddForm').hidden===false,'The inline client form opens without leaving the sale');
     one('#clientQuickAddCancel').click();
-    check(one('#clientQuickAddToggle').hidden===false && one('#oClientNewButton').hidden===true,'Cancel restores one add-client action inside the open picker');
+    check(one('#clientQuickAddToggle').hidden===false && !one('#oClientNewButton'),'Cancel restores the single add-client action inside the open picker');
     one('#clientQuickAddToggle').click();
     edit('#clientQuickName','Cliente agregado desde venta');edit('#clientQuickCompany','Empresa rápida');edit('#clientQuickNIT','555-888');edit('#clientQuickPhone','+5351234567');
     one('#clientQuickAddForm').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
     await flush();await flush();
     check(one('#oClientPickerButton').textContent.includes('NIT 555-888'),'A client created from the sale is selected with its NIT');
-    check(one('#oClientNewButton').hidden===false && one('#clientQuickAddToggle').hidden===true,'Only the sale-level add-client action returns after closing the picker');
+    check(!one('#oClientNewButton') && one('#clientQuickAddToggle').hidden===true,'Closing the picker leaves no duplicate sale-level action');
     one('#orderModal [data-close="order"]').click();
     check(one('#orderModal').classList.contains('hidden'),'Original close action works');
   }

@@ -6,7 +6,7 @@
   <title>Gastos y rentabilidad · Export MCA</title>
   <link rel="icon" href="/logo.png">
   <link rel="stylesheet" href="/admin/embedded-foundation.css?v=20260922-figma1">
-  <link rel="stylesheet" href="/admin/costs.css?v=20260926-business1">
+  <link rel="stylesheet" href="/admin/costs.css?v=20260927-simple1">
 </head>
 <body class="erp-module-page erp-module-costs" data-owner="costs.js">
   <main class="wrap costs-shell">
@@ -131,7 +131,7 @@
 
   <div id="payrollModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="payrollTitle" aria-hidden="true">
     <div class="dialog compact payroll-dialog">
-      <div class="dialog-head"><div><span class="costs-dialog-kicker">Gastos de personal</span><h2 id="payrollTitle">Registrar salario</h2><p class="muted">El importe se descontará de la rentabilidad de la compañía del mes indicado.</p></div><button class="btn costs-close-button" type="button" data-close="payroll" aria-label="Cerrar salario">Cerrar</button></div>
+      <div class="dialog-head"><div><span class="costs-dialog-kicker">Pago mensual del equipo</span><h2 id="payrollTitle">Registrar salario mensual</h2><p class="muted">El salario y las propinas se descontarán de la ganancia del mes que indiques.</p></div><button class="btn costs-close-button" type="button" data-close="payroll" aria-label="Cerrar salario">Cerrar</button></div>
       <div class="payroll-form-grid">
         <div><label for="payrollWorker">Trabajador *</label><select id="payrollWorker"></select></div>
         <div><label for="payrollPeriod">Mes *</label><input id="payrollPeriod" type="month" required></div>
@@ -141,11 +141,11 @@
         <div class="full"><label for="payrollNotes">Nota (opcional)</label><input id="payrollNotes" maxlength="1000"></div>
       </div>
       <div id="payrollMsg" class="msg" role="status" aria-live="polite"></div>
-      <div class="actions cost-modal-actions"><button class="btn" type="button" data-close="payroll">Cancelar</button><button id="savePayroll" class="btn orange" type="button">Guardar salario</button></div>
+      <div class="actions cost-modal-actions"><button class="btn" type="button" data-close="payroll">Cancelar</button><button id="savePayroll" class="btn orange" type="button">Guardar registro</button></div>
     </div>
   </div>
 
-  <script src="/admin/costs.js?v=20260926-business1" defer></script>
+  <script src="/admin/costs.js?v=20260927-simple1" defer></script>
   <script src="/admin/embedded-auto-refresh.js?v=20260920-speed3" defer></script>
 </body>
 </html>

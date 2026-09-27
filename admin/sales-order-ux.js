@@ -99,7 +99,6 @@
     const allowed = canCreateClient();
     const pickerOpen = Boolean(byId('clientPickerModal') && !byId('clientPickerModal').classList.contains('hidden'));
     const quickFormOpen = Boolean(byId('clientQuickAddForm') && !byId('clientQuickAddForm').hidden);
-    if (byId('oClientNewButton')) byId('oClientNewButton').hidden = !allowed || pickerOpen;
     if (byId('clientQuickAddToggle')) byId('clientQuickAddToggle').hidden = !allowed || !pickerOpen || quickFormOpen;
   }
 
@@ -126,15 +125,6 @@
     select.insertAdjacentElement('afterend', button);
     select.hidden = true;
     button.onclick = openClientPicker;
-    const create = document.createElement('button');
-    create.id = 'oClientNewButton';
-    create.type = 'button';
-    create.className = 'btn client-new-button';
-    create.textContent = '+ Nuevo cliente';
-    create.setAttribute('aria-haspopup','dialog');
-    create.setAttribute('aria-controls','clientPickerModal');
-    button.insertAdjacentElement('afterend',create);
-    create.onclick = () => { openClientPicker(true); };
     refreshClientAccess();
     syncClientButton();
   }
@@ -156,7 +146,7 @@
     button.innerHTML = `<strong>${esc(label)}</strong><span>${select.value ? 'Cambiar ›' : 'Buscar ›'}</span>`;
   }
 
-  async function openClientPicker(createNew = false) {
+  async function openClientPicker() {
     ensureClientPickerModal();
     refreshClientAccess();
     clientPage = 1;
@@ -166,9 +156,8 @@
     byId('clientPickerModal').classList.remove('hidden');
     byId('oClientPickerButton')?.setAttribute('aria-expanded','true');
     refreshClientAccess();
-    if (createNew === true) showQuickClient();
     await loadClientPage();
-    if (createNew !== true) byId('clientPickerSearch')?.focus();
+    byId('clientPickerSearch')?.focus();
   }
 
   function closeClientPicker() {

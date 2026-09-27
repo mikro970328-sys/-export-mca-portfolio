@@ -14,9 +14,9 @@
     { id:'productsSection', label:'Productos', src:'/admin/products.html?embedded=1&v=20260926-figma1' },
     { id:'purchasesSection', label:'Compras', src:'/admin/purchases.html?embedded=1&v=20260926-relations2' },
     { id:'salesSection', label:'Ventas', src:'/admin/sales.html?embedded=1&v=20260904-flowclarity1' },
-    { id:'invoicesSection', label:'Facturación', src:'/admin/invoices.html?embedded=1&v=20260926-figma1' },
+    { id:'invoicesSection', label:'Facturación', src:'/admin/invoices.html?embedded=1&v=20260927-simple1' },
     { id:'payablesSection', label:'Cuentas por pagar', src:'/admin/payables.html?embedded=1&v=20260926-figma1' },
-    { id:'costsSection', label:'Costos y rentabilidad', src:'/admin/costs.html?embedded=1' },
+    { id:'costsSection', label:'Costos y rentabilidad', src:'/admin/costs.html?embedded=1&v=20260927-simple1' },
     { id:'reportsSection', label:'Reportes', src:'/admin/reports.html?embedded=1&v=20260926-figma1', permission:'reports.read' },
     { id:'inventorySection', label:'Existencias', src:'/admin/inventory.html?embedded=1&v=20260926-figma1' },
     { id:'loadsSection', label:'Cargues', src:'/admin/loads.html?embedded=1&v=20260926-figma1' }
@@ -30,7 +30,6 @@
     { key:'logistics', label:'Logística', sections:['loadsSection','containersSection','registerContainerSection'] },
     { key:'finance', label:'Finanzas', sections:['invoicesSection','payablesSection','costsSection','reportsSection'] },
     { key:'administration', label:'Administración', sections:['workersSection','adminsSection','accountSection'] },
-    { key:'help', label:'Ayuda', sections:['helpSection'] }
   ];
 
   const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
@@ -168,7 +167,7 @@
 
     const fragment = document.createDocumentFragment();
     for (const config of NAV_GROUPS) {
-      if (config.key === 'home' || config.key === 'help') {
+      if (config.key === 'home') {
         config.sections.forEach(sectionId => {
           const button = sectionButtons.get(sectionId);
           if (!button) return;

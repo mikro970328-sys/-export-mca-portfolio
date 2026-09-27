@@ -47,8 +47,8 @@ const workflow = read(files.workflow);
 [
   '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/costs.css?v=20260926-business1',
-  '/admin/costs.js?v=20260926-business1',
+  '/admin/costs.css?v=20260927-simple1',
+  '/admin/costs.js?v=20260927-simple1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero costs-page-head"',
   'id="costsPageTitle">Gastos y rentabilidad',
@@ -68,7 +68,7 @@ const workflow = read(files.workflow);
 ].forEach(value => requireText(html, value, 'HTML canónico ' + value));
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerStylesIndex = html.indexOf('/admin/costs.css?v=20260926-business1');
+const ownerStylesIndex = html.indexOf('/admin/costs.css?v=20260927-simple1');
 if (foundationIndex < 0 || ownerStylesIndex < 0 || foundationIndex > ownerStylesIndex) {
   failures.push('la base visual compartida debe cargar antes de costs.css');
 }
@@ -132,11 +132,13 @@ forbid(foundation, /erp-module-costs/, 'la base compartida conserva reglas propi
   'function openDetail(id)',
   'function openTrace(type, id)',
   'function openProfitability(',
+  'async function openPayrollEntry()',
   'function startCosts(',
   'function handleStoredSession(event)',
   "window.addEventListener('storage', handleStoredSession)",
   'window.load = refresh;',
   'window.CostsModule = Object.freeze({',
+  'openPayrollEntry',
   "actionAllowed(charge, 'edit')",
   "actionAllowed(charge, 'post')",
   "actionAllowed(charge, 'void')",

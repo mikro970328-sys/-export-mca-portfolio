@@ -276,7 +276,7 @@ test('financial cancellations preserve balances, permissions and history', async
       await readSales.locator('[data-cf-close-main]').click();await readSales.locator('[data-close="detail"]').click();
     });
     await step('CF-12 invoice balance updates across operators without document reload',async()=>{
-      const readerInvoices=await navigate(b,'invoices');await readerInvoices.locator('[data-view="all"]').click();
+      const readerInvoices=await navigate(b,'invoices');await readerInvoices.locator('#invoiceView').selectOption('all');
       const row=readerInvoices.locator(`[data-invoice-row="${invoice.id}"]`);
       await expect(row.locator('.invoice-money.balance')).toHaveText('USD 400.00');
       const before={n:b.navigations,f:b.frames};
@@ -295,7 +295,7 @@ test('financial cancellations preserve balances, permissions and history', async
       await mutation('customer-advances',()=>sales.locator('#salesFinanceFormSave').click());await savedFinance();
       await metric(1,'$0.00');await metric(2,'$0.00');await metric(4,'$0.00');await cash(0,'advance reversed');
       await closeFinance();await sales.locator('[data-close="detail"]').click();
-      const invoices=await navigate(a,'invoices');await invoices.locator(`[data-invoice-action="void"][data-invoice-id="${invoice.id}"]`).click();
+      const invoices=await navigate(a,'invoices');await invoices.locator(`[data-invoice-row="${invoice.id}"] [data-invoice-action="detail"]`).click();await invoices.locator('#detailActions .invoice-more-actions summary').click();await invoices.locator(`#detailActions [data-invoice-action="void"][data-invoice-id="${invoice.id}"]`).click();
       await mutation('invoices',()=>invoices.locator('#decisionAccept').click());await expect(invoices.locator('#decisionModal')).toBeHidden();
       await navigate(a,'sales');await sales.locator(`[data-view-order="${so.id}"]`).click();
       const caps=await f.one('select sales_order_action_state($1) as value',[so.id]);expect(caps.value.actions.cancel.allowed).toBe(true);
@@ -362,7 +362,7 @@ test('financial cancellations preserve balances, permissions and history', async
         expect(workspace.body.workspace.billing.capabilities.create_invoice).toEqual({allowed:false,reason:'INVOICE_SO_NOT_BILLABLE'});
         const item=await f.one('select id from sales_order_items where sales_order_id=$1',[sale.id]);
         await denied('invoices',{action:'create_plan',sales_order_id:sale.id,lines:[{sales_order_item_id:item.id,quantity:1}]},/facturar|facturable|confirmada|cerrada/i);
-        const view=await navigate(b,'invoices');await view.locator('[data-view="all"]').click();
+        const view=await navigate(b,'invoices');await view.locator('#invoiceView').selectOption('all');
         const row=view.locator(`[data-invoice-row="${inv.id}"]`);await expect(row).toBeVisible();
         await expect(row.locator('.invoice-money.balance')).toHaveText(kind==='partial'?'USD 140.00':'USD 200.00');
         await cash(kind==='partial'?60:0,`cancelled sale with ${kind} invoice`);

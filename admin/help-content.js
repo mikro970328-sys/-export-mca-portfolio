@@ -395,11 +395,11 @@
       "summary": "Diferencia facturación, saldo pendiente y dinero recibido.",
       "section": "invoicesSection",
       "steps": [
-        "Abre Finanzas → Facturación y prepara la factura desde la venta que corresponda.",
-        "Revisa cliente, moneda, fecha, vencimiento y cantidades disponibles para facturar. Comprueba el total antes de emitir.",
-        "Emite la factura cuando sea correcta. Una factura emitida conserva restricciones para proteger su historial.",
+        "Abre Finanzas → Facturación y pulsa Facturar una venta.",
+        "Elige la venta y las cantidades. Pulsa Guardar borrador para crear la factura.",
+        "En Borradores, pulsa Abrir factura y luego Emitir factura cuando esté lista. Las facturas emitidas quedan en Por cobrar.",
         "Registra un cobro solo después de recibir el dinero. Comprueba importe, fecha, método y referencia; puede ser parcial.",
-        "Abre la factura y revisa cobros y saldo. Si utilizas un anticipo, aplícalo mediante su acción correspondiente para no duplicar caja."
+        "Abre la factura para revisar pagos y saldo. Las opciones menos comunes, como nota de crédito o anulación, están en Más acciones."
       ],
       "result": "La factura muestra lo emitido, lo cobrado y el saldo que queda pendiente.",
       "note": "La venta registra el acuerdo comercial; la factura se emite desde esa venta y controla el importe facturado. Una factura emitida no significa que esté pagada. No repitas el cobro cuando una respuesta se demore sin consultar antes su historial.",
@@ -622,7 +622,7 @@
       "steps": [
         "Abre Administración → Trabajadores y busca a la persona antes de crearla.",
         "Registra sus datos y puesto según los campos disponibles. El pago no es fijo en esta ficha porque puedes cambiarlo cada mes.",
-        "Pulsa Salarios y propinas para abrir Finanzas en Rentabilidad → Empresa. Baja hasta Salarios y propinas, pulsa Registrar salario e indica trabajador, mes, salario y propinas. Cada mes queda separado y puedes editar el registro de ese mes.",
+        "Pulsa Registrar salario mensual. Indica trabajador, mes, salario y propinas; el total se descuenta de la ganancia del mes elegido. Puedes editar el registro mensual después.",
         "Revisa su estado y datos de contacto. Si deja de trabajar, utiliza la desactivación con el motivo correspondiente.",
         "Si necesita entrar al ERP, gestiona además su cuenta y rol en Usuarios y acceso. Los pagos mensuales y propinas reducen el resultado de la compañía del mes indicado."
       ],

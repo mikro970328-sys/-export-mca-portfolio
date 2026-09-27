@@ -119,7 +119,8 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
       await balance(session,Number((await f.financial(invoice)).balance_due));
     };
     const openPayment = async session => {
-      await row(session).locator('[data-invoice-action="payment"]').click();
+      await row(session).locator('[data-invoice-action="detail"]').click();
+      await frame(session).locator('#detailActions [data-invoice-action="payment"]').click();
       await expect(frame(session).locator('#paymentModal')).toBeVisible();
     };
     const assertWorkspaceFits = async session => {
@@ -196,15 +197,21 @@ test('two operators: rendered collections, forms, permissions, recovery and PWA 
     await step('UI-05 removing write permission updates existing screens', async()=> {
       await role(readKeys);
       await expect(frame(b).locator('#invoicesReadOnlyNote')).toBeVisible();
-      await expect(row(b).locator('[data-invoice-action="payment"]')).toHaveCount(0);
+      await row(b).locator('[data-invoice-action="detail"]').click();
+      await expect(frame(b).locator('#detailActions [data-invoice-action="payment"]')).toHaveCount(0);
+      await frame(b).locator('[data-close="detail"]').click();
       await expect(frame(b).locator('#newInvoice')).toBeHidden();
-      await expect(row(a).locator('[data-invoice-action="payment"]')).toBeVisible();
+      await row(a).locator('[data-invoice-action="detail"]').click();
+      await expect(frame(a).locator('#detailActions [data-invoice-action="payment"]')).toBeVisible();
+      await frame(a).locator('[data-close="detail"]').click();
       await screenshot(b,'05-current-read-only-permissions');
     });
     await step('UI-06 restoring write permission updates the same session', async()=> {
       await role(writeKeys);
       await expect(frame(b).locator('#invoicesReadOnlyNote')).toBeHidden();
-      await expect(row(b).locator('[data-invoice-action="payment"]')).toBeVisible();
+      await row(b).locator('[data-invoice-action="detail"]').click();
+      await expect(frame(b).locator('#detailActions [data-invoice-action="payment"]')).toBeVisible();
+      await frame(b).locator('[data-close="detail"]').click();
     });
     await step('UI-07 reconnecting restores the displayed balance without reload', async()=> {
       await b.context.setOffline(true);

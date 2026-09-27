@@ -69,6 +69,10 @@ const workflow=read(files.workflow);
 [
   "can('administration.workers.read')",
   "can('administration.workers.write')",
+  "can('finance.write')?'Registrar salario mensual':'Ver salarios y propinas'",
+  'function openPayrollWorkspace()',
+  "typeof costs?.openPayrollEntry === 'function'",
+  'costs.openPayrollEntry()',
   'result.write_access === true',
   "actionAllowed(worker, 'history')",
   "actionAllowed(worker, 'edit')",
@@ -143,7 +147,7 @@ forbid(workersMarkup,/workers-(?:shell|head|command|panel)|workerCreateForm/,'in
 forbid(index,/<script[^>]+src=["']\/admin\/workers-module\.js/i,'index.html carga estáticamente el owner de Trabajadores');
 
 const cssRef="/admin/workers-module.css?v=20260927-feedback1";
-const jsRef="/admin/workers-module.js?v=20260927-feedback1";
+const jsRef="/admin/workers-module.js?v=20260927-simple1";
 const cssIndex=loader.indexOf(cssRef);
 const jsIndex=loader.indexOf(jsRef);
 if(cssIndex<0||jsIndex<0||cssIndex>jsIndex)failures.push('erp.js debe cargar CSS antes del owner JavaScript de Trabajadores');
