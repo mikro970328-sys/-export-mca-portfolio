@@ -76,6 +76,7 @@ forbid(api,/return\s+fail\([^\n]*error\.message/,'API de Clientes no puede devol
 requireText(api,'function optionalPhone(value)','normalización de teléfono opcional');
 requireText(api,'const phone = optionalPhone(body.phone)','alta de cliente sin teléfono');
 requireText(api,'patch.phone = optionalPhone(body.phone)','edición de cliente sin teléfono');
+requireText(api,'phone: body.phone !== undefined ? patch.phone : current.phone','al borrar un teléfono deja de comparar el número anterior');
 requireText(index,'WhatsApp (opcional)','teléfono opcional en Clientes');
 requireText(js,'WhatsApp (opcional)','teléfono opcional al editar cliente');
 requireText(salesOrderUx,'WhatsApp (opcional)','teléfono opcional al crear cliente desde una venta');
