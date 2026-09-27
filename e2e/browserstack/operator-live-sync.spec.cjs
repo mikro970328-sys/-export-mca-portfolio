@@ -69,7 +69,7 @@ test('two operators see committed finance changes without a manual reload',async
     expect(await pageB.evaluate(()=>performance.getEntriesByType('navigation').length)).toBe(1);
     await pageB.screenshot({path:testInfo.outputPath('operator-b-pwa-after-live-refresh.png'),fullPage:true});
 
-    await rowB.getByRole('button',{name:'Ver detalle'}).click();
+    await rowB.getByRole('button',{name:'Abrir factura'}).click();
     await expect(frameB.locator('#detailModal')).toBeVisible();
     await expect(frameB.locator('#detailBody')).toContainText('USD 280.00');
     const liveBeforeSecondWrite=diagnostics.b.live;
