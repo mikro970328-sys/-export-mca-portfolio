@@ -407,7 +407,7 @@
   function openCreateWorker() {
     if (!state.writeAccess) return;
     openModal('Nuevo trabajador', `<form id="workerCreateForm" class="workers-modal-form">
-      <p class="workers-payroll-note">Después de guardar, usa “Registrar salario mensual” en Trabajadores. Elige el mes, el salario y las propinas; el total se descuenta de la ganancia de ese mes.</p>
+      <p class="workers-payroll-note">El salario puede cambiar cada mes. Después de guardar, usa “Registrar salario mensual” en Trabajadores para anotar el salario real y las propinas del periodo; el total se descuenta de la ganancia de ese mes.</p>
       <label><span>Nombre completo</span><input id="workerName" name="full_name" autocomplete="name" placeholder="Nombre y apellidos" required></label>
       <div class="workers-form-grid">
         <label><span>Teléfono / WhatsApp</span><input id="workerPhone" name="phone" autocomplete="tel" inputmode="tel" placeholder="+5351234567" required></label>

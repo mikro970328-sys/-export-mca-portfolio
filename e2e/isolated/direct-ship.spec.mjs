@@ -371,6 +371,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     const creditedInvoice=await f.one('select * from invoices');
     const invoiceDetail=async id=>{
       await navigate('invoices');
+      await billing.locator('#invoiceView').selectOption('all');
       const row=billing.locator(`[data-invoice-row="${id}"]`),number=(await row.locator('.invoice-number').innerText()).trim();
       const modal=billing.locator('#detailModal');
       if(await modal.isVisible()&&(await billing.locator('#detailTitle').innerText()).trim()!==number)await billing.locator('[data-close="detail"]').click();
