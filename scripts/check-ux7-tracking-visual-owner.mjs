@@ -32,20 +32,24 @@ const sectionMarkup=(id,nextId)=>{
   const end=nextId?html.indexOf(`<section id="${nextId}"`,start):html.length;
   return start>=0&&end>start?html.slice(start,end):'';
 };
-const registration=sectionMarkup('registerContainerSection','containersSection');
 const tracking=sectionMarkup('containersSection','publicationsSection');
+const registrationStart=tracking.indexOf('<div id="shipmentRegistrationModal"');
+const registration=registrationStart>=0?tracking.slice(registrationStart):'';
 
 for(const text of [
-  'data-owner="containers-module.js"',
+  'id="shipmentRegistrationModal"',
+  'data-shipment-registration',
+  'hidden aria-hidden="true"',
+  'role="dialog"',
+  'aria-modal="true"',
   'id="shipmentRegistrationForm"',
   'id="registrationReadiness"',
-  'id="resetShipmentForm"',
   'id="shipmentContainer"',
   'id="shipmentImporter"',
-  'class="tracking-registration-layout"',
-  'class="registration-guide"',
-  'type="submit"'
-])requireText(registration,text,`registro estático ${text}`);
+  'type="submit"',
+  'Registrar contenedor sin venta'
+])requireText(registration,text,`registro modal ${text}`);
+forbid(html,/data-section="registerContainerSection"|id="registerContainerSection"/,'el registro conserva una página o entrada aparte');
 
 for(const text of [
   'data-owner="containers-module.js"',
@@ -64,7 +68,7 @@ for(const text of [
   'aria-live="polite"'
 ])requireText(tracking,text,`Tracking estático ${text}`);
 
-forbid(registration,/\sstyle\s*=|\son(?:click|change|input|submit)\s*=/i,'el registro estático conserva estilo o handler inline');
+forbid(registration,/\sstyle\s*=|\son(?:click|change|input|submit)\s*=/i,'el registro modal conserva estilo o handler inline');
 forbid(tracking,/\sstyle\s*=|\son(?:click|change|input|submit)\s*=/i,'Tracking estático conserva estilo o handler inline');
 
 for(const selector of [
@@ -74,8 +78,9 @@ for(const selector of [
   '.tracking-table-wrap',
   '.tracking-mobile-list',
   '.tracking-card',
-  '.tracking-registration-layout',
-  '.registration-guide',
+  '[data-shipment-registration]',
+  '.shipment-registration-head',
+  '.registration-form-panel',
   'grid-template-columns:minmax(0,1fr)',
   '.container-actions-popover',
   '.tracking-dialog-root',
@@ -103,7 +108,8 @@ for(const text of [
   'function resetRegistrationForm(',
   'function actionList(shipment)',
   'return defs.filter(([cap])=>actionAllowed(shipment,cap))',
-  "register.hidden=!shipmentWriteAccess()",
+  "function openRegistrationModal()",
+  "function closeRegistrationModal(restoreFocus=true)",
   "request('/api/shipment-document-readiness')",
   "request('/api/shipments'",
   "request('/api/importers'",
@@ -130,12 +136,12 @@ forbid(loader,/registration-form-shell/i,'erp.js conserva el shell visual retira
 if(fs.existsSync('admin/registration-form-shell.js'))failures.push('registration-form-shell.js debe permanecer retirado');
 
 for(const text of [
-  "loadStylesheet('/admin/containers-module.css?v=20260926-business1', 'data-containers-module-style')",
-  "loadScript('/admin/containers-module.js?v=20260926-business1', 'data-containers-module')",
+  "loadStylesheet('/admin/containers-module.css?v=20260927-containerflow1', 'data-containers-module-style')",
+  "loadScript('/admin/containers-module.js?v=20260927-containerflow1', 'data-containers-module')",
   "loadStylesheet('/admin/shipment-editor.css?v=20260926-figma1', 'data-shipment-editor-style')",
   "loadScript('/admin/shipment-editor.js?v=20260926-figma1', 'data-shipment-editor')"
 ])requireText(loader,text,`asset canónico ${text}`);
-requireText(html,'/admin/erp.js?v=20260927-simple2','revisión de caché del ERP');
+requireText(html,'/admin/erp.js?v=20260927-containerflow1','revisión de caché del ERP');
 
 for(const text of [
   'class="shipment-editor" data-owner="shipment-editor.js"',
@@ -205,13 +211,14 @@ function fakeElement(id,...classes){
 
 const fixtureNodes=new Map();
 for(const id of [
-  'registerContainerSection','containersSection','shipments','saveShipment','shipmentRegistrationForm',
-  'resetShipmentForm','shipmentContainer','registrationContainerHelp','registrationReadiness','shipmentMsg',
+  'shipmentRegistrationModal','containersSection','shipments','saveShipment','shipmentRegistrationForm',
+  'closeShipmentRegistration','cancelShipmentRegistration','shipmentContainer','registrationContainerHelp','registrationReadiness','shipmentMsg',
   'shipmentClient','shipmentImporter','shipmentImporterOptions','shipmentBooking','shipmentBol','shipmentCarrier',
   'shipmentDepartureDate','shipmentProduct','shipmentQuantity','shipmentQuantityUnit','shipmentSearch',
   'trackingClearFilters','trackingRegisterShortcut','trackingLastUpdated','trackingResultCount','trackingFeedback',
   'trackingTotalCount','trackingActiveCount','trackingLoadedCount','trackingDeliveredCount','trackingUnassignedCount','trackingDocumentsReadyCount','trackingDocumentsPendingCount'
 ])fixtureNodes.set(id,fakeElement(id));
+fixtureNodes.get('shipmentRegistrationModal').hidden=true;
 
 const filterButtons=['active','delivered','all'].map(filter=>{
   const button=fakeElement(`filter-${filter}`,filter==='active'?'active':'');
@@ -249,6 +256,7 @@ vm.runInNewContext(owner,{
     querySelector:()=>null,
     querySelectorAll:selector=>selector==='[data-container-filter]'?filterButtons:[],
     addEventListener(){},
+    removeEventListener(){},
     createElement:tag=>fakeElement(tag)
   },
   fetch:async url=>{
@@ -285,11 +293,15 @@ if(fixtureNodes.get('trackingDeliveredCount').textContent!=='1')failures.push('T
 if(fixtureNodes.get('trackingUnassignedCount').textContent!=='1')failures.push('Tracking no presenta operaciones sin cliente');
 if(fixtureNodes.get('trackingDocumentsReadyCount').textContent!=='1')failures.push('Tracking no limita Docs READY a documentos visibles y listos');
 if(fixtureNodes.get('trackingDocumentsPendingCount').textContent!=='0')failures.push('Tracking no calcula los documentos pendientes visibles');
-if(fixtureNodes.get('registerContainerSection').hidden)failures.push('Tracking oculta el registro pese a shipmentWriteAccess');
+if(fixtureNodes.get('trackingRegisterShortcut').hidden)failures.push('Tracking debe ofrecer registro secundario cuando shipmentWriteAccess está activo');
+if(!fixtureNodes.get('shipmentRegistrationModal').hidden)failures.push('El registro debe iniciar cerrado');
+fixtureNodes.get('trackingRegisterShortcut').listeners.get('click')?.({});
+if(fixtureNodes.get('shipmentRegistrationModal').hidden||fixtureNodes.get('shipmentRegistrationModal').attributes.get('aria-hidden')!=='false')failures.push('Tracking no abre el registro modal');
+fixtureNodes.get('closeShipmentRegistration').listeners.get('click')?.({});
+if(!fixtureNodes.get('shipmentRegistrationModal').hidden||fixtureNodes.get('shipmentRegistrationModal').attributes.get('aria-hidden')!=='true')failures.push('El registro modal no se cierra correctamente');
 
 fixtureWindow.shipmentWriteAccess=false;
 fixtureWindow.ContainersModule?.render();
-if(!fixtureNodes.get('registerContainerSection').hidden)failures.push('Tracking expone el registro sin shipmentWriteAccess');
 if(!fixtureNodes.get('trackingRegisterShortcut').hidden)failures.push('Tracking expone el acceso directo de registro sin shipmentWriteAccess');
 
 for(const [file,source] of [[files.styles,styles],[files.editorStyles,editorStyles]]){
