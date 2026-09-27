@@ -35,6 +35,8 @@
   let readinessByShipment=new Map();
   let manualCleanup=null;
   let registrationDraft=null;
+  let registrationPreviousFocus=null;
+  let registrationModalKeydown=null;
 
   async function request(path,options={}){
     const token=localStorage.getItem('export_mca_token')||'';
@@ -319,8 +321,6 @@
     const target=byId('shipments');
     if(!target)return;
     closeActionMenu(false);
-    const register=byId('registerContainerSection');
-    if(register)register.hidden=!shipmentWriteAccess();
     const shortcut=byId('trackingRegisterShortcut');
     if(shortcut)shortcut.hidden=!shipmentWriteAccess();
     renderMetrics();
@@ -358,7 +358,45 @@
     if(text)text.textContent=valid?'Datos mínimos listos para guardar':'Completa el número de contenedor para continuar';
   }
 
-  function resetRegistrationForm(clearMessage=true){
+  function closeRegistrationModal(restoreFocus=true){
+    const modal=byId('shipmentRegistrationModal');
+    if(!modal||modal.hidden)return;
+    modal.hidden=true;
+    modal.setAttribute('aria-hidden','true');
+    if(registrationModalKeydown){
+      document.removeEventListener('keydown',registrationModalKeydown);
+      registrationModalKeydown=null;
+    }
+    const previousFocus=registrationPreviousFocus;
+    registrationPreviousFocus=null;
+    if(restoreFocus)previousFocus?.focus?.();
+  }
+
+  function openRegistrationModal(){
+    if(!shipmentWriteAccess())return;
+    const modal=byId('shipmentRegistrationModal');
+    if(!modal||!modal.hidden)return;
+    registrationPreviousFocus=byId('trackingRegisterShortcut');
+    modal.hidden=false;
+    modal.setAttribute('aria-hidden','false');
+    const message=byId('shipmentMsg');
+    if(message){message.textContent='';message.className='tracking-feedback';}
+    syncContainerGuidance();
+    syncClientSelect();
+    syncImporterInput();
+    registrationModalKeydown=event=>{
+      containDialogFocus(modal,event);
+      if(event.key==='Escape'){
+        event.preventDefault();
+        event.stopPropagation();
+        closeRegistrationModal();
+      }
+    };
+    document.addEventListener('keydown',registrationModalKeydown);
+    byId('shipmentContainer')?.focus?.();
+  }
+
+  function resetRegistrationForm(clearMessage=true,focus=true){
     const form=byId('shipmentRegistrationForm');
     form?.reset?.();
     if(clearMessage){
@@ -368,7 +406,7 @@
     syncContainerGuidance();
     syncClientSelect();
     syncImporterInput();
-    byId('shipmentContainer')?.focus?.();
+    if(focus)byId('shipmentContainer')?.focus?.();
   }
 
   async function saveShipmentRecord(){
@@ -416,9 +454,10 @@
         ?'Contenedor registrado correctamente.'
         :'Contenedor registrado sin cliente y disponible para venta.';
       registrationDraft?.clear({silent:true});
-      resetRegistrationForm(false);
+      resetRegistrationForm(false,false);
       registrationDraft?.rebase({clear:false});
-      note(success,true);
+      closeRegistrationModal();
+      showToast(success,true);
       await window.loadAll?.();
       await loadImporterState();
       await loadReadiness();
@@ -949,10 +988,6 @@
       event.preventDefault();
       saveShipmentRecord();
     });
-    byId('resetShipmentForm')?.addEventListener('click',()=>{
-      resetRegistrationForm();
-      registrationDraft?.rebase({clear:true});
-    });
     byId('shipmentContainer')?.addEventListener('input',syncContainerGuidance);
     byId('shipmentSearch')?.addEventListener('input',render);
     byId('trackingClearFilters')?.addEventListener('click',()=>{
@@ -960,7 +995,12 @@
       activateFilter('active');
       byId('shipmentSearch')?.focus?.();
     });
-    byId('trackingRegisterShortcut')?.addEventListener('click',()=>window.showSection?.('registerContainerSection'));
+    byId('trackingRegisterShortcut')?.addEventListener('click',openRegistrationModal);
+    byId('closeShipmentRegistration')?.addEventListener('click',()=>closeRegistrationModal());
+    byId('cancelShipmentRegistration')?.addEventListener('click',()=>closeRegistrationModal());
+    byId('shipmentRegistrationModal')?.addEventListener('click',event=>{
+      if(event.target===byId('shipmentRegistrationModal'))closeRegistrationModal();
+    });
     document.querySelectorAll('[data-container-filter]').forEach(button=>button.addEventListener('click',()=>activateFilter(button.dataset.containerFilter)));
     byId('shipments')?.addEventListener('click',event=>{
       const trigger=event.target.closest('[data-container-menu]');
@@ -1005,7 +1045,7 @@
   }
 
   async function mount(){
-    if(!byId('registerContainerSection')||!byId('containersSection')||!byId('shipments')||!byId('saveShipment')){
+    if(!byId('shipmentRegistrationModal')||!byId('containersSection')||!byId('shipments')||!byId('saveShipment')){
       console.error('CONTAINERS_STATIC_STRUCTURE_MISSING');
       return;
     }
