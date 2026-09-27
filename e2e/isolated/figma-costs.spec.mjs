@@ -79,6 +79,18 @@ test('Company monthly and annual profit subtract worker salary and tips; void pa
   expect(calls.filter(call=>call.action==='void')).toHaveLength(1);
 });
 
+test('Workers shortcut opens the monthly salary form directly and leaves read-only access view-only',async({page})=>{
+  await open(page);
+  await page.evaluate(()=>window.CostsModule.openPayrollEntry());
+  await expect(page.locator('#payrollModal')).toBeVisible();
+  await expect(page.locator('#payrollTitle')).toHaveText('Registrar salario mensual');
+  await expect(page.locator('#payrollWorker')).toHaveValue('fixture-worker');
+  await expect(page.locator('#payrollPeriod')).not.toHaveValue('');
+  await expect(page.locator('.payroll-section')).toContainText('Se descuentan de la ganancia');
+  await page.locator('[data-close="payroll"]').first().click();
+  expect(await posts(page)).toEqual([]);
+});
+
 test('Company profit stays pending when an issued invoice has no recognized merchandise cost',async({page})=>{
   await open(page,{companyPending:true});
   await page.locator('[data-view="profitability"]').click();
@@ -89,8 +101,9 @@ test('Company profit stays pending when an issued invoice has no recognized merc
 
 test('Finance readers see the company deduction without employee salary details',async({page})=>{
   await open(page,{writable:false});
-  await page.locator('[data-view="profitability"]').click();
-  await page.locator('[data-profit-subview="company"]').click();
+  await page.evaluate(()=>window.CostsModule.openPayrollEntry());
+  await expect(page.locator('#payrollModal')).toBeHidden();
+  await expect(page.locator('.payroll-section')).toBeVisible();
   await expect(page.locator('.company-month-table tbody tr').last()).toContainText('125.00');
   await expect(page.locator('.payroll-row')).toHaveCount(0);
   await expect(page.locator('[data-payroll-add]')).toHaveCount(0);
@@ -149,37 +162,4 @@ test('Expense create, draft edit, validation, server failure and cancel keep cor
   await page.locator('[data-target-id]').selectOption('fixture-load');
   await page.locator('[data-amount]').fill('80');
   await page.locator('#saveCharge').click();
-  await expect(page.locator('#chargeModal')).not.toBeVisible();
-  expect((await posts(page))[0]).toMatchObject({action:'create',amount:80,allocations:[{load_id:'fixture-load',amount:'80'}]});
-  await page.locator('[data-edit="fixture-cost-2"]').click();
-  await expect(page.locator('#cCategory')).toBeFocused();
-  await expect(page.locator('#chargeHelp')).not.toContainText('historial');
-  await page.locator('#cAmount').fill('400');
-  await expect(page.locator('#cAmount')).toBeFocused();
-  await expect(page.locator('#cAmount')).toHaveValue('400');
-  await page.evaluate(()=>{window.__fixtureRejectWrites=true});
-  await page.locator('#saveCharge').click();
-  await expect(page.locator('#chargeMsg')).not.toBeEmpty();
-  await expect(page.locator('#saveCharge')).toBeEnabled();
-  await expect(page.locator('#cAmount')).toHaveValue('400');
-  await page.evaluate(()=>{window.__fixtureRejectWrites=false});
-  await page.locator('#saveCharge').click();
-  await expect(page.locator('#chargeModal')).not.toBeVisible();
-  expect((await posts(page)).at(-1)).toMatchObject({action:'replace',cost_charge_id:'fixture-cost-2',amount:400,allocations:[]});
-  const before=(await posts(page)).length;
-  await page.locator('[data-edit="fixture-cost-0"]').click();
-  await page.getByRole('button',{name:'Cancelar',exact:true}).click();
-  expect((await posts(page)).length).toBe(before);
-});
-
-test('Read-only expense users can inspect and cannot create, edit, post or void',async({page})=>{
-  await open(page,{writable:false});
-  await expect(page.locator('#newCharge')).not.toBeVisible();
-  await expect(page.locator('#costsReadOnlyNote')).toBeVisible();
-  await expect(page.locator('[data-edit],[data-post],[data-void]')).toHaveCount(0);
-  await page.locator('.cost-record summary').first().click();
-  await page.locator('[data-detail]').first().click();
-  await expect(page.locator('#detailModal')).toBeVisible();
-  await expect(page.locator('#detailActions button')).toHaveCount(0);
-  expect(await posts(page)).toEqual([]);
-});
+  await expect(page.locator('#chargeM

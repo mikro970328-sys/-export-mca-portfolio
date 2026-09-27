@@ -69,6 +69,10 @@ const workflow=read(files.workflow);
 [
   "can('administration.workers.read')",
   "can('administration.workers.write')",
+  "can('finance.write')?'Registrar salario mensual':'Ver salarios y propinas'",
+  'function openPayrollWorkspace()',
+  "typeof costs?.openPayrollEntry === 'function'",
+  'costs.openPayrollEntry()',
   'result.write_access === true',
   "actionAllowed(worker, 'history')",
   "actionAllowed(worker, 'edit')",
@@ -143,7 +147,7 @@ forbid(workersMarkup,/workers-(?:shell|head|command|panel)|workerCreateForm/,'in
 forbid(index,/<script[^>]+src=["']\/admin\/workers-module\.js/i,'index.html carga estáticamente el owner de Trabajadores');
 
 const cssRef="/admin/workers-module.css?v=20260927-feedback1";
-const jsRef="/admin/workers-module.js?v=20260927-feedback1";
+const jsRef="/admin/workers-module.js?v=20260927-simple1";
 const cssIndex=loader.indexOf(cssRef);
 const jsIndex=loader.indexOf(jsRef);
 if(cssIndex<0||jsIndex<0||cssIndex>jsIndex)failures.push('erp.js debe cargar CSS antes del owner JavaScript de Trabajadores');
@@ -219,103 +223,4 @@ try {
       {id:'w3',full_name:'Ana Ruiz',phone:'+5353333333',position:'Ventas',is_active:false,deactivation_reason:'Jubilación'}
     ];
     const metrics=workersOwner.workerMetrics(workers);
-    if(JSON.stringify(metrics)!==JSON.stringify({total:3,active:2,inactive:1,withoutPosition:1}))failures.push(`fixture: métricas inesperadas ${JSON.stringify(metrics)}`);
-    const active=workersOwner.visibleWorkers(workers,{status:'active',query:''});
-    if(active.length!==2||active.some(worker=>worker.is_active===false))failures.push('fixture: filtro de activos perdió su contrato');
-    const inactive=workersOwner.visibleWorkers(workers,{status:'inactive',query:'jubilación'});
-    if(inactive.length!==1||inactive[0].id!=='w3')failures.push('fixture: estado inactivo o motivo perdieron su contrato');
-    const search=workersOwner.visibleWorkers(workers,{status:'all',query:'logística'});
-    if(search.length!==1||search[0].id!=='w1')failures.push('fixture: búsqueda por cargo perdió su contrato');
-    const initial=workersOwner.getState();
-    if(initial.status!=='active'||initial.loading||initial.loaded||initial.total!==0||initial.modalOpen)failures.push('fixture: estado inicial del owner no es seguro');
-  }
-}catch(error){
-  failures.push(`fixture runtime: ${error?.stack||error}`);
-}
-
-try {
-  let mountCallback=null;
-  const requests=[];
-  const section={dataset:{},innerHTML:'',addEventListener:()=>{}};
-  const modal={addEventListener:()=>{}};
-  const mountedContext=vm.createContext({
-    window:{
-      ExportMcaAccessControl:{can:()=>true},
-      api:async path=>{
-        requests.push(path);
-        return {
-          write_access:true,
-          workers:[
-            {id:'w1',full_name:'Carla Méndez',phone:'+5351111111',position:'Logística',is_active:true,capabilities:{actions:{history:{allowed:true},edit:{allowed:true},deactivate:{allowed:true},reactivate:{allowed:false}}}},
-            {id:'w2',full_name:'Ana Ruiz',phone:'+5352222222',position:'Ventas',is_active:false,capabilities:{actions:{history:{allowed:true},edit:{allowed:true},deactivate:{allowed:false},reactivate:{allowed:true}}}}
-          ]
-        };
-      },
-      addEventListener:()=>{}
-    },
-    document:{
-      readyState:'loading',
-      activeElement:null,
-      body:{classList:{add:()=>{},remove:()=>{}},appendChild:()=>{}},
-      addEventListener:(name,callback)=>{if(name==='DOMContentLoaded')mountCallback=callback;},
-      getElementById:id=>id==='workersSection'?section:id==='workersModal'?modal:null,
-      querySelectorAll:()=>[]
-    },
-    console,
-    Set,
-    Date,
-    Promise,
-    Array,
-    String,
-    Number,
-    Object,
-    Boolean,
-    setTimeout:()=>0
-  });
-  mountedContext.window.window=mountedContext.window;
-  vm.runInContext(owner,mountedContext,{filename:`${files.owner}:mounted`});
-  if(typeof mountCallback!=='function')failures.push('fixture montado: no registró el arranque del owner');
-  else await mountCallback();
-  const mountedOwner=mountedContext.window.WorkersModule;
-  const mountedState=mountedOwner?.getState?.();
-  if(section.dataset.workersOwner!=='workers-module.js'||!section.innerHTML.includes('id="workersDirectory"'))failures.push('fixture montado: la superficie canónica no se renderizó');
-  if(requests.length!==1||requests[0]!=='/api/admins?resource=workers')failures.push(`fixture montado: consulta inicial inesperada ${JSON.stringify(requests)}`);
-  if(!mountedState?.loaded||mountedState.total!==2||mountedState.metrics?.active!==1||mountedState.writeAccess!==true)failures.push(`fixture montado: estado inesperado ${JSON.stringify(mountedState)}`);
-}catch(error){
-  failures.push(`fixture montado: ${error?.stack||error}`);
-}
-
-try {
-  let opened='';
-  const section={classList:{contains:value=>value==='app-section'}};
-  const sectionContext=vm.createContext({
-    window:{
-      showSection:id=>{opened=id;return true;},
-      ExportMcaAccessControl:{sectionAllowed:id=>id==='workersSection'},
-      dispatchEvent:()=>{},
-      addEventListener:()=>{}
-    },
-    document:{
-      documentElement:{style:{}},
-      getElementById:id=>id==='workersSection'?section:null
-    },
-    localStorage:{getItem:()=> 'workersSection',setItem:()=>{},removeItem:()=>{}},
-    CustomEvent:class {},
-    requestAnimationFrame:callback=>callback()
-  });
-  sectionContext.window.window=sectionContext.window;
-  vm.runInContext(sectionState,sectionContext,{filename:files.sectionState});
-  if(opened!=='workersSection')failures.push('fixture de navegación: un permiso efectivo no restauró Trabajadores');
-}catch(error){
-  failures.push(`fixture de navegación: ${error?.stack||error}`);
-}
-
-if(failures.length){
-  console.error(`UX-7 Workers visual owner gate failed:\n${failures.map(failure=>`- ${failure}`).join('\n')}`);
-  process.exit(1);
-}
-
-console.log('UX-7 Workers visual owner gate passed.');
-console.log('- Four operational metrics, pure filters and responsive directory cards share one visual owner.');
-console.log('- Runtime fixtures verify status, search and safe initial state without mutations.');
-console.log('- Permissions, per-worker capabilities, history, audit RPCs and stable API boundaries remain authoritative.');
+    if(JSON.stringify(metrics)!==JSON.stringify({total:3,active:2,inactive:1,withoutPosition:1}))failures.push(`fixture: métricas inesperadas ${JSON.stringi

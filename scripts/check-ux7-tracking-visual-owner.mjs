@@ -135,7 +135,7 @@ for(const text of [
   "loadStylesheet('/admin/shipment-editor.css?v=20260926-figma1', 'data-shipment-editor-style')",
   "loadScript('/admin/shipment-editor.js?v=20260926-figma1', 'data-shipment-editor')"
 ])requireText(loader,text,`asset canónico ${text}`);
-requireText(html,'/admin/erp.js?v=20260927-feedback1','revisión de caché del ERP');
+requireText(html,'/admin/erp.js?v=20260927-simple1','revisión de caché del ERP');
 
 for(const text of [
   'class="shipment-editor" data-owner="shipment-editor.js"',
@@ -222,89 +222,4 @@ const filterButtons=['active','delivered','all'].map(filter=>{
 const fixtureWindow={
   shipments:[
     {
-      id:'shipment-1',container_number:'ABCD1234567',client_id:null,active:true,carrier:'Crowley',product:'Producto <Seguro>',quantity:24,quantity_unit:'cajas',departure_date:'2026-09-03',booking_number:'BK-1',bol_number:'BL-1',operational_status:'Registrado',fulfillment:{mode:'warehouse',status:'loaded',load_number:'LOAD-1'},clients:null,
-      capabilities:{actions:{view_info:{allowed:true},view_documents:{allowed:true},edit:{allowed:true},view_history:{allowed:true},assign_client:{allowed:true},manual_tracking:{allowed:true},release:{allowed:true},deliver:{allowed:false},reactivate:{allowed:false},delete:{allowed:false}}}
-    },
-    {
-      id:'shipment-2',container_number:'WXYZ7654321',client_id:'client-1',active:false,carrier:'MSC',product:'Aceite',operational_status:'Entregado',clients:{name:'Cliente Uno'},
-      capabilities:{actions:{view_info:{allowed:true},view_documents:{allowed:false},edit:{allowed:false},view_history:{allowed:true},assign_client:{allowed:false},manual_tracking:{allowed:false},release:{allowed:false},deliver:{allowed:false},reactivate:{allowed:true},delete:{allowed:false}}}
-    }
-  ],
-  clients:[{id:'client-1',name:'Cliente Uno',company:'Empresa Uno'}],
-  shipmentWriteAccess:true,
-  addEventListener(){},
-  dispatchEvent(){},
-  showSection(){},
-  ExportMcaAccessControl:{can:()=>false}
-};
-
-let fixtureFetches=0;
-vm.runInNewContext(owner,{
-  console,
-  document:{
-    readyState:'complete',
-    activeElement:fakeElement('active'),
-    body:{appendChild(){}},
-    getElementById:id=>fixtureNodes.get(id)||null,
-    querySelector:()=>null,
-    querySelectorAll:selector=>selector==='[data-container-filter]'?filterButtons:[],
-    addEventListener(){},
-    createElement:tag=>fakeElement(tag)
-  },
-  fetch:async url=>{
-    fixtureFetches+=1;
-    const data=String(url).includes('shipment-document-readiness')
-      ?{readiness:[{shipment_id:'shipment-1',document_status:'ready',missing_documents:[]}]}
-      :{importers:[{id:'importer-1',name:'Importadora Uno',active:true}],client_importers:[],shipment_importers:[{shipment_id:'shipment-1',importer_id:'importer-1'}]};
-    return {ok:true,json:async()=>data};
-  },
-  localStorage:{getItem:()=> 'fixture-token'},
-  Intl,
-  Date,
-  Map,
-  Set,
-  FormData,
-  CustomEvent:class CustomEvent{},
-  setTimeout,
-  clearTimeout,
-  window:fixtureWindow
-},{filename:`${files.owner}:fixture`});
-
-await new Promise(resolve=>setTimeout(resolve,0));
-await new Promise(resolve=>setTimeout(resolve,0));
-
-if(fixtureFetches!==2)failures.push(`Tracking debe consultar importadoras y readiness una vez al iniciar; consultó ${fixtureFetches}`);
-if(!fixtureWindow.ContainersModule)failures.push('Tracking no publica su owner después del montaje');
-if(!fixtureNodes.get('shipments').innerHTML.includes('tracking-table-wrap'))failures.push('Tracking no presenta la tabla de escritorio');
-if(!fixtureNodes.get('shipments').innerHTML.includes('tracking-mobile-list'))failures.push('Tracking no presenta las tarjetas móviles');
-if(!fixtureNodes.get('shipments').innerHTML.includes('Producto &lt;Seguro&gt;'))failures.push('Tracking no escapa el contenido operativo');
-if(fixtureNodes.get('trackingTotalCount').textContent!=='2')failures.push('Tracking no calcula el total visible recibido del backend');
-if(fixtureNodes.get('trackingActiveCount').textContent!=='1')failures.push('Tracking no presenta el total activo');
-if(fixtureNodes.get('trackingLoadedCount').textContent!=='1')failures.push('Tracking no presenta el total cargado');
-if(fixtureNodes.get('trackingDeliveredCount').textContent!=='1')failures.push('Tracking no presenta el total entregado');
-if(fixtureNodes.get('trackingUnassignedCount').textContent!=='1')failures.push('Tracking no presenta operaciones sin cliente');
-if(fixtureNodes.get('trackingDocumentsReadyCount').textContent!=='1')failures.push('Tracking no limita Docs READY a documentos visibles y listos');
-if(fixtureNodes.get('trackingDocumentsPendingCount').textContent!=='0')failures.push('Tracking no calcula los documentos pendientes visibles');
-if(fixtureNodes.get('registerContainerSection').hidden)failures.push('Tracking oculta el registro pese a shipmentWriteAccess');
-
-fixtureWindow.shipmentWriteAccess=false;
-fixtureWindow.ContainersModule?.render();
-if(!fixtureNodes.get('registerContainerSection').hidden)failures.push('Tracking expone el registro sin shipmentWriteAccess');
-if(!fixtureNodes.get('trackingRegisterShortcut').hidden)failures.push('Tracking expone el acceso directo de registro sin shipmentWriteAccess');
-
-for(const [file,source] of [[files.styles,styles],[files.editorStyles,editorStyles]]){
-  const opening=(source.match(/{/g)||[]).length;
-  const closing=(source.match(/}/g)||[]).length;
-  if(opening!==closing)failures.push(`${file} está desbalanceado: ${opening}/${closing}`);
-}
-
-if(failures.length){
-  console.error('UX-7 Tracking visual owner gate failed:');
-  failures.forEach(failure=>console.error(`- ${failure}`));
-  process.exit(1);
-}
-
-console.log('UX-7 Tracking visual owner gate passed.');
-console.log('- Registro, listado, métricas, responsive y diálogos pertenecen a containers-module.js.');
-console.log('- Acciones y documentos conservan capabilities, permisos y contratos del backend.');
-console.log('- El shell visual dinámico anterior permanece retirado.');
+      id:'shipment-1',container_number:'ABCD1234567',client_id:null,active:true,carrier:'Crowley',product:'Producto <Seguro>',quantity:24,quantity_unit:'cajas',departure_date:

@@ -135,12 +135,12 @@ for (const fragment of [
 
 for (const fragment of [
   '/admin/navigation-shell.css?v=20260926-integration1',
-  '/admin/erp.js?v=20260927-feedback1'
+  '/admin/erp.js?v=20260927-simple1'
 ]) requireText(files.index, fragment, 'revisión de caché del shell');
 
 for (const fragment of [
   "loadScript('/admin/ui-icon-system.js?v=20260926-help2', 'data-ui-icon-system')",
-  "loadScript('/admin/navigation-shell.js?v=20260926-help2', 'data-navigation-shell')",
+  "loadScript('/admin/navigation-shell.js?v=20260927-simple1', 'data-navigation-shell')",
   "loadScript('/admin/tasks-workspace.js?v=20260926-figma2', 'data-tasks-workspace')",
   "loadScript('/admin/account-administration.js?v=20260926-figma2', 'data-account-administration')",
   "loadStylesheet('/admin/operational-alert-center.css?v=20260926-figma2', 'data-operational-alert-center-style')",

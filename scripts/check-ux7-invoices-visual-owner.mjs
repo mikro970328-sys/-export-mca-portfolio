@@ -44,8 +44,8 @@ const workflow = read(files.workflow);
 for (const text of [
   '<body class="erp-module-page erp-module-invoices" data-owner="invoices.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/invoices.css?v=20260926-figma1',
-  '/admin/invoices.js?v=20260926-figma1',
+  '/admin/invoices.css?v=20260927-simple1',
+  '/admin/invoices.js?v=20260927-simple1',
   '/admin/embedded-auto-refresh.js?v=20260920-speed3',
   'class="module-hero invoices-page-head"',
   'id="invoiceLastUpdated"',
@@ -54,7 +54,8 @@ for (const text of [
   'id="invoiceResultCount"',
   'id="clearInvoiceFilters"',
   'class="invoices-table-wrap"',
-  'role="group" aria-label="Filtrar facturas"',
+  'id="invoiceView" aria-label="Filtrar facturas"',
+  'Facturar una venta',
   'role="dialog" aria-modal="true"',
   'id="decisionModal"',
   'id="decisionReason"',
@@ -62,7 +63,7 @@ for (const text of [
 ]) requireText(html, text, `HTML canónico ${text}`);
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerCssIndex = html.indexOf('/admin/invoices.css?v=20260926-figma1');
+const ownerCssIndex = html.indexOf('/admin/invoices.css?v=20260927-simple1');
 if (foundationIndex < 0 || ownerCssIndex < 0 || foundationIndex > ownerCssIndex) {
   failures.push('la base visual compartida debe cargar antes de invoices.css');
 }
@@ -82,6 +83,7 @@ for (const selector of [
   '.invoices-table-head',
   '.invoice-row',
   '.invoice-row-actions',
+  '.invoice-more-actions',
   '.invoice-form-section',
   '.invoice-detail-summary',
   '.invoice-detail-section',
@@ -111,6 +113,8 @@ for (const text of [
   "console.error('INVOICES_UI_FAILED'",
   'function renderMetrics()',
   'function renderList()',
+  'function updateFilterControls()',
+  "invoiceActionButton(invoice, 'detail', 'Abrir factura')",
   'function openDetail(id)',
   'function openPayment(id)',
   'function openForSalesOrder(salesOrderId)',
@@ -124,7 +128,7 @@ for (const text of [
   "can(invoice, 'issue')",
   "can(invoice, 'void')",
   "canPayment(payment, 'reverse')",
-  "tab.setAttribute('aria-pressed', String(active))"
+  "$('invoiceView').addEventListener('change'"
 ]) requireText(owner, text, `owner de Facturación ${text}`);
 
 if ((owner.match(/error\?\.message/g) || []).length !== 1) {
@@ -211,179 +215,9 @@ class FakeElement {
 const fixtureNodes = new Map();
 for (const id of [
   'invoicePageMsg', 'metrics', 'invoiceResultCount', 'invoiceList', 'newInvoice',
-  'invoicesReadOnlyNote', 'invoiceLastUpdated', 'search', 'clearInvoiceFilters', 'refresh',
+  'invoicesReadOnlyNote', 'invoiceLastUpdated', 'search', 'invoiceView', 'clearInvoiceFilters', 'refresh',
   'iSalesOrder', 'iIssueDate', 'iDueDate', 'iNotes', 'invoiceLines', 'invoiceMsg',
   'saveInvoice', 'detailTitle', 'detailSubtitle', 'detailBody', 'detailActions', 'detailMsg',
   'paymentTitle', 'paymentSubtitle', 'pAmount', 'pDate', 'pMethod', 'pReference', 'pNotes',
   'saveBalance', 'balanceTarget', 'balanceAmount', 'balanceTitle', 'balanceCopy', 'balanceTargetWrap', 'balanceRefundWrap', 'balanceDate', 'balanceMethod', 'balanceReference', 'balanceReason', 'balanceMsg', 'balanceSummary', 'saveCredit', 'creditLines', 'creditTitle', 'creditReason', 'creditSummary', 'creditMsg', 'savePayment', 'paymentMsg', 'decisionTitle', 'decisionCopy', 'decisionAccept',
-  'decisionReasonWrap', 'decisionReason', 'decisionMsg', 'invoiceRetry'
-]) fixtureNodes.set(id, new FakeElement(id));
-
-for (const id of ['invoiceModal', 'detailModal', 'balanceModal', 'creditModal', 'paymentModal', 'decisionModal']) {
-  fixtureNodes.set(id, new FakeElement(id, 'modal', 'hidden'));
-}
-const tabs = ['open', 'draft', 'paid', 'all'].map(view => {
-  const node = new FakeElement(`tab-${view}`, 'btn', ...(view === 'open' ? ['active'] : []));
-  node.dataset.view = view;
-  return node;
-});
-const body = new FakeElement('body', 'erp-module-page', 'erp-module-invoices');
-const documentListeners = new Map();
-
-const fixtureWindow = {
-  addEventListener() {},
-  removeEventListener() {},
-  dispatchEvent() {}
-};
-fixtureWindow.parent = fixtureWindow;
-fixtureWindow.top = fixtureWindow;
-
-let fixtureFetches = 0;
-const fixtureInvoice = {
-  id: 'invoice-1',
-  invoice_number: 'INV-<100>',
-  sales_order_id: 'sale-1',
-  issue_date: '2026-09-03',
-  due_date: '2026-09-20',
-  currency: 'USD',
-  status: 'issued',
-  notes: 'Nota <privada>',
-  client: { company: 'Cliente <Prueba>' },
-  sales_order: { id: 'sale-1', so_number: 'SO-100', customer_reference: 'REF-100' },
-  financial: { total: 1000, paid_amount: 250, balance_due: 750, payment_status: 'partial' },
-  items: [{ id: 'item-1', sales_order_item_id: 'sale-item-1', description: 'Producto <Prueba>', quantity: 10, unit: 'cajas', unit_price: 100, line_total: 1000 }],
-  payments: [{ id: 'payment-1', amount: 250, currency: 'USD', payment_date: '2026-09-03', method: 'wire', reference_number: 'WIRE-1', status: 'posted', capabilities: { actions: { reverse: { allowed: true } } } }],
-  capabilities: { actions: { record_payment: { allowed: true }, edit: { allowed: false }, issue: { allowed: false }, void: { allowed: false } } }
-};
-
-vm.runInNewContext(owner, {
-  URLSearchParams,
-  crypto: webcrypto,
-  console,
-  CustomEvent: class CustomEvent { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } },
-  Element: FakeElement,
-  HTMLElement: FakeElement,
-  requestAnimationFrame: callback => callback(),
-  document: {
-    body,
-    activeElement: new FakeElement('active'),
-    getElementById: id => fixtureNodes.get(id) || null,
-    addEventListener: (type, handler) => documentListeners.set(type, handler),
-    querySelector: selector => selector === '.modal:not(.hidden)'
-      ? ['decisionModal', 'balanceModal', 'creditModal', 'paymentModal', 'invoiceModal', 'detailModal'].map(id => fixtureNodes.get(id)).find(node => !node.classList.contains('hidden')) || null
-      : null,
-    querySelectorAll: selector => {
-      if (selector === '[data-view]') return tabs;
-      if (selector === '.modal') return ['invoiceModal', 'detailModal', 'balanceModal', 'creditModal', 'paymentModal', 'decisionModal'].map(id => fixtureNodes.get(id));
-      if (selector === '[data-invoice-line]') return [];
-      return [];
-    }
-  },
-  fetch: async (url, options = {}) => {
-    fixtureFetches += 1;
-    if (String(options.method || 'GET').toUpperCase() !== 'GET') throw new Error('El fixture UX-7 no permite mutaciones');
-    return {
-      ok: true,
-      status: 200,
-      json: async () => ({
-        invoices: [fixtureInvoice],
-        sales_orders: [{
-          id: 'sale-1',
-          so_number: 'SO-100',
-          currency: 'USD',
-          client: { company: 'Cliente <Prueba>' },
-          items: [{ id: 'sale-item-1', ordered_quantity: 10, unit: 'cajas', unit_price: 100, product: { sku: 'SKU-1', name: 'Producto' }, invoice_progress: { available_to_invoice_quantity: 10 } }]
-        }],
-        metrics: { invoice_count: 1, draft_count: 0, paid_count: 0, overdue_count: 0, receivable_by_currency: [{ currency: 'USD', amount: 750 }] },
-        write_access: true
-      })
-    };
-  },
-  localStorage: { getItem: key => key === 'export_mca_token' ? 'fixture-token' : null, removeItem: () => {} },
-  location: { search: '?embedded=1', replace() {} },
-  window: fixtureWindow,
-  parent: fixtureWindow
-}, { filename: `${files.owner}:fixture` });
-
-await new Promise(resolve => setTimeout(resolve, 0));
-await new Promise(resolve => setTimeout(resolve, 0));
-
-if (fixtureFetches !== 1) failures.push(`Facturación debe consultar una vez su bootstrap al iniciar; consultó ${fixtureFetches}`);
-if (!fixtureNodes.get('invoiceList').innerHTML.includes('INV-&lt;100&gt;')) failures.push('Facturación no escapa ni presenta la factura del bootstrap');
-if (!fixtureNodes.get('invoiceList').innerHTML.includes('Cliente &lt;Prueba&gt;')) failures.push('Facturación no escapa ni presenta el cliente');
-if (!fixtureNodes.get('invoiceList').innerHTML.includes('data-invoice-action="payment"')) failures.push('Facturación no presenta la acción permitida record_payment');
-if (fixtureNodes.get('invoiceList').innerHTML.includes('data-invoice-action="void"')) failures.push('Facturación presenta la acción void denegada por capabilities');
-if (!fixtureNodes.get('metrics').innerHTML.includes('Por cobrar')) failures.push('Facturación no presenta las cinco métricas financieras');
-if (fixtureNodes.get('invoiceResultCount').textContent !== '1 factura') failures.push('Facturación no actualiza el contador de resultados');
-if (fixtureNodes.get('newInvoice').hidden) failures.push('Facturación oculta la creación pese a write_access');
-
-fixtureWindow.InvoicesModule?.openInvoice('invoice-1');
-if (fixtureNodes.get('detailModal').classList.contains('hidden')) failures.push('El owner canónico no abre el detalle de Facturación');
-if (!fixtureNodes.get('detailBody').innerHTML.includes('Producto &lt;Prueba&gt;')) failures.push('El detalle no escapa ni presenta las líneas facturadas');
-if (!fixtureNodes.get('detailBody').innerHTML.includes('WIRE-1')) failures.push('El detalle no conserva los cobros aplicados');
-
-fixtureWindow.InvoicesModule?.openCollection('invoice-1');
-if (fixtureNodes.get('paymentModal').classList.contains('hidden')) failures.push('El owner canónico no abre el cobro permitido');
-
-for (const text of [
-  "authorizeAdmin(req,res,req.method==='GET'?'finance.read':'finance.write')",
-  'loadInvoiceFinanceCapabilityMaps',
-  "capabilities:capabilityBundle.invoice_capabilities.get",
-  "supabase('rpc/create_invoice_plan'",
-  "supabase('rpc/replace_invoice_plan'",
-  "supabase('rpc/transition_invoice'",
-  "return fail(res,500,'No se pudo procesar Facturación. Intenta nuevamente.'"
-]) requireText(invoicesApi, text, `API canónica de Facturación ${text}`);
-
-for (const text of [
-  "authorizeAdmin(req,res,'finance.write')",
-  "supabase('rpc/register_invoice_payment'",
-  "supabase('rpc/reverse_invoice_payment'",
-  "return fail(res,500,'No se pudo procesar el cobro. Intenta nuevamente.'"
-]) requireText(paymentsApi, text, `API canónica de Cobros ${text}`);
-
-for (const text of [
-  "callEmbedded('invoicesSection','InvoicesModule.openInvoice'",
-  "callEmbedded('invoicesSection','InvoicesModule.openCollection'",
-  "callEmbedded('invoicesSection','InvoicesModule.openForSalesOrder'"
-]) requireText(navigation, text, `navegación directa ${text}`);
-forbid(navigation, /CONTEXT_SECTIONS[^;]*invoicesSection/, 'Facturación sigue recibiendo el bridge visual compartido');
-forbid(navigation, /openInvoice[^\n]*installBridge\('invoicesSection'\)/, 'openInvoice todavía inyecta el bridge anterior');
-forbid(bridge, /function initInvoices\s*\(/, 'el bridge conserva un segundo owner de Facturación');
-forbid(bridge, /\/admin\/invoices\.html/, 'el bridge todavía se activa dentro de Facturación');
-requireText(contextualGate, "InvoicesModule.openInvoice", 'gate contextual actualizado para el owner de Facturación');
-requireText(autoRefresh, "invoices: ['invoicesSection','costsSection','payablesSection','reportsSection']", 'auto-refresh conserva dependencias de Facturación');
-
-for (const text of [
-  'admin/invoices.html',
-  'admin/invoices.css',
-  'admin/invoices.js',
-  'admin/operational-navigation.js',
-  'admin/operational-context-bridge.js',
-  'scripts/check-ux7-invoices-visual-owner.mjs',
-  'node scripts/check-ux7-invoices-visual-owner.mjs',
-  'node scripts/check-ux6-invoices-presentation.mjs',
-  'node scripts/check-ux5-invoice-actions.mjs',
-  'node scripts/check-contextual-sync.mjs',
-  'node scripts/check-frontend-ownership.mjs',
-  'node scripts/check-admin-shell-resilience.mjs',
-  'node scripts/audit-b9-api-boundaries.mjs',
-  'node scripts/check-b9-database-privileges.mjs',
-  'node scripts/check-b9-public-boundaries.mjs',
-  'node scripts/check-integrations.mjs'
-]) requireText(workflow, text, `workflow ${text}`);
-
-const openingBraces = (styles.match(/{/g) || []).length;
-const closingBraces = (styles.match(/}/g) || []).length;
-if (openingBraces !== closingBraces) failures.push(`invoices.css está desbalanceado: ${openingBraces}/${closingBraces}`);
-
-if (failures.length) {
-  console.error('UX-7 Invoices visual owner gate failed:');
-  failures.forEach(failure => console.error(`- ${failure}`));
-  process.exit(1);
-}
-
-console.log('UX-7 Invoices visual owner gate passed.');
-console.log('- Facturación usa los owners canónicos invoices.html, invoices.css e invoices.js.');
-console.log('- Crear, editar, emitir, cobrar, anular y revertir siguen exactamente las capabilities del backend.');
-console.log('- La tabla desplaza internamente y el iframe espera la sesión del shell sin montar otro login.');
+  'decisionReasonWrap', 'decisionReason', 'decisionMs
