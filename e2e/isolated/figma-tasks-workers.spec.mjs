@@ -47,7 +47,7 @@ test('Workers open monthly salary and tips without writing payroll data',async({
  expect(await page.evaluate(()=>window.__profitabilityRequested)).toEqual(['company']);
  await page.locator('#workersCreateButton').click();
  await expect(page.locator('.workers-payroll-note')).toContainText('cada mes');
- await page.locator('[data-worker-modal-close]').click();
+ await page.locator('.workers-modal-actions [data-worker-modal-close]').click();
  expect(await writes(page)).toEqual([]);
 });
 test('Workers hide the salary shortcut without finance read access',async({page})=>{
