@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 5408)
+Total output lines: 436
+
 import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
@@ -42,7 +45,7 @@ const workflow = read(files.workflow);
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/reports.css?v=20260926-figma1',
   '/admin/reports.js?v=20260926-figma1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed3',
+  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1',
   'class="module-hero reports-page-head"',
   'id="reportsPageTitle">Reportes',
   'id="reportLastUpdated"',
@@ -231,47 +234,7 @@ function executeReports({ sessionToken = '', search = '?embedded=1', responseDat
     'reportMessage','currency','clientId','supplierId','productId','datasetTabs','startDate','endDate','rowLimit',
     'reportMeta','reportDatasetMetric','reportRowsMetric','reportBasisMetric','reportCurrencyMetric','reportFiltersMetric',
     'reportScope','reportDataTitle','reportDataDescription','reportResultCount','reportLastUpdated','reportTable',
-    'refreshReport','exportReport','clearFilters','applyFilters'
-  ];
-  const nodes = new Map(ids.map(id => [id,new FakeElement(id)]));
-  nodes.get('rowLimit').value = '1000';
-  const dimensions = ['period','currency','client','supplier','product'].map(value => {
-    const node = new FakeElement(`dimension-${value}`);
-    node.dataset.filterDimension = value;
-    return node;
-  });
-  const listeners = new Map();
-  const redirects = [];
-  const requests = [];
-  const downloads = [];
-  const document = {
-    getElementById:id => nodes.get(id) || null,
-    querySelectorAll:selector => selector === '[data-filter-dimension]' ? dimensions : [],
-    createElement:() => { const link=new FakeElement('created');downloads.push(link);return link; },
-    body:{ appendChild() {} }
-  };
-  const location = { search, replace:path => redirects.push(`self:${path}`) };
-  const window = {
-    addEventListener:(type,handler) => listeners.set(type,handler),
-    removeEventListener:type => listeners.delete(type),
-    dispatchEvent() {},
-    location
-  };
-  window.top = { location:{ replace:path => redirects.push(`top:${path}`) } };
-  window.parent = window;
-  const localStorage = {
-    getItem:key => key === 'export_mca_token' ? sessionToken : null,
-    removeItem() {}
-  };
-  const fetch = async url => {
-    requests.push(String(url));
-    if(fetchResponse)return fetchResponse(String(url));
-    return { status:200, ok:true, json:async () => responseData || {}, headers:{ get:() => '' } };
-  };
-  const context = {
-    window, parent:window, document, location, localStorage, fetch,
-    URL, URLSearchParams, Intl, Date, console,
-    CustomEvent:class { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } }
+    '…408 tokens truncated…omEvent:class { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } }
   };
   vm.runInNewContext(owner,context,{filename:files.owner});
   return { nodes, listeners, redirects, requests, downloads, window, setSession:value=>{sessionToken=value;} };

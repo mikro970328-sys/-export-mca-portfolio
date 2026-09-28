@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 5707)
+Total output lines: 408
+
 import fs from 'node:fs';
 import vm from 'node:vm';
 
@@ -52,7 +55,7 @@ for (const text of [
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/payables.css?v=20260926-figma1',
   '/admin/payables.js?v=20260926-figma1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed3',
+  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1',
   'class="module-hero payables-page-head"',
   'id="payablesLastUpdated"',
   'id="metrics" class="metrics payables-metrics"',
@@ -221,50 +224,7 @@ class FakeElement {
 
 const fixtureNodes = new Map();
 for (const id of [
-  'payablesPageMsg', 'metrics', 'payablesResultCount', 'list', 'newBill', 'newPayment',
-  'newAdvancePayment', 'payablesReadOnlyNote', 'payablesLastUpdated', 'search',
-  'clearPayablesFilters', 'refresh', 'viewTabs', 'bPO', 'bSupplierInvoice', 'bDate',
-  'bDue', 'bNotes', 'billLines', 'billCalculatedTotal', 'billMsg', 'saveBill',
-  'paymentTitle', 'paymentSubtitle', 'pPO', 'pAmount', 'pDate', 'pMethod', 'pReference',
-  'pNotes', 'pOpenBalanceHint', 'paymentMsg', 'savePayment', 'allocationTitle',
-  'allocationSubtitle', 'allocationBills', 'allocationMsg', 'saveAllocation', 'reverseTitle',
-  'rReason', 'reverseMsg', 'saveReverse', 'detailTitle', 'detailSubtitle', 'detailBody',
-  'detailTraceability', 'detailTraceabilityActions', 'detailActions', 'detailMsg',
-  'decisionTitle', 'decisionCopy', 'decisionAccept', 'decisionMsg', 'payablesRetry'
-]) fixtureNodes.set(id, new FakeElement(id));
-
-for (const id of ['billModal', 'paymentModal', 'allocationModal', 'reverseModal', 'detailModal', 'decisionModal']) {
-  fixtureNodes.set(id, new FakeElement(id, 'modal', 'hidden'));
-}
-const entityTabs = ['bills', 'payments'].map(entity => {
-  const node = new FakeElement(`entity-${entity}`, 'btn', ...(entity === 'bills' ? ['active'] : []));
-  node.dataset.entity = entity;
-  return node;
-});
-const body = new FakeElement('body', 'erp-module-page', 'erp-module-payables');
-const documentListeners = new Map();
-const fixtureWindow = { addEventListener() {}, removeEventListener() {}, dispatchEvent() {} };
-fixtureWindow.parent = fixtureWindow;
-fixtureWindow.top = fixtureWindow;
-fixtureWindow.APTraceability = {
-  billByNumber: async () => ({
-    supplier_id: 'supplier-1', purchase_order_id: 'po-1', po_number: 'PO-100',
-    receipts: [{ receipt_number: 'WR-100' }], payments: [{ supplier_payment_id: 'payment-1', payment_number: 'SP-100' }]
-  }),
-  paymentByNumber: async () => null,
-  openSupplier() {}, openPurchase() {}, openReceipt() {}, openBill() {}, openPayment() {}
-};
-
-const fixtureBills = [
-  {
-    id: 'bill-usd', bill_number: 'SB-<USD>', supplier_invoice_number: 'V-100', purchase_order_id: 'po-1', bill_date: '2026-09-03', currency: 'USD', status: 'posted', notes: 'Nota <privada>',
-    supplier: { legal_name: 'Proveedor <Uno>' }, purchase_order: { id: 'po-1', po_number: 'PO-100', supplier_reference: 'REF-100' },
-    financial: { bill_total: 150, paid_amount: 50, balance_due: 100, payment_status: 'partial', overdue: false },
-    items: [{ id: 'line-1', product: { name: 'Producto <Prueba>' }, billed_quantity: 2, unit: 'cajas', unit_cost: 75, po_unit_cost_snapshot: 70, line_total: 150, pricing_mode: 'unit' }],
-    capabilities: { actions: { pay: { allowed: true }, edit: { allowed: false }, post: { allowed: false }, void: { allowed: false } } }
-  },
-  {
-    id: 'bill-eur', bill_number: 'SB-EUR', supplier_invoice_number: 'V-200', purchase_order_id: 'po-2', bill_date: '2026-09-03', currency: 'EUR', status: 'posted',
+  'payabl…707 tokens truncated…ber: 'V-200', purchase_order_id: 'po-2', bill_date: '2026-09-03', currency: 'EUR', status: 'posted',
     supplier: { legal_name: 'Proveedor Europa' }, purchase_order: { id: 'po-2', po_number: 'PO-200' },
     financial: { bill_total: 70, paid_amount: 0, balance_due: 70, payment_status: 'unpaid', overdue: true }, items: [],
     capabilities: { actions: { pay: { allowed: false }, edit: { allowed: false }, post: { allowed: false }, void: { allowed: false } } }

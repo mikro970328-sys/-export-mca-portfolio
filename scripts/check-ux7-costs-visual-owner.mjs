@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 5418)
+Total output lines: 527
+
 import fs from 'node:fs';
 import vm from 'node:vm';
 
@@ -49,7 +52,7 @@ const workflow = read(files.workflow);
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/costs.css?v=20260927-simple1',
   '/admin/costs.js?v=20260927-simple1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed3',
+  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1',
   'class="module-hero costs-page-head"',
   'id="costsPageTitle">Gastos y rentabilidad',
   'class="costs-hero-state costs-visually-hidden"',
@@ -245,55 +248,7 @@ class FakeElement {
 const fixtureNodes = new Map();
 [
   'pageMsg', 'metrics', 'newCharge', 'costsReadOnlyNote', 'costsLastUpdated',
-  'costsListTitle', 'chargeHelp', 'chargeTotalPreview', 'allocationPreview', 'costsResultCount', 'clearCostFilters', 'search', 'refresh', 'content',
-  'cCategory', 'cStage', 'cDate', 'cAmount', 'cCurrency', 'cSupplier',
-  'cReference', 'cNotes', 'allocationEditor', 'addAllocation', 'saveCharge',
-  'chargeTitle', 'chargeMsg', 'detailTitle', 'detailSubtitle', 'detailBody',
-  'detailActions', 'detailMsg', 'profitTraceTitle', 'profitTraceSubtitle',
-  'profitTraceBody', 'costDecisionTitle', 'costDecisionCopy', 'costDecisionAccept',
-  'costDecisionCancel', 'costDecisionMsg', 'costsRetry', 'profitabilityRetry'
-].forEach(id => fixtureNodes.set(id, new FakeElement(id)));
-['chargeModal', 'detailModal', 'profitTraceModal', 'costDecisionModal'].forEach(id => {
-  fixtureNodes.set(id, new FakeElement(id, 'modal', 'hidden'));
-});
-
-const viewTabs = ['charges', 'landed', 'cogs', 'profitability'].map(view => {
-  const tab = new FakeElement('view-' + view, 'btn', ...(view === 'charges' ? ['active'] : []));
-  tab.dataset.view = view;
-  return tab;
-});
-const documentListeners = new Map();
-const fixtureWindow = {
-  addEventListener() {},
-  removeEventListener() {},
-  dispatchEvent() {}
-};
-fixtureWindow.parent = fixtureWindow;
-fixtureWindow.top = fixtureWindow;
-
-const fixtureCharge = {
-  id: 'cost-1',
-  cost_number: 'CC-<100>',
-  category: 'ocean_freight',
-  stage: 'inbound',
-  amount: 1250,
-  currency: 'USD',
-  incurred_date: '2026-09-03',
-  supplier_id: 'supplier-1',
-  reference: 'REF-<1>',
-  status: 'draft',
-  notes: 'Nota <privada>',
-  allocations: [{
-    id: 'allocation-1',
-    amount: 1250,
-    basis: 'manual',
-    purchase_order_id: 'po-1',
-    notes: 'Distribución <segura>'
-  }],
-  progress: {
-    allocation_status: 'allocated',
-    allocated_amount: 1250,
-    unallocated_amount: 0
+  'costsListTitle', 'chargeHelp', 'chargeTotalPreview', 'allocationPreview', 'costsResultCount', 'clearCostFilters', 'search'…418 tokens truncated…: 0
   },
   capabilities: {
     actions: {
