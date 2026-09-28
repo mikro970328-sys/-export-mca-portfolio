@@ -5,6 +5,7 @@ const read = path => fs.readFileSync(path,'utf8');
 const assert = (condition,message) => { if(!condition) throw new Error(message); };
 
 const migration=read('supabase/migrations/20260830223000_p11_executive_dashboard_profitability.sql');
+const snapshotMigration=read('supabase/migrations/20260928232500_admin_dashboard_snapshot.sql');
 const api=read('api/dashboard.js');
 const executiveApi=read('api/_executive-dashboard.js');
 const ui=read('admin/dashboard-operational-state.js');
@@ -30,14 +31,17 @@ assert(migration.includes('grant select on public.executive_operational_attentio
 assert(migration.includes('revoke all on function public.executive_dashboard_rollup'), 'P11: RPC debe seguir cerrado');
 assert(migration.includes('grant execute on function public.executive_dashboard_rollup') && migration.includes('to service_role'), 'P11: RPC no está reservado a service_role');
 
+assert(snapshotMigration.toLowerCase().includes('create or replace function public.admin_dashboard_snapshot'), 'P11: falta el snapshot de dashboard');
+assert(snapshotMigration.toLowerCase().includes('revoke all on function public.admin_dashboard_snapshot'), 'P11: snapshot debe estar cerrado a clientes');
+assert(snapshotMigration.toLowerCase().includes('grant execute on function public.admin_dashboard_snapshot') && snapshotMigration.toLowerCase().includes('to service_role'), 'P11: snapshot debe reservarse al servidor');
 assert(api.includes("authorizeAdmin(req,res,'dashboard.read')"), 'P11: dashboard API debe revalidar dashboard.read');
-assert(api.includes("hasPermission(admin,'clients.read')"), 'P11: filtro cliente no es permission-aware');
-assert(api.includes("hasPermission(admin,'procurement.read')"), 'P11: filtro proveedor no es permission-aware');
-assert(api.includes("hasPermission(admin,'tasks.read')"), 'P11: supervisión tasks no es permission-aware');
-assert(api.includes("hasPermission(admin,'notifications.read')"), 'P11: alertas no son permission-aware');
-assert(api.includes("supabase('executive_operational_attention'"), 'P11: API no consume read model P8/P9');
-assert(api.includes('filter_options'), 'P11: faltan filtros backend');
+assert(api.includes("supabase('admin_effective_permissions'"), 'P11: el dashboard debe leer permisos una sola vez');
+assert(api.includes("can('clients.read')") && api.includes("can('procurement.read')"), 'P11: opciones de filtro deben respetar permisos');
+assert(api.includes("can('tasks.read')") && api.includes("can('notifications.read')"), 'P11: atención debe respetar permisos');
+assert(api.includes('rpc/admin_dashboard_snapshot'), 'P11: overview debe venir del snapshot consolidado');
+assert(!/supabase\('(clients|products|suppliers|shipments|operations|warehouse_receipts|loads|warehouses|inventory_source_balances|documents|executive_operational_attention|executive_(invoice|sales_order|purchase_order|supplier_bill)_kpi_source)'/.test(api), 'P11: la ruta no debe descargar filas para agregarlas en JavaScript');
 assert(api.includes('loadExecutiveDashboard(req.query || {})'), 'P11: API debe conservar el owner financiero B8');
+assert(api.includes('...overview'), 'P11: el contrato del dashboard debe conservar los datos de overview');
 assert(executiveApi.includes("rpc/executive_dashboard_rollup"), 'P11: finanzas no delegan al RPC B8');
 
 assert(!/expediente/i.test(ui), 'P11: Dashboard no puede reintroducir Expedientes');
