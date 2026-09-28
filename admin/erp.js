@@ -223,6 +223,13 @@
     removeLegacyAdminControls();
     let authenticatedShellReady = false;
     let dashboardLoadPromise = null;
+    let dashboardPreloadPromise = null;
+
+    if (currentUser && storedUserCan(currentUser,'dashboard.read')) {
+      dashboardPreloadPromise = window.api('/api/dashboard')
+        .then(data => ({ data }))
+        .catch(error => ({ error }));
+    }
 
     bootPromise = (async () => {
       await accessStylesPromise;
@@ -237,13 +244,26 @@
       authenticatedShellReady = true;
 
       if (accessCan('dashboard.read')) {
-        await loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style');
-        await loadScript('/admin/dashboard-operational-state.js?v=20260928-dashboard-parallel3', 'data-dashboard-operational-state');
+        await Promise.all([
+          loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style'),
+          loadScript('/admin/dashboard-operational-state.js?v=20260928-dashboard-parallel3', 'data-dashboard-operational-state')
+        ]);
         if (document.getElementById('dashboardSection')?.classList.contains('hidden') === false &&
             typeof window.initializeOperationalDashboard === 'function') {
           window.initializeOperationalDashboard();
-          dashboardLoadPromise = window.ExecutiveDashboard?.refresh?.() || null;
-          dashboardLoadPromise?.catch(error => console.error('[admin dashboard]', error));
+          if (dashboardPreloadPromise) {
+            dashboardLoadPromise = dashboardPreloadPromise.then(result => {
+              if (result.error) return window.ExecutiveDashboard?.refresh?.() || false;
+              window.renderStats?.(result.data);
+              return true;
+            }).catch(error => {
+              console.error('[admin dashboard]', error);
+              return false;
+            });
+          } else {
+            dashboardLoadPromise = window.ExecutiveDashboard?.refresh?.() || null;
+            dashboardLoadPromise?.catch(error => console.error('[admin dashboard]', error));
+          }
         }
       }
       if (accessCan('logistics.read')) {
@@ -272,7 +292,7 @@
       }
 
       window.ExportMcaAccessControl?.applyNavigation?.();
-      await loadScript('/admin/section-state.js?v=20260910-startup1', 'data-section-state');
+      await loadScript('/admin/section-state.js?v=20260928-startup-refresh1', 'data-section-state');
       await loadScript('/admin/operational-navigation.js?v=20260928-lazy-workspaces1', 'data-operational-navigation');
       await loadScript('/admin/ap-traceability.js?v=20260928-lazy-workspaces1', 'data-ap-traceability');
       await loadScript('/admin/admin-data-loader.js?v=20260928-dashboard-onview2', 'data-admin-data-loader');

@@ -35,10 +35,10 @@
 
   window.showSection = function (id, options = {}) {
     if (!canOpen(id)) return false;
-    originalShowSection(id);
+    const source = options?.source === 'startup' ? 'startup' : 'navigation';
+    originalShowSection(id, { source });
     refreshSectionOwner(id);
     localStorage.setItem(STORAGE_KEY, id);
-    const source = options?.source === 'startup' ? 'startup' : 'navigation';
     window.dispatchEvent(new CustomEvent('export-mca:section-changed', { detail: { id, source } }));
     return true;
   };

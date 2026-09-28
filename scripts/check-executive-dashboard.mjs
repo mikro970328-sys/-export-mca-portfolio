@@ -12,6 +12,8 @@ const ui=read('admin/dashboard-operational-state.js');
 const css=read('admin/dashboard-executive.css');
 const erp=read('admin/erp.js');
 const dataLoader=read('admin/admin-data-loader.js');
+const sectionState=read('admin/section-state.js');
+const shellRuntime=read('admin/admin-shell-runtime.js');
 
 assert(migration.includes('profitability.direct_cost_currency'), 'P11: source B8 no expone direct_cost_currency');
 assert(migration.includes('profitability.contribution_margin'), 'P11: source B8 no expone contribution_margin');
@@ -70,6 +72,10 @@ assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=2026092
 assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260928-dashboard-onview2'"), 'P11: bootstrap no carga owner de datos resiliente');
 assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');
 assert(dataLoader.includes('window.ExecutiveDashboard?.refresh'), 'P11: owner de datos no delega al owner visual P11');
+assert(erp.includes("window.api('/api/dashboard')"), 'P11: dashboard debe empezar a cargar antes de completar los módulos secundarios');
+assert(erp.includes('Promise.all(['), 'P11: los assets visuales del dashboard deben cargar en paralelo');
+assert(shellRuntime.includes("options?.source === 'startup'"), 'P11: al restaurar Inicio no debe pedir el mismo dashboard dos veces');
+assert(sectionState.includes('originalShowSection(id, { source })'), 'P11: section-state debe identificar la restauración de inicio');
 const coreStart=dataLoader.indexOf('async function loadCore()');
 const dashboardStart=dataLoader.indexOf('async function loadDashboard()');
 const coreSource=coreStart>=0&&dashboardStart>coreStart?dataLoader.slice(coreStart,dashboardStart):'';

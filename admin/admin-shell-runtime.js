@@ -112,7 +112,7 @@ function startEmbeddedWorkspace(id) {
   return frame;
 }
 
-function showSection(id) {
+function showSection(id, options = {}) {
   document.querySelectorAll('.app-section').forEach(section => {
     section.classList.toggle('hidden', section.id !== id);
   });
@@ -124,7 +124,9 @@ function showSection(id) {
     .find(button => button.dataset.section === id)?.dataset.navLabel;
   if (pageTitle) pageTitle.textContent = titles[id] || navigationLabel || 'EXPORT MCA';
   startEmbeddedWorkspace(id);
-  if (id === 'dashboardSection' && typeof window.ExportMcaAdminData?.loadDashboard === 'function') {
+  const dashboardState = window.ExecutiveDashboard?.getState?.();
+  const skipStartupDashboardRefresh = options?.source === 'startup' && Boolean(dashboardState?.loading || dashboardState?.data);
+  if (id === 'dashboardSection' && !skipStartupDashboardRefresh && typeof window.ExportMcaAdminData?.loadDashboard === 'function') {
     window.ExportMcaAdminData.loadDashboard().catch(error => {
       console.error('[admin dashboard]', error);
     });
