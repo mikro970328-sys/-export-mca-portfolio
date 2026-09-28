@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260920-speed3';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -188,7 +188,7 @@
     try{
       const loader=window.ExportMcaAdminData;
       if(typeof loader?.loadCore==='function')await loader.loadCore();
-      if(typeof loader?.loadDashboard==='function')await loader.loadDashboard();
+      if(typeof loader?.loadDashboard==='function'&&visibleSectionId()==='dashboardSection')await loader.loadDashboard();
       window.dispatchEvent(new CustomEvent('export-mca:mutation-settled',{detail:{reason,scope}}));
     }catch(error){
       console.warn('[auto-refresh] shell refresh failed',scope,error);
