@@ -71,19 +71,31 @@
   function openEmbeddedSection(config) {
     if (!config || !canEmbedded(config)) return false;
     const id = config.id;
-    if (typeof window.showSection === 'function') window.showSection(id);
-    else {
+    if (typeof window.showSection === 'function') {
+      if (window.showSection(id) === false) return false;
+    } else {
       document.querySelectorAll('.app-section').forEach(section => section.classList.toggle('hidden', section.id !== id));
       document.querySelectorAll('[data-section]').forEach(button => button.classList.toggle('active', button.dataset.section === id));
       localStorage.setItem('export_mca_current_section', id);
       window.scrollTo({ top:0 });
     }
+    loadEmbeddedFrame(config);
     const title = byId('pageTitle');
     if (title) title.textContent = config.label;
     syncActiveGroup(true);
     closeMobileMenu();
     window.dispatchEvent(new CustomEvent('export-mca:section-changed', { detail:{ id } }));
     return true;
+  }
+
+  function loadEmbeddedFrame(config) {
+    const frame = byId(config?.id)?.querySelector('iframe.embedded-workspace-frame');
+    if (!frame || frame.dataset.moduleStarted === 'true') return frame;
+    const src = frame.dataset.src || config.src;
+    if (!src) return frame;
+    frame.dataset.moduleStarted = 'true';
+    frame.src = src;
+    return frame;
   }
 
   function openEmbeddedById(id) {
@@ -132,7 +144,13 @@
         const section = document.createElement('section');
         section.id = config.id;
         section.className = 'app-section hidden';
-        section.innerHTML = `<iframe class="embedded-workspace-frame" src="${config.src}" title="${config.label}"></iframe>`;
+        section.innerHTML = `<div class="embedded-workspace-loading" role="status" aria-live="polite">Cargando ${config.label}…</div><iframe class="embedded-workspace-frame" data-src="${config.src}" title="${config.label}"></iframe>`;
+        const frame = section.querySelector('iframe.embedded-workspace-frame');
+        frame?.addEventListener('load', () => {
+          if (frame.dataset.moduleStarted !== 'true') return;
+          frame.dataset.moduleLoaded = 'true';
+          section.querySelector('.embedded-workspace-loading')?.setAttribute('hidden', '');
+        });
         main.appendChild(section);
       }
     }

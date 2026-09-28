@@ -31,7 +31,7 @@ const navigationJs=read(files.navigationJs);
 const dashboardCss=read(files.dashboardCss);
 const dashboardJs=read(files.dashboardJs);
 
-const themeRef='/admin/platform-theme.css?v=20260922-figma1';
+const themeRef='/admin/platform-theme.css?v=20260928-lazy-workspaces1';
 const navigationRef='/admin/navigation-shell.css?v=20260926-integration1';
 for(const ref of [themeRef,navigationRef])requireText(index,ref,ref);
 requireText(index,'<meta name="theme-color" content="#ffffff">','color del navegador');

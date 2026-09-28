@@ -42,6 +42,8 @@ for (const text of [
 
 for (const text of [
   "const LIVE_SYNC_PATH = '/api/live-updates'",
+  'function frameSectionVisible(frame)',
+  "if(frame?.dataset?.moduleLoaded==='true'&&current?.stale)",
   'const LIVE_SYNC_VISIBLE_MS = 10000',
   'const LIVE_SYNC_HIDDEN_MS = 120000',
   'function applyLiveSnapshot(payload)',
@@ -59,7 +61,7 @@ if (/SUPABASE_(?:SERVICE_ROLE|SECRET|ANON|PUBLISHABLE)|createClient\s*\(/.test(r
 
 for (const name of fs.readdirSync('admin').filter(name => name.endsWith('.html'))) {
   const html = read(`admin/${name}`);
-  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1')) {
+  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1')) {
     failures.push(`admin/${name}: conserva una versión anterior del runtime de sincronización`);
   }
 }
@@ -146,8 +148,31 @@ let coreRefreshes = 0;
 let dashboardRefreshes = 0;
 let taskRefreshes = 0;
 let activeSection = 'salesSection';
+const workspaceRefreshes = { sales:0, purchases:0 };
 class FixtureObserver { observe() {} disconnect() {} }
 class FixtureEvent { constructor(type, options={}) { this.type=type; this.detail=options.detail; } }
+function workspaceFrame(sectionId, name) {
+  const section={id:sectionId,classList:{contains:value=>value==='hidden'&&activeSection!==sectionId}};
+  const moduleKey=name==='sales'?'SalesModule':'PurchasesModule';
+  const win={
+    [`${moduleKey}`]:{async refresh(){workspaceRefreshes[name]+=1;}},
+    fetch:async()=>({ok:true}),
+    dispatchEvent(){},
+    CustomEvent:FixtureEvent
+  };
+  const doc={readyState:'complete',body:{},querySelectorAll:()=>[]};
+  return {
+    title:sectionId,
+    dataset:{moduleStarted:'true',moduleLoaded:'true'},
+    contentWindow:win,
+    contentDocument:doc,
+    closest:selector=>selector==='.app-section'?section:null,
+    addEventListener(){},
+    section
+  };
+}
+const workspaceFrames=[workspaceFrame('salesSection','sales'),workspaceFrame('purchasesSection','purchases')];
+const sections=new Map(workspaceFrames.map(frame=>[frame.section.id,frame.section]));
 const fixtureWindow = {
   addEventListener(type, handler) {
     if (!listeners.has(type)) listeners.set(type, []);
@@ -170,9 +195,15 @@ const fixtureDocument = {
   addEventListener(){},
   querySelector(selector){
     if(selector==='.app-section:not(.hidden)')return {id:activeSection};
+    const frameMatch=selector.match(/^#([^ ]+) iframe$/);
+    if(frameMatch)return workspaceFrames.find(frame=>frame.section.id===frameMatch[1])||null;
     return selector.startsWith('.modal')&&modalOpen?{}:null;
   },
-  querySelectorAll(selector){return selector.startsWith('.modal')&&modalOpen?[{getClientRects:()=>[{}]}]:[];}
+  querySelectorAll(selector){
+    if(selector==='.app-section iframe')return workspaceFrames;
+    return selector.startsWith('.modal')&&modalOpen?[{getClientRects:()=>[{}]}]:[];
+  },
+  getElementById(id){return sections.get(id)||null;}
 };
 const fixtureStorage = {
   getItem(){return '';},
@@ -216,6 +247,16 @@ live.queueExternalScopes([], 'modal-closed-test');
 await new Promise(resolve=>setTimeout(resolve,220));
 assert.equal(coreRefreshes,2,'el cambio aplazado debe aplicarse al cerrar el formulario');
 assert.equal(dashboardRefreshes,1,'el cambio aplazado debe actualizar Inicio si está visible');
+
+activeSection='salesSection';
+live.onSectionOpened('salesSection');
+await new Promise(resolve=>setTimeout(resolve,180));
+assert.equal(workspaceRefreshes.sales,1,'el módulo visible se actualiza por el cambio externo');
+assert.equal(workspaceRefreshes.purchases,0,'un módulo oculto no genera consultas de actualización');
+activeSection='purchasesSection';
+live.onSectionOpened('purchasesSection');
+await new Promise(resolve=>setTimeout(resolve,180));
+assert.equal(workspaceRefreshes.purchases,1,'un módulo oculto se pone al día al volver a abrirlo');
 
 live.announceMutation('sales',null);
 await new Promise(resolve=>setTimeout(resolve,220));

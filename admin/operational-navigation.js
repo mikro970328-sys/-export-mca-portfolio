@@ -117,8 +117,23 @@
       if(!script){script=doc.createElement('script');script.id='operationalContextBridgeScript';script.src=BRIDGE_SRC;script.async=false;script.onerror=()=>finish(false);(doc.head||doc.documentElement).appendChild(script);}
       timer=setTimeout(()=>finish(Boolean(win.OperationalContextBridge?.ready)),2500);
     });
+    if(frame.dataset?.moduleLoaded!=='true')return new Promise(resolve=>{
+      const onLoad=()=>{
+        if(frame.dataset?.moduleLoaded!=='true')return;
+        frame.removeEventListener('load',onLoad);
+        inject().then(resolve);
+      };
+      frame.addEventListener('load',onLoad);
+    });
     if(frame.contentDocument?.readyState==='complete')return inject();
-    return new Promise(resolve=>frame.addEventListener('load',()=>inject().then(resolve),{once:true}));
+    return new Promise(resolve=>{
+      const onLoad=()=>{
+        if(frame.dataset?.moduleLoaded!=='true')return;
+        frame.removeEventListener('load',onLoad);
+        inject().then(resolve);
+      };
+      frame.addEventListener('load',onLoad);
+    });
   }
   function installAllBridges(){CONTEXT_SECTIONS.forEach(id=>installBridge(id).catch(error=>console.error('[operational bridge]',id,error)));}
   function resolveMethod(win,path){
@@ -130,8 +145,13 @@
   function callEmbedded(sectionId,method,args=[]){
     const frame=frameFor(sectionId);if(!frame)return false;
     const invoke=()=>{try{const fn=resolveMethod(frame.contentWindow,method);if(!fn)return false;fn(...args);return true;}catch(error){console.error('[operational navigation embedded]',sectionId,method,error);return false;}};
-    if(frame.contentDocument?.readyState==='complete'){requestAnimationFrame(invoke);return true;}
-    frame.addEventListener('load',()=>requestAnimationFrame(invoke),{once:true});return true;
+    if(frame.dataset?.moduleLoaded==='true'&&frame.contentDocument?.readyState==='complete'){requestAnimationFrame(invoke);return true;}
+    const onLoad=()=>{
+      if(frame.dataset?.moduleLoaded!=='true')return;
+      frame.removeEventListener('load',onLoad);
+      requestAnimationFrame(invoke);
+    };
+    frame.addEventListener('load',onLoad);return true;
   }
   async function callContextEmbedded(sectionId,method,args=[]){const ready=await installBridge(sectionId);if(!ready)return false;const fn=resolveMethod(frameFor(sectionId)?.contentWindow,method);if(!fn)return false;fn(...args);return true;}
 

@@ -67,8 +67,23 @@
       }
       setTimeout(() => finish(Boolean(win.APContextBridge?.ready)), 2500);
     });
+    if (frame.dataset?.moduleLoaded !== 'true') return new Promise(resolve => {
+      const onLoad = () => {
+        if (frame.dataset?.moduleLoaded !== 'true') return;
+        frame.removeEventListener('load', onLoad);
+        inject().then(resolve);
+      };
+      frame.addEventListener('load', onLoad);
+    });
     if (frame.contentDocument?.readyState === 'complete') return inject();
-    return new Promise(resolve => frame.addEventListener('load', () => inject().then(resolve), { once:true }));
+    return new Promise(resolve => {
+      const onLoad = () => {
+        if (frame.dataset?.moduleLoaded !== 'true') return;
+        frame.removeEventListener('load', onLoad);
+        inject().then(resolve);
+      };
+      frame.addEventListener('load', onLoad);
+    });
   }
 
   function installAllBridges() {

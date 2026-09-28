@@ -79,6 +79,10 @@
       search('Ventas');
       visibleSections()[0].click();
       check(!byId('salesSection').classList.contains('hidden'), 'El resultado abre el destino original Ventas');
+      const salesFrame = byId('salesSection').querySelector('iframe.embedded-workspace-frame');
+      const invoicesFrame = byId('invoicesSection').querySelector('iframe.embedded-workspace-frame');
+      check(Boolean(salesFrame?.getAttribute('src')?.includes('sales.html')), 'Ventas comienza a cargar al abrirse');
+      check(!invoicesFrame?.hasAttribute('src'), 'Facturación permanece sin cargar hasta que se abra');
       check(byId('navigationSearch').value === '', 'Navegar restaura el menú completo');
       check(byId('pageContext').textContent === 'Comercial', 'El encabezado muestra el grupo activo');
       check(document.querySelectorAll('[aria-current="page"]').length === 1, 'Solo una sección está marcada como actual');
