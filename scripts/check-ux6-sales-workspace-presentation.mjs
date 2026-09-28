@@ -165,8 +165,7 @@ try {
   unplannedSale.capabilities.actions.allocate_load={allowed:true};
   unplannedSale.items=[{id:'unplanned-item',supply_plans:[]}];
   qa.fixture(unplannedSale);
-  assert.match(qa.nextAction().text,/Elige la ruta.*Asignar mercancía/,'An unplanned sale should point to choosing a delivery route');
-  assert.equal(qa.nextAction().actions.length,0,'Route selection should reuse the existing Asignar mercancía button');
+  assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'create_load,link_load','Sales without an explicit Direct Ship plan must preserve the existing warehouse flow');
 
   const warehouseSale=fixture('confirmed',false);
   warehouseSale.capabilities.actions.allocate_load={allowed:true};
