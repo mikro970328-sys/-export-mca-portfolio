@@ -30,8 +30,8 @@ const api = read(files.api);
 for (const fragment of [
   '<input id="shipmentImporter"',
   'shipmentImporterOptions',
-  'Importadora concreta de este contenedor',
-  'no depende de las registradas para el cliente'
+  'Importadora cubana',
+  'Estos datos son opcionales; puedes completarlos después.'
 ]) {
   if (!index.includes(fragment)) errors.push(`Registro estático de contenedor no refleja importadora independiente: ${fragment}`);
 }

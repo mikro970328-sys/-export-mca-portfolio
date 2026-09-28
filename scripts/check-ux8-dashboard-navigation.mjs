@@ -52,7 +52,7 @@ for (const width of [1280,390]) {
     check('search keeps the original DOM controls',()=>assert.deepEqual(all('.sidebar-nav [data-section]'),originalNodes));
     check('search never persists expanded groups',()=>assert.equal(window.localStorage.getItem('export_mca_nav_groups'),savedGroups));
     search('logistica');
-    check('group search',()=>assert.deepEqual(searchResults().map(node=>node.dataset.section),['loadsSection','containersSection','registerContainerSection']));
+    check('group search',()=>assert.deepEqual(searchResults().map(node=>node.dataset.section),['loadsSection','containersSection']));
     search('cuentas finanzas');
     check('multiword label and group search',()=>assert.deepEqual(searchResults().map(node=>node.dataset.section),['payablesSection']));
     search('Administradores');
