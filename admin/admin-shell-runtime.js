@@ -106,6 +106,11 @@ function showSection(id) {
   const navigationLabel = [...document.querySelectorAll('[data-section]')]
     .find(button => button.dataset.section === id)?.dataset.navLabel;
   if (pageTitle) pageTitle.textContent = titles[id] || navigationLabel || 'EXPORT MCA';
+  if (id === 'dashboardSection' && typeof window.ExportMcaAdminData?.loadDashboard === 'function') {
+    window.ExportMcaAdminData.loadDashboard().catch(error => {
+      console.error('[admin dashboard]', error);
+    });
+  }
   if (id === 'notificationsSection' && typeof window.loadNotifications === 'function') {
     window.loadNotifications();
   }
