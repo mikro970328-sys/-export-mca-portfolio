@@ -13,8 +13,8 @@ const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
 
 for(const text of [
-  '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1',
-  '/admin/erp.js?v=20260928-lazy-workspaces1'
+  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-parallel3',
+  '/admin/erp.js?v=20260928-dashboard-parallel3'
 ])requireText(shell,text,`shell ${text}`);
 
 for(const text of [
@@ -92,6 +92,8 @@ const listeners=new Map();
 let coreRefreshes=0;
 let dashboardRefreshes=0;
 let activeSection='salesSection';
+let blockCoreRefresh=false;
+let finishCoreRefresh=null;
 class FixtureObserver{observe(){} disconnect(){}}
 class FixtureEvent{constructor(type,options={}){this.type=type;this.detail=options.detail;}}
 const fixtureWindow={
@@ -99,7 +101,7 @@ const fixtureWindow={
   dispatchEvent(event){listeners.get(event.type)?.(event);},
   fetch:async()=>({ok:true}),
   ExportMcaAdminData:{
-    async loadCore(){coreRefreshes+=1;},
+    async loadCore(){coreRefreshes+=1;if(blockCoreRefresh)await new Promise(resolve=>{finishCoreRefresh=resolve;});},
     async loadDashboard(){dashboardRefreshes+=1;}
   }
 };
@@ -138,6 +140,14 @@ await fixtureWindow.fetch('/api/loads',{method:'POST'});
 await new Promise(resolve=>setTimeout(resolve,220));
 assert.equal(coreRefreshes,2,'una segunda mutación debe reconciliar los datos base del ERP');
 assert.equal(dashboardRefreshes,1,'el dashboard debe reconciliarse cuando está visible');
+blockCoreRefresh=true;
+await fixtureWindow.fetch('/api/loads',{method:'POST'});
+await new Promise(resolve=>setTimeout(resolve,220));
+assert.equal(coreRefreshes,3,'la tercera mutación debe iniciar la reconciliación base');
+assert.equal(dashboardRefreshes,2,'el dashboard visible debe actualizarse sin esperar la carga base completa');
+finishCoreRefresh?.();
+blockCoreRefresh=false;
+await new Promise(resolve=>setTimeout(resolve,40));
 
 if(failures.length){
   console.error('Live ERP refresh and Load flow check failed:\n'+failures.map(item=>`- ${item}`).join('\n'));

@@ -12,7 +12,7 @@ const loader=read('admin/admin-data-loader.js');
 const dashboard=read('admin/dashboard-operational-state.js');
 const inbox=read('admin/notification-inbox.js');
 
-requireText(erp,"/admin/admin-data-loader.js?v=20260830-hotfix2",'loader resiliente v2 en bootstrap');
+requireText(erp,"/admin/admin-data-loader.js?v=20260928-dashboard-onview2",'loader actual en bootstrap');
 requireText(erp,'const coreResult = await window.ExportMcaAdminData.loadCore();','carga núcleo bajo owner dedicado');
 requireText(erp,'authenticatedShellReady = true;','frontera de shell autenticado');
 requireText(erp,'if (!authenticatedShellReady) {','solo fallos previos a autenticación pueden volver al login');
@@ -20,14 +20,19 @@ requireText(erp,"window.dispatchEvent(new CustomEvent('export-mca:admin-degraded
 requireText(erp,'revealAdminShell();','revelado explícito del shell');
 requireText(erp,'ensureVisibleSection();','garantía de sección visible');
 requireText(erp,'window.ExportMcaAdminData.loadDashboard().catch','dashboard desacoplado del boot');
+requireText(erp,'dashboardLoadPromise = window.ExecutiveDashboard?.refresh?.() || null;','inicio temprano del dashboard');
 forbid(erp,/await\s+window\.loadAll\s*\(/,'erp.js no debe volver a bloquear boot con loadAll legacy');
 requireText(shellRuntime,"?.dataset.navLabel",'título dinámico desde la navegación canónica');
 
 const revealIndex=erp.indexOf('revealAdminShell();');
-const dataLoaderIndex=erp.indexOf("loadScript('/admin/admin-data-loader.js?v=20260830-hotfix2'");
+const dataLoaderIndex=erp.indexOf("loadScript('/admin/admin-data-loader.js?v=20260928-dashboard-onview2'");
 const loadCoreIndex=erp.indexOf('const coreResult = await window.ExportMcaAdminData.loadCore();');
 if(revealIndex<0||dataLoaderIndex<0||loadCoreIndex<0||!(revealIndex<dataLoaderIndex&&revealIndex<loadCoreIndex)){
   failures.push('el shell autenticado debe revelarse antes de módulos/datos no críticos');
+}
+const earlyDashboardIndex=erp.indexOf('dashboardLoadPromise = window.ExecutiveDashboard?.refresh?.() || null;');
+if(earlyDashboardIndex<0||loadCoreIndex<0||earlyDashboardIndex>loadCoreIndex){
+  failures.push('el dashboard visible debe iniciar su petición antes de esperar los datos núcleo');
 }
 
 requireText(loader,"request('/api/clients')",'carga de clientes');

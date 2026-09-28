@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const read = path => fs.readFileSync(path,'utf8');
 const assert = (condition,message) => { if(!condition) throw new Error(message); };
@@ -61,8 +62,8 @@ assert(ui.includes('renderError()'), 'P11: dashboard debe tener error recuperabl
 assert(ui.includes('dashboardRetry'), 'P11: dashboard debe ofrecer reintento sin bloquear el ERP');
 assert(css.includes('.executive-finance-grid'), 'P11: stylesheet del dashboard incompleto');
 assert(erp.includes("loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2'"), 'P11: bootstrap no carga stylesheet dashboard');
-assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260926-figma2'"), 'P11: bootstrap no carga owner P11');
-assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260830-hotfix2'"), 'P11: bootstrap no carga owner de datos resiliente');
+assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260928-dashboard-parallel3'"), 'P11: bootstrap no carga owner P11');
+assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260928-dashboard-onview2'"), 'P11: bootstrap no carga owner de datos resiliente');
 assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');
 assert(dataLoader.includes('window.ExecutiveDashboard?.refresh'), 'P11: owner de datos no delega al owner visual P11');
 const coreStart=dataLoader.indexOf('async function loadCore()');
@@ -71,3 +72,35 @@ const coreSource=coreStart>=0&&dashboardStart>coreStart?dataLoader.slice(coreSta
 assert(coreSource && !coreSource.includes('/api/dashboard'), 'P11: dashboard no puede bloquear la carga núcleo del shell');
 
 console.log('P11 executive dashboard B8.3: OK');
+
+const dashboardPending=[];
+const dashboardSection={innerHTML:''};
+const dashboardWindow={
+  __executiveDashboardInstalled:false,
+  api(){return new Promise(resolve=>dashboardPending.push(resolve));},
+  addEventListener(){},
+  ExportMcaIcons:{svg:()=>''}
+};
+const dashboardDocument={
+  getElementById:id=>id==='dashboardSection'?dashboardSection:null,
+  querySelectorAll:()=>[],
+  addEventListener(){}
+};
+const dashboardStorage={getItem:()=>null};
+vm.runInNewContext(ui,{window:dashboardWindow,document:dashboardDocument,localStorage:dashboardStorage,Intl,Date,Map,Set,URLSearchParams,Promise,Number,String,Math,setTimeout:()=>1,clearTimeout(){}},{filename:'admin/dashboard-operational-state.js'});
+const payload=generatedAt=>({generated_at:generatedAt,stats:{},executive:{period:{},activity_by_currency:[],balances_by_currency:[],exceptions:{}},recent_activity:[],filter_options:{}});
+const firstRefresh=dashboardWindow.ExecutiveDashboard.refresh();
+await Promise.resolve();
+assert(dashboardPending.length===1,'el primer refresco debe iniciar una sola petición');
+const queuedRefresh=dashboardWindow.ExecutiveDashboard.refresh();
+assert(typeof queuedRefresh?.then==='function','un refresco concurrente debe esperar su lectura en cola');
+dashboardPending[0](payload('2026-09-28T12:00:00.000Z'));
+await firstRefresh;
+await Promise.resolve();
+assert(dashboardPending.length===2,'el dashboard debe repetir la lectura tras finalizar la solicitud activa');
+dashboardPending[1](payload('2026-09-28T12:00:01.000Z'));
+await queuedRefresh;
+await Promise.resolve();
+await Promise.resolve();
+assert(dashboardWindow.ExecutiveDashboard.getState().data.generated_at==='2026-09-28T12:00:01.000Z','la segunda lectura debe dejar visible la versión más reciente');
+console.log('Dashboard concurrent refresh queue: OK');

@@ -222,6 +222,7 @@
     root.classList.add('admin-preparing');
     removeLegacyAdminControls();
     let authenticatedShellReady = false;
+    let dashboardLoadPromise = null;
 
     bootPromise = (async () => {
       await accessStylesPromise;
@@ -237,7 +238,13 @@
 
       if (accessCan('dashboard.read')) {
         await loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style');
-        await loadScript('/admin/dashboard-operational-state.js?v=20260926-figma2', 'data-dashboard-operational-state');
+        await loadScript('/admin/dashboard-operational-state.js?v=20260928-dashboard-parallel3', 'data-dashboard-operational-state');
+        if (document.getElementById('dashboardSection')?.classList.contains('hidden') === false &&
+            typeof window.initializeOperationalDashboard === 'function') {
+          window.initializeOperationalDashboard();
+          dashboardLoadPromise = window.ExecutiveDashboard?.refresh?.() || null;
+          dashboardLoadPromise?.catch(error => console.error('[admin dashboard]', error));
+        }
       }
       if (accessCan('logistics.read')) {
         await loadStylesheet('/admin/containers-module.css?v=20260927-containerflow1', 'data-containers-module-style');
@@ -279,12 +286,9 @@
       const coreResult = await window.ExportMcaAdminData.loadCore();
       if (coreResult?.errors?.length) console.warn('[admin boot] core data degraded', coreResult.errors);
 
-      if (accessCan('dashboard.read') && typeof window.initializeOperationalDashboard === 'function') {
-        window.initializeOperationalDashboard();
-      }
-
       if (accessCan('dashboard.read') &&
-          document.getElementById('dashboardSection')?.classList.contains('hidden') === false) {
+          document.getElementById('dashboardSection')?.classList.contains('hidden') === false &&
+          !dashboardLoadPromise) {
         window.ExportMcaAdminData.loadDashboard().catch(error => {
           console.error('[admin dashboard]', error);
         });
@@ -349,4 +353,3 @@
 
   if (hasStoredSession) startAuthenticatedAdmin();
 })();
-

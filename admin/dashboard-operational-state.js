@@ -5,7 +5,7 @@
 
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const state = { data:null, loading:false, filters:{ start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:'' } };
+  const state = { data:null, loading:false, refreshQueued:false, refreshQueuedFilters:null, refreshWaiter:null, filters:{ start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:'' } };
   const disclosures = new Map();
   let greetingTimer=null;
 
@@ -266,7 +266,16 @@
   }
 
   async function reloadDashboard(filters=readFilters()) {
-    if(state.loading)return false;
+    if(state.loading){
+      state.refreshQueued=true;
+      state.refreshQueuedFilters={...filters};
+      if(!state.refreshWaiter){
+        let resolve;
+        const promise=new Promise(done=>{resolve=done;});
+        state.refreshWaiter={promise,resolve};
+      }
+      return state.refreshWaiter.promise;
+    }
     const focusedId=document.activeElement?.id;
     state.loading=true;
     state.filters={...filters};
@@ -286,6 +295,14 @@
     } finally {
       state.loading=false;
       if(button)button.disabled=false;
+      if(state.refreshQueued){
+        state.refreshQueued=false;
+        const waiter=state.refreshWaiter;
+        state.refreshWaiter=null;
+        const queuedFilters=state.refreshQueuedFilters||readFilters();
+        state.refreshQueuedFilters=null;
+        Promise.resolve().then(()=>reloadDashboard(queuedFilters)).then(value=>waiter?.resolve(value));
+      }
     }
   }
 

@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260928-dashboard-parallel3';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -193,8 +193,17 @@
     shellRefreshRunning=true;
     try{
       const loader=window.ExportMcaAdminData;
-      if(typeof loader?.loadCore==='function')await loader.loadCore();
-      if(typeof loader?.loadDashboard==='function'&&visibleSectionId()==='dashboardSection')await loader.loadDashboard();
+      const refreshes=[];
+      if(typeof loader?.loadDashboard==='function'&&visibleSectionId()==='dashboardSection'){
+        refreshes.push(Promise.resolve().then(()=>loader.loadDashboard()));
+      }
+      if(typeof loader?.loadCore==='function'){
+        refreshes.push(Promise.resolve().then(()=>loader.loadCore()));
+      }
+      const results=await Promise.allSettled(refreshes);
+      for(const result of results){
+        if(result.status==='rejected')console.warn('[auto-refresh] shell data refresh failed',scope,result.reason);
+      }
       window.dispatchEvent(new CustomEvent('export-mca:mutation-settled',{detail:{reason,scope}}));
     }catch(error){
       console.warn('[auto-refresh] shell refresh failed',scope,error);
