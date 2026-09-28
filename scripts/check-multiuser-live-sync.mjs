@@ -59,7 +59,7 @@ if (/SUPABASE_(?:SERVICE_ROLE|SECRET|ANON|PUBLISHABLE)|createClient\s*\(/.test(r
 
 for (const name of fs.readdirSync('admin').filter(name => name.endsWith('.html'))) {
   const html = read(`admin/${name}`);
-  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260920-speed3')) {
+  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1')) {
     failures.push(`admin/${name}: conserva una versión anterior del runtime de sincronización`);
   }
 }
@@ -145,6 +145,7 @@ let modalOpen = false;
 let coreRefreshes = 0;
 let dashboardRefreshes = 0;
 let taskRefreshes = 0;
+let activeSection = 'salesSection';
 class FixtureObserver { observe() {} disconnect() {} }
 class FixtureEvent { constructor(type, options={}) { this.type=type; this.detail=options.detail; } }
 const fixtureWindow = {
@@ -167,7 +168,10 @@ const fixtureDocument = {
   body:{},
   hidden:false,
   addEventListener(){},
-  querySelector(selector){return selector.startsWith('.modal')&&modalOpen?{}:null;},
+  querySelector(selector){
+    if(selector==='.app-section:not(.hidden)')return {id:activeSection};
+    return selector.startsWith('.modal')&&modalOpen?{}:null;
+  },
   querySelectorAll(selector){return selector.startsWith('.modal')&&modalOpen?[{getClientRects:()=>[{}]}]:[];}
 };
 const fixtureStorage = {
@@ -200,8 +204,9 @@ assert.equal([...live.applyLiveSnapshot({versions:{tasks:1,products:0}})].join('
 await new Promise(resolve=>setTimeout(resolve,220));
 assert.equal(taskRefreshes,1,'un cambio externo de tareas debe recargar la cola');
 assert.equal(coreRefreshes,1,'un cambio externo debe reconciliar los datos base');
-assert.equal(dashboardRefreshes,1,'un cambio externo debe reconciliar el dashboard');
+assert.equal(dashboardRefreshes,0,'un cambio externo fuera de Inicio no debe cargar el dashboard oculto');
 
+activeSection='dashboardSection';
 modalOpen=true;
 assert.equal([...live.applyLiveSnapshot({versions:{tasks:1,products:1}})].join(','), 'products');
 await new Promise(resolve=>setTimeout(resolve,180));
@@ -210,6 +215,7 @@ modalOpen=false;
 live.queueExternalScopes([], 'modal-closed-test');
 await new Promise(resolve=>setTimeout(resolve,220));
 assert.equal(coreRefreshes,2,'el cambio aplazado debe aplicarse al cerrar el formulario');
+assert.equal(dashboardRefreshes,1,'el cambio aplazado debe actualizar Inicio si está visible');
 
 live.announceMutation('sales',null);
 await new Promise(resolve=>setTimeout(resolve,220));

@@ -33,7 +33,7 @@ const loader = read('admin/admin-data-loader.js');
 const access = read('admin/access-control-administration.js');
 const account = read('admin/account-administration.js');
 
-const runtimeRef = '/admin/admin-shell-runtime.js?v=20260903-b10push1';
+const runtimeRef = '/admin/admin-shell-runtime.js?v=20260928-dashboard-onview1';
 requireText(index, runtimeRef, 'runtime versionado del shell');
 requireText(index, "/admin/navigation-shell.css?v=20260926-integration1", 'CSS versionado del shell');
 requireText(index, "/admin/platform-theme.css?v=20260922-figma1", 'sistema visual versionado');
@@ -55,6 +55,7 @@ forbid(index, /\sstyle\s*=/i, 'index.html vuelve a introducir estilos inline');
 
 for (const text of [
   "owner:'admin-shell-runtime.js'",
+  "if (id === 'dashboardSection' && typeof window.ExportMcaAdminData?.loadDashboard === 'function')",
   'async function api(path, options = {})',
   'function showSection(id)',
   'function openModal(title, html)',

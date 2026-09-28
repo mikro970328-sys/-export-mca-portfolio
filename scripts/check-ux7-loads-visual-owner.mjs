@@ -37,7 +37,7 @@ for(const text of [
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/loads.css?v=20260926-figma1',
   '/admin/loads.js?v=20260926-figma1',
-  '/admin/embedded-auto-refresh.js?v=20260920-speed3',
+  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1',
   'class="module-hero loads-page-head"',
   'id="metrics" class="metrics loads-metrics"',
   'id="clearFilters"',
