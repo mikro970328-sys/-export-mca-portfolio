@@ -198,6 +198,13 @@ test('Create a client directly from a sale without shell permissions or lost sal
   await expect(page.locator('#oClientNewButton')).toHaveCount(0);
   await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
   await expect(page.locator('#orderModal')).toBeVisible();
+  await page.locator('[data-sales-add-product]').click();
+  await page.locator('#salesQuickProductName').fill('Mercancía por encargo');
+  await page.locator('#salesQuickProductUnit').fill('cajas');
+  await page.locator('#salesQuickProductForm button[type="submit"]').click();
+  await expect(page.locator('.lProduct')).toHaveValue('fixture-made-to-order');
+  await page.locator('.lQty').fill('1');
+  await expect(page.locator('.lTotal')).toHaveValue('2300');
   await page.locator('#saveOrder').click();
   await expect(page.locator('#orderModal')).toBeHidden();
   await expect(page.locator('#salesSaveNotice')).toContainText('Venta guardada como borrador');
