@@ -7,6 +7,7 @@ const assert = (condition,message) => { if(!condition) throw new Error(message);
 const migration=read('supabase/migrations/20260830223000_p11_executive_dashboard_profitability.sql');
 const snapshotMigration=read('supabase/migrations/20260928232500_admin_dashboard_snapshot.sql');
 const api=read('api/dashboard.js');
+const index=read('admin/index.html');
 const executiveApi=read('api/_executive-dashboard.js');
 const ui=read('admin/dashboard-operational-state.js');
 const css=read('admin/dashboard-executive.css');
@@ -73,6 +74,9 @@ assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260928-dashboar
 assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');
 assert(dataLoader.includes('window.ExecutiveDashboard?.refresh'), 'P11: owner de datos no delega al owner visual P11');
 assert(erp.includes("window.api('/api/dashboard')"), 'P11: dashboard debe empezar a cargar antes de completar los módulos secundarios');
+const dashboardPrefetchAt=index.indexOf('__exportMcaEarlyDashboard');
+const firstStylesheetAt=index.indexOf('<link rel="stylesheet"');
+assert(dashboardPrefetchAt>=0 && dashboardPrefetchAt<firstStylesheetAt && index.includes("fetch('/api/dashboard'"), 'P11: dashboard debe iniciar datos antes de esperar los estilos');
 assert(erp.includes('Promise.all(['), 'P11: los assets visuales del dashboard deben cargar en paralelo');
 assert(shellRuntime.includes("options?.source === 'startup'"), 'P11: al restaurar Inicio no debe pedir el mismo dashboard dos veces');
 assert(sectionState.includes('originalShowSection(id, { source })'), 'P11: section-state debe identificar la restauración de inicio');

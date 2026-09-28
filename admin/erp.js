@@ -223,9 +223,9 @@
     removeLegacyAdminControls();
     let authenticatedShellReady = false;
     let dashboardLoadPromise = null;
-    let dashboardPreloadPromise = null;
+    let dashboardPreloadPromise = window.__exportMcaEarlyDashboard || null;
 
-    if (currentUser && storedUserCan(currentUser,'dashboard.read')) {
+    if (!dashboardPreloadPromise && currentUser && storedUserCan(currentUser,'dashboard.read')) {
       dashboardPreloadPromise = window.api('/api/dashboard')
         .then(data => ({ data }))
         .catch(error => ({ error }));

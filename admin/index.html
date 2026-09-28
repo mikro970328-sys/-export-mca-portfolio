@@ -12,6 +12,30 @@
   }
 })();
 </script>
+<script>
+(() => {
+  let token = '';
+  let user = null;
+  try {
+    token = localStorage.getItem('export_mca_token') || '';
+    user = JSON.parse(localStorage.getItem('export_mca_user') || 'null');
+  } catch {
+    return;
+  }
+  const canReadDashboard = user?.role === 'master_admin'
+    || (Array.isArray(user?.permissions) && user.permissions.includes('dashboard.read'));
+  if (!token || !canReadDashboard) return;
+  window.__exportMcaEarlyDashboard = fetch('/api/dashboard', {
+    method:'GET',
+    cache:'no-store',
+    headers:{ Authorization:`Bearer ${token}` }
+  }).then(async response => {
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) return { error:new Error(payload.error || `HTTP ${response.status}`) };
+    return { data:payload };
+  }).catch(error => ({ error }));
+})();
+</script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Export MCA Logistics Platform</title>
 <meta name="description" content="Plataforma segura de gestión logística y exportaciones de Export MCA LLC">
@@ -211,5 +235,5 @@
 <section id="adminsSection" class="app-section hidden" aria-live="polite"></section>
 </main></div></div>
 <div id="modal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="modalTitle">Historial</h2><button id="closeModal" class="alt">Cerrar</button></div><div id="modalBody"></div></div></div>
-<script src="/admin/admin-shell-runtime.js?v=20260928-performance3"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260928-dashboard-startup1"></script><script src="/admin/embedded-auto-refresh.js?v=20260928-dashboard-parallel3"></script>
+<script src="/admin/admin-shell-runtime.js?v=20260928-performance3"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260928-dashboard-prefetch1"></script><script src="/admin/embedded-auto-refresh.js?v=20260928-dashboard-parallel3"></script>
 </body></html>
