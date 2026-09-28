@@ -7,7 +7,7 @@ const read = path => readFileSync(`${root}${path}`, 'utf8');
 const font = readFileSync(`${root}admin/fonts/InterVariable.woff2`).toString('base64');
 
 // Presentation fixture only: authored owners, fictional records, no network or writes.
-export function salesFixture({ writable = true, clientWritable = writable, workspace = false } = {}) {
+export function salesFixture({ writable = true, clientWritable = writable, workspace = false, invoiceScenario = 'paid' } = {}) {
   const dom = new JSDOM(read('admin/sales.html'));
   const doc = dom.window.document;
   doc.querySelectorAll('script,link:not([rel="stylesheet"])').forEach(node => node.remove());
@@ -36,9 +36,9 @@ export function salesFixture({ writable = true, clientWritable = writable, works
     commercial_status:'confirmed', sales_currency:'USD', order_total:39916,
     profitability_status:'comparable', contribution_status:'comparable', billing_currency_comparable:true,
     recognized_merchandise_cogs:22680, direct_cost_amount:11600, direct_cost_currency:'USD',
-    contribution_margin:5636, issued_invoice_total:39916, collected_amount:39916 },
+    contribution_margin:5636, issued_invoice_total:invoiceScenario==='draft'?0:39916, collected_amount:invoiceScenario==='draft'?0:39916, balance_due:invoiceScenario==='draft'?0:0, draft_invoice_value:invoiceScenario==='draft'?39916:0, available_to_invoice_value:invoiceScenario==='draft'?0:1200, fully_invoiced:invoiceScenario!=='draft' },
     financial_access:{read:true,write:writable}, items:[],
-    billing:{invoices:[],capabilities:{create_invoice:{allowed:false}}},
+    billing:{invoices:invoiceScenario==='draft'?[{id:'fixture-draft-invoice',invoice_number:'INV-DEMO-0248',status:'draft',issue_date:'2026-09-22',currency:'USD',financial:{total:39916,paid_amount:0,balance_due:39916,payment_status:'unpaid'},capabilities:{actions:{issue:{allowed:true},record_payment:{allowed:false}}}}]:[{id:'fixture-invoice',invoice_number:'INV-DEMO-0248',status:'issued',issue_date:'2026-09-22',currency:'USD',financial:{total:39916,paid_amount:39916,balance_due:0,payment_status:'paid'},capabilities:{actions:{issue:{allowed:false},record_payment:{allowed:false}}}}],capabilities:{create_invoice:{allowed:true}}},
     costs:{allocations:[{amount:11600,basis:'manual',cost_charge:{id:'fixture-cost',cost_number:'CC-DEMO',
       status:'posted',category:'domestic_trucking',stage:'fulfillment',amount:11600,currency:'USD',
       incurred_date:'2026-09-22',capabilities:{actions:{revise:{allowed:writable}}}}}]},
@@ -47,24 +47,46 @@ export function salesFixture({ writable = true, clientWritable = writable, works
   const harness = `
     localStorage.setItem('export_mca_token','isolated-fixture-only');
     window.__fixtureCalls=[];
+    window.__fixturePayload=${JSON.stringify(payload)};
+    window.__fixtureWorkspace=${JSON.stringify(workspaceData)};
     // Sales runs standalone: permissions must come from its server response.
     window.__fixtureQuickClient=null;
     window.SalesSupplyWorkspace={open:id=>window.__fixtureCalls.push({supply:id})};
     window.fetch=async(path,options={})=>{
-      window.__fixtureCalls.push({path,method:options.method||'GET'});
+      window.__fixtureCalls.push({path,method:options.method||'GET',body:options.body?JSON.parse(options.body):undefined});
       const url=new URL(path,'https://erp-visual.invalid');
       let data;
       if(options.method==='POST'&&url.pathname==='/api/clients'){
         if(window.__fixtureClientConflict)return {ok:false,status:409,json:async()=>({error:'Ese NIT ya pertenece a otro cliente.'})};
         const input=JSON.parse(options.body||'{}');
         window.__fixtureQuickClient={...input,id:'fixture-new-client',active:true,display_name:input.company||input.name};
+        window.__fixturePayload.clients.push(window.__fixtureQuickClient);
         data={client:window.__fixtureQuickClient};
+      }else if(options.method==='POST'&&url.pathname==='/api/importers'){
+        const input=JSON.parse(options.body||'{}');
+        if(input.action!=='sync_client')throw Error('Fixture blocks unexpected importer action');
+        const names=Array.isArray(input.importer_names)?input.importer_names:[];
+        const importers=names.map((name,index)=>({id:'fixture-importer-'+(index+1),name,active:true}));
+        const client_importers=names.map((name,index)=>({client_id:input.client_id,importer_id:'fixture-importer-'+(index+1)}));
+        window.__fixturePayload.importers=importers;
+        window.__fixturePayload.client_importers=client_importers;
+        data={client_id:input.client_id,importers,state:{importers,client_importers,shipment_importers:[]}};
       }else if(options.method==='POST'&&url.pathname==='/api/sales-order-ux'){
         const input=JSON.parse(options.body||'{}');
-        data={product:{id:'fixture-made-to-order',name:input.name,unit:input.unit,active:true},created:true};
+        if(input.action==='create_product')data={product:{id:'fixture-made-to-order',name:input.name,unit:input.unit,active:true},created:true};
+        else if(input.action==='create_plan'){
+          const order={id:'fixture-created-sale',so_number:'SO-DEMO-0250',status:'draft',client_id:input.client_id,client:window.__fixturePayload.clients.find(row=>row.id===input.client_id),currency:input.currency||'USD',order_date:input.order_date,requested_at:input.requested_at,customer_reference:input.customer_reference,notes:input.notes,items:[],progress:{order_total:2300,fulfillment_status:'pending',fully_dispatched_items:0,item_count:1},capabilities:{actions:{edit:{allowed:true},confirm:{allowed:true}}}};
+          window.__fixturePayload.orders.unshift(order);
+          data={order};
+        }else if(input.action==='replace_plan')data={order:{id:input.sales_order_id,so_number:'SO-DEMO-0250',status:'draft'}};
+        else throw Error('Fixture blocks unexpected Sales Order action');
       }else if(options.method&&options.method!=='GET')throw Error('Fixture blocks unexpected writes');
-      else if(url.pathname==='/api/sales')data=${JSON.stringify(payload)};
-      else if(url.pathname==='/api/sales-workspace')data={workspace:${JSON.stringify(workspaceData)}};
+      else if(url.pathname==='/api/sales')data=window.__fixturePayload;
+      else if(url.pathname==='/api/sales-workspace'){
+        const orderId=url.searchParams.get('sales_order_id');
+        const workspace=orderId==='fixture-created-sale'?{...window.__fixtureWorkspace,summary:{...window.__fixtureWorkspace.summary,commercial_status:'draft'},capabilities:{actions:{confirm:{allowed:true}}}}:window.__fixtureWorkspace;
+        data={workspace};
+      }
       else if(url.pathname==='/api/sales-order-ux'){
         const mode=url.searchParams.get('mode');
         if(mode==='clients')data={clients:[${JSON.stringify(client)}],has_more:false};

@@ -130,6 +130,26 @@ test('Sales posted expense revision respects read-only capability',async({page})
 });
 
 
+test('Sales workspace asks to issue an existing draft before creating another invoice',async({page})=>{
+  await open(page,{workspace:true,invoiceScenario:'draft'});
+  await page.locator('[data-view-order]').first().click();
+  await expect(page.getByText('INV-DEMO-0248 está en borrador y puede emitirse.')).toBeVisible();
+  await expect(page.locator('[data-ws-action="issue_invoice"]')).toHaveCount(1);
+  await expect(page.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
+});
+
+test('Sales workspace avoids duplicate invoice creation and shows payment and expense sections',async({page})=>{
+  await open(page,{workspace:true});
+  await page.locator('[data-view-order]').first().click();
+  await expect(page.getByText('La venta no tiene una acción crítica pendiente.')).toBeVisible();
+  await expect(page.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
+  await page.locator('[data-ws-tab="billing"]').click();
+  await expect(page.getByText('INV-DEMO-0248')).toBeVisible();
+  await expect(page.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
+  await page.locator('[data-ws-tab="costs"]').click();
+  await expect(page.getByRole('button',{name:/Agregar gasto/})).toBeVisible();
+});
+
 test('Create a client directly from a sale without shell permissions or lost sale fields', async ({page}) => {
   await open(page);
   expect(await page.evaluate(()=>typeof window.ExportMcaAccessControl)).toBe('undefined');
@@ -146,15 +166,20 @@ test('Create a client directly from a sale without shell permissions or lost sal
   await page.locator('#clientQuickName').fill('Cliente nuevo');
   await page.locator('#clientQuickNIT').fill('123-456');
   await page.locator('#clientQuickPhone').fill('+5351234567');
+  await page.locator('#clientQuickImporters').fill('Importadora de prueba');
   await page.evaluate(()=>window.__fixtureClientConflict=true);
   await page.locator('#clientQuickAddSave').click();
   await expect(page.locator('#clientQuickAddMsg')).toContainText('Ese NIT ya pertenece');
   await expect(page.locator('#clientQuickName')).toHaveValue('Cliente nuevo');
+  await expect(page.locator('#clientQuickImporters')).toHaveValue('Importadora de prueba');
   await page.evaluate(()=>window.__fixtureClientConflict=false);
   await page.locator('#clientQuickAddSave').click();
   await expect(page.locator('#clientPickerModal')).toBeHidden();
   await expect(page.locator('#orderModal')).toBeVisible();
   await expect(page.locator('#oClientPickerButton')).toContainText('NIT 123-456');
+  await expect(page.locator('#oImporter')).toContainText('Importadora de prueba');
+  const importerRequest=await page.evaluate(()=>window.__fixtureCalls.find(call=>call.method==='POST'&&call.path==='/api/importers'));
+  expect(importerRequest).toMatchObject({body:{action:'sync_client',client_id:'fixture-new-client',importer_names:['Importadora de prueba']}});
   await expect(page.locator('#oClientNewButton')).toHaveCount(0);
   await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
   await expect(page.locator('#oReference')).toHaveValue('Pedido pendiente');
@@ -173,6 +198,18 @@ test('Create a client directly from a sale without shell permissions or lost sal
   await expect(page.locator('#oClientNewButton')).toHaveCount(0);
   await expect(page.locator('#clientQuickAddToggle')).toBeHidden();
   await expect(page.locator('#orderModal')).toBeVisible();
+  await page.locator('[data-sales-add-product]').click();
+  await page.locator('#salesQuickProductName').fill('Mercancía por encargo');
+  await page.locator('#salesQuickProductUnit').fill('cajas');
+  await page.locator('#salesQuickProductForm button[type="submit"]').click();
+  await expect(page.locator('.lProduct')).toHaveValue('fixture-made-to-order');
+  await page.locator('.lQty').fill('1');
+  await expect(page.locator('.lTotal')).toHaveValue('2300');
+  await page.locator('#saveOrder').click();
+  await expect(page.locator('#orderModal')).toBeHidden();
+  await expect(page.locator('#salesSaveNotice')).toContainText('Venta guardada como borrador');
+  await page.locator('[data-view-order="fixture-created-sale"]').click();
+  await expect(page.getByRole('button',{name:'Confirmar venta'})).toBeVisible();
 });
 
 test('Sales permission does not grant client creation permission', async ({page}) => {

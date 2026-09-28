@@ -50,6 +50,21 @@
     return data;
   }
 
+  function parseQuickImporterNames(value) {
+    const names=new Map();
+    String(value||'').split(',').forEach(raw=>{
+      const clean=raw.trim().replace(/\s+/g,' ');
+      if(clean)names.set(clean.toUpperCase(),clean);
+    });
+    return [...names.values()];
+  }
+
+  function applyQuickImporterState(nextState) {
+    if(!nextState)throw new Error('No se pudieron actualizar las importadoras.');
+    if(typeof importers!=='undefined')importers=Array.isArray(nextState.importers)?nextState.importers:[];
+    if(typeof clientImporters!=='undefined')clientImporters=Array.isArray(nextState.client_importers)?nextState.client_importers:[];
+  }
+
   function ensureClientPickerModal() {
     if (byId('clientPickerModal')) return;
     const modal = document.createElement('div');
@@ -61,7 +76,7 @@
     modal.innerHTML = `<div class="dialog client-picker-dialog">
       <div class="dialog-head"><div><span class="sales-dialog-kicker">Directorio comercial</span><h2 id="clientPickerTitle">Seleccionar cliente</h2><div class="muted">Busca por nombre, empresa o NIT.</div></div><button type="button" class="btn sales-close-button" data-client-close aria-label="Cerrar selector de clientes">✕</button></div>
       <div class="client-picker-create"><button id="clientQuickAddToggle" type="button" class="btn orange" hidden>＋ Nuevo cliente</button></div>
-      <form id="clientQuickAddForm" class="client-quick-form" hidden><div class="client-quick-grid"><div><label for="clientQuickName">Nombre completo *</label><input id="clientQuickName" required autocomplete="name"></div><div><label for="clientQuickCompany">Empresa o MIPYME</label><input id="clientQuickCompany" autocomplete="organization"></div><div><label for="clientQuickNIT">NIT</label><input id="clientQuickNIT" autocomplete="off"></div><div><label for="clientQuickPhone">WhatsApp (opcional)</label><input id="clientQuickPhone" type="tel" inputmode="tel" placeholder="+5351234567" autocomplete="tel"></div><div><label for="clientQuickEmail">Correo</label><input id="clientQuickEmail" type="email" autocomplete="email"></div></div><div id="clientQuickAddMsg" class="msg" role="status" aria-live="polite"></div><div class="actions"><button id="clientQuickAddCancel" type="button" class="btn">Cancelar</button><button id="clientQuickAddSave" type="submit" class="btn orange">Guardar y seleccionar</button></div></form>
+      <form id="clientQuickAddForm" class="client-quick-form" hidden><div class="client-quick-grid"><div><label for="clientQuickName">Nombre completo *</label><input id="clientQuickName" required autocomplete="name"></div><div><label for="clientQuickCompany">Empresa o MIPYME</label><input id="clientQuickCompany" autocomplete="organization"></div><div><label for="clientQuickNIT">NIT</label><input id="clientQuickNIT" autocomplete="off"></div><div><label for="clientQuickPhone">WhatsApp (opcional)</label><input id="clientQuickPhone" type="tel" inputmode="tel" placeholder="+5351234567" autocomplete="tel"></div><div><label for="clientQuickEmail">Correo</label><input id="clientQuickEmail" type="email" autocomplete="email"></div><div><label for="clientQuickImporters">Importadoras cubanas</label><input id="clientQuickImporters" placeholder="Ej. Cítricos Caribe, Quimimport" autocomplete="off"><div class="muted">Puedes registrar varias separadas por comas.</div></div></div><div id="clientQuickAddMsg" class="msg" role="status" aria-live="polite"></div><div class="actions"><button id="clientQuickAddCancel" type="button" class="btn">Cancelar</button><button id="clientQuickAddSave" type="submit" class="btn orange">Guardar y seleccionar</button></div></form>
       <label class="sales-visually-hidden" for="clientPickerSearch">Buscar cliente o empresa</label><input id="clientPickerSearch" class="client-picker-search" type="search" autocomplete="off" placeholder="Buscar cliente o NIT">
       <div id="clientPickerList" class="client-picker-list"></div>
       <div class="client-picker-footer"><button id="clientPrev" type="button" class="btn">← Anterior</button><span id="clientPageLabel" class="muted">Página 1</span><button id="clientNext" type="button" class="btn">Siguiente →</button></div>
@@ -183,17 +198,39 @@
         email:byId('clientQuickEmail').value,
         mipyme_name:''
       })});
-      if(!result.client?.id)throw new Error('No se pudo guardar el cliente.');
-      const client=result.client,select=byId('oClient');
-      if (typeof clients !== 'undefined' && !clients.some(row=>row.id===client.id)) clients.push(client);
+      const client=result.client;
+      if(!client?.id)throw new Error('No se pudo guardar el cliente.');
+      const importerNames=parseQuickImporterNames(byId('clientQuickImporters')?.value);
+      if(importerNames.length){
+        try {
+          const linked=await uxApi('/api/importers',{method:'POST',body:JSON.stringify({
+            action:'sync_client',client_id:client.id,importer_names:importerNames
+          })});
+          applyQuickImporterState(linked.state);
+          window.dispatchEvent(new CustomEvent('export-mca:importers-changed'));
+        } catch(error) {
+          let rolledBack=false;
+          try {
+            await uxApi('/api/clients?id='+encodeURIComponent(client.id),{method:'DELETE'});
+            rolledBack=true;
+          } catch(rollbackError) {
+            console.error('SALES_QUICK_CLIENT_ROLLBACK_FAILED',rollbackError);
+          }
+          throw new Error(rolledBack
+            ? 'No se pudieron guardar las importadoras del cliente. Intenta nuevamente.'
+            : 'El cliente se creó, pero sus importadoras no se guardaron. Revísalo en Clientes.');
+        }
+      }
+      if (typeof clients !== 'undefined' && !clients.some(row=>String(row.id)===String(client.id))) clients.push(client);
+      const select=byId('oClient');
       if(select){
         let option=[...select.options].find(item=>String(item.value)===String(client.id));
         if(!option){option=new Option('',client.id);select.add(option)}
-        option.textContent=`${client.display_name||client.company||client.name||'Cliente'}${client.nit?` · NIT ${client.nit}`:''}`;
+        option.textContent=(client.display_name||client.company||client.name||'Cliente')+(client.nit?' · NIT '+client.nit:'');
         select.value=client.id;
       }
-      const importerSelect=byId('oImporter');
-      if(importerSelect)importerSelect.innerHTML='<option value="">Sin importador definido</option>';
+      if(typeof syncImporters==='function')syncImporters();
+      else if(byId('oImporter'))byId('oImporter').innerHTML='<option value="">Sin importador definido</option>';
       syncClientButton();
       window.SalesOrderDrafts?.touch?.();
       window.dispatchEvent(new CustomEvent('export-mca:clients-changed'));
@@ -202,7 +239,7 @@
       byId('clientQuickAddForm').hidden=true;
     } catch(error) {
       const raw=String(error?.message||'');
-      const safe=new Set(['El nombre del cliente es obligatorio','Ese cliente ya existe','Ese NIT ya pertenece a otro cliente.','Número de WhatsApp inválido. Usa formato internacional, por ejemplo +5351234567.','No tienes permiso para realizar esta acción','No autorizado']);
+      const safe=new Set(['El nombre del cliente es obligatorio','Ese cliente ya existe','Ese NIT ya pertenece a otro cliente.','Número de WhatsApp inválido. Usa formato internacional, por ejemplo +5351234567.','No tienes permiso para realizar esta acción','No autorizado','No se pudieron guardar las importadoras del cliente. Intenta nuevamente.','El cliente se creó, pero sus importadoras no se guardaron. Revísalo en Clientes.']);
       message.textContent=safe.has(raw)?raw:reportOrderError('client-create',error,'No se pudo guardar el cliente. Revisa los datos e intenta nuevamente.');
     } finally {button.disabled=false;}
   }
@@ -553,6 +590,8 @@
       window.SalesOrderDrafts?.saved?.();
       try { closeModal('order'); } catch { byId('orderModal')?.classList.add('hidden'); }
       try { await load(); } catch (error) { console.error('SALES_ORDER_REFRESH_FAILED',{error}); location.reload(); }
+      const notice=byId('salesSaveNotice');
+      if(notice){notice.textContent=edit?'Cambios de la venta guardados.':'Venta guardada como borrador. Abre la venta y pulsa “Confirmar venta” para continuar.';notice.hidden=false;}
     } catch (error) {
       msg.textContent = reportOrderError('save',error,'No se pudo guardar la venta. Revisa los datos e intenta nuevamente.');
     } finally {
@@ -561,6 +600,7 @@
   }
 
   function onOrderOpen() {
+    if(byId('salesSaveNotice'))byId('salesSaveNotice').hidden=true;
     ensureClientPickerButton();
     ensureClientPickerModal();
     syncClientButton();
