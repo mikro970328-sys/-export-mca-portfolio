@@ -21,6 +21,7 @@ for(const text of [
   'loadSalesActionCapabilities',
   'loadInvoiceFinanceCapabilityMaps',
   'workspaceAccess(admin)',
+  'supply_plans:sales_supply_plan_lines(id,supply_method,planned_quantity,planned_pallets)',
   "permissions.has('documents.read')",
   "permissions.has('finance.read')",
   "permissions.has('finance.write')",
@@ -100,7 +101,7 @@ requireText(foundation,'.erp-module-page button:focus-visible','foco accesible d
 
 for(const asset of [
   '/admin/sales-workspace.css?v=20260922-scroll1',
-  '/admin/sales-workspace.js?v=20260928-nextstep1',
+  '/admin/sales-workspace.js?v=20260928-directshipflow1',
   '/admin/sales-controller.js?v=20260920-freshcaps1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 
@@ -129,7 +130,7 @@ try {
   const window={SalesOrderController:{transition:async(id,action)=>calls.push({id,action})}};
   const exposed=workspace.replace(/\n\}\)\(\);\s*$/,`\n  window.__qa={
     fixture(data){state.data=data;state.salesOrderId='qa-sale';},
-    renderSummary,renderBilling,nextAction,runAction,transitionSale,
+    renderSummary,renderBilling,renderCosts,nextAction,runAction,transitionSale,
     decision(fn){workspaceDecision=fn;},refresh(fn){reload=fn;}
   };\n})();`);
   assert.notEqual(exposed,workspace,'test harness must access the canonical closure');
@@ -143,6 +144,36 @@ try {
   const qa=window.__qa;
   const fixture=(status,allowed)=>({summary:{commercial_status:status,sales_currency:'USD'},items:[],
     financial_access:{read:false,write:false},capabilities:{actions:{cancel:{allowed}}}});
+  const directSale=fixture('confirmed',false);
+  directSale.summary.fulfillment_status='pending';
+  directSale.capabilities.actions.allocate_load={allowed:true};
+  directSale.items=[{id:'direct-item',supply_plans:[{supply_method:'purchase_direct'}]}];
+  qa.fixture(directSale);
+  const directNext=qa.nextAction();
+  assert.match(directNext.text,/Direct Ship/,'Direct Ship should be the next step for a direct purchase');
+  assert.match(directNext.text,/Asignar mercancía/,'Direct Ship instructions should point to the existing assignment button');
+  assert.equal(directNext.actions.length,0,'Direct Ship must not show warehouse load actions');
+  assert.doesNotMatch(qa.renderSummary(),/data-ws-action="(?:create_load|link_load)"|Falta asignar mercancía a un Cargue/,'Direct Ship workspace must not ask for a Cargue');
+  directSale.financial_access={read:true,write:false};
+  directSale.summary.profitability_status='no_fulfillment';
+  directSale.summary.contribution_status='no_fulfillment';
+  qa.fixture(directSale);
+  assert.match(qa.renderCosts(),/asigna la compra al contenedor/i,'Costs tab should explain the missing Direct Ship cost link');
+  assert.match(qa.renderCosts(),/broker o gestión se muestran por separado/i,'Costs tab should keep broker fees separate from purchase COGS');
+
+  const unplannedSale=fixture('confirmed',false);
+  unplannedSale.capabilities.actions.allocate_load={allowed:true};
+  unplannedSale.items=[{id:'unplanned-item',supply_plans:[]}];
+  qa.fixture(unplannedSale);
+  assert.match(qa.nextAction().text,/Elige la ruta.*Asignar mercancía/,'An unplanned sale should point to choosing a delivery route');
+  assert.equal(qa.nextAction().actions.length,0,'Route selection should reuse the existing Asignar mercancía button');
+
+  const warehouseSale=fixture('confirmed',false);
+  warehouseSale.capabilities.actions.allocate_load={allowed:true};
+  warehouseSale.items=[{id:'warehouse-item',supply_plans:[{supply_method:'inventory'}]}];
+  qa.fixture(warehouseSale);
+  assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'create_load,link_load','Warehouse sales should keep the existing load actions');
+
   for(const [status,allowed] of [['draft',true],['confirmed',true],['confirmed',false],['closed',false],['cancelled',false],['confirmed',undefined]]){
     qa.fixture(fixture(status,allowed));
     assert.equal(qa.renderSummary().includes('data-ws-action="cancel_sale"'),allowed===true,`${status}/${allowed}: honor permission-aware capability`);
