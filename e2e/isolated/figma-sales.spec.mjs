@@ -209,7 +209,7 @@ test('Create a client directly from a sale without shell permissions or lost sal
   await expect(page.locator('#orderModal')).toBeHidden();
   await expect(page.locator('#salesSaveNotice')).toContainText('Venta guardada como borrador');
   await page.locator('[data-view-order="fixture-created-sale"]').click();
-  await expect(page.getByText('Confirma la venta para continuar.')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Confirmar venta'})).toBeVisible();
 });
 
 test('Sales permission does not grant client creation permission', async ({page}) => {
