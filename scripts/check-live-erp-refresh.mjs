@@ -13,7 +13,7 @@ const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
 
 for(const text of [
-  '/admin/embedded-auto-refresh.js?v=20260920-speed3',
+  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1',
   '/admin/erp.js?v=20260927-containerflow1'
 ])requireText(shell,text,`shell ${text}`);
 
@@ -24,6 +24,7 @@ for(const text of [
   'function scheduleShellRefresh(reason,scope)',
   "loader?.loadCore",
   "loader?.loadDashboard",
+  "visibleSectionId()==='dashboardSection'",
   "window.addEventListener('storage'",
   "['/api/sales-loads','loads']",
   "['/api/shipments','shipments']",
@@ -87,6 +88,7 @@ assert.throws(
 const listeners=new Map();
 let coreRefreshes=0;
 let dashboardRefreshes=0;
+let activeSection='salesSection';
 class FixtureObserver{observe(){} disconnect(){}}
 class FixtureEvent{constructor(type,options={}){this.type=type;this.detail=options.detail;}}
 const fixtureWindow={
@@ -105,7 +107,7 @@ const fixtureDocument={
   body:{},
   hidden:false,
   addEventListener(){},
-  querySelector(){return null;},
+  querySelector(selector){return selector==='.app-section:not(.hidden)'?{id:activeSection}:null;},
   querySelectorAll(){return [];}
 };
 vm.runInNewContext(refresh,{
@@ -127,7 +129,12 @@ vm.runInNewContext(refresh,{
 await fixtureWindow.fetch('/api/loads',{method:'POST'});
 await new Promise(resolve=>setTimeout(resolve,220));
 assert.equal(coreRefreshes,1,'una mutación debe reconciliar los datos base del ERP');
-assert.equal(dashboardRefreshes,1,'una mutación debe reconciliar el dashboard');
+assert.equal(dashboardRefreshes,0,'una mutación fuera del dashboard no debe cargar sus agregados');
+activeSection='dashboardSection';
+await fixtureWindow.fetch('/api/loads',{method:'POST'});
+await new Promise(resolve=>setTimeout(resolve,220));
+assert.equal(coreRefreshes,2,'una segunda mutación debe reconciliar los datos base del ERP');
+assert.equal(dashboardRefreshes,1,'el dashboard debe reconciliarse cuando está visible');
 
 if(failures.length){
   console.error('Live ERP refresh and Load flow check failed:\n'+failures.map(item=>`- ${item}`).join('\n'));
