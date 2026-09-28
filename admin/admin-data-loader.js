@@ -80,10 +80,14 @@
 
   async function loadAll() {
     const core = await loadCore();
-    loadDashboard().catch(error => console.error('[admin dashboard refresh]', error));
+    const dashboard = document.getElementById('dashboardSection');
+    if (!dashboard || !dashboard.classList.contains('hidden')) {
+      loadDashboard().catch(error => console.error('[admin dashboard refresh]', error));
+    }
     return core;
   }
 
   window.loadAll = loadAll;
   window.ExportMcaAdminData = Object.freeze({ loadCore, loadDashboard, loadAll, owner:'admin-data-loader.js' });
 })();
+

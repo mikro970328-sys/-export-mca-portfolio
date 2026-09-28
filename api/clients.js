@@ -114,8 +114,11 @@ export default async function handler(req, res) {
       const phone = optionalPhone(body.phone);
       const email = String(body.email || '').trim().toLowerCase() || null;
       const nit = cleanNit(body.nit);
-      if (await findDuplicateNit(nit)) return fail(res, 409, 'Ese NIT ya pertenece a otro cliente.');
-      const duplicate = await findDuplicate({ phone, email });
+      const [nitDuplicate, duplicate] = await Promise.all([
+        findDuplicateNit(nit),
+        findDuplicate({ phone, email })
+      ]);
+      if (nitDuplicate) return fail(res, 409, 'Ese NIT ya pertenece a otro cliente.');
       if (duplicate) return fail(res, 409, 'Ese cliente ya existe', JSON.stringify({ existing_client: duplicate }));
       const created = await supabase('clients', { method: 'POST', body: [{
         name,
@@ -152,9 +155,19 @@ export default async function handler(req, res) {
       if (body.importer_name !== undefined) patch.importer_name = String(body.importer_name).trim() || null;
       if (body.phone !== undefined) patch.phone = optionalPhone(body.phone);
       if (body.email !== undefined) patch.email = String(body.email).trim().toLowerCase() || null;
-      const nitDuplicate = await findDuplicateNit(patch.nit ?? current.nit, id);
+      const nitChanged = body.nit !== undefined && normalizeNit(patch.nit) !== normalizeNit(current.nit);
+      const phoneChanged = body.phone !== undefined && patch.phone !== current.phone;
+      const emailChanged = body.email !== undefined && patch.email !== current.email;
+      const contactChanged = phoneChanged || emailChanged;
+      const [nitDuplicate, duplicate] = await Promise.all([
+        nitChanged ? findDuplicateNit(patch.nit, id) : Promise.resolve(null),
+        contactChanged ? findDuplicate({
+          phone: body.phone !== undefined ? patch.phone : current.phone,
+          email: body.email !== undefined ? patch.email : current.email,
+          excludeId: id
+        }) : Promise.resolve(null)
+      ]);
       if (nitDuplicate) return fail(res, 409, 'Ese NIT ya pertenece a otro cliente.');
-      const duplicate = await findDuplicate({ phone: body.phone !== undefined ? patch.phone : current.phone, email: patch.email ?? current.email, excludeId: id });
       if (duplicate) return fail(res, 409, 'Otro cliente ya utiliza ese WhatsApp o correo', JSON.stringify({ existing_client: duplicate }));
       const updated = await supabase('clients', { method: 'PATCH', query: `?id=eq.${encodeURIComponent(id)}&select=*`, body: patch });
       await audit('client_updated', id, patch);
@@ -179,3 +192,4 @@ export default async function handler(req, res) {
     return fail(res, 500, 'No se pudo completar la operación del cliente');
   }
 }
+

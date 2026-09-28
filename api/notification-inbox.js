@@ -1,5 +1,4 @@
 import { authorizeAdmin, fail, ok, readJson, supabase, upstreamFailureStatus, writeAudit } from './_lib.js';
-import { reconcileAllNotifications } from './_notification-reconcile.js';
 
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIONS=new Set(['mark_read','mark_unread','dismiss']);
@@ -90,13 +89,12 @@ export default async function handler(req,res){
     if(req.method==='GET'){
       const focusId=String(url.searchParams.get('notification_id')||'').trim();
       if(focusId&&!UUID_RE.test(focusId))return fail(res,400,'Identificador de notificación no válido');
-      const reconciliation=await reconcileAllNotifications();
       const [inbox,preferences,focusItem]=await Promise.all([
         loadInbox(admin.admin_id,url.searchParams),
         loadPreferences(admin.admin_id),
         loadFocusItem(admin.admin_id,focusId)
       ]);
-      return ok(res,{...inbox,preferences,focus_item:focusItem,reconciliation});
+      return ok(res,{...inbox,preferences,focus_item:focusItem});
     }
 
     if(req.method==='PATCH'){
@@ -169,3 +167,4 @@ export default async function handler(req,res){
     return fail(res,upstreamFailureStatus(error),'No se pudo procesar el inbox de notificaciones');
   }
 }
+

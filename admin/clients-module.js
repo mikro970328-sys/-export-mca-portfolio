@@ -10,6 +10,7 @@
   }[character]));
   const state = {
     importerState:{ importers:[], client_importers:[], shipment_importers:[] },
+    importerStateLoaded:false,
     query:''
   };
   const SAFE_CLIENT_ERRORS = new Set([
@@ -100,6 +101,7 @@
         shipment_importers:Array.isArray(result.shipment_importers) ? result.shipment_importers : []
       };
       window.importerState = state.importerState;
+      state.importerStateLoaded = true;
     } catch (error) {
       console.error('CLIENT_IMPORTERS_LOAD_FAILED', error);
       setClientMessage('Los clientes están disponibles, pero no se pudieron cargar sus importadoras. Intenta actualizar.', false);
@@ -132,10 +134,35 @@
     if (result.state) {
       state.importerState = result.state;
       window.importerState = state.importerState;
+      state.importerStateLoaded = true;
     } else {
       await loadImporters();
     }
     window.dispatchEvent(new CustomEvent('export-mca:importers-changed'));
+  }
+
+  function sameImporterNames(left, right) {
+    const normalize = values => [...new Set((Array.isArray(values) ? values : [])
+      .map(value => String(value || '').trim().replace(/\s+/g, ' ').toLocaleUpperCase('es'))
+      .filter(Boolean))].sort();
+    const a = normalize(left);
+    const b = normalize(right);
+    return a.length === b.length && a.every((name, index) => name === b[index]);
+  }
+
+  function updateClientCache(id, client = null) {
+    const rows = Array.isArray(window.clients) ? [...window.clients] : [];
+    const index = rows.findIndex(item => String(item.id) === String(id));
+    if (client) {
+      if (index >= 0) rows[index] = client;
+      else rows.unshift(client);
+    } else if (index >= 0) {
+      rows.splice(index, 1);
+    }
+    window.clients = rows;
+    try {
+      if (typeof clients !== 'undefined') clients = rows;
+    } catch {}
   }
 
   function findClient(id) {
@@ -267,14 +294,16 @@
       button.textContent = 'Guardando…';
       setEditMessage('Guardando cambios…', true);
       try {
-        await api('/api/clients', {
+        const result = await api('/api/clients', {
           method:'PATCH',
           body:JSON.stringify({ id:client.id, ...payload('clientEdit') })
         });
-        await syncImporters(client.id, parseImporterNames(byId('clientEditImporters')?.value));
+        if (result.client) updateClientCache(client.id, result.client);
+        const nextImporterNames = parseImporterNames(byId('clientEditImporters')?.value);
+        if (!state.importerStateLoaded || !sameImporterNames(nextImporterNames, importerNames(client.id))) {
+          await syncImporters(client.id, nextImporterNames);
+        }
         window.closeModal?.();
-        await loadAll();
-        await loadImporters();
         render();
         setClientMessage('Cliente actualizado.', true);
         window.dispatchEvent(new CustomEvent('export-mca:clients-changed'));
@@ -301,12 +330,12 @@
         body:JSON.stringify(payload('client'))
       });
       createdId = result.client?.id || null;
-      if (createdId) await syncImporters(createdId, parseImporterNames(byId('clientImporters')?.value));
+      const importerNamesToSave = parseImporterNames(byId('clientImporters')?.value);
+      if (createdId && result.client) updateClientCache(createdId, result.client);
+      if (createdId && importerNamesToSave.length) await syncImporters(createdId, importerNamesToSave);
       createDraft?.clear({ silent:true });
       byId('clientCreateForm')?.reset();
       createDraft?.rebase({ clear:false });
-      await loadAll();
-      await loadImporters();
       render();
       setCreateMessage('');
       byId('clientCreateDialog')?.close();
@@ -317,6 +346,7 @@
       if (createdId) {
         try {
           await api(`/api/clients?id=${encodeURIComponent(createdId)}`, { method:'DELETE' });
+          updateClientCache(createdId);
         } catch (rollbackError) {
           console.error('CLIENT_CREATE_ROLLBACK_FAILED', rollbackError);
         }
@@ -408,8 +438,10 @@
     setClientMessage('Eliminando cliente…', true);
     try {
       await api(`/api/clients?id=${encodeURIComponent(id)}`, { method:'DELETE' });
-      await loadAll();
-      await loadImporters();
+      updateClientCache(id);
+      state.importerState.client_importers = state.importerState.client_importers
+        .filter(link => String(link.client_id) !== String(id));
+      window.importerState = state.importerState;
       render();
       setClientMessage('Cliente eliminado.', true);
       window.dispatchEvent(new CustomEvent('export-mca:clients-changed'));
@@ -578,3 +610,4 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
   else mount();
 })();
+

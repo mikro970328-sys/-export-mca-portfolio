@@ -95,6 +95,23 @@ const titles = {
 };
 window.titles = titles;
 
+function startEmbeddedWorkspace(id) {
+  const section = $(id);
+  const frame = section?.querySelector('iframe.embedded-workspace-frame');
+  if (!frame || frame.dataset.moduleStarted === 'true') return frame;
+  const src = String(frame.dataset.src || '').trim();
+  if (!src) return frame;
+
+  frame.dataset.moduleStarted = 'true';
+  const loading = section.querySelector('.embedded-workspace-loading');
+  frame.addEventListener('load', () => {
+    frame.dataset.moduleLoaded = 'true';
+    loading?.setAttribute('hidden', '');
+  }, { once:true });
+  frame.src = src;
+  return frame;
+}
+
 function showSection(id) {
   document.querySelectorAll('.app-section').forEach(section => {
     section.classList.toggle('hidden', section.id !== id);
@@ -106,6 +123,7 @@ function showSection(id) {
   const navigationLabel = [...document.querySelectorAll('[data-section]')]
     .find(button => button.dataset.section === id)?.dataset.navLabel;
   if (pageTitle) pageTitle.textContent = titles[id] || navigationLabel || 'EXPORT MCA';
+  startEmbeddedWorkspace(id);
   if (id === 'dashboardSection' && typeof window.ExportMcaAdminData?.loadDashboard === 'function') {
     window.ExportMcaAdminData.loadDashboard().catch(error => {
       console.error('[admin dashboard]', error);
@@ -176,3 +194,4 @@ window.ExportMcaAdminShellRuntime = Object.freeze({
   logout:logoutNow,
   transitionExpiredSession
 });
+
