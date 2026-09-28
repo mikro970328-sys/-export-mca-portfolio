@@ -117,7 +117,7 @@ for(const text of [
   '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
   '/admin/costs.css?v=20260927-simple1',
   '/admin/costs.js?v=20260927-simple1',
-  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1'
+  '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1'
 ]) requireText(html,text,`HTML ${text}`);
 
 for(const text of ['.cost-decision-dialog','.cost-decision-actions','.costs-feedback','.profit-sub-spaced','.profit-grid','@media(max-width:720px)']) requireText(css,text,`CSS ${text}`);

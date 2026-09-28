@@ -13,14 +13,17 @@ const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
 
 for(const text of [
-  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1',
-  '/admin/erp.js?v=20260927-containerflow1'
+  '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1',
+  '/admin/erp.js?v=20260928-lazy-workspaces1'
 ])requireText(shell,text,`shell ${text}`);
 
 for(const text of [
   'function installTopFetchObserver()',
   'function frameRefresher(win)',
   'function mutationScope(path)',
+  'function frameSectionVisible(frame)',
+  "if(frame?.dataset?.moduleLoaded==='true'&&current?.stale)",
+  'current.stale = true;',
   'function scheduleShellRefresh(reason,scope)',
   "loader?.loadCore",
   "loader?.loadDashboard",

@@ -80,6 +80,8 @@ for (const width of [1280,390]) {
     search('Ventas');
     searchResults()[0].click();
     check('result uses original navigation handler',()=>assert.equal($('salesSection').classList.contains('hidden'),false));
+    check('opening a workspace starts only its own iframe',()=>assert.match($('salesSection').querySelector('iframe.embedded-workspace-frame')?.getAttribute('src')||'',/sales\.html/));
+    check('unopened workspaces remain unloaded',()=>assert.equal($('invoicesSection').querySelector('iframe.embedded-workspace-frame')?.hasAttribute('src'),false));
     check('navigation clears search',()=>assert.equal($('navigationSearch').value,''));
     check('active section context',()=>assert.equal($('pageContext').textContent,'Comercial'));
     check('exactly one aria-current',()=>assert.deepEqual(all('[aria-current="page"]').map(node=>node.dataset.section),['salesSection']));

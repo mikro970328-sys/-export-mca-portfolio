@@ -38,7 +38,7 @@ for (const text of [
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/warehouse.css?v=20260926-figma1',
   '/admin/warehouse.js?v=20260926-figma1',
-  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1',
+  '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1',
   'class="module-hero warehouse-page-head"',
   'id="stats" class="stats warehouse-metrics"',
   'class="tabs warehouse-tabs" role="tablist"',

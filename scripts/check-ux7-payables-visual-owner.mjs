@@ -52,7 +52,7 @@ for (const text of [
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/payables.css?v=20260926-figma1',
   '/admin/payables.js?v=20260926-figma1',
-  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1',
+  '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1',
   'class="module-hero payables-page-head"',
   'id="payablesLastUpdated"',
   'id="metrics" class="metrics payables-metrics"',
@@ -359,7 +359,7 @@ for (const text of [
 ]) requireText(paymentsApi, text, `API canónica de pagos AP ${text}`);
 
 for (const text of ['supplier_bill_action_capabilities', 'supplier_payment_action_capabilities', "entry.required_permission='finance.write'"]) requireText(capabilityOwner, text, `capabilities AP ${text}`);
-requireText(erp, "loadScript('/admin/ap-traceability.js?v=20260926-relations1', 'data-ap-traceability')", 'carga explícita de trazabilidad AP');
+requireText(erp, "loadScript('/admin/ap-traceability.js?v=20260928-lazy-workspaces1', 'data-ap-traceability')", 'carga explícita de trazabilidad AP');
 requireText(operationalNavigation, "callEmbedded('payablesSection','PayablesModule.openBill'", 'navegación directa al owner PayablesModule');
 forbid(operationalNavigation, /CONTEXT_SECTIONS[^;]*payablesSection/, 'Cuentas por pagar sigue recibiendo el bridge operativo compartido');
 forbid(operationalNavigation, /openSupplierBill[^\n]*installBridge\('payablesSection'\)/, 'openSupplierBill todavía inyecta el bridge anterior');

@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -148,6 +148,12 @@
     return frame?.closest?.('.app-section')?.id || null;
   }
 
+  function frameSectionVisible(frame) {
+    const sectionId=frameSectionId(frame);
+    const section=sectionId?document.getElementById(sectionId):null;
+    return !section || !section.classList.contains('hidden');
+  }
+
   function clearStaleOperationalContext(sectionId = visibleSectionId()) {
     if (!sectionId || !location.hash) return false;
     const params = new URLSearchParams(location.hash.slice(1));
@@ -206,6 +212,10 @@
   function refreshFrame(frame, reason = 'auto') {
     const current = state.get(frame);
     if (!current) return;
+    if (!frameSectionVisible(frame)) {
+      current.stale = true;
+      return;
+    }
     const win = frame.contentWindow;
     const doc = frame.contentDocument;
     if (!win || !doc?.body) return;
@@ -217,6 +227,11 @@
     clearTimeout(current.timer);
     current.timer = setTimeout(async () => {
       try {
+        if (!frameSectionVisible(frame)) {
+          current.stale = true;
+          return;
+        }
+        current.stale = false;
         const refresh=frameRefresher(win);
         if(refresh)await refresh();
         win.dispatchEvent(new win.CustomEvent('export-mca:auto-refreshed', { detail:{ reason } }));
@@ -517,7 +532,7 @@
     old?.observer?.disconnect?.();
     clearTimeout(old?.timer);
     clearTimeout(old?.fallbackTimer);
-    state.set(frame, { pending:false, timer:null, fallbackTimer:null, observer:null, wasBusy:false, document:frame.contentDocument });
+    state.set(frame, { pending:false, stale:false, timer:null, fallbackTimer:null, observer:null, wasBusy:false, document:frame.contentDocument });
     installFetchObserver(frame);
     installModalObserver(frame);
   }
@@ -550,6 +565,8 @@
     clearStaleOperationalContext(sectionId);
     const frame = document.querySelector(`#${CSS.escape(sectionId)} iframe`);
     if(frame&&!state.has(frame))installFrame(frame);
+    const current=frame&&state.get(frame);
+    if(frame?.dataset?.moduleLoaded==='true'&&current?.stale)refreshFrame(frame,'stale-section-open');
   }
 
   window.addEventListener('export-mca:data-loaded', () => clearStaleOperationalContext(), true);

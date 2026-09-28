@@ -16,7 +16,7 @@ for(const text of [
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/invoices.css?v=20260927-simple1',
   '/admin/invoices.js?v=20260927-simple1',
-  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-onview1',
+  '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1',
   'data-owner="invoices.js"',
   'invoices-table-wrap',
   'invoice-modal-actions'
