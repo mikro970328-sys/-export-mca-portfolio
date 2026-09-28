@@ -47,9 +47,9 @@ await test('REF-02 another session financial change refreshes reports once',asyn
     h.live.applyLiveSnapshot({versions});await h.advance(600);assert.equal(h.count.reports,expected,'unchanged versions must stay quiet');
   }
 });
-await test('REF-03 embedded invoice action refreshes report while preserving its source refresh',async()=>{
+await test('REF-03 embedded invoice action refreshes reports and its source without loading the hidden dashboard',async()=>{
   const h=harness();await h.invoices.contentWindow.fetch('/api/invoice-payments',{method:'POST'});await h.advance(600);
-  assert.equal(h.count.reports,1);assert.equal(h.count.invoices,1);assert.equal(h.count.dashboard,1);
+  assert.equal(h.count.reports,1);assert.equal(h.count.invoices,1);assert.equal(h.count.dashboard,0);
 });
 await test('REF-04 report modal defers refresh until closing',async()=>{
   const h=harness();h.modal(true);h.live.queueExternalScopes(['sales'],'QA');await h.advance(600);assert.equal(h.count.reports,0);
