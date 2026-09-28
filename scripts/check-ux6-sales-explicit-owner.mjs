@@ -31,7 +31,7 @@ requireText(html,'/admin/sales-customer-finance.css?v=20260902-ux7sales1','CSS f
 for(const asset of [
   '/admin/sales.js?v=20260927-feedback1',
   '/admin/sales-order-ux.js?v=20260928-importers1',
-  '/admin/sales-workspace.js?v=20260928-nextstep1',
+  '/admin/sales-workspace.js?v=20260928-directshipflow1',
   '/admin/sales-existing-load-link-v2.js?v=20260902-ux6owner1'
 ])requireText(html,asset,`asset revisado ${asset}`);
 requireText(html,'<body class="erp-module-page erp-module-sales" data-owner="sales.js">','owner canónico de Ventas');

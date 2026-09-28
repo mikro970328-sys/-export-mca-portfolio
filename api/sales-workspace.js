@@ -33,7 +33,7 @@ async function workspace(salesOrderId,{documentsReadable=false,financeReadable=f
   const normalizedSummary=normalizeSummary(summaryRows[0]||null);if(!normalizedSummary)return null;
   const authoritativeSummary={...normalizedSummary,nationalization_status:orderRows[0]?.nationalization_status||null};
   const [itemRows,itemProgress,itemInvoiceProgress,logistics,invoices,invoiceFinancial]=await Promise.all([
-    rows('sales_order_items',`?select=id,sales_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_price,entered_line_total,notes,created_at,updated_at,product:products(id,sku,name,brand,category,unit,package_format,default_units_per_pallet)&sales_order_id=eq.${salesOrderId}&order=created_at.asc&limit=5000`),
+    rows('sales_order_items',`?select=id,sales_order_id,product_id,ordered_quantity,ordered_pallets,unit,units_per_pallet,unit_price,entered_line_total,notes,created_at,updated_at,product:products(id,sku,name,brand,category,unit,package_format,default_units_per_pallet),supply_plans:sales_supply_plan_lines(id,supply_method,planned_quantity,planned_pallets)&sales_order_id=eq.${salesOrderId}&order=created_at.asc&limit=5000`),
     rows('sales_order_item_progress',`?select=*&sales_order_id=eq.${salesOrderId}&order=sales_order_item_id.asc&limit=5000`),
     rows('sales_order_item_invoice_progress',`?select=*&sales_order_id=eq.${salesOrderId}&order=sales_order_item_id.asc&limit=5000`),
     rows('sales_order_workspace_logistics',`?select=*&sales_order_id=eq.${salesOrderId}&order=load_number.asc&limit=5000`),
