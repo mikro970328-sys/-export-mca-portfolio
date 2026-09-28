@@ -66,7 +66,7 @@ const headEnd=index.indexOf('</head>');
 if(themeIndex<0||navigationIndex<0||foundationIndex<0||headEnd<0||!(themeIndex<navigationIndex&&navigationIndex<foundationIndex&&foundationIndex<headEnd)){
   failures.push('index.html debe cargar tema → navegación → base nativa dentro de head');
 }
-requireText(index,'/admin/erp.js?v=20260927-simple2','revisión de caché del loader ERP');
+requireText(index,'/admin/erp.js?v=20260927-containerflow1','revisión de caché del loader ERP');
 requireText(loader,"document.querySelector('link[data-native-workspace-foundation]')",'límite de cascada para estilos dinámicos');
 requireText(loader,'insertBefore(link, nativeFoundation)','estilos propietarios antes de la base compartida');
 
@@ -76,7 +76,7 @@ const sectionMarkup=(id,nextId)=>{
   return start>=0&&end>start?index.slice(start,end):'';
 };
 for(const [id,next] of [
-  ['clientsSection','registerContainerSection']
+  ['clientsSection','containersSection']
 ]){
   const markup=sectionMarkup(id,next);
   requireText(markup,'native-workspace-shell',`${id}: shell visual compartido`);
@@ -91,7 +91,6 @@ for(const text of ['workers-shell native-workspace-shell','workers-head native-w
 }
 
 for(const [id,next] of [
-  ['registerContainerSection','containersSection'],
   ['containersSection','publicationsSection']
 ]){
   const markup=sectionMarkup(id,next);
@@ -114,13 +113,17 @@ for(const [source,label] of [
 }
 
 for(const text of ['clients-workspace','clients-hero','clients-kicker','clients-summary']){
-  requireText(sectionMarkup('clientsSection','registerContainerSection'),text,`Clientes: owner visual ${text}`);
+  requireText(sectionMarkup('clientsSection','containersSection'),text,`Clientes: owner visual ${text}`);
 }
 forbid(clients,/function\s+sectionHtml\s*\(|section\.innerHTML\s*=/,'Clientes vuelve a duplicar el markup compartido desde JavaScript');
 requireText(clients,"console.error('CLIENTS_MARKUP_MISSING')",'Clientes valida su markup canónico');
 
 forbid(containers,/document\.createElement\(['"]style['"]\)|style\.textContent|function\s+installStyles\s*\(/,'Tracking todavía inyecta CSS desde JavaScript');
-requireText(containers,'function syncContainerGuidance()','Registro conserva guía y validación visual');
+requireText(containers,'function syncContainerGuidance()','Registro conserva validación visual');
+const trackingMarkup=sectionMarkup('containersSection','publicationsSection');
+requireText(trackingMarkup,'id="shipmentRegistrationModal"','Registro secundario dentro de Tracking');
+requireText(trackingMarkup,'data-shipment-registration','Registro como ventana modal');
+requireText(index,'Registrar contenedor sin venta','acceso claro al caso sin venta');
 requireText(containers,"registrationOwner:'containers-module.js'",'Registro pertenece al owner canónico de Tracking');
 if(fs.existsSync('admin/registration-form-shell.js'))failures.push('registration-form-shell.js debe permanecer retirado');
 forbid(loader,/registration-form-shell/,'el loader conserva el shell visual retirado del registro');
@@ -128,7 +131,7 @@ forbid(loader,/registration-form-shell/,'el loader conserva el shell visual reti
 for(const ref of [
   "/admin/clients-module.js?v=20260927-clients1",
   "/admin/workers-module.js?v=20260927-simple1",
-  "/admin/containers-module.js?v=20260926-business1",
+  "/admin/containers-module.js?v=20260927-containerflow1",
   "/admin/operational-alert-center.js?v=20260926-figma2",
   "/admin/access-control-administration.js?v=20260926-business1",
   "/admin/account-administration.js?v=20260926-figma2",

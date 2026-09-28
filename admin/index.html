@@ -33,7 +33,7 @@
 <div class="sidebar-search"><label for="navigationSearch">Buscar sección</label><div class="sidebar-search-field"><input id="navigationSearch" type="search" placeholder="Ventas, tracking, compras…" autocomplete="off" aria-controls="sidebarNavigation" aria-describedby="navigationSearchStatus"><button id="navigationSearchClear" class="sidebar-search-clear" type="button" aria-label="Limpiar búsqueda de secciones" hidden>Limpiar</button></div><p id="navigationSearchStatus" class="sidebar-search-status" role="status" hidden></p></div>
 <nav id="sidebarNavigation" class="sidebar-nav" aria-label="Navegación principal">
 <button class="nav-item active" type="button" data-section="dashboardSection" data-nav-label="Inicio"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Inicio</span></button>
-<div class="nav-group open" data-nav-group="operations"><button class="nav-group-btn" type="button" data-nav-label="Operaciones" aria-expanded="true"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Operaciones</span><span class="nav-chevron" aria-hidden="true"></span></button><div class="submenu"><button type="button" data-section="clientsSection" data-nav-label="Clientes"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Clientes</span></button><button type="button" data-section="registerContainerSection" data-nav-label="Registrar contenedor"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Registrar contenedor</span></button><button type="button" data-section="containersSection" data-nav-label="Tracking"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Tracking</span></button></div></div>
+<div class="nav-group open" data-nav-group="operations"><button class="nav-group-btn" type="button" data-nav-label="Operaciones" aria-expanded="true"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Operaciones</span><span class="nav-chevron" aria-hidden="true"></span></button><div class="submenu"><button type="button" data-section="clientsSection" data-nav-label="Clientes"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Clientes</span></button><button type="button" data-section="containersSection" data-nav-label="Tracking"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Tracking</span></button></div></div>
 <button class="nav-item" type="button" data-section="publicationsSection" data-nav-label="Publicaciones comerciales"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Publicaciones comerciales</span></button>
 <button class="nav-item" type="button" data-section="notificationsSection" data-nav-label="Notificaciones"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Notificaciones</span></button>
 <button class="nav-item" type="button" data-section="workersSection" data-nav-label="Trabajadores"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Trabajadores</span></button>
@@ -123,81 +123,17 @@
     </div>
   </div>
 </section>
-<section id="registerContainerSection" class="app-section hidden tracking-registration-section" data-owner="containers-module.js" aria-labelledby="registerContainerTitle">
-  <div class="tracking-register-workspace">
-    <header class="tracking-hero tracking-register-hero">
-      <div class="tracking-hero-copy">
-        <span class="tracking-kicker">Operaciones · Logística</span>
-        <h2 id="registerContainerTitle">Registrar contenedor</h2>
-        <p>Agrega los datos confirmados de la operación. Solo el número de contenedor es obligatorio.</p>
-      </div>
-    </header>
-
-    <div id="shipmentMsg" class="tracking-feedback" role="status" aria-live="polite"></div>
-
-    <div class="tracking-registration-layout">
-      <aside class="registration-guide" aria-labelledby="registrationGuideTitle">
-
-        <h3 id="registrationGuideTitle">Un registro listo para continuar</h3>
-        <p>El contenedor permanecerá dentro del ERP y podrá relacionarse con Cargues, clientes, documentos Cuba y su historial.</p>
-        <ol class="registration-guide-steps">
-          <li><div><strong>Identifica la operación</strong><small>Usa cuatro letras y siete números.</small></div></li>
-          <li><div><strong>Agrega lo confirmado</strong><small>No inventes booking, B/L ni fechas.</small></div></li>
-          <li><div><strong>Continúa en Tracking</strong><small>Las acciones dependerán del estado y tus permisos.</small></div></li>
-        </ol>
-        <div class="registration-guide-note"><strong>Sin comprador todavía</strong><span>Puedes dejar el cliente vacío y asignarlo después.</span></div>
-      </aside>
-
-      <form id="shipmentRegistrationForm" class="registration-form-panel" novalidate>
-
-        <section class="registration-block" aria-labelledby="registrationAssignmentTitle">
-          <div class="registration-block-head"><div><h4 id="registrationAssignmentTitle">Asignación comercial</h4><p>Comprador e importadora vinculados a esta salida.</p></div></div>
-          <div class="registration-fields">
-            <label class="tracking-field" for="shipmentClient"><span>Cliente</span><select id="shipmentClient"><option value="">Sin cliente / Disponible para venta</option></select><small>Puedes asignarlo posteriormente.</small></label>
-            <label class="tracking-field" for="shipmentImporter"><span>Importadora cubana</span><input id="shipmentImporter" list="shipmentImporterOptions" placeholder="Ej. Cítricos Caribe, Quimimport"><datalist id="shipmentImporterOptions"></datalist><small>Importadora concreta de este contenedor; no depende de las registradas para el cliente.</small></label>
-          </div>
-        </section>
-
-        <section class="registration-block" aria-labelledby="registrationTransportTitle">
-          <div class="registration-block-head"><div><h4 id="registrationTransportTitle">Identificación y transporte</h4><p>Referencias que permiten localizar la operación marítima.</p></div></div>
-          <div class="registration-fields">
-            <label class="tracking-field registration-field-full" for="shipmentContainer"><span>Número de contenedor *</span><input id="shipmentContainer" placeholder="ABCD1234567" maxlength="11" autocomplete="off" inputmode="text" required><small id="registrationContainerHelp" class="registration-container-help">Formato requerido: 4 letras + 7 números. Ejemplo: ABCD1234567.</small></label>
-            <label class="tracking-field" for="shipmentBooking"><span>Booking</span><input id="shipmentBooking" autocomplete="off"></label>
-            <label class="tracking-field" for="shipmentBol"><span>B/L</span><input id="shipmentBol" autocomplete="off"></label>
-            <label class="tracking-field" for="shipmentCarrier"><span>Naviera</span><input id="shipmentCarrier" placeholder="Crowley" autocomplete="organization"></label>
-            <label class="tracking-field" for="shipmentDepartureDate"><span>Fecha de salida</span><input id="shipmentDepartureDate" type="date"><small>Fecha manual indicada por Export MCA.</small></label>
-          </div>
-        </section>
-
-        <section class="registration-block" aria-labelledby="registrationCargoTitle">
-          <div class="registration-block-head"><div><h4 id="registrationCargoTitle">Mercancía</h4><p>Descripción comercial y cantidad transportada.</p></div></div>
-          <div class="registration-fields registration-cargo-fields">
-            <label class="tracking-field registration-field-full" for="shipmentProduct"><span>Producto</span><input id="shipmentProduct" placeholder="Paneles solares, aceite, huevos…" autocomplete="off"></label>
-            <label class="tracking-field" for="shipmentQuantity"><span>Cantidad</span><input id="shipmentQuantity" type="number" min="0" step="0.001" inputmode="decimal"></label>
-            <label class="tracking-field" for="shipmentQuantityUnit"><span>Unidad</span><input id="shipmentQuantityUnit" placeholder="paneles, cajas, galones, unidades" autocomplete="off"></label>
-          </div>
-        </section>
-
-        <footer class="registration-actions">
-          <div id="registrationReadiness" class="registration-readiness"><span class="registration-readiness-dot" aria-hidden="true"></span><span>Completa el número de contenedor para continuar</span></div>
-          <div class="registration-action-buttons"><button id="resetShipmentForm" class="alt" type="button">Limpiar</button><button id="saveShipment" class="tracking-primary" type="submit">Guardar contenedor</button></div>
-        </footer>
-      </form>
-    </div>
-  </div>
-</section>
-
 <section id="containersSection" class="app-section hidden tracking-section" data-owner="containers-module.js" aria-labelledby="trackingTitle">
   <div class="tracking-workspace">
     <header class="tracking-hero">
       <div class="tracking-hero-copy">
         <span class="tracking-kicker">Operaciones · Logística</span>
         <h2 id="trackingTitle">Tracking</h2>
-        <p>Controla cada contenedor, sus hitos, la relación con Cargues y la documentación oficial preparada para Cuba.</p>
+        <p>Consulta estados y documentos. Agrega contenedores desde Venta si son Direct Ship, o desde Cargues si salen del almacén.</p>
       </div>
       <div class="tracking-hero-actions">
         <span id="trackingLastUpdated" class="tracking-visually-hidden" role="status">Preparando operaciones…</span>
-        <button id="trackingRegisterShortcut" class="tracking-primary" type="button" hidden>Registrar contenedor</button>
+        <button id="trackingRegisterShortcut" class="tracking-primary" type="button" hidden>Registrar sin venta</button>
       </div>
     </header>
 
@@ -228,6 +164,46 @@
       <div id="shipments" class="tracking-results" aria-live="polite"><div class="tracking-loading" role="status"><span aria-hidden="true"></span>Consultando contenedores…</div></div>
     </section>
   </div>
+  <div id="shipmentRegistrationModal" class="container-overlay" data-shipment-registration hidden aria-hidden="true">
+    <div class="container-dialog" role="dialog" aria-modal="true" aria-labelledby="shipmentRegistrationTitle" aria-describedby="shipmentRegistrationDescription">
+      <header class="shipment-registration-head">
+        <div><h3 id="shipmentRegistrationTitle">Registrar contenedor sin venta</h3><p id="shipmentRegistrationDescription">Úsalo solo si el contenedor todavía no está unido a una venta o a un Cargue.</p></div>
+        <button id="closeShipmentRegistration" class="alt" type="button" aria-label="Cerrar registro">Cerrar</button>
+      </header>
+
+      <div id="shipmentMsg" class="tracking-feedback" role="status" aria-live="polite"></div>
+
+      <form id="shipmentRegistrationForm" class="registration-form-panel" novalidate>
+        <section class="registration-block" aria-labelledby="registrationTransportTitle">
+          <div class="registration-block-head"><div><h4 id="registrationTransportTitle">Datos del contenedor</h4><p>Solo el número es obligatorio.</p></div></div>
+          <div class="registration-fields">
+            <label class="tracking-field registration-field-full" for="shipmentContainer"><span>Número de contenedor *</span><input id="shipmentContainer" placeholder="ABCD1234567" maxlength="11" autocomplete="off" inputmode="text" required><small id="registrationContainerHelp" class="registration-container-help">Formato: 4 letras y 7 números.</small></label>
+            <label class="tracking-field" for="shipmentBooking"><span>Booking</span><input id="shipmentBooking" autocomplete="off"></label>
+            <label class="tracking-field" for="shipmentBol"><span>B/L</span><input id="shipmentBol" autocomplete="off"></label>
+            <label class="tracking-field" for="shipmentCarrier"><span>Naviera</span><input id="shipmentCarrier" placeholder="Crowley" autocomplete="organization"></label>
+            <label class="tracking-field" for="shipmentDepartureDate"><span>Fecha de salida</span><input id="shipmentDepartureDate" type="date"></label>
+          </div>
+        </section>
+
+        <section class="registration-block" aria-labelledby="registrationCargoTitle">
+          <div class="registration-block-head"><div><h4 id="registrationCargoTitle">Cliente y mercancía</h4><p>Estos datos son opcionales; puedes completarlos después.</p></div></div>
+          <div class="registration-fields registration-cargo-fields">
+            <label class="tracking-field" for="shipmentClient"><span>Cliente</span><select id="shipmentClient"><option value="">Sin cliente / Disponible para venta</option></select></label>
+            <label class="tracking-field" for="shipmentImporter"><span>Importadora cubana</span><input id="shipmentImporter" list="shipmentImporterOptions" placeholder="Nombre de la importadora"><datalist id="shipmentImporterOptions"></datalist></label>
+            <label class="tracking-field registration-field-full" for="shipmentProduct"><span>Producto</span><input id="shipmentProduct" placeholder="Descripción de la mercancía" autocomplete="off"></label>
+            <label class="tracking-field" for="shipmentQuantity"><span>Cantidad</span><input id="shipmentQuantity" type="number" min="0" step="0.001" inputmode="decimal"></label>
+            <label class="tracking-field" for="shipmentQuantityUnit"><span>Unidad</span><input id="shipmentQuantityUnit" placeholder="Cajas, unidades…"></label>
+          </div>
+        </section>
+
+        <footer class="registration-actions">
+          <div id="registrationReadiness" class="registration-readiness" role="status"><span class="registration-readiness-dot" aria-hidden="true"></span><span>Completa el número de contenedor para continuar</span></div>
+          <div class="registration-action-buttons"><button id="cancelShipmentRegistration" class="alt" type="button">Cancelar</button><button id="saveShipment" class="tracking-primary" type="submit">Guardar contenedor</button></div>
+        </footer>
+      </form>
+    </div>
+  </div>
+
 </section>
 <section id="publicationsSection" class="app-section hidden"><iframe class="embedded-workspace-frame" src="/admin/publications.html?embedded=1" title="Publicaciones comerciales"></iframe></section>
 <section id="notificationsSection" class="app-section hidden"></section>
@@ -235,5 +211,5 @@
 <section id="adminsSection" class="app-section hidden" aria-live="polite"></section>
 </main></div></div>
 <div id="modal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="modalTitle">Historial</h2><button id="closeModal" class="alt">Cerrar</button></div><div id="modalBody"></div></div></div>
-<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260927-simple2"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
+<script src="/admin/admin-shell-runtime.js?v=20260903-b10push1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260927-containerflow1"></script><script src="/admin/embedded-auto-refresh.js?v=20260920-speed3"></script>
 </body></html>

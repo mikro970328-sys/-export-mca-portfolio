@@ -66,7 +66,9 @@ for(const token of [
   "['reactivate','reactivate','Reactivar','success']",
   "['delete','delete','Eliminar','danger']",
   'return defs.filter(([cap])=>actionAllowed(shipment,cap))',
-  'register.hidden=!shipmentWriteAccess()',
+  'function openRegistrationModal()',
+  'if(!shipmentWriteAccess())return',
+  'shortcut.hidden=!shipmentWriteAccess()',
   "if(!actionAllowed(shipment,'manual_tracking'))return",
   "if(!actionAllowed(shipment,'delete'))return"
 ])requireText(ui,token,'Containers UI');

@@ -101,18 +101,18 @@
   <div class="modal loads-drawer-modal hidden" id="containerModal" aria-hidden="true">
     <section class="drawer loads-drawer" role="dialog" aria-modal="true" aria-labelledby="containerTitle">
       <header class="drawer-head loads-drawer-head">
-        <div><span class="loads-dialog-kicker">Continuidad logística</span><h2 id="containerTitle">Asignar contenedor</h2><div class="muted" id="containerLoadLabel"></div></div>
+        <div><span class="loads-dialog-kicker">Continuidad logística</span><h2 id="containerTitle">Agregar contenedor al Cargue</h2><div class="muted" id="containerLoadLabel"></div></div>
         <button class="alt icon-btn" type="button" data-close aria-label="Cerrar asignación">Cerrar</button>
       </header>
       <div class="drawer-body">
         <section class="loads-form-section">
-          <header class="loads-inline-head"><div><h3>Crear contenedor</h3><p>Registra la referencia y los datos disponibles; Tracking continuará el flujo.</p></div></header>
+          <header class="loads-inline-head"><div><h3>Crear y vincular</h3><p>Quedará unido a este Cargue y aparecerá en Tracking. Cliente e importadora vienen del Cargue; puedes cambiarlos.</p></div></header>
           <div class="form-grid loads-form-grid">
             <label class="loads-field" for="containerNumber"><span>Número o referencia</span><input id="containerNumber" placeholder="ABCD1234567"></label>
             <label class="loads-field" for="containerCarrier"><span>Naviera</span><input id="containerCarrier"></label>
             <label class="loads-field" for="containerBooking"><span>Booking</span><input id="containerBooking"></label>
             <label class="loads-field" for="containerBol"><span>B/L</span><input id="containerBol"></label>
-            <label class="loads-field" for="containerClient"><span>Cliente</span><select id="containerClient"></select></label>
+            <label class="loads-field" for="containerClient"><span>Cliente del Cargue</span><select id="containerClient"></select></label>
             <label class="loads-field" for="containerImporter"><span>Importadora</span><select id="containerImporter"></select></label>
           </div>
           <div class="actions load-section-actions"><button class="primary" id="createContainer" type="button">Crear y vincular</button></div>

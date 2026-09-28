@@ -39,8 +39,8 @@ for(const text of [
   ':focus-visible'
 ]) requireText(css,text,`selector CSS ${text}`);
 
-const styleLoad="loadStylesheet('/admin/containers-module.css?v=20260926-business1', 'data-containers-module-style')";
-const scriptLoad="loadScript('/admin/containers-module.js?v=20260926-business1', 'data-containers-module')";
+const styleLoad="loadStylesheet('/admin/containers-module.css?v=20260927-containerflow1', 'data-containers-module-style')";
+const scriptLoad="loadScript('/admin/containers-module.js?v=20260927-containerflow1', 'data-containers-module')";
 requireText(erp,styleLoad,'carga stylesheet de Contenedores');
 requireText(erp,scriptLoad,'carga JavaScript de Contenedores');
 const styleIndex=erp.indexOf(styleLoad),scriptIndex=erp.indexOf(scriptLoad);
