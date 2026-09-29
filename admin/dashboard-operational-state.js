@@ -86,7 +86,7 @@
   }
 
   function currentPeriodLabel(executive={}) {
-    const period=executive.period||{};
+    const period=executive?.period||{};
     if(period.start_date && period.end_date)return `${period.start_date} → ${period.end_date}`;
     if(period.start_date)return `Desde ${period.start_date}`;
     if(period.end_date)return `Hasta ${period.end_date}`;

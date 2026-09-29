@@ -50,6 +50,7 @@ assert(!api.includes('loadExecutiveDashboard('), 'P11: el resumen financiero no 
 assert(financialApi.includes("authorizeAdmin(req,res,'dashboard.read')"), 'P11: finanzas deben revalidar dashboard.read');
 assert(financialApi.includes("rpc/executive_dashboard_rollup") || executiveApi.includes("rpc/executive_dashboard_rollup"), 'P11: finanzas deben conservar el RPC B8');
 assert(ui.includes('/api/dashboard-financial'), 'P11: la UI debe cargar finanzas por la ruta asíncrona');
+assert(ui.includes('const period=executive?.period||{};'), 'P11: filtros deben renderizar aunque finanzas sigan cargando');
 assert(api.includes('...overview'), 'P11: el contrato del dashboard debe conservar los datos de overview');
 assert(executiveApi.includes("rpc/executive_dashboard_rollup"), 'P11: finanzas no delegan al RPC B8');
 
@@ -77,7 +78,7 @@ assert(ui.includes('renderError()'), 'P11: dashboard debe tener error recuperabl
 assert(ui.includes('dashboardRetry'), 'P11: dashboard debe ofrecer reintento sin bloquear el ERP');
 assert(css.includes('.executive-finance-grid'), 'P11: stylesheet del dashboard incompleto');
 assert(erp.includes("loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2'"), 'P11: bootstrap no carga stylesheet dashboard');
-assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-split1'"), 'P11: bootstrap no carga owner P11');
+assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-split2'"), 'P11: bootstrap no carga owner P11');
 assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260928-dashboard-onview2'"), 'P11: bootstrap no carga owner de datos resiliente');
 assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');
 assert(dataLoader.includes('window.ExecutiveDashboard?.refresh'), 'P11: owner de datos no delega al owner visual P11');
@@ -105,7 +106,7 @@ const dashboardPending=[];
 const dashboardSection={innerHTML:''};
 const dashboardWindow={
   __executiveDashboardInstalled:false,
-  api(){return new Promise(resolve=>dashboardPending.push(resolve));},
+  api(path){return new Promise(resolve=>dashboardPending.push({path,resolve}));},
   addEventListener(){},
   ExportMcaIcons:{svg:()=>''}
 };
@@ -116,19 +117,27 @@ const dashboardDocument={
 };
 const dashboardStorage={getItem:()=>null};
 vm.runInNewContext(ui,{window:dashboardWindow,document:dashboardDocument,localStorage:dashboardStorage,Intl,Date,Map,Set,URLSearchParams,Promise,Number,String,Math,setTimeout:()=>1,clearTimeout(){}},{filename:'admin/dashboard-operational-state.js'});
-const payload=generatedAt=>({generated_at:generatedAt,stats:{},executive:{period:{},activity_by_currency:[],balances_by_currency:[],exceptions:{}},recent_activity:[],filter_options:{}});
+const payload=generatedAt=>({generated_at:generatedAt,stats:{},work_attention:{},recent_activity:[],filter_options:{}});
+const executivePayload=generatedAt=>({owner:'executive_dashboard_rollup',generated_at:generatedAt,period:{},activity_by_currency:[],balances_by_currency:[],exceptions:{}});
 const firstRefresh=dashboardWindow.ExecutiveDashboard.refresh();
 await Promise.resolve();
-assert(dashboardPending.length===1,'el primer refresco debe iniciar una sola petición');
+assert(dashboardPending.length===1&&dashboardPending[0].path==='/api/dashboard','el primer refresco debe empezar por el overview operativo');
 const queuedRefresh=dashboardWindow.ExecutiveDashboard.refresh();
 assert(typeof queuedRefresh?.then==='function','un refresco concurrente debe esperar su lectura en cola');
-dashboardPending[0](payload('2026-09-28T12:00:00.000Z'));
+dashboardPending[0].resolve(payload('2026-09-28T12:00:00.000Z'));
+await Promise.resolve();
+await Promise.resolve();
+assert(dashboardPending.length===2&&dashboardPending[1].path.startsWith('/api/dashboard-financial'),'el cálculo financiero debe salir por separado tras pintar el overview');
+dashboardPending[1].resolve(executivePayload('2026-09-28T12:00:00.000Z'));
 await firstRefresh;
 await Promise.resolve();
-assert(dashboardPending.length===2,'el dashboard debe repetir la lectura tras finalizar la solicitud activa');
-dashboardPending[1](payload('2026-09-28T12:00:01.000Z'));
-await queuedRefresh;
+assert(dashboardPending.length===3&&dashboardPending[2].path==='/api/dashboard','el refresco en cola debe releer el overview después de cerrar el activo');
+dashboardPending[2].resolve(payload('2026-09-28T12:00:01.000Z'));
 await Promise.resolve();
+await Promise.resolve();
+assert(dashboardPending.length===4&&dashboardPending[3].path.startsWith('/api/dashboard-financial'),'el refresco en cola también debe leer finanzas por separado');
+dashboardPending[3].resolve(executivePayload('2026-09-28T12:00:01.000Z'));
+await queuedRefresh;
 await Promise.resolve();
 assert(dashboardWindow.ExecutiveDashboard.getState().data.generated_at==='2026-09-28T12:00:01.000Z','la segunda lectura debe dejar visible la versión más reciente');
 console.log('Dashboard concurrent refresh queue: OK');
