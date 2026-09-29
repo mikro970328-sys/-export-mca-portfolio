@@ -230,10 +230,21 @@
         .then(data => ({ data }))
         .catch(error => ({ error }));
     }
+    if (dashboardPreloadPromise) {
+      window.__exportMcaDashboardStartupPromise = dashboardPreloadPromise;
+    }
+
+    let dashboardAssetsPromise = null;
+    if (currentUser && storedUserCan(currentUser,'dashboard.read')) {
+      dashboardAssetsPromise = Promise.all([
+        loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style'),
+        loadScript('/admin/dashboard-operational-state.js?v=20260928-dashboard-parallel3', 'data-dashboard-operational-state')
+      ]);
+    }
 
     bootPromise = (async () => {
       await accessStylesPromise;
-      await loadScript('/admin/access-control-administration.js?v=20260926-business1', 'data-access-control-administration');
+      await loadScript('/admin/access-control-administration.js?v=20260929-section-source1', 'data-access-control-administration');
       if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
       await window.ExportMcaAccessControl.initialize();
       await iconSystemPromise;
@@ -244,26 +255,30 @@
       authenticatedShellReady = true;
 
       if (accessCan('dashboard.read')) {
-        await Promise.all([
-          loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style'),
-          loadScript('/admin/dashboard-operational-state.js?v=20260928-dashboard-parallel3', 'data-dashboard-operational-state')
-        ]);
-        if (document.getElementById('dashboardSection')?.classList.contains('hidden') === false &&
-            typeof window.initializeOperationalDashboard === 'function') {
+        if (!dashboardAssetsPromise) {
+          dashboardAssetsPromise = Promise.all([
+            loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style'),
+            loadScript('/admin/dashboard-operational-state.js?v=20260928-dashboard-parallel3', 'data-dashboard-operational-state')
+          ]);
+        }
+        await dashboardAssetsPromise;
+        const dashboardVisible = document.getElementById('dashboardSection')?.classList.contains('hidden') === false;
+        if (dashboardVisible && typeof window.initializeOperationalDashboard === 'function') {
           window.initializeOperationalDashboard();
-          if (dashboardPreloadPromise) {
-            dashboardLoadPromise = dashboardPreloadPromise.then(result => {
-              if (result.error) return window.ExecutiveDashboard?.refresh?.() || false;
-              window.renderStats?.(result.data);
-              return true;
-            }).catch(error => {
-              console.error('[admin dashboard]', error);
-              return false;
-            });
-          } else {
-            dashboardLoadPromise = window.ExecutiveDashboard?.refresh?.() || null;
-            dashboardLoadPromise?.catch(error => console.error('[admin dashboard]', error));
-          }
+        }
+
+        if (dashboardPreloadPromise) {
+          dashboardLoadPromise = dashboardPreloadPromise.then(result => {
+            if (result.error) return window.ExecutiveDashboard?.refresh?.() || false;
+            window.renderStats?.(result.data);
+            return true;
+          }).catch(error => {
+            console.error('[admin dashboard]', error);
+            return false;
+          });
+        } else if (dashboardVisible) {
+          dashboardLoadPromise = window.ExecutiveDashboard?.refresh?.() || null;
+          dashboardLoadPromise?.catch(error => console.error('[admin dashboard]', error));
         }
       }
       if (accessCan('logistics.read')) {

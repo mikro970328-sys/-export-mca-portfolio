@@ -334,7 +334,7 @@
     const original = window.showSection;
     if (typeof original !== 'function') return;
     window.__accessControlSectionGuardInstalled = true;
-    window.showSection = id => original(sectionAllowed(id) ? id : firstAllowedSection());
+    window.showSection = (id, options = {}) => original(sectionAllowed(id) ? id : firstAllowedSection(), options);
   }
 
   function workspaceMarkup() {

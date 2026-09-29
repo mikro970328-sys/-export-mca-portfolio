@@ -125,7 +125,7 @@ function showSection(id, options = {}) {
   if (pageTitle) pageTitle.textContent = titles[id] || navigationLabel || 'EXPORT MCA';
   startEmbeddedWorkspace(id);
   const dashboardState = window.ExecutiveDashboard?.getState?.();
-  const skipStartupDashboardRefresh = options?.source === 'startup' && Boolean(dashboardState?.loading || dashboardState?.data);
+  const skipStartupDashboardRefresh = options?.source === 'startup' && Boolean(dashboardState?.loading || dashboardState?.data || window.__exportMcaDashboardStartupPromise);
   if (id === 'dashboardSection' && !skipStartupDashboardRefresh && typeof window.ExportMcaAdminData?.loadDashboard === 'function') {
     window.ExportMcaAdminData.loadDashboard().catch(error => {
       console.error('[admin dashboard]', error);
