@@ -1038,8 +1038,17 @@
     return registrationDraft;
   }
 
-  async function refreshImporters(){
-    await loadImporterState();
+  async function refreshImporters(nextState=null){
+    if(nextState&&Array.isArray(nextState.importers)){
+      importerState={
+        importers:nextState.importers||[],
+        client_importers:nextState.client_importers||[],
+        shipment_importers:nextState.shipment_importers||[]
+      };
+      window.importerState=importerState;
+    }else{
+      await loadImporterState();
+    }
     syncImporterInput();
     render();
   }

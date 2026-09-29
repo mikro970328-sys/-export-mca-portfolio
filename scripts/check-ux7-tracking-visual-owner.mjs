@@ -141,7 +141,7 @@ for(const text of [
   "loadStylesheet('/admin/shipment-editor.css?v=20260926-figma1', 'data-shipment-editor-style')",
   "loadScript('/admin/shipment-editor.js?v=20260926-figma1', 'data-shipment-editor')"
 ])requireText(loader,text,`asset canónico ${text}`);
-requireText(html,'/admin/erp.js?v=20260928-lazy-workspaces1','revisión de caché del ERP');
+requireText(html,'/admin/erp.js?v=20260929-dashboard-cache-stable1','revisión de caché del ERP');
 
 for(const text of [
   'class="shipment-editor" data-owner="shipment-editor.js"',
@@ -149,11 +149,19 @@ for(const text of [
   'class="shipment-editor-section-head"',
   'for="editorClient"',
   'for="editorContainer"',
-  "request('/api/shipments', { method:'PATCH', body:JSON.stringify(payload()) })",
+  "request('/api/shipments', { method:'PATCH', body:JSON.stringify(changes) })",
   "action:'assign_shipment'",
+  "window.ContainersModule?.syncImporters?.(importerResult.state)",
+  "const importerChanged = norm(importerName) !== norm(currentImporterName)",
+  "function updateCachedShipment(",
   "owner:'containers-module.js'"
 ])requireText(editor,text,`editor ${text}`);
 for(const selector of ['.shipment-editor-summary','.shipment-editor-grid','.shipment-editor-info','.shipment-editor-footer','.shipment-editor-error','@media(max-width:720px)',':focus-visible'])requireText(editorStyles,selector,`CSS editor ${selector}`);
+const editorSaveStart=editor.indexOf('async function save()');
+const editorOpenStart=editor.indexOf('async function open(id',editorSaveStart);
+const editorSave=editorSaveStart>=0&&editorOpenStart>editorSaveStart?editor.slice(editorSaveStart,editorOpenStart):'';
+if(editorSave.includes('window.loadAll'))failures.push('ShipmentEditor debe actualizar el registro local sin recargar todos los datos.');
+if(editorSave.includes('syncImporters?.()'))failures.push('ShipmentEditor no debe repetir la consulta de importadoras.');
 forbid(editor,/\sstyle\s*=|\.style(?:\.|\[)|\b(?:prompt|alert|confirm)\s*\(/i,'ShipmentEditor conserva estilos inline, mutaciones visuales o diálogos nativos');
 forbid(editorStyles,/@import|!important|font-family\s*:\s*Arial|(?:linear|radial)-gradient/i,'shipment-editor.css conserva CSS legacy o degradados');
 
