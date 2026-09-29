@@ -1,6 +1,7 @@
 import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
+import { loadExecutiveDashboard } from './_executive-dashboard.js';
 
-// Dashboard projection owner: api/dashboard.js.
+// Keep finance access behind the same dashboard permission and explicit filter checks.
 export default async function handler(req,res) {
   const admin = await authorizeAdmin(req,res,'dashboard.read');
   if (!admin) return;
@@ -14,44 +15,22 @@ export default async function handler(req,res) {
         });
     const permissionKeys = new Set((permissionRows || []).map(row => String(row.permission_key || '')));
     const can = key => admin.role === 'master_admin' || permissionKeys.has(key);
-
     const canClients = can('clients.read');
     const canProcurement = can('procurement.read');
     const canWarehouse = can('warehouse.read');
     const canSales = can('sales.read');
-    const canTasks = can('tasks.read');
-    const canNotifications = can('notifications.read');
     const canProducts = canSales || canProcurement || canWarehouse;
 
     if (req.query?.client_id && !canClients) return fail(res,403,'No tienes permiso para filtrar por cliente');
     if (req.query?.supplier_id && !canProcurement) return fail(res,403,'No tienes permiso para filtrar por proveedor');
     if (req.query?.product_id && !canProducts) return fail(res,403,'No tienes permiso para filtrar por producto');
 
-    const snapshotResult = await supabase('rpc/admin_dashboard_snapshot', {
-      method:'POST',
-      readOnly:true,
-      body:{
-        p_can_clients:canClients,
-        p_can_procurement:canProcurement,
-        p_can_products:canProducts,
-        p_can_sales:canSales,
-        p_can_warehouse:canWarehouse,
-        p_can_tasks:canTasks,
-        p_can_notifications:canNotifications
-      }
-    });
-    const overview = Array.isArray(snapshotResult) ? snapshotResult[0] : snapshotResult;
-    if (!overview || typeof overview !== 'object') throw new Error('DASHBOARD_OVERVIEW_INVALID');
-
-    return ok(res,{
-      owner:'api/dashboard.js',
-      generated_at:new Date().toISOString(),
-      ...overview
-    });
+    const executive = await loadExecutiveDashboard(req.query || {});
+    return ok(res,executive);
   } catch (error) {
-    console.error('[dashboard]',error);
-    const message=String(error?.message || 'No se pudo cargar el dashboard');
-    const invalid=message.includes('DASHBOARD_FILTER_');
-    return fail(res,invalid?400:500,invalid?message:'No se pudo cargar el dashboard');
+    console.error('[dashboard financial]',error);
+    const message=String(error?.message || 'No se pudo cargar el resumen financiero');
+    const invalid=/^(Fecha inicial|Fecha final|Moneda|Cliente|Proveedor|Producto|La fecha inicial)/.test(message);
+    return fail(res,invalid?400:500,invalid?message:'No se pudo cargar el resumen financiero');
   }
 }

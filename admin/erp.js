@@ -238,7 +238,7 @@
     if (currentUser && storedUserCan(currentUser,'dashboard.read')) {
       dashboardAssetsPromise = Promise.all([
         loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style'),
-        loadScript('/admin/dashboard-operational-state.js?v=20260928-dashboard-parallel3', 'data-dashboard-operational-state')
+        loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-split1', 'data-dashboard-operational-state')
       ]);
     }
 
@@ -258,7 +258,7 @@
         if (!dashboardAssetsPromise) {
           dashboardAssetsPromise = Promise.all([
             loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style'),
-            loadScript('/admin/dashboard-operational-state.js?v=20260928-dashboard-parallel3', 'data-dashboard-operational-state')
+            loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-split1', 'data-dashboard-operational-state')
           ]);
         }
         await dashboardAssetsPromise;

@@ -5,7 +5,7 @@
 
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const state = { data:null, loading:false, refreshQueued:false, refreshQueuedFilters:null, refreshWaiter:null, filters:{ start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:'' } };
+  const state = { data:null, loading:false, financeLoading:false, financeError:false, refreshQueued:false, refreshQueuedOperational:false, refreshQueuedFilters:null, refreshWaiter:null, filters:{ start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:'' } };
   const disclosures = new Map();
   let greetingTimer=null;
 
@@ -81,7 +81,7 @@
   function dashboardIntro(data) {
     return `<header class="executive-intro">
       <div><span class="executive-kicker">Resumen del negocio</span><h1 id="dashboardGreeting">${esc(greetingForHour())}, ${esc(operatorName())}</h1><p>Revisa el estado de la operación y atiende primero lo que necesita una decisión.</p></div>
-      <div class="executive-live"><div><b>Última actualización</b><small>${esc(dateLabel(data.generated_at))}</small></div></div>
+      <div class="executive-live"><div><b>Operación actualizada</b><small>${esc(dateLabel(data.generated_at))}</small></div></div>
     </header>`;
   }
 
@@ -130,6 +130,12 @@
   }
 
   function financeByCurrency(data) {
+    if(!data.executive){
+      const message=state.financeError
+        ? 'El resumen financiero no se pudo actualizar. La operación sigue disponible.'
+        : 'Actualizando las finanzas en segundo plano, sin bloquear la operación.';
+      return `<section class="executive-section executive-finance-loading"><div class="executive-section-head"><div><h3>Finanzas por moneda</h3><p>Actividad del período y saldos actuales.</p></div></div><div class="executive-state ${state.financeError?'executive-state-error':''}" role="${state.financeError?'alert':'status'}" aria-live="polite"><div class="executive-state-mark" aria-hidden="true"></div><div><h3>${state.financeError?'Finanzas temporalmente no disponibles':'Cargando resumen financiero'}</h3><p>${esc(message)}</p></div>${state.financeError?'<button type="button" class="alt" data-dashboard-retry-financial>Reintentar</button>':''}</div></section>`;
+    }
     const executive=data.executive||{};
     const activity=executive.activity_by_currency||[];
     const balances=executive.balances_by_currency||[];
@@ -190,9 +196,10 @@
 
   function exceptionsPanel(data) {
     const financial=data.executive?.exceptions||{};
+    const financeReady=Boolean(data.executive);
     const task=data.work_attention?.tasks;
     const alerts=data.work_attention?.alerts;
-    const rows=[
+    const rows=financeReady?[
       ['Cuentas por cobrar vencidas',financial.overdue_ar_count||0,'invoices'],
       ['Cuentas por pagar vencidas',financial.overdue_ap_count||0,'payables'],
       ['Rentabilidad de factura incompleta',financial.invoice_profitability_incomplete_count||0,'costs'],
@@ -201,11 +208,19 @@
       ['Compras con exceso de recepción',financial.po_receipt_excess_count||0,'purchases'],
       ['Compras con valor incompleto',financial.po_order_value_incomplete_count||0,'purchases'],
       ['Ventas con despacho parcial',financial.sales_order_partial_dispatch_count||0,'sales']
-    ];
+    ]:[];
     if(task){ rows.push(['Tareas bloqueadas',task.blocked,'tasks'],['Tareas vencidas',task.overdue,'tasks'],['Tareas con flujo incompatible',task.routing,'tasks']); }
     if(alerts)rows.push(['Alertas críticas',alerts.critical,'alerts']);
     const active=rows.filter(row=>Number(row[1]||0)>0);
-    return `<section class="executive-section executive-attention"><div class="executive-section-head"><div><span class="executive-section-kicker">Prioridad</span><h3>Requiere atención</h3><p>Desviaciones que necesitan revisión.</p></div></div>${active.length?`<div class="executive-exception-list">${active.map(([label,value,target])=>`<button type="button" data-dashboard-open="${target}"><span class="executive-exception-label"><i aria-hidden="true"></i>${esc(label)}</span><strong>${integer(value)}</strong></button>`).join('')}</div>`:'<div class="executive-empty executive-empty-success">Todo está al día. No hay excepciones activas.</div>'}</section>`;
+    const emptyState=active.length
+      ? ''
+      : financeReady
+        ? '<div class="executive-empty executive-empty-success">Todo está al día. No hay excepciones activas.</div>'
+        : `<div class="executive-empty" role="status" aria-live="polite">${state.financeError?'Las alertas financieras no están disponibles en este momento.':'Comprobando vencimientos y alertas financieras…'}</div>`;
+    const financeStatus=!financeReady&&active.length
+      ? `<div class="executive-empty" role="status" aria-live="polite">${state.financeError?'No se pudieron actualizar las alertas financieras.':'Comprobando vencimientos financieros…'}</div>`
+      : '';
+    return `<section class="executive-section executive-attention"><div class="executive-section-head"><div><span class="executive-section-kicker">Prioridad</span><h3>Requiere atención</h3><p>Desviaciones que necesitan revisión.</p></div></div>${active.length?`<div class="executive-exception-list">${active.map(([label,value,target])=>`<button type="button" data-dashboard-open="${target}"><span class="executive-exception-label"><i aria-hidden="true"></i>${esc(label)}</span><strong>${integer(value)}</strong></button>`).join('')}</div>`:emptyState}${financeStatus}</section>`;
   }
 
   function activityPanel(data) {
@@ -220,21 +235,28 @@
     window.__lastDashboardPayload=data;
     const section=$('dashboardSection');
     if(!section)return;
-    const executive=data.executive||{};
-    const period=executive.period||{};
-    state.filters={
-      start_date:period.start_date||'',
-      end_date:period.end_date||'',
-      currency:period.currency||'',
-      client_id:period.client_id||'',
-      supplier_id:period.supplier_id||'',
-      product_id:period.product_id||''
-    };
-    section.innerHTML=`<div class="executive-dashboard">${dashboardIntro(data)}<div class="executive-priority-grid">${exceptionsPanel(data)}${activityPanel(data)}</div>${operationalSummary(data)}${filterBar(data)}${financeByCurrency(data)}<div class="executive-generated">Actualizado ${esc(dateLabel(data.generated_at))} · Datos financieros consolidados por la plataforma.</div></div>`;
+    const period=data.executive?.period;
+    if(period){
+      state.filters={
+        start_date:period.start_date||'',
+        end_date:period.end_date||'',
+        currency:period.currency||'',
+        client_id:period.client_id||'',
+        supplier_id:period.supplier_id||'',
+        product_id:period.product_id||''
+      };
+    }
+    const financeFootnote=data.executive
+      ? `Finanzas: ${esc(dateLabel(data.executive.generated_at))} · Datos financieros consolidados por la plataforma.`
+      : state.financeError
+        ? 'No se pudo actualizar el resumen financiero.'
+        : 'El resumen financiero se está cargando en segundo plano.';
+    section.innerHTML=`<div class="executive-dashboard">${dashboardIntro(data)}<div class="executive-priority-grid">${exceptionsPanel(data)}${activityPanel(data)}</div>${operationalSummary(data)}${filterBar(data)}${financeByCurrency(data)}<div class="executive-generated">${financeFootnote}</div></div>`;
     restoreSelect('dashboardClient',state.filters.client_id);
     restoreSelect('dashboardSupplier',state.filters.supplier_id);
     restoreSelect('dashboardProduct',state.filters.product_id);
     bind();
+    updateFilterBusy();
     if(focusedId&&section.contains($(focusedId)))$(focusedId).focus({preventScroll:true});
   }
 
@@ -251,6 +273,14 @@
     };
   }
 
+  function updateFilterBusy() {
+    const busy=state.loading;
+    const apply=$('dashboardApplyFilters');
+    const reset=$('dashboardResetFilters');
+    if(apply)apply.disabled=busy;
+    if(reset)reset.disabled=busy;
+  }
+
   function renderLoading() {
     const section=$('dashboardSection');
     if(!section || state.data)return;
@@ -265,10 +295,12 @@
     $('dashboardRetry')?.addEventListener('click',()=>reloadDashboard(state.filters));
   }
 
-  async function reloadDashboard(filters=readFilters()) {
+  async function reloadDashboard(filters=readFilters(),options={}) {
+    const refreshOperational=options.refreshOperational!==false;
     if(state.loading){
       state.refreshQueued=true;
       state.refreshQueuedFilters={...filters};
+      state.refreshQueuedOperational=state.refreshQueuedOperational||refreshOperational;
       if(!state.refreshWaiter){
         let resolve;
         const promise=new Promise(done=>{resolve=done;});
@@ -279,29 +311,52 @@
     const focusedId=document.activeElement?.id;
     state.loading=true;
     state.filters={...filters};
-    const button=$('dashboardApplyFilters');
-    if(button)button.disabled=true;
+    updateFilterBusy();
     if(!state.data)renderLoading();
+    let financeStarted=false;
     try {
+      if(refreshOperational||!state.data){
+        const overview=await window.api('/api/dashboard');
+        state.data={...overview,executive:null};
+      } else {
+        state.data={...state.data,executive:null};
+      }
+      state.financeError=false;
+      state.financeLoading=true;
+      renderDashboard(state.data,focusedId);
+
       const params=new URLSearchParams();
       Object.entries(filters).forEach(([key,value])=>{if(value)params.set(key,value);});
-      const result=await window.api(`/api/dashboard${params.size?`?${params}`:''}`);
-      renderDashboard(result,focusedId);
+      financeStarted=true;
+      const executive=await window.api(`/api/dashboard-financial${params.size?`?${params}`:''}`);
+      state.data={...state.data,executive};
+      state.financeError=false;
+      state.financeLoading=false;
+      renderDashboard(state.data,focusedId);
       return true;
     } catch(error) {
       console.error('[executive dashboard]',error);
-      renderError();
+      state.financeLoading=false;
+      if(financeStarted&&state.data){
+        state.financeError=true;
+        renderDashboard(state.data,focusedId);
+      } else {
+        state.financeError=false;
+        renderError();
+      }
       return false;
     } finally {
       state.loading=false;
-      if(button)button.disabled=false;
+      updateFilterBusy();
       if(state.refreshQueued){
         state.refreshQueued=false;
         const waiter=state.refreshWaiter;
         state.refreshWaiter=null;
         const queuedFilters=state.refreshQueuedFilters||readFilters();
+        const queuedOperational=state.refreshQueuedOperational;
+        state.refreshQueuedOperational=false;
         state.refreshQueuedFilters=null;
-        Promise.resolve().then(()=>reloadDashboard(queuedFilters)).then(value=>waiter?.resolve(value));
+        Promise.resolve().then(()=>reloadDashboard(queuedFilters,{refreshOperational:queuedOperational})).then(value=>waiter?.resolve(value));
       }
     }
   }
@@ -327,8 +382,9 @@
   }
 
   function bind() {
-    $('dashboardApplyFilters')?.addEventListener('click',()=>reloadDashboard());
-    $('dashboardResetFilters')?.addEventListener('click',()=>reloadDashboard({start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:''}));
+    $('dashboardApplyFilters')?.addEventListener('click',()=>reloadDashboard(readFilters(),{refreshOperational:false}));
+    $('dashboardResetFilters')?.addEventListener('click',()=>reloadDashboard({start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:''},{refreshOperational:false}));
+    document.querySelectorAll('#dashboardSection [data-dashboard-retry-financial]').forEach(button=>button.addEventListener('click',()=>reloadDashboard(state.filters,{refreshOperational:false})));
     document.querySelectorAll('#dashboardSection [data-dashboard-open]').forEach(button=>button.addEventListener('click',()=>openTarget(button.dataset.dashboardOpen)));
     document.querySelectorAll('#dashboardSection [data-dashboard-shipment]').forEach(button=>button.addEventListener('click',async()=>{
       try { await window.OperationalNavigation?.openEntity?.({type:'shipment',id:button.dataset.dashboardShipment}); }
@@ -343,9 +399,15 @@
   }
 
   window.renderDashboardDetails = () => state.data ? renderDashboard(state.data) : false;
-  window.renderStats=renderDashboard;
+  window.renderStats=data=>{
+    const rendered=renderDashboard(data);
+    if(data&&!data.executive&&!state.loading){
+      Promise.resolve().then(()=>reloadDashboard(state.filters,{refreshOperational:false}));
+    }
+    return rendered;
+  };
   window.initializeOperationalDashboard=initializeOperationalDashboard;
-  window.ExecutiveDashboard=Object.freeze({refresh:reloadDashboard,refreshGreeting:updateDashboardGreeting,greetingForHour,getState:()=>({...state}),owner:'dashboard-operational-state.js'});
+  window.ExecutiveDashboard=Object.freeze({refresh:reloadDashboard,retryFinancial:()=>reloadDashboard(state.filters,{refreshOperational:false}),refreshGreeting:updateDashboardGreeting,greetingForHour,getState:()=>({...state}),owner:'dashboard-operational-state.js'});
   document.addEventListener('visibilitychange',()=>{
     if(!document.hidden){
       updateDashboardGreeting();
