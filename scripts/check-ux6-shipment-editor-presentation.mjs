@@ -26,11 +26,19 @@ const styleIndex=erp.indexOf(styleLoad),scriptIndex=erp.indexOf(scriptLoad);
 if(styleIndex<0||scriptIndex<0||styleIndex>scriptIndex) failures.push('erp.js debe cargar shipment-editor.css antes del JavaScript');
 
 for(const contract of [
-  "request('/api/shipments', { method:'PATCH', body:JSON.stringify(payload()) })",
+  "request('/api/shipments', { method:'PATCH', body:JSON.stringify(changes) })",
   "action:'assign_shipment'",
-  'window.ContainersModule?.syncImporters?.()',
-  'validReference(reference)'
+  'window.ContainersModule?.syncImporters?.(importerResult.state)',
+  'validReference(reference)',
+  "const importerChanged = norm(importerName) !== norm(currentImporterName)",
+  'function updateCachedShipment('
 ]) requireText(js,contract);
+
+const saveStart=js.indexOf('async function save()');
+const openStart=js.indexOf('async function open(id',saveStart);
+const saveBlock=saveStart>=0&&openStart>saveStart?js.slice(saveStart,openStart):'';
+if(saveBlock.includes('window.loadAll')) failures.push('El editor no puede recargar todo el ERP después de guardar.');
+if(saveBlock.includes('syncImporters?.()')) failures.push('El editor no puede volver a consultar importadoras después de guardar.');
 
 if(failures.length){
   console.error('UX6 Shipment editor presentation gate failed:\n'+failures.map(x=>`- ${x}`).join('\n'));

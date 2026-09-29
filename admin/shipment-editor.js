@@ -12,6 +12,7 @@
     'Esa referencia ya está registrada en otra operación activa.'
   ]);
   let current = null;
+  let currentImporterName = '';
   let saving = false;
 
   function rows() {
@@ -147,8 +148,7 @@
 
   function payload() {
     const quantity = String(byId('editorQuantity')?.value || '').trim();
-    return {
-      id: current.id,
+    const values = {
       client_id: byId('editorClient')?.value || null,
       container_number: norm(byId('editorContainer')?.value || ''),
       product: String(byId('editorProduct')?.value || '').trim(),
@@ -160,27 +160,104 @@
       bol_number: String(byId('editorBol')?.value || '').trim(),
       operational_status: String(byId('editorStatus')?.value || '').trim()
     };
+    const original = {
+      client_id: current.client_id || null,
+      container_number: norm(current.container_number || ''),
+      product: String(current.product || '').trim(),
+      quantity: current.quantity == null ? '' : String(current.quantity),
+      quantity_unit: String(current.quantity_unit || '').trim(),
+      departure_date: String(current.departure_date || ''),
+      carrier: String(current.carrier || '').trim(),
+      booking_number: String(current.booking_number || '').trim(),
+      bol_number: String(current.bol_number || '').trim(),
+      operational_status: String(current.operational_status || current.last_status || 'Registrado').trim()
+    };
+    const changed = { id: current.id };
+    for (const [key, value] of Object.entries(values)) {
+      if (String(value ?? '') !== String(original[key] ?? '')) changed[key] = value;
+    }
+    return changed;
+  }
+
+  function updateCachedShipment(shipmentUpdate = null, importerAssignment = null) {
+    if (!current) return;
+    const next = { ...current, ...(shipmentUpdate || {}) };
+    if (shipmentUpdate && Object.prototype.hasOwnProperty.call(shipmentUpdate, 'client_id') && !Object.prototype.hasOwnProperty.call(shipmentUpdate, 'clients')) {
+      const clientId = shipmentUpdate.client_id;
+      next.clients = clientId
+        ? clientRows().find(client => String(client.id) === String(clientId)) || null
+        : null;
+    }
+    if (shipmentUpdate && Object.prototype.hasOwnProperty.call(shipmentUpdate, 'importer_id') && String(shipmentUpdate.importer_id || '') !== String(current.importer_id || '')) {
+      const state = window.importerState;
+      if (state && Array.isArray(state.shipment_importers)) {
+        const importerState = {
+          ...state,
+          shipment_importers: [
+            ...state.shipment_importers.filter(item => String(item.shipment_id) !== String(next.id)),
+            ...(shipmentUpdate.importer_id ? [{ shipment_id:next.id, importer_id:shipmentUpdate.importer_id }] : [])
+          ]
+        };
+        window.importerState = importerState;
+        window.ContainersModule?.syncImporters?.(importerState)?.catch?.(error => console.error('[shipment editor importer refresh]', error));
+      }
+    }
+    if (importerAssignment && Object.prototype.hasOwnProperty.call(importerAssignment, 'importer_id')) {
+      next.importer_id = importerAssignment.importer_id;
+    }
+    const updatedRows = rows().map(item => String(item.id) === String(next.id) ? next : item);
+    try {
+      if (typeof shipments !== 'undefined') shipments = updatedRows;
+    } catch {}
+    window.shipments = updatedRows;
+    current = next;
+    window.ContainersModule?.render?.();
   }
 
   async function save() {
     if (saving) return;
     const error = validate();
     if (error) return setError(error);
+    const changes = payload();
+    const shipmentChanged = Object.keys(changes).length > 1;
+    const importerName = String(byId('editorImporter')?.value || '').trim();
+    const importerChanged = norm(importerName) !== norm(currentImporterName);
+    if (!shipmentChanged && !importerChanged) {
+      window.closeModal?.();
+      return;
+    }
+
     saving = true;
     const button = byId('shipmentEditorSave');
     button.disabled = true;
     button.textContent = 'Guardando...';
     setError('');
     try {
-      await request('/api/shipments', { method:'PATCH', body:JSON.stringify(payload()) });
-      const importerResult = await request('/api/importers', {
-        method:'PATCH',
-        body:JSON.stringify({ action:'assign_shipment', shipment_id:current.id, importer_name:String(byId('editorImporter')?.value || '').trim() })
-      });
-      if (importerResult.state) window.importerState = importerResult.state;
-      if (typeof window.loadAll === 'function') await window.loadAll();
-      await window.ContainersModule?.syncImporters?.();
+      let shipmentResult = null;
+      if (shipmentChanged) {
+        shipmentResult = await request('/api/shipments', { method:'PATCH', body:JSON.stringify(changes) });
+        updateCachedShipment(shipmentResult.shipment || null);
+      }
+
+      let importerResult = null;
+      if (importerChanged) {
+        importerResult = await request('/api/importers', {
+          method:'PATCH',
+          body:JSON.stringify({ action:'assign_shipment', shipment_id:current.id, importer_name:importerName })
+        });
+        if (importerResult.assignment) updateCachedShipment(null, importerResult.assignment);
+        if (importerResult.state) {
+          window.importerState = importerResult.state;
+          await window.ContainersModule?.syncImporters?.(importerResult.state);
+        }
+      }
+
+      currentImporterName = importerName;
       window.closeModal?.();
+      const dashboard = byId('dashboardSection');
+      if (dashboard && !dashboard.classList.contains('hidden')) {
+        window.ExportMcaAdminData?.loadDashboard?.().catch(error => console.error('[shipment editor dashboard refresh]', error));
+      }
     } catch (error) {
       console.error('SHIPMENT_EDITOR_SAVE_FAILED', error);
       setError(safeEditorMessage(error));
@@ -192,13 +269,13 @@
       }
     }
   }
-
   async function open(id, options = {}) {
     const shipment = rows().find(item => String(item.id) === String(id));
     if (!shipment) throw new Error('No se encontró el contenedor.');
     current = shipment;
     try {
       await ensureImporterState();
+      currentImporterName = importerNameForShipment(shipment.id);
     } catch (error) {
       console.error('SHIPMENT_EDITOR_IMPORTERS_LOAD_FAILED', error);
       throw new Error('No se pudo preparar el editor de contenedores. Intenta nuevamente.');

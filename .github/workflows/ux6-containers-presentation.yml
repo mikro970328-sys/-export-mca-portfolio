@@ -13,6 +13,7 @@ on:
       - 'api/shipment-documents.js'
       - 'admin/registration-form-shell.js'
       - 'scripts/check-ux7-tracking-visual-owner.mjs'
+      - 'scripts/check-shipment-editor-save-performance.mjs'
       - 'scripts/check-ux6-containers-presentation.mjs'
       - 'scripts/check-customs-upload-recovery.mjs'
       - 'scripts/check-customs-delete-recovery.mjs'
@@ -32,6 +33,7 @@ jobs:
       - run: node scripts/check-customs-upload-recovery.mjs
       - run: node scripts/check-customs-delete-recovery.mjs
       - run: node scripts/check-ux6-shipment-editor-presentation.mjs
+      - run: node scripts/check-shipment-editor-save-performance.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check admin/containers-module.js
@@ -39,6 +41,7 @@ jobs:
           node --check admin/erp.js
           node --check api/shipment-documents.js
           node --check scripts/check-ux7-tracking-visual-owner.mjs
+          node --check scripts/check-shipment-editor-save-performance.mjs
           node --check scripts/check-ux6-containers-presentation.mjs
       - run: node scripts/check-ux5-shipment-actions.mjs
       - run: node scripts/check-frontend-ownership.mjs
