@@ -46,10 +46,14 @@ assert(api.includes("can('tasks.read')") && api.includes("can('notifications.rea
 assert(api.includes('rpc/admin_dashboard_snapshot'), 'P11: overview debe venir del snapshot consolidado');
 assert(!/supabase\('(clients|products|suppliers|shipments|operations|warehouse_receipts|loads|warehouses|inventory_source_balances|documents|executive_operational_attention|executive_(invoice|sales_order|purchase_order|supplier_bill)_kpi_source)'/.test(api), 'P11: la ruta no debe descargar filas para agregarlas en JavaScript');
 const financialApi=read('api/dashboard-financial.js');
+const attentionApi=read('api/dashboard-attention.js');
 assert(!api.includes('loadExecutiveDashboard('), 'P11: el resumen financiero no debe bloquear la ruta operativa');
 assert(financialApi.includes("authorizeAdmin(req,res,'dashboard.read')"), 'P11: finanzas deben revalidar dashboard.read');
 assert(financialApi.includes("rpc/executive_dashboard_rollup") || executiveApi.includes("rpc/executive_dashboard_rollup"), 'P11: finanzas deben conservar el RPC B8');
+assert(attentionApi.includes("authorizeAdmin(req,res,'dashboard.read')") && attentionApi.includes("supabase('executive_operational_attention'"), 'P11: tareas y alertas deben actualizarse por separado');
+assert(attentionApi.includes("can('tasks.read')") && attentionApi.includes("can('notifications.read')"), 'P11: atención debe conservar permisos');
 assert(ui.includes('/api/dashboard-financial'), 'P11: la UI debe cargar finanzas por la ruta asíncrona');
+assert(ui.includes("window.api('/api/dashboard-attention')") && ui.includes('refreshAttention'), 'P11: atención debe tener una actualización ligera e independiente');
 assert(ui.includes('const period=executive?.period||{};'), 'P11: filtros deben renderizar aunque finanzas sigan cargando');
 assert(api.includes('...overview'), 'P11: el contrato del dashboard debe conservar los datos de overview');
 assert(executiveApi.includes("rpc/executive_dashboard_rollup"), 'P11: finanzas no delegan al RPC B8');
@@ -83,6 +87,7 @@ assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260928-dashboar
 assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');
 assert(dataLoader.includes('window.ExecutiveDashboard?.refresh'), 'P11: owner de datos no delega al owner visual P11');
 assert(autoRefresh.includes("const coreRefreshScopes = new Set(String(scope || '').split(',').map(value => value.trim()));") && autoRefresh.includes("['erp','clients','shipments','account'].some(value => coreRefreshScopes.has(value))"), 'P11: cambios ajenos a clientes, contenedores y permisos no deben recargar datos núcleo');
+assert(autoRefresh.includes('const dashboardRefreshRequired = [...refreshScopes].some(value => dashboardRefreshScopes.has(value));') && autoRefresh.includes("['tasks','notifications'].some(value => refreshScopes.has(value))"), 'P11: tareas y notificaciones no deben recalcular todo el dashboard');
 assert(erp.includes("window.api('/api/dashboard')"), 'P11: dashboard debe empezar a cargar antes de completar los módulos secundarios');
 const dashboardPrefetchAt=index.indexOf('__exportMcaEarlyDashboard');
 const firstStylesheetAt=index.indexOf('<link rel="stylesheet"');
@@ -141,3 +146,12 @@ await queuedRefresh;
 await Promise.resolve();
 assert(dashboardWindow.ExecutiveDashboard.getState().data.generated_at==='2026-09-28T12:00:01.000Z','la segunda lectura debe dejar visible la versión más reciente');
 console.log('Dashboard concurrent refresh queue: OK');
+
+const attentionRefresh=dashboardWindow.ExecutiveDashboard.refreshAttention();
+await Promise.resolve();
+assert(dashboardPending.length===5&&dashboardPending[4].path==='/api/dashboard-attention','alertas deben usar la ruta liviana');
+dashboardPending[4].resolve({generated_at:'2026-09-28T12:00:02.000Z',work_attention:{tasks:{open:4},alerts:{active:2,critical:1}}});
+await attentionRefresh;
+const attentionState=dashboardWindow.ExecutiveDashboard.getState().data;
+assert(attentionState.generated_at==='2026-09-28T12:00:01.000Z'&&attentionState.work_attention.alerts.active===2,'actualizar alertas no debe recalcular ni reemplazar el snapshot operativo');
+console.log('Dashboard attention-only refresh: OK');

@@ -5,9 +5,10 @@
 
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const state = { data:null, loading:false, financeLoading:false, financeError:false, refreshQueued:false, refreshQueuedOperational:false, refreshQueuedFilters:null, refreshWaiter:null, filters:{ start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:'' } };
+  const state = { data:null, loading:false, financeLoading:false, financeError:false, refreshQueued:false, refreshQueuedOperational:false, refreshQueuedFilters:null, refreshWaiter:null, attentionQueued:false, filters:{ start_date:'',end_date:'',currency:'',client_id:'',supplier_id:'',product_id:'' } };
   const disclosures = new Map();
   let greetingTimer=null;
+  let attentionRefreshPromise=null;
 
   const number = value => new Intl.NumberFormat('es-US',{maximumFractionDigits:2}).format(Number(value || 0));
   const integer = value => new Intl.NumberFormat('es-US',{maximumFractionDigits:0}).format(Number(value || 0));
@@ -295,6 +296,40 @@
     $('dashboardRetry')?.addEventListener('click',()=>reloadDashboard(state.filters));
   }
 
+  function refreshAttention() {
+    if(state.loading){
+      state.attentionQueued=true;
+      return Promise.resolve(true);
+    }
+    if(!state.data)return Promise.resolve(false);
+    if(attentionRefreshPromise){
+      state.attentionQueued=true;
+      return attentionRefreshPromise;
+    }
+    attentionRefreshPromise=(async()=>{
+      try {
+        const result=await window.api('/api/dashboard-attention');
+        if(!state.data)return false;
+        state.data={
+          ...state.data,
+          work_attention:{...(state.data.work_attention||{}),...(result?.work_attention||{})}
+        };
+        renderDashboard(state.data);
+        return true;
+      } catch(error) {
+        console.warn('[executive dashboard] attention refresh failed',error);
+        return false;
+      } finally {
+        attentionRefreshPromise=null;
+        if(state.attentionQueued){
+          state.attentionQueued=false;
+          if(state.data&&!state.loading)Promise.resolve().then(refreshAttention);
+        }
+      }
+    })();
+    return attentionRefreshPromise;
+  }
+
   async function reloadDashboard(filters=readFilters(),options={}) {
     const refreshOperational=options.refreshOperational!==false;
     if(state.loading){
@@ -358,6 +393,10 @@
         state.refreshQueuedFilters=null;
         Promise.resolve().then(()=>reloadDashboard(queuedFilters,{refreshOperational:queuedOperational})).then(value=>waiter?.resolve(value));
       }
+      if(state.attentionQueued){
+        state.attentionQueued=false;
+        Promise.resolve().then(refreshAttention);
+      }
     }
   }
 
@@ -407,7 +446,7 @@
     return rendered;
   };
   window.initializeOperationalDashboard=initializeOperationalDashboard;
-  window.ExecutiveDashboard=Object.freeze({refresh:reloadDashboard,retryFinancial:()=>reloadDashboard(state.filters,{refreshOperational:false}),refreshGreeting:updateDashboardGreeting,greetingForHour,getState:()=>({...state}),owner:'dashboard-operational-state.js'});
+  window.ExecutiveDashboard=Object.freeze({refresh:reloadDashboard,refreshAttention,retryFinancial:()=>reloadDashboard(state.filters,{refreshOperational:false}),refreshGreeting:updateDashboardGreeting,greetingForHour,getState:()=>({...state}),owner:'dashboard-operational-state.js'});
   document.addEventListener('visibilitychange',()=>{
     if(!document.hidden){
       updateDashboardGreeting();

@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260929-scoped-refresh1';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260929-light-attention1';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -194,8 +194,18 @@
     try{
       const loader=window.ExportMcaAdminData;
       const refreshes=[];
-      if(typeof loader?.loadDashboard==='function'&&visibleSectionId()==='dashboardSection'){
+      const refreshScopes = new Set(String(scope || '').split(',').map(value => value.trim()).filter(Boolean));
+      const dashboardRefreshScopes = new Set([
+        'erp','clients','shipments','sales','purchases','warehouse','inventory','loads',
+        'products','suppliers','publications','invoices','payables','costs','account'
+      ]);
+      const dashboardRefreshRequired = [...refreshScopes].some(value => dashboardRefreshScopes.has(value));
+      const attentionRefreshRequired = !dashboardRefreshRequired && ['tasks','notifications'].some(value => refreshScopes.has(value));
+      if(dashboardRefreshRequired&&typeof loader?.loadDashboard==='function'&&visibleSectionId()==='dashboardSection'){
         refreshes.push(Promise.resolve().then(()=>loader.loadDashboard()));
+      }
+      if(attentionRefreshRequired&&visibleSectionId()==='dashboardSection'&&typeof window.ExecutiveDashboard?.refreshAttention==='function'){
+        refreshes.push(Promise.resolve().then(()=>window.ExecutiveDashboard.refreshAttention()));
       }
       const coreRefreshScopes = new Set(String(scope || '').split(',').map(value => value.trim()));
       const coreRefreshRequired = ['erp','clients','shipments','account'].some(value => coreRefreshScopes.has(value));
