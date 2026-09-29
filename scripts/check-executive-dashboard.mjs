@@ -82,7 +82,7 @@ assert(ui.includes('renderError()'), 'P11: dashboard debe tener error recuperabl
 assert(ui.includes('dashboardRetry'), 'P11: dashboard debe ofrecer reintento sin bloquear el ERP');
 assert(css.includes('.executive-finance-grid'), 'P11: stylesheet del dashboard incompleto');
 assert(erp.includes("loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2'"), 'P11: bootstrap no carga stylesheet dashboard');
-assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-split2'"), 'P11: bootstrap no carga owner P11');
+assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-attention2'"), 'P11: bootstrap no carga owner P11');
 assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260928-dashboard-onview2'"), 'P11: bootstrap no carga owner de datos resiliente');
 assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');
 assert(dataLoader.includes('window.ExecutiveDashboard?.refresh'), 'P11: owner de datos no delega al owner visual P11');
@@ -155,3 +155,28 @@ await attentionRefresh;
 const attentionState=dashboardWindow.ExecutiveDashboard.getState().data;
 assert(attentionState.generated_at==='2026-09-28T12:00:01.000Z'&&attentionState.work_attention.alerts.active===2,'actualizar alertas no debe recalcular ni reemplazar el snapshot operativo');
 console.log('Dashboard attention-only refresh: OK');
+
+const racingAttentionRefresh=dashboardWindow.ExecutiveDashboard.refreshAttention();
+await Promise.resolve();
+assert(dashboardPending.length===6&&dashboardPending[5].path==='/api/dashboard-attention','el refresco ligero debe iniciar una sola consulta');
+const overlappingDashboardRefresh=dashboardWindow.ExecutiveDashboard.refresh();
+await Promise.resolve();
+assert(dashboardPending.length===7&&dashboardPending[6].path==='/api/dashboard','la recarga operativa debe poder solaparse sin perder alertas');
+dashboardWindow.ExecutiveDashboard.refreshAttention();
+dashboardPending[5].resolve({work_attention:{tasks:{open:4},alerts:{active:2,critical:1}}});
+await racingAttentionRefresh;
+dashboardPending[6].resolve(payload('2026-09-28T12:00:03.000Z'));
+await Promise.resolve();
+await Promise.resolve();
+assert(dashboardPending.length===8&&dashboardPending[7].path.startsWith('/api/dashboard-financial'),'la recarga operativa debe finalizar su ruta financiera habitual');
+dashboardPending[7].resolve(executivePayload('2026-09-28T12:00:03.000Z'));
+await overlappingDashboardRefresh;
+await Promise.resolve();
+await Promise.resolve();
+assert(dashboardPending.length===9&&dashboardPending[8].path==='/api/dashboard-attention','una alerta recibida durante la recarga debe repetirse después de cerrar el dashboard');
+dashboardPending[8].resolve({work_attention:{tasks:{open:4},alerts:{active:4,critical:2}}});
+await Promise.resolve();
+await Promise.resolve();
+assert(dashboardWindow.ExecutiveDashboard.getState().data.work_attention.alerts.active===4,'el último estado de alertas debe prevalecer después de una recarga concurrente');
+console.log('Dashboard attention overlap queue: OK');
+

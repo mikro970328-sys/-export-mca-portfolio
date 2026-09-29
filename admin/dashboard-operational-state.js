@@ -321,9 +321,9 @@
         return false;
       } finally {
         attentionRefreshPromise=null;
-        if(state.attentionQueued){
+        if(state.attentionQueued&&!state.loading){
           state.attentionQueued=false;
-          if(state.data&&!state.loading)Promise.resolve().then(refreshAttention);
+          if(state.data)Promise.resolve().then(refreshAttention);
         }
       }
     })();
