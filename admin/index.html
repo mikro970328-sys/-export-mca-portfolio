@@ -7,11 +7,29 @@
   try {
     const hasSession = Boolean(localStorage.getItem('export_mca_token'));
     root.classList.replace('auth-pending', hasSession ? 'auth-session' : 'auth-login');
+    if (hasSession) root.classList.add('admin-preparing');
   } catch {
     root.classList.replace('auth-pending', 'auth-login');
   }
 })();
 </script>
+<style>
+html.admin-preparing body::before {
+  content:"Abriendo tu ERP";
+  position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;
+  padding:48px 20px 0;background:#f7f8fa;color:#152235;
+  font:600 15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+html.admin-preparing body::after {
+  content:"";position:fixed;z-index:2147483647;top:calc(50% - 42px);left:calc(50% - 13px);
+  width:26px;height:26px;border:3px solid #dbe1ea;border-top-color:#de6b32;
+  border-radius:50%;animation:exportMcaBootSpin .8s linear infinite;
+}
+@keyframes exportMcaBootSpin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) {
+  html.admin-preparing body::after { animation:none;border-top-color:#de6b32; }
+}
+</style>
 <script>
 (() => {
   let token = '';

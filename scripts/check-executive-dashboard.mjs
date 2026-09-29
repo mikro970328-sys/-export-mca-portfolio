@@ -80,6 +80,7 @@ assert(erp.includes("window.api('/api/dashboard')"), 'P11: dashboard debe empeza
 const dashboardPrefetchAt=index.indexOf('__exportMcaEarlyDashboard');
 const firstStylesheetAt=index.indexOf('<link rel="stylesheet"');
 assert(dashboardPrefetchAt>=0 && dashboardPrefetchAt<firstStylesheetAt && index.includes("fetch('/api/dashboard'"), 'P11: dashboard debe iniciar datos antes de esperar los estilos');
+assert(index.includes("if (hasSession) root.classList.add('admin-preparing');") && index.includes('html.admin-preparing body::before'), 'P11: una sesión guardada debe mostrar feedback antes de descargar módulos');
 assert(erp.includes('Promise.all(['), 'P11: los assets visuales del dashboard deben cargar en paralelo');
 assert(shellRuntime.includes("options?.source === 'startup'") && shellRuntime.includes('window.__exportMcaDashboardStartupPromise'), 'P11: al restaurar Inicio no debe pedir el mismo dashboard dos veces');
 assert(accessAdministration.includes('original(sectionAllowed(id) ? id : firstAllowedSection(), options)'), 'P11: el guard de permisos debe preservar el origen startup de la sección');
