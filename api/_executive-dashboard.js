@@ -44,7 +44,7 @@ export function parseExecutiveFilters(query = {}) {
 
 export async function loadExecutiveDashboard(query = {}) {
   const filters = parseExecutiveFilters(query);
-  const result = await supabase('rpc/executive_dashboard_rollup', {
+  const result = await supabase('rpc/executive_dashboard_rollup_cached', {
     method:'POST',
     readOnly:true,
     body:{

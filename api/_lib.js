@@ -243,7 +243,7 @@ function parseSupabaseError(text) {
 function retryableSupabaseReadFailure(retrySafe, status, errorDetails = {}) {
   if (!retrySafe) return false;
   if (SUPABASE_READ_RETRY_STATUSES.has(Number(status))) return true;
-  if (Number(status) === 500 && errorDetails.code === '57014') return true;
+  // Do not retry PostgreSQL statement timeouts: parallel retries amplify database overload.
   return Number(status) === 401
     && errorDetails.code === 'PGRST303'
     && /issued at future/i.test(errorDetails.message);
@@ -268,7 +268,7 @@ function retryDelay(attempt) {
 }
 
 export function upstreamFailureStatus(error, fallback = 400) {
-  return error?.retryable === true ? 503 : fallback;
+  return error?.retryable === true || (error?.status === 500 && error?.code === '57014') ? 503 : fallback;
 }
 
 export async function supabase(path, { method = 'GET', body, query = '', prefer, readOnly = false } = {}) {

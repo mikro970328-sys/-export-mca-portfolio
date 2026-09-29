@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase, upstreamFailureStatus } from './_lib.js';
 
 // Dashboard projection owner: api/dashboard.js.
 export default async function handler(req,res) {
@@ -27,7 +27,7 @@ export default async function handler(req,res) {
     if (req.query?.supplier_id && !canProcurement) return fail(res,403,'No tienes permiso para filtrar por proveedor');
     if (req.query?.product_id && !canProducts) return fail(res,403,'No tienes permiso para filtrar por producto');
 
-    const snapshotResult = await supabase('rpc/admin_dashboard_snapshot', {
+    const snapshotResult = await supabase('rpc/admin_dashboard_snapshot_cached', {
       method:'POST',
       readOnly:true,
       body:{
@@ -52,6 +52,6 @@ export default async function handler(req,res) {
     console.error('[dashboard]',error);
     const message=String(error?.message || 'No se pudo cargar el dashboard');
     const invalid=message.includes('DASHBOARD_FILTER_');
-    return fail(res,invalid?400:500,invalid?message:'No se pudo cargar el dashboard');
+    return fail(res,invalid?400:upstreamFailureStatus(error,500),invalid?message:'No se pudo cargar el dashboard');
   }
 }

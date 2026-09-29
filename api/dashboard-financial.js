@@ -1,4 +1,4 @@
-import { authorizeAdmin, fail, ok, supabase } from './_lib.js';
+import { authorizeAdmin, fail, ok, supabase, upstreamFailureStatus } from './_lib.js';
 import { loadExecutiveDashboard } from './_executive-dashboard.js';
 
 // Keep finance access behind the same dashboard permission and explicit filter checks.
@@ -31,6 +31,6 @@ export default async function handler(req,res) {
     console.error('[dashboard financial]',error);
     const message=String(error?.message || 'No se pudo cargar el resumen financiero');
     const invalid=/^(Fecha inicial|Fecha final|Moneda|Cliente|Proveedor|Producto|La fecha inicial)/.test(message);
-    return fail(res,invalid?400:500,invalid?message:'No se pudo cargar el resumen financiero');
+    return fail(res,invalid?400:upstreamFailureStatus(error,500),invalid?message:'No se pudo cargar el resumen financiero');
   }
 }
