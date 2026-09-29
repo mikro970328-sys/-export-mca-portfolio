@@ -9,7 +9,7 @@
       ) {
         parentWindow.__exportMcaAutoRefreshBootstrapping = true;
         const script = parentWindow.document.createElement('script');
-        script.src = '/admin/embedded-auto-refresh.js?v=20260928-dashboard-parallel3';
+        script.src = '/admin/embedded-auto-refresh.js?v=20260929-scoped-refresh1';
         script.onload = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         script.onerror = () => { parentWindow.__exportMcaAutoRefreshBootstrapping = false; };
         parentWindow.document.head.appendChild(script);
@@ -197,7 +197,9 @@
       if(typeof loader?.loadDashboard==='function'&&visibleSectionId()==='dashboardSection'){
         refreshes.push(Promise.resolve().then(()=>loader.loadDashboard()));
       }
-      if(typeof loader?.loadCore==='function'){
+      const coreRefreshScopes = new Set(String(scope || '').split(',').map(value => value.trim()));
+      const coreRefreshRequired = ['erp','clients','shipments','account'].some(value => coreRefreshScopes.has(value));
+      if(coreRefreshRequired && typeof loader?.loadCore==='function'){
         refreshes.push(Promise.resolve().then(()=>loader.loadCore()));
       }
       const results=await Promise.allSettled(refreshes);

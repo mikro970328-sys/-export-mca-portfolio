@@ -15,6 +15,7 @@ const erp=read('admin/erp.js');
 const dataLoader=read('admin/admin-data-loader.js');
 const sectionState=read('admin/section-state.js');
 const shellRuntime=read('admin/admin-shell-runtime.js');
+const autoRefresh=read('admin/embedded-auto-refresh.js');
 const accessAdministration=read('admin/access-control-administration.js');
 
 assert(migration.includes('profitability.direct_cost_currency'), 'P11: source B8 no expone direct_cost_currency');
@@ -76,6 +77,7 @@ assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=2026092
 assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260928-dashboard-onview2'"), 'P11: bootstrap no carga owner de datos resiliente');
 assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');
 assert(dataLoader.includes('window.ExecutiveDashboard?.refresh'), 'P11: owner de datos no delega al owner visual P11');
+assert(autoRefresh.includes("const coreRefreshScopes = new Set(String(scope || '').split(',').map(value => value.trim()));") && autoRefresh.includes("['erp','clients','shipments','account'].some(value => coreRefreshScopes.has(value))"), 'P11: cambios ajenos a clientes, contenedores y permisos no deben recargar datos núcleo');
 assert(erp.includes("window.api('/api/dashboard')"), 'P11: dashboard debe empezar a cargar antes de completar los módulos secundarios');
 const dashboardPrefetchAt=index.indexOf('__exportMcaEarlyDashboard');
 const firstStylesheetAt=index.indexOf('<link rel="stylesheet"');
