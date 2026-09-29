@@ -346,6 +346,7 @@
     const focusedId=document.activeElement?.id;
     state.loading=true;
     state.filters={...filters};
+    if(refreshOperational||!state.data)state.attentionQueued=true;
     updateFilterBusy();
     if(!state.data)renderLoading();
     let financeStarted=false;

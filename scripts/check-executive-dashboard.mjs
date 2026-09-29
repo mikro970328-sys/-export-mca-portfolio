@@ -6,6 +6,7 @@ const assert = (condition,message) => { if(!condition) throw new Error(message);
 
 const migration=read('supabase/migrations/20260830223000_p11_executive_dashboard_profitability.sql');
 const snapshotMigration=read('supabase/migrations/20260928232500_admin_dashboard_snapshot.sql');
+const dashboardCacheMigration=read('supabase/migrations/20260929041000_dashboard_cache_stable_versions.sql');
 const api=read('api/dashboard.js');
 const index=read('admin/index.html');
 const executiveApi=read('api/_executive-dashboard.js');
@@ -43,13 +44,17 @@ assert(api.includes("authorizeAdmin(req,res,'dashboard.read')"), 'P11: dashboard
 assert(api.includes("supabase('admin_effective_permissions'"), 'P11: el dashboard debe leer permisos una sola vez');
 assert(api.includes("can('clients.read')") && api.includes("can('procurement.read')"), 'P11: opciones de filtro deben respetar permisos');
 assert(api.includes("can('tasks.read')") && api.includes("can('notifications.read')"), 'P11: atención debe respetar permisos');
-assert(api.includes('rpc/admin_dashboard_snapshot'), 'P11: overview debe venir del snapshot consolidado');
+assert(api.includes('rpc/admin_dashboard_snapshot_cached'), 'P11: overview debe usar el snapshot coalescido');
+assert(dashboardCacheMigration.includes('pg_advisory_xact_lock'), 'P11: aperturas simultáneas deben compartir el cálculo');
+assert(dashboardCacheMigration.includes('web_push_runtime_state'), 'P11: la marca técnica de push debe dejar de invalidar el panel');
+assert(!dashboardCacheMigration.includes("'notifications'"), 'P11: el tráfico interno de notificaciones no debe invalidar el resumen; alertas se refrescan por la ruta ligera');
+assert(ui.includes('if(refreshOperational||!state.data)state.attentionQueued=true;'), 'P11: el primer snapshot cacheado debe actualizar alertas/tareas con su endpoint ligero');
 assert(!/supabase\('(clients|products|suppliers|shipments|operations|warehouse_receipts|loads|warehouses|inventory_source_balances|documents|executive_operational_attention|executive_(invoice|sales_order|purchase_order|supplier_bill)_kpi_source)'/.test(api), 'P11: la ruta no debe descargar filas para agregarlas en JavaScript');
 const financialApi=read('api/dashboard-financial.js');
 const attentionApi=read('api/dashboard-attention.js');
 assert(!api.includes('loadExecutiveDashboard('), 'P11: el resumen financiero no debe bloquear la ruta operativa');
 assert(financialApi.includes("authorizeAdmin(req,res,'dashboard.read')"), 'P11: finanzas deben revalidar dashboard.read');
-assert(financialApi.includes("rpc/executive_dashboard_rollup") || executiveApi.includes("rpc/executive_dashboard_rollup"), 'P11: finanzas deben conservar el RPC B8');
+assert(financialApi.includes("rpc/executive_dashboard_rollup_cached") || executiveApi.includes("rpc/executive_dashboard_rollup_cached"), 'P11: finanzas deben conservar el RPC B8');
 assert(attentionApi.includes("authorizeAdmin(req,res,'dashboard.read')") && attentionApi.includes("supabase('executive_operational_attention'"), 'P11: tareas y alertas deben actualizarse por separado');
 assert(attentionApi.includes("can('tasks.read')") && attentionApi.includes("can('notifications.read')"), 'P11: atención debe conservar permisos');
 assert(ui.includes('/api/dashboard-financial'), 'P11: la UI debe cargar finanzas por la ruta asíncrona');
@@ -82,7 +87,7 @@ assert(ui.includes('renderError()'), 'P11: dashboard debe tener error recuperabl
 assert(ui.includes('dashboardRetry'), 'P11: dashboard debe ofrecer reintento sin bloquear el ERP');
 assert(css.includes('.executive-finance-grid'), 'P11: stylesheet del dashboard incompleto');
 assert(erp.includes("loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2'"), 'P11: bootstrap no carga stylesheet dashboard');
-assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-attention2'"), 'P11: bootstrap no carga owner P11');
+assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-cache-stable1'"), 'P11: bootstrap no carga owner P11');
 assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260928-dashboard-onview2'"), 'P11: bootstrap no carga owner de datos resiliente');
 assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');
 assert(dataLoader.includes('window.ExecutiveDashboard?.refresh'), 'P11: owner de datos no delega al owner visual P11');
