@@ -934,7 +934,7 @@
     wrapSectionGuard();
     prepareWorkspace();
     applyNavigation();
-    if (canAny(MANAGEMENT_KEYS) && state.activeTab) await switchTab(state.activeTab);
+    if (canAny(MANAGEMENT_KEYS) && state.activeTab) switchTab(state.activeTab);
     return state.account;
   }
 

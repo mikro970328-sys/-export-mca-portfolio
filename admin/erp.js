@@ -244,7 +244,7 @@
 
     bootPromise = (async () => {
       await accessStylesPromise;
-      await loadScript('/admin/access-control-administration.js?v=20260929-section-source1', 'data-access-control-administration');
+      await loadScript('/admin/access-control-administration.js?v=20260929-section-source2', 'data-access-control-administration');
       if (!window.ExportMcaAccessControl?.initialize) throw new Error('El contexto de permisos no está disponible.');
       await window.ExportMcaAccessControl.initialize();
       await iconSystemPromise;
