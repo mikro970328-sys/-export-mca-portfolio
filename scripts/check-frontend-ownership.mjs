@@ -234,12 +234,13 @@ for (const forbidden of [
 
 for (const fragment of [
   "owner:'api/dashboard.js'",
-  'function classifyShipment',
-  'function buildShipmentStats',
-  'function buildOperationStats',
-  'recent_activity:'
+  "'dashboard.read'",
+  "supabase('rpc/admin_dashboard_snapshot_cached'",
+  'p_can_clients:canClients',
+  'generated_at:new Date().toISOString()',
+  '...overview'
 ]) {
-  if (!dashboardApi.includes(fragment)) errors.push(`Falta proyección operativa única del backend UX-B: ${fragment}`);
+  if (!dashboardApi.includes(fragment)) errors.push(`Falta proyección operativa cacheada del backend UX-B: ${fragment}`);
 }
 
 for (const fragment of [
@@ -293,16 +294,16 @@ for (const forbidden of [
   if (index.includes(forbidden)) errors.push(`index.html todavía posee comportamiento del shell: ${forbidden}`);
 }
 
-if (!index.includes('/admin/admin-shell-runtime.js?v=20260928-dashboard-onview1')) {
+if (!index.includes('/admin/admin-shell-runtime.js?v=20260929-dashboard-overlap1')) {
   errors.push('index.html no carga el runtime estructural versionado antes del ERP.');
 }
-if (index.indexOf('/admin/admin-shell-runtime.js?v=20260928-dashboard-onview1') > index.indexOf('/admin/erp.js')) {
+if (index.indexOf('/admin/admin-shell-runtime.js?v=20260929-dashboard-overlap1') > index.indexOf('/admin/erp.js')) {
   errors.push('index.html debe cargar admin-shell-runtime.js antes de erp.js.');
 }
 for (const fragment of [
   "owner:'admin-shell-runtime.js'",
   'async function api(path, options = {})',
-  'function showSection(id)',
+  'function showSection(id, options = {})',
   'function openModal(title, html)',
   'function closeModal()',
   'function logoutNow()'
