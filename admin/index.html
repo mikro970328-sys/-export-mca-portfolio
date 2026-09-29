@@ -64,7 +64,11 @@
 <div id="adminNav" class="nav-group hidden" data-nav-group="administration"><button class="nav-group-btn" type="button" data-nav-label="Administración" aria-expanded="false"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Administración</span><span class="nav-chevron" aria-hidden="true"></span></button><div class="submenu"><button type="button" data-section="adminsSection" data-nav-label="Administradores"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Administradores</span></button></div></div>
 </nav><div class="sidebar-foot"><div class="sidebar-user"><div id="currentUser" class="sidebar-user-name"></div><div id="currentRole" class="muted sidebar-user-role"></div></div><button id="logout" class="danger sidebar-foot-action" type="button" data-nav-label="Cerrar sesión"><span class="nav-icon" aria-hidden="true"></span><span class="nav-label">Cerrar sesión</span></button><div class="platform-version">© 2026 Export MCA LLC<br>Version 1.0</div></div></aside>
 <div id="mobileOverlay" class="mobile-overlay"></div><div class="main-shell"><header class="topbar"><div class="topbar-leading"><button id="mobileMenuBtn" class="menu-btn mobile-menu" type="button" aria-label="Abrir menú lateral" aria-expanded="false"></button><div class="topbar-heading"><span id="pageContext" class="topbar-eyebrow">Centro de operaciones</span><b id="pageTitle">Inicio</b></div></div><div class="topbar-actions"><button id="refresh">Actualizar</button><button id="exportCsv">Exportar CSV</button></div></header><main>
-<section id="dashboardSection" class="app-section"></section>
+<section id="dashboardSection" class="app-section">
+  <div class="executive-section executive-state" role="status" aria-live="polite">
+    <div><h3>Cargando dashboard</h3><p>Estamos preparando los indicadores de la operación.</p></div>
+  </div>
+</section>
 <section id="clientsSection" class="app-section hidden">
   <div class="clients-workspace native-workspace-shell">
     <header class="clients-hero native-workspace-hero">

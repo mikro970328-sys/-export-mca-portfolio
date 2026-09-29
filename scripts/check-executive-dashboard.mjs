@@ -48,6 +48,8 @@ assert(api.includes('loadExecutiveDashboard(req.query || {})'), 'P11: API debe c
 assert(api.includes('...overview'), 'P11: el contrato del dashboard debe conservar los datos de overview');
 assert(executiveApi.includes("rpc/executive_dashboard_rollup"), 'P11: finanzas no delegan al RPC B8');
 
+const dashboardMarkup=index.slice(index.indexOf('<section id="dashboardSection"'),index.indexOf('</section>',index.indexOf('<section id="dashboardSection"')));
+assert(dashboardMarkup.includes('role="status"') && dashboardMarkup.includes('Cargando dashboard'), 'P11: la carga del dashboard debe pintar estado inicial sin esperar JavaScript');
 assert(!/expediente/i.test(ui), 'P11: Dashboard no puede reintroducir Expedientes');
 assert(!ui.includes('newOperationsSection'), 'P11: Dashboard no puede navegar a legacy operations');
 assert(!ui.includes('MutationObserver'), 'P11: Dashboard no puede usar MutationObserver');
