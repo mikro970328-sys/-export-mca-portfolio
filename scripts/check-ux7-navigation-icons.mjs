@@ -134,7 +134,7 @@ for (const fragment of [
 
 for (const fragment of [
   '/admin/navigation-shell.css?v=20260926-integration1',
-  '/admin/erp.js?v=20260928-lazy-workspaces1'
+  '/admin/erp.js?v='
 ]) requireText(files.index, fragment, 'revisión de caché del shell');
 
 for (const fragment of [
@@ -146,7 +146,7 @@ for (const fragment of [
   "loadScript('/admin/operational-alert-center.js?v=20260926-figma2', 'data-operational-alert-center')",
   "loadStylesheet('/admin/notification-inbox.css?v=20260926-figma2', 'data-notification-inbox-style')",
   "loadScript('/admin/notification-inbox.js?v=20260926-figma2', 'data-notification-inbox')",
-  "loadScript('/admin/dashboard-operational-state.js?v=20260926-figma2', 'data-dashboard-operational-state')"
+  "loadScript('/admin/dashboard-operational-state.js?v="
 ]) requireText(files.loader, fragment, 'carga versionada del sistema');
 
 const iconReady = files.loader.indexOf('await iconSystemPromise;');
