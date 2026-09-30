@@ -332,12 +332,14 @@ export default async function handler(req,res) {
         if (clientChanged) await audit(patch.client_id ? 'shipment_client_assigned' : 'shipment_client_unassigned',shipment,{ previous_client_id:shipment.client_id || null,client_id:patch.client_id || null,actor:admin.username });
         await audit('shipment_updated',shipment,patch);
       })();
-      const [capabilities] = await Promise.all([
+      const sideEffects=await Promise.allSettled([
         loadShipmentActionCapabilities(admin,resultShipment.id),
         historyWrites,
         auditWrites
       ]);
-      resultShipment.capabilities=capabilities;
+      const failedSideEffect=sideEffects.find(result=>result.status==='rejected');
+      if(failedSideEffect)throw failedSideEffect.reason;
+      resultShipment.capabilities=sideEffects[0].value;
       timing.side_effects_ms=Date.now()-phaseStartedAt;
       timing.total_ms=Date.now()-requestStartedAt;
       console.info?.('SHIPMENT_PATCH_TIMING',timing);
