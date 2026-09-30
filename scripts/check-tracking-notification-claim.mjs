@@ -54,6 +54,7 @@ function fixture(options = {}) {
       },
       loadShipmentActionCapabilityMap:async()=>new Map(),loadShipmentActionCapabilities:async()=>({})}
   };
+  deps['./_shipment-list-pages.js'] = compile('api/_shipment-list-pages.js', deps, 'readShipmentListPages');
   deps['./_notification-delivery.js'] = compile('api/_notification-delivery.js', deps,
     'claimNotificationDelivery, releaseNotificationDelivery, whatsappMilestoneAllowed');
   const handlers = Object.fromEntries(['manual-tracking-event','shipments'].map(name=>

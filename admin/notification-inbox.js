@@ -27,6 +27,7 @@
     PUSH_ACTIVE_DEVICE_REQUIRED:'Activa al menos un dispositivo antes de habilitar Web Push.',
     PUSH_SUBSCRIPTION_NOT_FOUND:'El dispositivo ya no está activo.',
     PUSH_SUBSCRIPTION_EXPIRED:'La suscripción del navegador expiró. Actívala nuevamente.',
+    PUSH_SUBSCRIPTION_RENEW_FAILED:'No se pudo renovar la suscripción. Cierra y vuelve a abrir el ERP antes de intentarlo nuevamente.',
     NOTIFICATION_DESTINATION_UNAVAILABLE:'Esta notificación no tiene un destino operativo disponible.'
   });
   const safeInboxErrors = new Set([
@@ -190,9 +191,14 @@
   function pushAvailability() {
     if(!pushSupported())return{tone:'bad',text:'Este navegador no admite Web Push.'};
     if(isAppleMobile()&&!standaloneMode())return{tone:'warn',text:'En iPhone o iPad, añade el ERP a la pantalla de inicio y ábrelo desde su icono.'};
+    if(state.push.error)return{tone:'warn',text:state.push.error};
     if(!state.push.config.ready)return{tone:'warn',text:'Las notificaciones del dispositivo aún no están disponibles.'};
     if(state.push.permission==='denied')return{tone:'bad',text:'Las notificaciones están bloqueadas en los ajustes del navegador.'};
-    if(state.push.permission==='granted')return{tone:'ok',text:'El navegador tiene permiso para mostrar avisos.'};
+    if(state.push.permission==='granted'){
+      if(!state.push.currentDeviceId)return{tone:'warn',text:'El permiso está concedido. Activa este dispositivo para recibir avisos.'};
+      if(state.preferences?.push_enabled!==true)return{tone:'warn',text:'Este dispositivo está registrado. Habilita las notificaciones del dispositivo en tus preferencias.'};
+      return{tone:'ok',text:'Este dispositivo está activo para recibir avisos.'};
+    }
     return{tone:'neutral',text:'La activación requiere una pulsación explícita y permiso del navegador.'};
   }
 
@@ -283,9 +289,14 @@
       }
       const registration=await serviceWorkerRegistration();
       let subscription=await registration.pushManager.getSubscription();
-      if(subscription&&subscriptionApplicationKey(subscription)!==state.push.config.public_key){
-        try{await apiCall('/api/push-subscriptions',{method:'DELETE',body:JSON.stringify({endpoint:subscription.endpoint,reason:'key_rotated'})});}catch(error){if(Number(error?.status)!==404)throw error;}
-        await subscription.unsubscribe();
+      // A permission grant survives a provider's 410 and session revocation.
+      // An unregistered browser subscription must be replaced, not reactivated
+      // with the same invalid endpoint. Renewal only follows this explicit click.
+      const keyChanged=subscription&&subscriptionApplicationKey(subscription)!==state.push.config.public_key;
+      const browserExpired=subscription?.expirationTime!=null&&subscription.expirationTime<=Date.now();
+      if(subscription&&(keyChanged||browserExpired||!state.push.currentDeviceId)){
+        try{await apiCall('/api/push-subscriptions',{method:'DELETE',body:JSON.stringify({endpoint:subscription.endpoint,reason:keyChanged?'key_rotated':'subscription_renewed'})});}catch(error){if(Number(error?.status)!==404)throw error;}
+        if(await subscription.unsubscribe()!==true){const error=new Error('PUSH_SUBSCRIPTION_RENEW_FAILED');error.code='PUSH_SUBSCRIPTION_RENEW_FAILED';throw error;}
         subscription=null;
       }
       if(!subscription){
