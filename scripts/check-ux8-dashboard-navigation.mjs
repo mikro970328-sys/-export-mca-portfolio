@@ -99,8 +99,8 @@ for (const width of [1280,390]) {
     check('four summary metrics per currency',()=>assert.equal(all('.executive-currency-panel > .executive-finance-grid > .executive-metric').length,8));
     check('details initially closed',()=>assert.ok(all('[data-dashboard-detail]').every(node=>!node.open)));
     const originalApi=window.api;
-    let request;
-    window.api=path=>{request=path;return originalApi(path);};
+    const requests=[];
+    window.api=path=>{requests.push(path);return originalApi(path);};
     detail('filters').open=true;
     detail('finance:USD').open=true;
     $('dashboardStartDate').value='2026-09-01';
@@ -110,7 +110,8 @@ for (const width of [1280,390]) {
     $('dashboardSupplier').value='qa-supplier';
     $('dashboardProduct').value='qa-product';
     await window.ExecutiveDashboard.refresh();
-    check('all filters sent to existing API',()=>assert.deepEqual(Object.fromEntries(new URL(request,'https://fixture.invalid').searchParams),{start_date:'2026-09-01',end_date:'2026-09-21',currency:'USD',client_id:'qa-client',supplier_id:'qa-supplier',product_id:'qa-product'}));
+    const financialRequest=requests.find(path=>path.startsWith('/api/dashboard-financial'));
+    check('all filters sent to the financial endpoint',()=>assert.deepEqual(Object.fromEntries(new URL(financialRequest||'/api/dashboard-financial','https://fixture.invalid').searchParams),{start_date:'2026-09-01',end_date:'2026-09-21',currency:'USD',client_id:'qa-client',supplier_id:'qa-supplier',product_id:'qa-product'}));
     check('selects preserved after refresh',()=>assert.equal($('dashboardClient').value,'qa-client'));
     check('response currency controls presentation',()=>assert.equal(all('.executive-currency-panel').length,1));
     check('open state survives refresh',()=>assert.ok(detail('finance:USD').open && detail('filters').open));
