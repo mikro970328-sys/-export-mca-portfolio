@@ -42,11 +42,13 @@ export function homeCommunicationsFixture({module='dashboard',writable=true,fail
     const failure=()=>({ok:false,status:503,json:async()=>({error:'PRIVATE_FIXTURE_ERROR'})});
     window.fetch=async(path,options={})=>{
       const url=new URL(path,'https://erp-visual.invalid'),method=options.method||'GET',body=options.body?JSON.parse(options.body):null;
-      if(!['/api/dashboard','/api/history','/api/notification-inbox','/api/push-subscriptions'].includes(url.pathname))throw Error('Fixture blocks network');
+      if(!['/api/dashboard','/api/dashboard-financial','/api/dashboard-attention','/api/history','/api/notification-inbox','/api/push-subscriptions'].includes(url.pathname))throw Error('Fixture blocks network');
       window.__fixtureCalls.push({path:url.pathname,query:url.search,method,body});
       if(method==='GET'){
         if(window.__fixtureReadError)return failure();
-        if(url.pathname==='/api/dashboard'){const d=JSON.parse(JSON.stringify(window.__fixtureDashboard));d.executive.period=Object.fromEntries(url.searchParams);if(url.searchParams.get('currency')){d.executive.activity_by_currency=d.executive.activity_by_currency.filter(r=>r.currency===url.searchParams.get('currency'));d.executive.balances_by_currency=d.executive.balances_by_currency.filter(r=>r.currency===url.searchParams.get('currency'));}return response(d);}
+        if(url.pathname==='/api/dashboard'){return response(window.__fixtureDashboard);}
+        if(url.pathname==='/api/dashboard-financial'){const d=JSON.parse(JSON.stringify(window.__fixtureDashboard.executive));d.period=Object.fromEntries(url.searchParams);if(url.searchParams.get('currency')){d.activity_by_currency=d.activity_by_currency.filter(r=>r.currency===url.searchParams.get('currency'));d.balances_by_currency=d.balances_by_currency.filter(r=>r.currency===url.searchParams.get('currency'));}return response(d);}
+        if(url.pathname==='/api/dashboard-attention')return response({owner:'api/dashboard-attention.js',generated_at:window.__fixtureDashboard.generated_at,work_attention:window.__fixtureDashboard.work_attention});
         if(url.pathname==='/api/history')return response({notifications:url.searchParams.get('scope')==='operational'?window.__fixtureAlerts:url.searchParams.get('scope')==='message'?window.__fixtureMessages:[...window.__fixtureAlerts,...window.__fixtureMessages]});
         if(url.pathname==='/api/push-subscriptions')return response({config:{ready:false,public_key:null},devices:[]});
         const a=window.__fixtureItems;return response({items:a,counts:{total:a.length,unread:a.filter(x=>x.is_unread).length,task:a.filter(x=>x.source_type==='task').length,alert:a.filter(x=>x.source_type==='alert').length},preferences:window.__fixturePreferences});
