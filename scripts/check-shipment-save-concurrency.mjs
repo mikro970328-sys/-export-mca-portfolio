@@ -15,9 +15,13 @@ const tick=()=>new Promise(setImmediate);
 const row={id:'simulated-shipment',client_id:null,container_number:'SIMU0000001',booking_number:'SIM-ORIGINAL',carrier:'SIMULACION INTERNA'};
 
 function harness({authorized=true}={}){
-  const read=deferred(),guard=deferred(),sideEffects=deferred(),calls=[];
+  const read=deferred(),guard=deferred(),calls=[];
+  const effects={capabilities:deferred(),history:deferred(),audit:deferred()};
+  const sideEffects={resolve(){for(const effect of Object.values(effects))effect.resolve();}};
+  const clock={now:0};
   const response={headers:{},setHeader(name,value){this.headers[name]=value;}};
   const context={
+    Date:class extends Date {static now(){return clock.now;}},
     console:{error(){},info(){}},process:{env:{}},
     authorizeAdmin:async()=>authorized?{username:'simulated-admin',role:'master_admin'}:null,
     readJson:async req=>req.body,
@@ -27,14 +31,17 @@ function harness({authorized=true}={}){
     publicNotificationError:value=>value,
     upstreamFailureStatus:(_error,fallback)=>fallback,
     assertShipmentBusinessAction(id,action){calls.push({kind:'guard',id,action});return guard.promise;},
-    async loadShipmentActionCapabilities(){calls.push({kind:'capabilities'});await sideEffects.promise;return {actions:{edit:{allowed:true}}};},
+    async loadShipmentActionCapabilities(){calls.push({kind:'capabilities'});await effects.capabilities.promise;return {actions:{edit:{allowed:true}}};},
     async supabase(table,options={}){
       const method=options.method||'GET';
-      calls.push({kind:'db',table,method,body:options.body});
+      calls.push({kind:'db',table,method,body:options.body,prefer:options.prefer});
       if(table==='shipments'&&method==='GET')return read.promise;
       if(table==='shipments'&&method==='PATCH')return [{...row,...options.body}];
       if(table==='shipments'&&method==='DELETE')return [{id:row.id,container_number:row.container_number}];
-      if(['shipment_history','audit_log'].includes(table)&&method==='POST'){await sideEffects.promise;return [];}
+      if(['shipment_history','audit_log'].includes(table)&&method==='POST'){
+        await effects[table==='shipment_history'?'history':'audit'].promise;
+        return null;
+      }
       if(['notifications','shipment_history'].includes(table)&&method==='DELETE')return [];
       throw Error(`Unexpected dependency: ${method} ${table}`);
     }
@@ -42,7 +49,7 @@ function harness({authorized=true}={}){
   vm.runInNewContext(`${source}\nthis.handler=handler;`,context,{filename:'api/shipments.js'});
   const run=(body={id:row.id,booking_number:'SIM-UPDATED'},method='PATCH')=>context.handler({method,body,query:{id:row.id}},response);
   const writes=()=>calls.filter(call=>call.kind==='db'&&call.method!=='GET');
-  return {read,guard,sideEffects,calls,response,run,writes};
+  return {read,guard,sideEffects,effects,clock,calls,response,run,writes};
 }
 
 for(const first of ['read','guard']){
@@ -70,6 +77,42 @@ for(const first of ['read','guard']){
   assert.match(h.response.headers['Server-Timing'],/business_guard_ms;dur=\d+/);
   assert.match(h.response.headers['Server-Timing'],/total_ms;dur=\d+/);
 }
+
+// An independently slow post-write dependency must remain awaited and identifiable.
+for(const slow of ['capabilities','history','audit']){
+  const h=harness(),saving=h.run();
+  await tick();
+  h.read.resolve([row]);
+  h.guard.resolve();
+  await tick();
+  const persisted=h.writes().filter(call=>['shipment_history','audit_log'].includes(call.table));
+  assert.equal(persisted.length,2);
+  assert.ok(persisted.every(call=>call.prefer==='return=minimal'),'unused inserted rows must not be returned');
+  h.clock.now=10;
+  for(const [name,effect] of Object.entries(h.effects))if(name!==slow)effect.resolve();
+  await tick();
+  assert.equal(h.response.status,undefined,`receipt must wait for ${slow}`);
+  h.clock.now=75;
+  h.effects[slow].resolve();
+  await saving;
+  assert.equal(h.response.status,200);
+  for(const name of Object.keys(h.effects)){
+    assert.match(h.response.headers['Server-Timing'],new RegExp(`${name}_ms;dur=${name===slow?75:10}(?:,|$)`));
+  }
+}
+
+const failedCapabilities=harness(),failedSave=failedCapabilities.run();
+await tick();
+failedCapabilities.read.resolve([row]);
+failedCapabilities.guard.resolve();
+await tick();
+failedCapabilities.effects.capabilities.reject(new Error('CAPABILITY_READ_FAILED'));
+await tick();
+assert.equal(failedCapabilities.response.status,undefined,'capability failure must still wait for the write receipts');
+failedCapabilities.effects.history.resolve();
+failedCapabilities.effects.audit.resolve();
+await failedSave;
+assert.equal(failedCapabilities.response.status,500,'capability failure must not return partial success');
 
 const unhandled=[];
 const onUnhandled=error=>unhandled.push(error);
