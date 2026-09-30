@@ -163,6 +163,7 @@ test('financial cancellations preserve balances, permissions and history', async
       for(const action of ['issue','confirm']){
         await purchase.locator(`[data-view-order="${po.id}"]`).click();await purchase.locator(`[data-detail-action="${action}"]`).click();
         await mutation('purchases',()=>purchase.locator('#purchaseDecisionAccept').click());await expect(purchase.locator('#detailModal')).toBeHidden();
+        await expect(purchase.locator(`[data-view-order="${po.id}"]`).locator('xpath=ancestor::article[1]')).toContainText(action==='issue'?'Emitida':'Confirmada');
       }
       return po;
     };
