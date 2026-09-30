@@ -54,7 +54,11 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
     const card=page=>page.locator('.tasks-card').filter({has:page.locator(`[data-task-action="open"][data-id="${task.id}"]`)});
     const step=async(name,fn)=>test.step(name,async()=>{await fn();evidence.checkpoints.push(name);});
     const openInbox=async page=>{await page.locator('#notificationInboxBell').click();await expect(page.locator('#notificationInboxOverlay')).toBeVisible();};
-    const reconcileNotifications=async()=>{await db.query('select public.reconcile_user_notifications(now())');};
+    const reconcileNotifications=async()=>{
+      const now=new Date().toISOString();
+      await db.query('select public.reconcile_user_notifications($1::timestamptz)',[now]);
+      await db.query('select public.reconcile_web_push_notifications($1::timestamptz)',[now]);
+    };
     const upload=async(key,name)=>{
       const chooser=a.waitForEvent('filechooser');await a.locator(`[data-customs-upload="${key}"]`).click();await(await chooser).setFiles({name,mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nQA workflow\n%%EOF\n')});
       await expect(a.locator('.container-customs')).toContainText(name);await expect(a.locator('#containerCustomsFeedback')).toContainText('actualizado correctamente');
