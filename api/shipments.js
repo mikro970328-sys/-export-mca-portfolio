@@ -32,6 +32,7 @@ async function history(shipment,eventType,title,details=null,source='admin') {
   try {
     await supabase('shipment_history', {
       method:'POST',
+      prefer:'return=minimal',
       body:[{ shipment_id:shipment.id,client_id:shipment.client_id || null,event_type:eventType,title,details,source }]
     });
   } catch (error) {
@@ -41,7 +42,7 @@ async function history(shipment,eventType,title,details=null,source='admin') {
 
 async function audit(action,shipment,details={}) {
   try {
-    await supabase('audit_log',{ method:'POST',body:[{ action,entity_type:'shipment',entity_id:shipment.id,details }] });
+    await supabase('audit_log',{ method:'POST',prefer:'return=minimal',body:[{ action,entity_type:'shipment',entity_id:shipment.id,details }] });
   } catch (error) {
     console.error('SHIPMENT_AUDIT_FAILED',error.message);
   }
@@ -332,7 +333,12 @@ export default async function handler(req,res) {
       const resultShipment = updated?.[0] || { ...shipment,...patch };
 
       phaseStartedAt=Date.now();
-      const historyWrites=(async()=>{
+      const timedSideEffect=async(name,run)=>{
+        const startedAt=Date.now();
+        try { return await run(); }
+        finally { timing[name]=Date.now()-startedAt; }
+      };
+      const historyWrites=async()=>{
         if (clientChanged) {
           const assigned = Boolean(patch.client_id);
           await history({ ...shipment,client_id:patch.client_id },assigned ? 'client_assigned' : 'client_unassigned',assigned ? 'Cliente asignado al contenedor' : 'Cliente removido del contenedor',assigned ? `Cliente: ${patch.client_id} · Asignado por ${admin.username || 'administrador'}` : `Sin cliente · Cambio por ${admin.username || 'administrador'}`);
@@ -341,15 +347,15 @@ export default async function handler(req,res) {
           await history(resultShipment,'tracking_reference_provisional','Referencia provisional de contenedor','El seguimiento continuará dentro del ERP hasta registrar el número definitivo.');
         }
         await history(shipment,'updated','Datos del contenedor actualizados',JSON.stringify(patch));
-      })();
-      const auditWrites=(async()=>{
+      };
+      const auditWrites=async()=>{
         if (clientChanged) await audit(patch.client_id ? 'shipment_client_assigned' : 'shipment_client_unassigned',shipment,{ previous_client_id:shipment.client_id || null,client_id:patch.client_id || null,actor:admin.username });
         await audit('shipment_updated',shipment,patch);
-      })();
+      };
       const sideEffects=await Promise.allSettled([
-        loadShipmentActionCapabilities(admin,resultShipment.id),
-        historyWrites,
-        auditWrites
+        timedSideEffect('capabilities_ms',()=>loadShipmentActionCapabilities(admin,resultShipment.id)),
+        timedSideEffect('history_ms',historyWrites),
+        timedSideEffect('audit_ms',auditWrites)
       ]);
       const failedSideEffect=sideEffects.find(result=>result.status==='rejected');
       if(failedSideEffect)throw failedSideEffect.reason;
