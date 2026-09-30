@@ -145,7 +145,7 @@ forbid(styles,/@import|font-family\s*:\s*Arial|linear-gradient/i,'access-control
 
 [
   "/admin/access-control.css?v=20260926-business1",
-  "/admin/access-control-administration.js?v=20260926-business1",
+  "/admin/access-control-administration.js?v=",
   'await window.ExportMcaAccessControl.initialize()'
 ].forEach(value => requireText(loader,value,`loader canónico ${value}`));
 

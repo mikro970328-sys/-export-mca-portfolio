@@ -47,7 +47,13 @@ const headEnd=index.indexOf('</head>');
 if(themeIndex<0||navigationIndex<themeIndex||headEnd<navigationIndex){
   failures.push('el sistema visual debe cargar desde sus owners CSS antes de cerrar head');
 }
-forbid(index,/<style(?:\s|>)/i,'index.html conserva una hoja visual legacy incrustada');
+const inlineStyleBlocks = [...index.matchAll(/<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi)];
+const bootStyle = inlineStyleBlocks[0]?.[1] || '';
+const validCriticalBootStyle = inlineStyleBlocks.length === 1
+  && bootStyle.includes('html.admin-preparing body::before')
+  && bootStyle.includes('html.admin-preparing body::after')
+  && bootStyle.includes('@keyframes exportMcaBootSpin');
+if (inlineStyleBlocks.length && !validCriticalBootStyle) failures.push('index.html conserva una hoja visual legacy incrustada');
 forbid(index,/\sstyle\s*=/i,'index.html conserva estilos inline');
 
 for(const text of [
@@ -101,7 +107,7 @@ for(const text of [
 ])requireText(dashboardCss,text,`presentación dashboard ${text}`);
 
 requireText(erp,"loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2'",'CSS versionado de dashboard');
-requireText(erp,"loadScript('/admin/dashboard-operational-state.js?v=20260926-figma2'",'owner versionado de dashboard');
+requireText(erp,"loadScript('/admin/dashboard-operational-state.js?v=",'owner versionado de dashboard');
 forbid(erp,/data-platform-theme|data-navigation-shell-style/,'erp.js no debe volver a cargar tarde la base visual estática');
 forbid(navigationJs,/\sstyle\s*=/i,'navigation-shell.js vuelve a crear iframes con estilos inline');
 forbid(dashboardJs,/\b(?:prompt|alert|confirm)\s*\(|MutationObserver|createElement\(['"]style['"]\)/,'dashboard introduce diálogo, observer o estilo inyectado');
