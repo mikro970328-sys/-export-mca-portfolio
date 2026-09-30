@@ -139,9 +139,9 @@ for(const text of [
   "loadStylesheet('/admin/containers-module.css?v=20260927-containerflow1', 'data-containers-module-style')",
   "loadScript('/admin/containers-module.js?v=20260927-containerflow1', 'data-containers-module')",
   "loadStylesheet('/admin/shipment-editor.css?v=20260926-figma1', 'data-shipment-editor-style')",
-  "loadScript('/admin/shipment-editor.js?v=20260926-figma1', 'data-shipment-editor')"
+  "loadScript('/admin/shipment-editor.js?v=20260930-performance1', 'data-shipment-editor')"
 ])requireText(loader,text,`asset canónico ${text}`);
-requireText(html,'/admin/erp.js?v=20260929-dashboard-cache-stable1','revisión de caché del ERP');
+requireText(html,'/admin/erp.js?v=20260930-performance1','revisión de caché del ERP');
 
 for(const text of [
   'class="shipment-editor" data-owner="shipment-editor.js"',
