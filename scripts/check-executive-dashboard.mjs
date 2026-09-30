@@ -103,7 +103,7 @@ assert(shellRuntime.includes("options?.source === 'startup'") && shellRuntime.in
 assert(accessAdministration.includes('original(sectionAllowed(id) ? id : firstAllowedSection(), options)'), 'P11: el guard de permisos debe preservar el origen startup de la sección');
 assert(accessAdministration.includes('if (canAny(MANAGEMENT_KEYS) && state.activeTab) switchTab(state.activeTab);') && !accessAdministration.includes('if (canAny(MANAGEMENT_KEYS) && state.activeTab) await switchTab(state.activeTab);'), 'P11: cargar el directorio de acceso no debe bloquear el dashboard inicial');
 assert(erp.includes('window.__exportMcaDashboardStartupPromise = dashboardPreloadPromise'), 'P11: la promesa inicial debe ser visible para evitar una segunda lectura');
-assert(erp.indexOf('dashboardAssetsPromise = Promise.all([') < erp.indexOf('await accessStylesPromise;'), 'P11: CSS y JS de Inicio deben descargarse en paralelo con la validación de permisos');
+assert(erp.indexOf('dashboardAssetsPromise = Promise.all([') < erp.indexOf('await Promise.all([accessStylesPromise,accessAdministrationScriptPromise]);'), 'P11: CSS y JS de Inicio deben descargarse en paralelo con la validación de permisos');
 assert(sectionState.includes('originalShowSection(id, { source })'), 'P11: section-state debe identificar la restauración de inicio');
 const coreStart=dataLoader.indexOf('async function loadCore()');
 const dashboardStart=dataLoader.indexOf('async function loadDashboard()');
