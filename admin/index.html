@@ -4,6 +4,26 @@
 <script>
 (() => {
   const root = document.documentElement;
+  if (new URLSearchParams(window.location?.search || '').get('perf') === '1') {
+    const requests = [];
+    const now = () => performance.now();
+    window.ExportMcaPerformance = Object.freeze({
+      now,
+      mark(name) {
+        const attribute = 'data-erp-' + name + '-ms';
+        if (!root.hasAttribute(attribute)) root.setAttribute(attribute, now().toFixed(1));
+      },
+      duration(name, startedAt) {
+        root.setAttribute('data-erp-' + name + '-ms', (now() - startedAt).toFixed(1));
+      },
+      request(path, method, response, startedAt) {
+        requests.push({ route:String(path).split(/[?#]/)[0], method, status:response.status,
+          start_ms:Number(startedAt.toFixed(1)), duration_ms:Number((now() - startedAt).toFixed(1)),
+          server_timing:response.headers?.get?.('Server-Timing') || '' });
+        root.setAttribute('data-erp-request-timings', JSON.stringify(requests.slice(-20)));
+      }
+    });
+  }
   try {
     const hasSession = Boolean(localStorage.getItem('export_mca_token'));
     root.classList.replace('auth-pending', hasSession ? 'auth-session' : 'auth-login');
@@ -55,13 +75,26 @@ html.admin-preparing body::after {
   preload('/admin/ui-icon-system.js?v=20260927-nohelp1', 'script');
   if (!canReadDashboard) return;
   preload('/admin/dashboard-executive.css?v=20260926-figma2', 'style');
-  preload('/admin/dashboard-operational-state.js?v=20260929-dashboard-cache-stable1', 'script');
+  preload('/admin/dashboard-operational-state.js?v=20260930-performance1', 'script');
+  const overviewStartedAt = window.ExportMcaPerformance?.now?.();
   window.__exportMcaEarlyDashboard = fetch('/api/dashboard', {
     method:'GET',
     cache:'no-store',
     headers:{ Authorization:`Bearer ${token}` }
   }).then(async response => {
     const payload = await response.json().catch(() => ({}));
+    window.ExportMcaPerformance?.request?.('/api/dashboard', 'GET', response, overviewStartedAt);
+    if (!response.ok) return { error:new Error(payload.error || `HTTP ${response.status}`) };
+    return { data:payload };
+  }).catch(error => ({ error }));
+  const financeStartedAt = window.ExportMcaPerformance?.now?.();
+  window.__exportMcaEarlyFinancial = fetch('/api/dashboard-financial', {
+    method:'GET',
+    cache:'no-store',
+    headers:{ Authorization:`Bearer ${token}` }
+  }).then(async response => {
+    const payload = await response.json().catch(() => ({}));
+    window.ExportMcaPerformance?.request?.('/api/dashboard-financial', 'GET', response, financeStartedAt);
     if (!response.ok) return { error:new Error(payload.error || `HTTP ${response.status}`) };
     return { data:payload };
   }).catch(error => ({ error }));
@@ -270,5 +303,5 @@ html.admin-preparing body::after {
 <section id="adminsSection" class="app-section hidden" aria-live="polite"></section>
 </main></div></div>
 <div id="modal" class="modal hidden"><div class="modalbox"><div class="toolbar"><h2 id="modalTitle">Historial</h2><button id="closeModal" class="alt">Cerrar</button></div><div id="modalBody"></div></div></div>
-<script src="/admin/admin-shell-runtime.js?v=20260929-dashboard-overlap1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260929-dashboard-cache-stable1"></script><script src="/admin/embedded-auto-refresh.js?v=20260929-light-attention1"></script>
+<script src="/admin/admin-shell-runtime.js?v=20260930-performance1"></script><script src="/admin/form-drafts.js?v=20260909-drafts1"></script><script src="/admin/erp.js?v=20260930-performance1"></script><script src="/admin/embedded-auto-refresh.js?v=20260929-light-attention1"></script>
 </body></html>

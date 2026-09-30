@@ -36,6 +36,9 @@ permissions:
 jobs:
   header-contrast:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --init --ipc=host
     timeout-minutes: 8
     strategy:
       fail-fast: false
@@ -54,9 +57,6 @@ jobs:
       - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
       - name: Help content, navigation and access contract
         run: node scripts/check-help-center.mjs
-      - name: Install browser engines
-        working-directory: e2e/isolated
-        run: npx playwright install --with-deps chromium webkit
       - name: Computed header and icon contrast without business data
         working-directory: e2e/isolated
         run: npm test -- help-center.spec.mjs header-contrast.spec.mjs figma-sales.spec.mjs figma-costs.spec.mjs figma-purchases.spec.mjs figma-warehouse.spec.mjs figma-stock-catalog.spec.mjs figma-logistics.spec.mjs figma-finance.spec.mjs figma-directories.spec.mjs figma-tasks-workers.spec.mjs figma-access-account.spec.mjs figma-home-communications.spec.mjs figma-publications-workflow.spec.mjs figma-desktop-integration.spec.mjs --project=${{ matrix.project }}
@@ -68,6 +68,9 @@ jobs:
           retention-days: 14
   isolated-browser:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --init --ipc=host
     timeout-minutes: 12
     strategy:
       fail-fast: false
@@ -111,11 +114,38 @@ jobs:
             e2e/isolated/package-lock.json
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
+      - name: Bind disposable services to loopback
+        run: |
+          node --input-type=module <<'NODE' &
+          import net from 'node:net';
+          for (const [port,host] of [[5432,'postgres'],[3000,'postgrest']]) {
+            net.createServer(client => {
+              const upstream=net.connect(port,host);
+              client.on('error',()=>upstream.destroy());
+              upstream.on('error',()=>client.destroy());
+              client.pipe(upstream).pipe(client);
+            }).listen(port,'127.0.0.1');
+          }
+          NODE
+          node --input-type=module <<'NODE'
+          import net from 'node:net';
+          for (const port of [5432,3000]) {
+            await new Promise((resolve,reject) => {
+              let attempts=0;
+              const connect=()=>{
+                const socket=net.connect(port,'127.0.0.1');
+                socket.once('connect',()=>{socket.destroy();resolve();});
+                socket.once('error',error=>{
+                  socket.destroy();
+                  if(++attempts>=50)reject(error);else setTimeout(connect,100);
+                });
+              };
+              connect();
+            });
+          }
+          NODE
       - name: Preserve operator-local dispatch instants
         run: node e2e/isolated/dispatch-time-check.mjs
-      - name: Install isolated browser engines
-        working-directory: e2e/isolated
-        run: npx playwright install --with-deps chromium webkit
       - name: Actual UI and disposable PostgreSQL
         working-directory: e2e/isolated
         env:

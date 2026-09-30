@@ -19,7 +19,7 @@ requireText(css,'@media(max-width:720px)','responsive móvil');
 requireText(css,':focus-visible','foco accesible');
 
 const styleLoad="loadStylesheet('/admin/shipment-editor.css?v=20260926-figma1', 'data-shipment-editor-style')";
-const scriptLoad="loadScript('/admin/shipment-editor.js?v=20260926-figma1', 'data-shipment-editor')";
+const scriptLoad="loadScript('/admin/shipment-editor.js?v=20260930-performance1', 'data-shipment-editor')";
 requireText(erp,styleLoad,'carga stylesheet del editor');
 requireText(erp,scriptLoad,'carga JavaScript del editor');
 const styleIndex=erp.indexOf(styleLoad),scriptIndex=erp.indexOf(scriptLoad);

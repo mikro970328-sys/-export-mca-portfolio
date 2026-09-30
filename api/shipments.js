@@ -257,6 +257,14 @@ export default async function handler(req,res) {
       timing.parse_ms=Date.now()-phaseStartedAt;
       const id = String(body.id || '').trim();
       if (!id) return fail(res,400,'Falta el identificador del contenedor');
+      // Sparse metadata edits can validate the business rule while reading the row.
+      // Both must succeed before any write; client reassignment keeps its existing order.
+      const editGuardStartedAt=Date.now();
+      const editGuardPromise=(!body.action||body.action==='edit')&&body.client_id===undefined
+        ? assertShipmentBusinessAction(id,'edit').then(
+          () => ({ok:true,duration_ms:Date.now()-editGuardStartedAt}),
+          error => ({ok:false,error,duration_ms:Date.now()-editGuardStartedAt})
+        ) : null;
       phaseStartedAt=Date.now();
       const rows = await supabase('shipments',{ query:`?select=*,clients(id,name,phone,active)&id=eq.${encodeURIComponent(id)}&limit=1` });
       timing.shipment_read_ms=Date.now()-phaseStartedAt;
@@ -288,8 +296,14 @@ export default async function handler(req,res) {
 
       const assigningClient=shipment.client_id===null && body.client_id!==undefined && cleanClientId(body.client_id)!==null;
       phaseStartedAt=Date.now();
-      await assertShipmentBusinessAction(shipment.id,assigningClient?'assign_client':'edit');
-      timing.business_guard_ms=Date.now()-phaseStartedAt;
+      if(editGuardPromise){
+        const guardResult=await editGuardPromise;
+        timing.business_guard_ms=guardResult.duration_ms;
+        if(!guardResult.ok)throw guardResult.error;
+      }else{
+        await assertShipmentBusinessAction(shipment.id,assigningClient?'assign_client':'edit');
+        timing.business_guard_ms=Date.now()-phaseStartedAt;
+      }
 
       const patch = { updated_at:new Date().toISOString() };
       if (body.client_id !== undefined) patch.client_id = cleanClientId(body.client_id);
@@ -342,6 +356,7 @@ export default async function handler(req,res) {
       resultShipment.capabilities=sideEffects[0].value;
       timing.side_effects_ms=Date.now()-phaseStartedAt;
       timing.total_ms=Date.now()-requestStartedAt;
+      res.setHeader?.('Server-Timing',Object.entries(timing).map(([name,duration])=>`${name};dur=${duration}`).join(', '));
       console.info?.('SHIPMENT_PATCH_TIMING',timing);
       return ok(res,{ shipment:publicNotificationData(resultShipment) });
     }

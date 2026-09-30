@@ -87,7 +87,7 @@ assert(ui.includes('renderError()'), 'P11: dashboard debe tener error recuperabl
 assert(ui.includes('dashboardRetry'), 'P11: dashboard debe ofrecer reintento sin bloquear el ERP');
 assert(css.includes('.executive-finance-grid'), 'P11: stylesheet del dashboard incompleto');
 assert(erp.includes("loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2'"), 'P11: bootstrap no carga stylesheet dashboard');
-assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-cache-stable1'"), 'P11: bootstrap no carga owner P11');
+assert(erp.includes("loadScript('/admin/dashboard-operational-state.js?v=20260930-performance1'"), 'P11: bootstrap no carga owner P11');
 assert(erp.includes("loadScript('/admin/admin-data-loader.js?v=20260928-dashboard-onview2'"), 'P11: bootstrap no carga owner de datos resiliente');
 assert(dataLoader.includes("accessCan('dashboard.read')"), 'P11: owner de datos no respeta dashboard.read');
 assert(dataLoader.includes('window.ExecutiveDashboard?.refresh'), 'P11: owner de datos no delega al owner visual P11');
@@ -103,6 +103,7 @@ assert(shellRuntime.includes("options?.source === 'startup'") && shellRuntime.in
 assert(accessAdministration.includes('original(sectionAllowed(id) ? id : firstAllowedSection(), options)'), 'P11: el guard de permisos debe preservar el origen startup de la sección');
 assert(accessAdministration.includes('if (canAny(MANAGEMENT_KEYS) && state.activeTab) switchTab(state.activeTab);') && !accessAdministration.includes('if (canAny(MANAGEMENT_KEYS) && state.activeTab) await switchTab(state.activeTab);'), 'P11: cargar el directorio de acceso no debe bloquear el dashboard inicial');
 assert(erp.includes('window.__exportMcaDashboardStartupPromise = dashboardPreloadPromise'), 'P11: la promesa inicial debe ser visible para evitar una segunda lectura');
+assert(index.includes("fetch('/api/dashboard-financial'") && erp.includes('window.__exportMcaDashboardFinancialStartupPromise = financialPreloadPromise'), 'P11: finanzas deben precargarse junto al overview y reutilizarse al iniciar');
 assert(erp.indexOf('dashboardAssetsPromise = Promise.all([') < erp.indexOf('await Promise.all([accessStylesPromise,accessAdministrationScriptPromise]);'), 'P11: CSS y JS de Inicio deben descargarse en paralelo con la validación de permisos');
 assert(sectionState.includes('originalShowSection(id, { source })'), 'P11: section-state debe identificar la restauración de inicio');
 const coreStart=dataLoader.indexOf('async function loadCore()');
@@ -131,22 +132,22 @@ const payload=generatedAt=>({generated_at:generatedAt,stats:{},work_attention:{}
 const executivePayload=generatedAt=>({owner:'executive_dashboard_rollup',generated_at:generatedAt,period:{},activity_by_currency:[],balances_by_currency:[],exceptions:{}});
 const firstRefresh=dashboardWindow.ExecutiveDashboard.refresh();
 await Promise.resolve();
-assert(dashboardPending.length===1&&dashboardPending[0].path==='/api/dashboard','el primer refresco debe empezar por el overview operativo');
+assert(dashboardPending.length===2&&dashboardPending[0].path==='/api/dashboard-financial'&&dashboardPending[1].path==='/api/dashboard','overview y finanzas deben empezar sin esperar la respuesta del otro');
 const queuedRefresh=dashboardWindow.ExecutiveDashboard.refresh();
 assert(typeof queuedRefresh?.then==='function','un refresco concurrente debe esperar su lectura en cola');
-dashboardPending[0].resolve(payload('2026-09-28T12:00:00.000Z'));
+dashboardPending[1].resolve(payload('2026-09-28T12:00:00.000Z'));
 await Promise.resolve();
 await Promise.resolve();
-assert(dashboardPending.length===2&&dashboardPending[1].path.startsWith('/api/dashboard-financial'),'el cálculo financiero debe salir por separado tras pintar el overview');
-dashboardPending[1].resolve(executivePayload('2026-09-28T12:00:00.000Z'));
+assert(dashboardPending.length===2&&dashboardWindow.ExecutiveDashboard.getState().data.generated_at==='2026-09-28T12:00:00.000Z'&&dashboardWindow.ExecutiveDashboard.getState().data.executive===null,'el overview debe pintar sin esperar las finanzas pendientes');
+dashboardPending[0].resolve(executivePayload('2026-09-28T12:00:00.000Z'));
 await firstRefresh;
 await Promise.resolve();
-assert(dashboardPending.length===3&&dashboardPending[2].path==='/api/dashboard','el refresco en cola debe releer el overview después de cerrar el activo');
-dashboardPending[2].resolve(payload('2026-09-28T12:00:01.000Z'));
+assert(dashboardPending.length===4&&dashboardPending[2].path==='/api/dashboard-financial'&&dashboardPending[3].path==='/api/dashboard','el refresco en cola debe releer overview y finanzas en paralelo después de cerrar el activo');
+dashboardPending[3].resolve(payload('2026-09-28T12:00:01.000Z'));
 await Promise.resolve();
 await Promise.resolve();
-assert(dashboardPending.length===4&&dashboardPending[3].path.startsWith('/api/dashboard-financial'),'el refresco en cola también debe leer finanzas por separado');
-dashboardPending[3].resolve(executivePayload('2026-09-28T12:00:01.000Z'));
+assert(dashboardPending.length===4&&dashboardWindow.ExecutiveDashboard.getState().data.executive===null,'el refresco en cola debe pintar overview sin esperar finanzas');
+dashboardPending[2].resolve(executivePayload('2026-09-28T12:00:01.000Z'));
 await queuedRefresh;
 await Promise.resolve();
 assert(dashboardWindow.ExecutiveDashboard.getState().data.generated_at==='2026-09-28T12:00:01.000Z','la segunda lectura debe dejar visible la versión más reciente');
@@ -166,15 +167,15 @@ await Promise.resolve();
 assert(dashboardPending.length===6&&dashboardPending[5].path==='/api/dashboard-attention','el refresco ligero debe iniciar una sola consulta');
 const overlappingDashboardRefresh=dashboardWindow.ExecutiveDashboard.refresh();
 await Promise.resolve();
-assert(dashboardPending.length===7&&dashboardPending[6].path==='/api/dashboard','la recarga operativa debe poder solaparse sin perder alertas');
+assert(dashboardPending.length===8&&dashboardPending[6].path==='/api/dashboard-financial'&&dashboardPending[7].path==='/api/dashboard','la recarga operativa debe poder solaparse sin perder alertas');
 dashboardWindow.ExecutiveDashboard.refreshAttention();
 dashboardPending[5].resolve({work_attention:{tasks:{open:4},alerts:{active:2,critical:1}}});
 await racingAttentionRefresh;
-dashboardPending[6].resolve(payload('2026-09-28T12:00:03.000Z'));
+dashboardPending[7].resolve(payload('2026-09-28T12:00:03.000Z'));
 await Promise.resolve();
 await Promise.resolve();
-assert(dashboardPending.length===8&&dashboardPending[7].path.startsWith('/api/dashboard-financial'),'la recarga operativa debe finalizar su ruta financiera habitual');
-dashboardPending[7].resolve(executivePayload('2026-09-28T12:00:03.000Z'));
+assert(dashboardPending.length===8&&dashboardWindow.ExecutiveDashboard.getState().data.executive===null,'la recarga debe pintar overview mientras las finanzas terminan');
+dashboardPending[6].resolve(executivePayload('2026-09-28T12:00:03.000Z'));
 await overlappingDashboardRefresh;
 await Promise.resolve();
 await Promise.resolve();
@@ -185,3 +186,47 @@ await Promise.resolve();
 assert(dashboardWindow.ExecutiveDashboard.getState().data.work_attention.alerts.active===4,'el último estado de alertas debe prevalecer después de una recarga concurrente');
 console.log('Dashboard attention overlap queue: OK');
 
+function isolatedDashboard(startupFinancial){
+  const pending=[];
+  const window={
+    __exportMcaDashboardFinancialStartupPromise:startupFinancial,
+    api:path=>new Promise((resolve,reject)=>pending.push({path,resolve,reject})),
+    addEventListener(){},ExportMcaIcons:{svg:()=>''}
+  };
+  const section={innerHTML:''};
+  const document={getElementById:id=>id==='dashboardSection'?section:null,querySelectorAll:()=>[],addEventListener(){}};
+  vm.runInNewContext(ui,{window,document,localStorage:dashboardStorage,console:{error(){},warn(){}},Intl,Date,Map,Set,URLSearchParams,Promise,Number,String,Math,setTimeout:()=>1,clearTimeout(){}},{filename:'admin/dashboard-operational-state.js'});
+  return {window,pending,section};
+}
+
+const preloaded=isolatedDashboard(Promise.resolve({data:executivePayload('2026-09-30T12:00:00.000Z')}));
+const startupRefresh=preloaded.window.ExecutiveDashboard.refresh();
+assert(preloaded.pending.length===1&&preloaded.pending[0].path==='/api/dashboard','el arranque debe reutilizar finanzas sin otra petición');
+assert(preloaded.window.__exportMcaDashboardFinancialStartupPromise===null,'la precarga financiera debe consumirse una sola vez');
+preloaded.pending[0].resolve(payload('2026-09-30T12:00:00.000Z'));
+await startupRefresh;
+assert(preloaded.window.ExecutiveDashboard.getState().data.executive.generated_at==='2026-09-30T12:00:00.000Z','el arranque debe aplicar el resultado precargado');
+
+const filtered=isolatedDashboard(Promise.resolve({data:executivePayload('stale-unfiltered')}));
+const filteredRefresh=filtered.window.ExecutiveDashboard.refresh({date_from:'2026-09-01'});
+assert(filtered.pending.length===2&&filtered.pending[0].path==='/api/dashboard-financial?date_from=2026-09-01','los filtros deben consultar sus propias finanzas');
+assert(filtered.window.__exportMcaDashboardFinancialStartupPromise===null,'una precarga incompatible debe descartarse antes de un filtro futuro');
+filtered.pending[1].resolve(payload('2026-09-30T12:00:01.000Z'));
+filtered.pending[0].resolve(executivePayload('filtered'));
+await filteredRefresh;
+const defaultRefresh=filtered.window.ExecutiveDashboard.refresh({}, {refreshOperational:false});
+const defaultFinancial=filtered.pending.find(request=>request.path==='/api/dashboard-financial');
+assert(defaultFinancial,'volver a quitar los filtros debe releer finanzas, sin reutilizar una precarga vieja');
+defaultFinancial.resolve(executivePayload('fresh-unfiltered'));
+await defaultRefresh;
+assert(filtered.window.ExecutiveDashboard.getState().data.executive.generated_at==='fresh-unfiltered','debe prevalecer la lectura actual sin filtros');
+
+const failedFinance=isolatedDashboard();
+const failedRefresh=failedFinance.window.ExecutiveDashboard.refresh();
+failedFinance.pending[0].reject(new Error('simulated financial outage'));
+await new Promise(setImmediate);
+failedFinance.pending[1].resolve(payload('2026-09-30T12:00:02.000Z'));
+assert(await failedRefresh===false,'una falla financiera debe quedar recuperable');
+assert(failedFinance.window.ExecutiveDashboard.getState().data.generated_at==='2026-09-30T12:00:02.000Z','una falla financiera temprana debe conservar el overview operativo');
+assert(failedFinance.window.ExecutiveDashboard.getState().financeError===true,'la falla debe quedar en el panel financiero');
+console.log('Dashboard parallel startup, filter freshness and early failure handling: OK');

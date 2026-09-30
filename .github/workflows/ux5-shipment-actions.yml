@@ -11,6 +11,7 @@ on:
       - 'supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql'
       - 'supabase/tests/ux5_shipment_actions.sql'
       - 'scripts/check-ux5-shipment-actions.mjs'
+      - 'scripts/check-shipment-save-concurrency.mjs'
       - '.github/workflows/ux5-shipment-actions.yml'
   workflow_dispatch:
 
@@ -24,6 +25,8 @@ jobs:
           node-version: '24'
       - name: Validate canonical action ownership
         run: node scripts/check-ux5-shipment-actions.mjs
+      - name: Validate save concurrency and write guards
+        run: node scripts/check-shipment-save-concurrency.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check api/_shipment-actions.js

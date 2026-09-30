@@ -3,7 +3,9 @@ import { loadExecutiveDashboard } from './_executive-dashboard.js';
 
 // Keep finance access behind the same dashboard permission and explicit filter checks.
 export default async function handler(req,res) {
+  const requestStartedAt=Date.now();
   const admin = await authorizeAdmin(req,res,'dashboard.read');
+  const authorizedAt=Date.now();
   if (!admin) return;
   if (req.method !== 'GET') return fail(res,405,'Método no permitido');
 
@@ -26,6 +28,7 @@ export default async function handler(req,res) {
     if (req.query?.product_id && !canProducts) return fail(res,403,'No tienes permiso para filtrar por producto');
 
     const executive = await loadExecutiveDashboard(req.query || {});
+    res.setHeader?.('Server-Timing','authorization_ms;dur='+(authorizedAt-requestStartedAt)+', data_ms;dur='+(Date.now()-authorizedAt)+', total_ms;dur='+(Date.now()-requestStartedAt));
     return ok(res,executive);
   } catch (error) {
     console.error('[dashboard financial]',error);
