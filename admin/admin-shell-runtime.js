@@ -53,6 +53,7 @@ function transitionExpiredSession(reason = 'expired') {
 }
 
 async function api(path, options = {}) {
+  const startedAt = window.ExportMcaPerformance?.now?.();
   const response = await fetch(path, {
     ...options,
     headers: {
@@ -62,6 +63,7 @@ async function api(path, options = {}) {
     }
   });
   const data = await response.json().catch(() => ({}));
+  window.ExportMcaPerformance?.request?.(path, options.method || 'GET', response, startedAt);
   if (!response.ok) {
     const error = new Error((data.error || 'Error') + (data.details ? ` · ${data.details}` : ''));
     error.code = data.code || data.reason_code || null;

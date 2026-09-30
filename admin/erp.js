@@ -152,6 +152,7 @@
     document.getElementById('loginPage')?.classList.add('hidden');
     document.getElementById('appShell')?.classList.remove('hidden');
     root.classList.remove('admin-preparing');
+    if (window.ExportMcaPerformance) requestAnimationFrame(() => window.ExportMcaPerformance.mark('shell'));
     window.dispatchEvent(new CustomEvent('export-mca:admin-ready'));
   };
 
@@ -224,6 +225,7 @@
     let authenticatedShellReady = false;
     let dashboardLoadPromise = null;
     let dashboardPreloadPromise = window.__exportMcaEarlyDashboard || null;
+    let financialPreloadPromise = window.__exportMcaEarlyFinancial || null;
 
     if (!dashboardPreloadPromise && currentUser && storedUserCan(currentUser,'dashboard.read')) {
       dashboardPreloadPromise = window.api('/api/dashboard')
@@ -233,12 +235,18 @@
     if (dashboardPreloadPromise) {
       window.__exportMcaDashboardStartupPromise = dashboardPreloadPromise;
     }
+    if (!financialPreloadPromise && currentUser && storedUserCan(currentUser,'dashboard.read')) {
+      financialPreloadPromise = window.api('/api/dashboard-financial')
+        .then(data => ({ data }))
+        .catch(error => ({ error }));
+    }
+    if (financialPreloadPromise) window.__exportMcaDashboardFinancialStartupPromise = financialPreloadPromise;
 
     let dashboardAssetsPromise = null;
     if (currentUser && storedUserCan(currentUser,'dashboard.read')) {
       dashboardAssetsPromise = Promise.all([
         loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style'),
-        loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-cache-stable1', 'data-dashboard-operational-state')
+        loadScript('/admin/dashboard-operational-state.js?v=20260930-performance1', 'data-dashboard-operational-state')
       ]);
     }
     const accessAdministrationScriptPromise = loadScript('/admin/access-control-administration.js?v=20260929-section-source2', 'data-access-control-administration');
@@ -258,7 +266,7 @@
         if (!dashboardAssetsPromise) {
           dashboardAssetsPromise = Promise.all([
             loadStylesheet('/admin/dashboard-executive.css?v=20260926-figma2', 'data-dashboard-executive-style'),
-            loadScript('/admin/dashboard-operational-state.js?v=20260929-dashboard-cache-stable1', 'data-dashboard-operational-state')
+            loadScript('/admin/dashboard-operational-state.js?v=20260930-performance1', 'data-dashboard-operational-state')
           ]);
         }
         await dashboardAssetsPromise;
@@ -287,7 +295,7 @@
       }
       if (accessCan('logistics.write')) {
         await loadStylesheet('/admin/shipment-editor.css?v=20260926-figma1', 'data-shipment-editor-style');
-        await loadScript('/admin/shipment-editor.js?v=20260926-figma1', 'data-shipment-editor');
+        await loadScript('/admin/shipment-editor.js?v=20260930-performance1', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
       await loadStylesheet('/admin/account-administration.css?v=20260926-figma2', 'data-account-administration-style');

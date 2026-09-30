@@ -28,6 +28,7 @@
   }
 
   async function request(path, options = {}) {
+    const startedAt = window.ExportMcaPerformance?.now?.();
     const token = localStorage.getItem('export_mca_token') || '';
     const response = await fetch(path, {
       ...options,
@@ -38,6 +39,7 @@
       }
     });
     const data = await response.json().catch(() => ({}));
+    window.ExportMcaPerformance?.request?.(path, options.method || 'GET', response, startedAt);
     if (!response.ok) throw new Error(data.error || data.details || 'Error');
     return data;
   }
@@ -228,6 +230,7 @@
     }
 
     saving = true;
+    const saveStartedAt = window.ExportMcaPerformance?.now?.();
     const button = byId('shipmentEditorSave');
     button.disabled = true;
     button.textContent = 'Guardando...';
@@ -254,6 +257,7 @@
 
       currentImporterName = importerName;
       window.closeModal?.();
+      window.ExportMcaPerformance?.duration?.('save', saveStartedAt);
       const dashboard = byId('dashboardSection');
       if (dashboard && !dashboard.classList.contains('hidden')) {
         window.ExportMcaAdminData?.loadDashboard?.().catch(error => console.error('[shipment editor dashboard refresh]', error));

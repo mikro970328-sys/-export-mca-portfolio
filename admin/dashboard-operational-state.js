@@ -259,6 +259,12 @@
     bind();
     updateFilterBusy();
     if(focusedId&&section.contains($(focusedId)))$(focusedId).focus({preventScroll:true});
+    if(window.ExportMcaPerformance&&!section.classList.contains('hidden')) {
+      requestAnimationFrame(() => {
+        window.ExportMcaPerformance.mark('summary');
+        if(data.executive)window.ExportMcaPerformance.mark('finance');
+      });
+    }
   }
 
   function restoreSelect(id,value){ const node=$(id); if(node&&value)node.value=value; }
@@ -351,6 +357,13 @@
     if(!state.data)renderLoading();
     let financeStarted=false;
     try {
+      const params=new URLSearchParams();
+      Object.entries(filters).forEach(([key,value])=>{if(value)params.set(key,value);});
+      const startupFinancial=window.__exportMcaDashboardFinancialStartupPromise;
+      window.__exportMcaDashboardFinancialStartupPromise=null;
+      // Capture failures immediately while the independent overview request is in flight.
+      const financialRequest=(params.size===0&&startupFinancial) || window.api(`/api/dashboard-financial${params.size?`?${params}`:''}`)
+        .then(data=>({data}),error=>({error}));
       if(refreshOperational||!state.data){
         const overview=await window.api('/api/dashboard');
         state.data={...overview,executive:null};
@@ -361,10 +374,10 @@
       state.financeLoading=true;
       renderDashboard(state.data,focusedId);
 
-      const params=new URLSearchParams();
-      Object.entries(filters).forEach(([key,value])=>{if(value)params.set(key,value);});
       financeStarted=true;
-      const executive=await window.api(`/api/dashboard-financial${params.size?`?${params}`:''}`);
+      const financialResult=await financialRequest;
+      if(financialResult.error)throw financialResult.error;
+      const executive=financialResult.data;
       state.data={...state.data,executive};
       state.financeError=false;
       state.financeLoading=false;
