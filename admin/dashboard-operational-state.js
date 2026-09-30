@@ -384,6 +384,11 @@
     } finally {
       state.loading=false;
       updateFilterBusy();
+      if(focusedId){
+        const target=$(focusedId);
+        const section=$('dashboardSection');
+        if(target&&section?.contains(target)&&!target.disabled)target.focus({preventScroll:true});
+      }
       if(state.refreshQueued){
         state.refreshQueued=false;
         const waiter=state.refreshWaiter;
