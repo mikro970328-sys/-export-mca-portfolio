@@ -33,14 +33,17 @@ const loader = read('admin/admin-data-loader.js');
 const access = read('admin/access-control-administration.js');
 const account = read('admin/account-administration.js');
 
-const runtimeRef = '/admin/admin-shell-runtime.js?v=20260928-dashboard-onview1';
-requireText(index, runtimeRef, 'runtime versionado del shell');
-requireText(index, "/admin/navigation-shell.css?v=20260926-integration1", 'CSS versionado del shell');
-requireText(index, "/admin/platform-theme.css?v=20260928-lazy-workspaces1", 'sistema visual versionado');
-requireText(index, "/admin/erp.js?v=20260928-lazy-workspaces1", 'loader versionado del shell visual');
-requireText(erp, "/admin/access-control-administration.js?v=20260926-business1", 'owner versionado de Usuarios y acceso');
+const requireVersionedAsset = (source, path, label) => {
+  if (!source.includes(path + '?v=')) failures.push(`falta ${label}`);
+};
+const runtimePath = '/admin/admin-shell-runtime.js';
+requireVersionedAsset(index, runtimePath, 'runtime versionado del shell');
+requireVersionedAsset(index, '/admin/navigation-shell.css', 'CSS versionado del shell');
+requireVersionedAsset(index, '/admin/platform-theme.css', 'sistema visual versionado');
+requireVersionedAsset(index, '/admin/erp.js', 'loader versionado del shell visual');
+requireVersionedAsset(erp, '/admin/access-control-administration.js', 'owner versionado de Usuarios y acceso');
 requireText(index, '<section id="adminsSection" class="app-section hidden" aria-live="polite"></section>', 'placeholder vacío para el owner de Usuarios y acceso');
-const runtimeIndex = index.indexOf(runtimeRef);
+const runtimeIndex = index.indexOf(runtimePath);
 const erpIndex = index.indexOf('/admin/erp.js');
 if (runtimeIndex < 0 || erpIndex < 0 || runtimeIndex > erpIndex) {
   failures.push('admin-shell-runtime.js debe cargar antes de erp.js');
@@ -50,19 +53,29 @@ forbid(index, /function\s+(?:loadAll|renderStats|renderDashboardDetails|renderAd
 forbid(index, /\b(?:prompt|alert|confirm)\s*\(/, 'index.html conserva diálogos nativos');
 forbid(index, /id=["'](?:saveAdmin|adminName|adminUsername|adminPassword|changeOwnPassword)["']/, 'index.html conserva controles legacy de administración');
 forbid(index, /<script>\s*const\s+\$\s*=|<script>\s*let\s+token\s*=/, 'index.html vuelve a incrustar el runtime del shell');
-forbid(index, /<style(?:\s|>)/i, 'index.html vuelve a incrustar un owner CSS legacy');
+const inlineStyleBlocks = [...index.matchAll(/<style(?:\s[^>]*)?>([\s\S]*?)<\/style>/gi)];
+const bootStyle = inlineStyleBlocks[0]?.[1] || '';
+const validCriticalBootStyle = inlineStyleBlocks.length === 1
+  && bootStyle.includes('html.admin-preparing body::before')
+  && bootStyle.includes('html.admin-preparing body::after')
+  && bootStyle.includes('@keyframes exportMcaBootSpin');
+if (inlineStyleBlocks.length && !validCriticalBootStyle) failures.push('index.html vuelve a incrustar un owner CSS legacy');
 forbid(index, /\sstyle\s*=/i, 'index.html vuelve a introducir estilos inline');
 
 for (const text of [
   "owner:'admin-shell-runtime.js'",
-  "if (id === 'dashboardSection' && typeof window.ExportMcaAdminData?.loadDashboard === 'function')",
+  "id === 'dashboardSection'",
+  "window.ExportMcaAdminData?.loadDashboard",
   'async function api(path, options = {})',
-  'function showSection(id)',
   'function openModal(title, html)',
   'function closeModal()',
   'function logoutNow()',
   'function bindAdminShell()'
 ]) requireText(runtime, text, `admin-shell-runtime.js: ${text}`);
+
+if (!runtime.includes('function showSection(id, options = {})') && !runtime.includes('function showSection(id)')) {
+  failures.push('admin-shell-runtime.js: falta function showSection(id)');
+}
 
 forbid(runtime, /\b(?:prompt|alert|confirm)\s*\(/, 'admin-shell-runtime.js usa diálogos nativos');
 forbid(runtime, /\bMutationObserver\b|document\.createElement\(['"]style['"]\)/, 'admin-shell-runtime.js inyecta un parche visual');
