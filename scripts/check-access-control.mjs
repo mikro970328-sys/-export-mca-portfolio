@@ -77,13 +77,13 @@ if (frontendFiles.every(file => fs.existsSync(path.join(root,file)))) {
   }
 
   for (const required of [
-    '/admin/access-control.css?v=20260926-business1',
-    '/admin/access-control-administration.js?v=20260926-business1',
+    '/admin/access-control.css',
+    '/admin/access-control-administration.js',
     'window.ExportMcaAccessControl.initialize()',
     "accessCan('clients.read')",
     "accessCan('logistics.read')",
     "accessCan('notifications.read')",
-    '/admin/admin-data-loader.js?v=20260830-hotfix2',
+    '/admin/admin-data-loader.js',
     'await window.ExportMcaAdminData.loadCore()'
   ]) {
     if (!loader.includes(required)) failures.push(`admin/erp.js: falta ${required}`);

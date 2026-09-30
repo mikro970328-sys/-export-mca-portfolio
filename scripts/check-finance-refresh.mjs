@@ -18,7 +18,8 @@ function harness(){
   const reports={contentDocument:reportDoc,contentWindow:{fetch:async()=>({ok:true}),CustomEvent:Event,dispatchEvent(){},ExecutiveReports:{async refresh(){count.reports++;}}},closest:()=>({id:'reportsSection'}),addEventListener(){}};
   const invoices={contentDocument:{body:{},readyState:'complete',querySelectorAll:()=>[]},contentWindow:{fetch:async()=>({ok:true}),CustomEvent:Event,dispatchEvent(){},InvoicesModule:{async refresh(){count.invoices++;}}},closest:()=>({id:'invoicesSection'}),addEventListener(){}};
   const doc={readyState:'complete',body:{},querySelectorAll:s=>s==='.app-section iframe'?[reports,invoices]:[],
-    querySelector:s=>s==='#reportsSection iframe'?reports:s==='#invoicesSection iframe'?invoices:null};
+    querySelector:s=>s==='#reportsSection iframe'?reports:s==='#invoicesSection iframe'?invoices:null,
+    getElementById:id=>({classList:{contains:()=>false}})};
   const win={navigator:{onLine:true},fetch:async()=>({ok:true}),
     addEventListener(type,handler){if(!listeners.has(type))listeners.set(type,[]);listeners.get(type).push(handler);},
     dispatchEvent(event){for(const handler of listeners.get(event.type)||[])handler(event);},

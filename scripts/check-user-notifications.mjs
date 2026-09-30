@@ -40,7 +40,9 @@ for (const fn of ['notification_user_eligible','notification_task_recipients','r
 assert(!migration.match(/grant\s+.*\s+to\s+(public|anon|authenticated)/i), 'P10: no se permiten grants a PUBLIC/anon/authenticated');
 
 assert(inboxApi.includes("authorizeAdmin(req,res,'notifications.read')"), 'P10: inbox API debe revalidar notifications.read');
-assert(inboxApi.includes('reconcileAllNotifications'), 'P10: inbox debe usar reconciliador canónico DB');
+assert(inboxApi.includes("supabase('notification_inbox_workspace'"), 'P10: el inbox debe leer la vista canónica DB');
+assert(reconcileOwner.includes('reconcileAllNotifications'), 'P10: el owner compartido debe exponer el reconciliador compuesto');
+assert(reconcileOwner.includes("call('reconcile_web_push_notifications'"), 'P10: la reconciliación compuesta debe cubrir Web Push');
 assert(reconcileOwner.includes("call('reconcile_user_notifications'"), 'P10: owner de reconciliación debe preservar el RPC P10');
 assert(inboxApi.includes("rpc('act_on_notification_inbox'"), 'P10: lectura personal debe mutarse por RPC');
 assert(reconcileApi.includes("authorizeAdmin(req,res,'notifications.manage')"), 'P10: reconciliación manual requiere notifications.manage');

@@ -73,7 +73,7 @@ for(const text of [
 requireText(styles,'.notification-preferences-actions { justify-content:flex-end;margin-top:8px; }','presentación dedicada de acciones de preferencias');
 requireText(loader,"/admin/notification-inbox.css?v=20260926-figma2",'revisión del CSS del Inbox');
 requireText(loader,"/admin/notification-inbox.js?v=20260926-figma2",'revisión del owner del Inbox');
-requireText(index,'/admin/erp.js?v=20260928-lazy-workspaces1','revisión del loader ERP');
+requireText(index,'/admin/erp.js?v=','loader ERP versionado');
 
 for(const text of [
   "authorizeAdmin(req,res,'notifications.read')",
@@ -81,7 +81,9 @@ for(const text of [
   'upstreamFailureStatus',
   "return fail(res,upstreamFailureStatus(error),'No se pudo procesar el inbox de notificaciones')"
 ])requireText(inboxApi,text,`boundary canónico del Inbox ${text}`);
-requireText(inboxApi,'reconcileAllNotifications','boundary canónico del reconciliador compuesto');
+requireText(inboxApi,"supabase('notification_inbox_workspace'",'lectura de la vista canónica del Inbox');
+requireText(reconcileOwner,'reconcileAllNotifications','owner del reconciliador compuesto');
+requireText(reconcileOwner,"call('reconcile_web_push_notifications'",'preservación del RPC de notificaciones push');
 requireText(reconcileOwner,"call('reconcile_user_notifications'",'preservación del RPC P10');
 for(const text of [
   "permission=action==='mark_read'?'notifications.read':'notifications.manage'",

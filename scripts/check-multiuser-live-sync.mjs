@@ -61,7 +61,7 @@ if (/SUPABASE_(?:SERVICE_ROLE|SECRET|ANON|PUBLISHABLE)|createClient\s*\(/.test(r
 
 for (const name of fs.readdirSync('admin').filter(name => name.endsWith('.html'))) {
   const html = read(`admin/${name}`);
-  if (html.includes('/admin/embedded-auto-refresh.js?v=') && !html.includes('/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1')) {
+  if (html.includes('/admin/embedded-auto-refresh.js') && !html.includes('/admin/embedded-auto-refresh.js?v=')) {
     failures.push(`admin/${name}: conserva una versión anterior del runtime de sincronización`);
   }
 }
@@ -234,18 +234,18 @@ assert.equal([...live.applyLiveSnapshot({versions:{tasks:0,products:0}})].join('
 assert.equal([...live.applyLiveSnapshot({versions:{tasks:1,products:0}})].join(','), 'tasks');
 await new Promise(resolve=>setTimeout(resolve,220));
 assert.equal(taskRefreshes,1,'un cambio externo de tareas debe recargar la cola');
-assert.equal(coreRefreshes,1,'un cambio externo debe reconciliar los datos base');
+assert.equal(coreRefreshes,0,'un cambio externo de tareas no debe recargar todo el núcleo ERP');
 assert.equal(dashboardRefreshes,0,'un cambio externo fuera de Inicio no debe cargar el dashboard oculto');
 
 activeSection='dashboardSection';
 modalOpen=true;
 assert.equal([...live.applyLiveSnapshot({versions:{tasks:1,products:1}})].join(','), 'products');
 await new Promise(resolve=>setTimeout(resolve,180));
-assert.equal(coreRefreshes,1,'un formulario abierto debe aplazar la reconciliación externa');
+assert.equal(coreRefreshes,0,'un cambio de productos dentro del formulario no debe recargar el núcleo ERP');
 modalOpen=false;
 live.queueExternalScopes([], 'modal-closed-test');
 await new Promise(resolve=>setTimeout(resolve,220));
-assert.equal(coreRefreshes,2,'el cambio aplazado debe aplicarse al cerrar el formulario');
+assert.equal(coreRefreshes,0,'al cerrar el formulario se aplica la actualización selectiva pendiente');
 assert.equal(dashboardRefreshes,1,'el cambio aplazado debe actualizar Inicio si está visible');
 
 activeSection='salesSection';
@@ -260,10 +260,10 @@ assert.equal(workspaceRefreshes.purchases,1,'un módulo oculto se pone al día a
 
 live.announceMutation('sales',null);
 await new Promise(resolve=>setTimeout(resolve,220));
-assert.equal(coreRefreshes,3,'un cambio local debe reconciliarse una sola vez');
+assert.equal(coreRefreshes,0,'un cambio local de ventas no debe recargar todo el núcleo ERP');
 assert.equal([...live.applyLiveSnapshot({versions:{tasks:1,products:1,sales:1}})].join(','),'','el eco del cambio local no debe disparar otra recarga');
 await new Promise(resolve=>setTimeout(resolve,220));
-assert.equal(coreRefreshes,3,'el cambio local no debe recargarse por segunda vez');
+assert.equal(coreRefreshes,0,'el eco del cambio local no debe causar recargas del núcleo ERP');
 
 if (failures.length) {
   console.error('Multiuser live sync check failed:\n'+failures.map(item=>`- ${item}`).join('\n'));

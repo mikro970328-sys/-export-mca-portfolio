@@ -162,7 +162,9 @@ function translatedError(error) {
 }
 
 export default async function handler(req,res) {
+  const requestStartedAt=Date.now();
   const admin = await authorizeAdmin(req,res,req.method === 'GET' ? 'logistics.read' : 'logistics.write');
+  const authorizationFinishedAt=Date.now();
   if (!admin) return;
 
   try {
@@ -249,10 +251,15 @@ export default async function handler(req,res) {
     }
 
     if (req.method === 'PATCH') {
+      const timing={authorization_ms:authorizationFinishedAt-requestStartedAt};
+      let phaseStartedAt=Date.now();
       const body = await readJson(req);
+      timing.parse_ms=Date.now()-phaseStartedAt;
       const id = String(body.id || '').trim();
       if (!id) return fail(res,400,'Falta el identificador del contenedor');
+      phaseStartedAt=Date.now();
       const rows = await supabase('shipments',{ query:`?select=*,clients(id,name,phone,active)&id=eq.${encodeURIComponent(id)}&limit=1` });
+      timing.shipment_read_ms=Date.now()-phaseStartedAt;
       const shipment = rows?.[0];
       if (!shipment) return fail(res,404,'Contenedor no encontrado');
       const action = body.action || 'edit';
@@ -280,14 +287,18 @@ export default async function handler(req,res) {
       }
 
       const assigningClient=shipment.client_id===null && body.client_id!==undefined && cleanClientId(body.client_id)!==null;
+      phaseStartedAt=Date.now();
       await assertShipmentBusinessAction(shipment.id,assigningClient?'assign_client':'edit');
+      timing.business_guard_ms=Date.now()-phaseStartedAt;
 
       const patch = { updated_at:new Date().toISOString() };
       if (body.client_id !== undefined) patch.client_id = cleanClientId(body.client_id);
       let changedReference = null;
       if (body.container_number !== undefined) {
         const reference = normalizeShipmentReference(body.container_number);
+        phaseStartedAt=Date.now();
         const duplicate = await supabase('shipments',{ query:`?select=id&container_number=eq.${encodeURIComponent(reference)}&active=eq.true&id=neq.${encodeURIComponent(id)}&limit=1` });
+        timing.duplicate_check_ms=Date.now()-phaseStartedAt;
         if (duplicate?.length) return fail(res,409,'Esa referencia de contenedor ya tiene una operación activa');
         patch.container_number = reference;
         changedReference = reference !== shipment.container_number ? reference : null;
@@ -301,22 +312,37 @@ export default async function handler(req,res) {
       }
 
       const clientChanged = Object.prototype.hasOwnProperty.call(patch,'client_id') && patch.client_id !== shipment.client_id;
+      phaseStartedAt=Date.now();
       const updated = await supabase('shipments',{ method:'PATCH',query:`?id=eq.${encodeURIComponent(id)}&select=*`,body:patch });
+      timing.update_ms=Date.now()-phaseStartedAt;
       const resultShipment = updated?.[0] || { ...shipment,...patch };
 
-      if (clientChanged) {
-        const assigned = Boolean(patch.client_id);
-        await history({ ...shipment,client_id:patch.client_id },assigned ? 'client_assigned' : 'client_unassigned',assigned ? 'Cliente asignado al contenedor' : 'Cliente removido del contenedor',assigned ? `Cliente: ${patch.client_id} · Asignado por ${admin.username || 'administrador'}` : `Sin cliente · Cambio por ${admin.username || 'administrador'}`);
-        await audit(assigned ? 'shipment_client_assigned' : 'shipment_client_unassigned',shipment,{ previous_client_id:shipment.client_id || null,client_id:patch.client_id || null,actor:admin.username });
-      }
-
-      if (changedReference && !isIsoContainer(changedReference)) {
-        await history(resultShipment,'tracking_reference_provisional','Referencia provisional de contenedor','El seguimiento continuará dentro del ERP hasta registrar el número definitivo.');
-      }
-
-      await history(shipment,'updated','Datos del contenedor actualizados',JSON.stringify(patch));
-      await audit('shipment_updated',shipment,patch);
-      resultShipment.capabilities=await loadShipmentActionCapabilities(admin,resultShipment.id);
+      phaseStartedAt=Date.now();
+      const historyWrites=(async()=>{
+        if (clientChanged) {
+          const assigned = Boolean(patch.client_id);
+          await history({ ...shipment,client_id:patch.client_id },assigned ? 'client_assigned' : 'client_unassigned',assigned ? 'Cliente asignado al contenedor' : 'Cliente removido del contenedor',assigned ? `Cliente: ${patch.client_id} · Asignado por ${admin.username || 'administrador'}` : `Sin cliente · Cambio por ${admin.username || 'administrador'}`);
+        }
+        if (changedReference && !isIsoContainer(changedReference)) {
+          await history(resultShipment,'tracking_reference_provisional','Referencia provisional de contenedor','El seguimiento continuará dentro del ERP hasta registrar el número definitivo.');
+        }
+        await history(shipment,'updated','Datos del contenedor actualizados',JSON.stringify(patch));
+      })();
+      const auditWrites=(async()=>{
+        if (clientChanged) await audit(patch.client_id ? 'shipment_client_assigned' : 'shipment_client_unassigned',shipment,{ previous_client_id:shipment.client_id || null,client_id:patch.client_id || null,actor:admin.username });
+        await audit('shipment_updated',shipment,patch);
+      })();
+      const sideEffects=await Promise.allSettled([
+        loadShipmentActionCapabilities(admin,resultShipment.id),
+        historyWrites,
+        auditWrites
+      ]);
+      const failedSideEffect=sideEffects.find(result=>result.status==='rejected');
+      if(failedSideEffect)throw failedSideEffect.reason;
+      resultShipment.capabilities=sideEffects[0].value;
+      timing.side_effects_ms=Date.now()-phaseStartedAt;
+      timing.total_ms=Date.now()-requestStartedAt;
+      console.info?.('SHIPMENT_PATCH_TIMING',timing);
       return ok(res,{ shipment:publicNotificationData(resultShipment) });
     }
 

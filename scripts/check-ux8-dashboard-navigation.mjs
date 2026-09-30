@@ -99,8 +99,9 @@ for (const width of [1280,390]) {
     check('four summary metrics per currency',()=>assert.equal(all('.executive-currency-panel > .executive-finance-grid > .executive-metric').length,8));
     check('details initially closed',()=>assert.ok(all('[data-dashboard-detail]').every(node=>!node.open)));
     const originalApi=window.api;
-    let request;
-    window.api=path=>{request=path;return originalApi(path);};
+    const requests=[];
+    const dashboardApi=async path=>{requests.push(path);const response=await originalApi(path);return path.startsWith('/api/dashboard-financial')?response.executive:response;};
+    window.api=dashboardApi;
     detail('filters').open=true;
     detail('finance:USD').open=true;
     $('dashboardStartDate').value='2026-09-01';
@@ -110,7 +111,8 @@ for (const width of [1280,390]) {
     $('dashboardSupplier').value='qa-supplier';
     $('dashboardProduct').value='qa-product';
     await window.ExecutiveDashboard.refresh();
-    check('all filters sent to existing API',()=>assert.deepEqual(Object.fromEntries(new URL(request,'https://fixture.invalid').searchParams),{start_date:'2026-09-01',end_date:'2026-09-21',currency:'USD',client_id:'qa-client',supplier_id:'qa-supplier',product_id:'qa-product'}));
+    const financialRequest=requests.find(path=>path.startsWith('/api/dashboard-financial'));
+    check('all filters sent to the financial endpoint',()=>assert.deepEqual(Object.fromEntries(new URL(financialRequest||'/api/dashboard-financial','https://fixture.invalid').searchParams),{start_date:'2026-09-01',end_date:'2026-09-21',currency:'USD',client_id:'qa-client',supplier_id:'qa-supplier',product_id:'qa-product'}));
     check('selects preserved after refresh',()=>assert.equal($('dashboardClient').value,'qa-client'));
     check('response currency controls presentation',()=>assert.equal(all('.executive-currency-panel').length,1));
     check('open state survives refresh',()=>assert.ok(detail('finance:USD').open && detail('filters').open));
@@ -119,21 +121,29 @@ for (const width of [1280,390]) {
     window.renderDashboardDetails();
     check('closed state also survives render',()=>assert.equal(detail('finance:USD').open,false));
     detail('finance:USD').open=true;
-    let resolveRequest;
-    window.api=()=>new Promise(resolve=>{resolveRequest=resolve;});
+    let resolveRequest,holdOperationalRequest=true;
+    window.api=path=>{
+      if(path==='/api/dashboard'&&holdOperationalRequest){
+        holdOperationalRequest=false;
+        return new Promise(resolve=>{resolveRequest=resolve;});
+      }
+      return dashboardApi(path);
+    };
     const pending=window.ExecutiveDashboard.refresh();
-    const duplicate=await window.ExecutiveDashboard.refresh();
-    check('duplicate refresh suppressed',()=>assert.equal(duplicate,false));
+    const duplicate=window.ExecutiveDashboard.refresh();
+    check('duplicate refresh queues one follow-up',()=>assert.equal(window.ExecutiveDashboard.getState().refreshQueued,true));
     check('filter apply disabled while loading',()=>assert.equal($('dashboardApplyFilters').disabled,true));
-    resolveRequest(await originalApi('/api/dashboard'));
+    resolveRequest(await dashboardApi('/api/dashboard'));
     await pending;
+    const duplicateResult=await duplicate;
+    check('queued refresh completes',()=>assert.equal(duplicateResult,true));
     window.api=async()=>{throw Error('TEST_ONLY database diagnostic must not render');};
     await window.ExecutiveDashboard.refresh();
     check('friendly error without internal details',()=>{
       assert.match($('dashboardSection').textContent,/No pudimos actualizar/);
       assert.doesNotMatch($('dashboardSection').textContent,/TEST_ONLY/);
     });
-    window.api=originalApi;
+    window.api=dashboardApi;
     await window.ExecutiveDashboard.refresh({});
     check('disclosures survive error and retry',()=>assert.ok(detail('finance:USD').open));
     const eur=all('.executive-currency-panel').find(node=>node.querySelector('h3').textContent==='EUR');

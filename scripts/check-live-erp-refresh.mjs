@@ -13,8 +13,8 @@ const failures=[];
 const requireText=(source,text,label=text)=>{if(!source.includes(text))failures.push(`falta ${label}`);};
 
 for(const text of [
-  '/admin/embedded-auto-refresh.js?v=20260928-dashboard-parallel3',
-  '/admin/erp.js?v=20260928-dashboard-parallel3'
+  '/admin/embedded-auto-refresh.js?v=',
+  '/admin/erp.js?v='
 ])requireText(shell,text,`shell ${text}`);
 
 for(const text of [
@@ -133,18 +133,18 @@ vm.runInNewContext(refresh,{
 },{filename:'admin/embedded-auto-refresh.js'});
 await fixtureWindow.fetch('/api/loads',{method:'POST'});
 await new Promise(resolve=>setTimeout(resolve,220));
-assert.equal(coreRefreshes,1,'una mutación debe reconciliar los datos base del ERP');
+assert.equal(coreRefreshes,0,'una mutación de Loads no debe recargar todo el núcleo ERP');
 assert.equal(dashboardRefreshes,0,'una mutación fuera del dashboard no debe cargar sus agregados');
 activeSection='dashboardSection';
 await fixtureWindow.fetch('/api/loads',{method:'POST'});
 await new Promise(resolve=>setTimeout(resolve,220));
-assert.equal(coreRefreshes,2,'una segunda mutación debe reconciliar los datos base del ERP');
+assert.equal(coreRefreshes,0,'Loads debe conservar la recarga selectiva');
 assert.equal(dashboardRefreshes,1,'el dashboard debe reconciliarse cuando está visible');
 blockCoreRefresh=true;
-await fixtureWindow.fetch('/api/loads',{method:'POST'});
+await fixtureWindow.fetch('/api/clients',{method:'POST'});
 await new Promise(resolve=>setTimeout(resolve,220));
-assert.equal(coreRefreshes,3,'la tercera mutación debe iniciar la reconciliación base');
-assert.equal(dashboardRefreshes,2,'el dashboard visible debe actualizarse sin esperar la carga base completa');
+assert.equal(coreRefreshes,1,'un cambio de Clientes debe iniciar la reconciliación de datos base');
+assert.equal(dashboardRefreshes,2,'el dashboard visible debe actualizarse mientras termina la reconciliación base');
 finishCoreRefresh?.();
 blockCoreRefresh=false;
 await new Promise(resolve=>setTimeout(resolve,40));

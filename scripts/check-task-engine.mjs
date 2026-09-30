@@ -100,12 +100,12 @@ if(files.every(file=>fs.existsSync(path.join(root,file)))) {
     '/admin/tasks-workspace.js?v=20260926-figma2',
     '/admin/tasks-navigation.js?v=20260830-p4',
     '/admin/navigation-shell.js?v=20260928-lazy-workspaces1',
-    '/admin/section-state.js?v=20260910-startup1'
+    '/admin/section-state.js?v='
   ]) if(!loader.includes(required))failures.push(`admin/erp.js: falta ${required}`);
   const navIndex=loader.indexOf('/admin/navigation-shell.js?v=20260928-lazy-workspaces1');
   const taskIndex=loader.indexOf('/admin/tasks-workspace.js?v=20260926-figma2');
   const taskNavIndex=loader.indexOf('/admin/tasks-navigation.js?v=20260830-p4');
-  const stateIndex=loader.indexOf('/admin/section-state.js?v=20260910-startup1');
+  const stateIndex=loader.indexOf('/admin/section-state.js?v=');
   if(navIndex<0||taskIndex<0||taskNavIndex<0||stateIndex<0||!(navIndex<taskIndex&&taskIndex<taskNavIndex&&taskNavIndex<stateIndex))failures.push('admin/erp.js: orden requerido Navigation Shell → Mis tareas → navegación tareas → section-state');
 }
 

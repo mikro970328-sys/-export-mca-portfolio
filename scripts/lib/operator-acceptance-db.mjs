@@ -10,7 +10,8 @@ export const operatorAcceptanceMigrations = [
   '20260909125237_multiuser_live_sync.sql',
   '20260909143701_live_sync_recovery.sql',
   '20260916222925_manual_receipt_retry_integrity.sql',
-  '20260926182551_client_nit_duplicate_protection.sql'
+  '20260926182551_client_nit_duplicate_protection.sql',
+  '20260929034000_dashboard_rpc_coalescing_cache.sql'
 ];
 
 export async function applyOperatorAcceptanceSchema(connection) {

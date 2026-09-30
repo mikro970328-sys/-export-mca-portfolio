@@ -54,6 +54,11 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
     const card=page=>page.locator('.tasks-card').filter({has:page.locator(`[data-task-action="open"][data-id="${task.id}"]`)});
     const step=async(name,fn)=>test.step(name,async()=>{await fn();evidence.checkpoints.push(name);});
     const openInbox=async page=>{await page.locator('#notificationInboxBell').click();await expect(page.locator('#notificationInboxOverlay')).toBeVisible();};
+    const reconcileNotifications=async()=>{
+      const now=new Date().toISOString();
+      await db.query('select public.reconcile_user_notifications($1::timestamptz)',[now]);
+      await db.query('select public.reconcile_web_push_notifications($1::timestamptz)',[now]);
+    };
     const upload=async(key,name)=>{
       const chooser=a.waitForEvent('filechooser');await a.locator(`[data-customs-upload="${key}"]`).click();await(await chooser).setFiles({name,mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nQA workflow\n%%EOF\n')});
       await expect(a.locator('.container-customs')).toContainText(name);await expect(a.locator('#containerCustomsFeedback')).toContainText('actualizado correctamente');
@@ -64,7 +69,7 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
       await expect(card(b).locator('.tasks-status')).toHaveText('Pendiente');
       await card(b).locator('[data-task-action="open"]').click();await expect(b.locator('#tasksModal')).toBeVisible();
       await expect(b.locator('[data-task-action="edit-detail"]')).toHaveCount(0);await b.locator('#tasksModal .tasks-modal-close').click();
-      await openInbox(b);
+      await reconcileNotifications();await openInbox(b);
       const notice=await f.one("select id from notification_inbox_items where source_id=$1 and recipient_admin_id=$2 and source_event_type='task_assignment'",[task.id,users.b.id]);
       expect(notice).toBeTruthy();
       await b.locator(`[data-notification-action="mark_read"][data-notification-id="${notice.id}"]`).click();
@@ -89,7 +94,7 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
       await card(a).locator('[data-task-action="open"]').click();await a.locator('[data-task-action="edit-detail"]').click();await a.locator('#tasksFormAssignee').selectOption(users.a.id);
       await a.locator('#tasksModalActions').getByRole('button',{name:'Guardar cambios',exact:true}).click();
       await expect(a.locator('#tasksModalBody')).toContainText('QA operator a');await a.locator('#tasksModal .tasks-modal-close').click();
-      await expect(card(b)).toHaveCount(0,{timeout:45_000});await openInbox(a);
+      await expect(card(b)).toHaveCount(0,{timeout:45_000});await reconcileNotifications();await openInbox(a);
       await expect.poll(async()=>f.one("select id from notification_inbox_items where source_id=$1 and recipient_admin_id=$2 and source_event_type='task_assignment'",[task.id,users.a.id])).toBeTruthy();
       const notice=await f.one("select id from notification_inbox_items where source_id=$1 and recipient_admin_id=$2 and source_event_type='task_assignment'",[task.id,users.a.id]);
       await expect(a.locator(`[data-notification-open="${notice.id}"]`)).toBeVisible();await a.locator('#notificationClose').click();
@@ -98,7 +103,7 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
       await navigate(a,'containersSection');await a.locator(`[data-container-menu="${shipment.id}"]:visible`).click();await a.locator('[data-container-action="manual_update"]').click();
       await a.locator('.manual-track-step').filter({has:a.locator('[name="manualTrackingEvent"][value="arrived"]')}).click();await a.locator('#manualTrackingLocation').fill('Mariel QA');await a.locator('.manual-track-confirm').click();await expect(a.locator('[data-manual-track]')).toHaveCount(0);
       await expect(a.locator(`[data-shipment-row="${shipment.id}"]:visible`).first()).toContainText('Llegó al puerto');
-      await openInbox(b);await expect(b.locator('.notification-item').filter({hasText:'Tracking actualizado'}).filter({hasText:'Llegó al puerto'})).toBeVisible();await b.locator('#notificationClose').click();
+      await reconcileNotifications();await openInbox(b);await expect(b.locator('.notification-item').filter({hasText:'Tracking actualizado'}).filter({hasText:'Llegó al puerto'})).toBeVisible();await b.locator('#notificationClose').click();
       expect((await f.one("select count(*)::int as count from shipment_history where shipment_id=$1 and event_type='manual_arrv'",[shipment.id])).count).toBe(1);
     });
     await step('TW-06 manual assignee survives tracking reconciliation in both sessions',async()=>{
