@@ -4,7 +4,11 @@ export const HOUR=60*60*1000;
 export const DAY=24*HOUR;
 
 export function alertKey(type,entityId){return `${type}:${entityId}`;}
-export function validDate(value){const date=new Date(value||0);return Number.isNaN(date.getTime())?null:date;}
+export function validDate(value){
+  if(value==null||(typeof value==='string'&&!value.trim())
+    ||(!['string','number'].includes(typeof value)&&!(value instanceof Date)))return null;
+  const date=new Date(value);return Number.isNaN(date.getTime())?null:date;
+}
 export function elapsedHours(from,nowMs=Date.now()){return Math.max(0,Math.floor((nowMs-from.getTime())/HOUR));}
 export function elapsedDays(from,nowMs=Date.now()){return Math.max(0,Math.floor((nowMs-from.getTime())/DAY));}
 export function repeatDue(row,intervalMs,nowMs=Date.now()){

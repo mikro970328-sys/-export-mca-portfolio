@@ -53,6 +53,10 @@ async function request(name,options={}){
       whatsappMilestoneAllowed:event=>['DEPA','RELEASE'].includes(event)
     }
   };
+  const pageSource=fs.readFileSync('api/_shipment-list-pages.js','utf8')
+    .replace(/^import \{([^}]+)\} from '([^']+)';$/gm,(_,bindings,path)=>'const {'+bindings+'} = deps['+JSON.stringify(path)+'];')
+    .replace('export async function readShipmentListPages','async function readShipmentListPages');
+  deps['./_shipment-list-pages.js']=new Function('deps',pageSource+'\nreturn {readShipmentListPages};')(deps);
   const source=fs.readFileSync('api/'+name+'.js','utf8')
     .replace(/^import \{([^}]+)\} from '([^']+)';$/gm,(_,bindings,path)=>'const {'+bindings+'} = deps['+JSON.stringify(path)+'];')
     .replace(/^import (\w+) from '([^']+)';$/gm,(_,binding,path)=>'const '+binding+' = deps['+JSON.stringify(path)+'];')

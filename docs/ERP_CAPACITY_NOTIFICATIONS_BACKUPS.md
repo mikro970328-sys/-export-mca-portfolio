@@ -41,6 +41,12 @@ revocada, permiso bloqueado, errores de registro y limpieza de la nueva suscripc
 El servicio push real requiere activar el dispositivo deseado y comprobar una
 recepción autorizada; una prueba sintética no acredita esa recepción.
 
+La revisión también reprodujo una alerta de descarga con miles de días porque
+el helper convertía fechas vacías en 1970. Las fechas vacías/ilegibles ahora
+devuelven null: no abren una condición de descarga. El reconciliador canónico
+cierra las condiciones falsas preexistentes en su próxima ejecución, sin
+borrar su historial; una descarga real atrasada sigue generando su alerta.
+
 ## Comprobación mensual de recuperación
 
 `Backup Restoration Drill` queda programado el día 1 de cada mes a las 13:23 UTC,
