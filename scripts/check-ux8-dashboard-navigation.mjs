@@ -100,7 +100,7 @@ for (const width of [1280,390]) {
     check('details initially closed',()=>assert.ok(all('[data-dashboard-detail]').every(node=>!node.open)));
     const originalApi=window.api;
     const requests=[];
-    window.api=path=>{requests.push(path);return originalApi(path);};
+    window.api=async path=>{requests.push(path);const response=await originalApi(path);return path.startsWith('/api/dashboard-financial')?response.executive:response;};
     detail('filters').open=true;
     detail('finance:USD').open=true;
     $('dashboardStartDate').value='2026-09-01';
