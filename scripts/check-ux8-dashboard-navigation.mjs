@@ -100,7 +100,8 @@ for (const width of [1280,390]) {
     check('details initially closed',()=>assert.ok(all('[data-dashboard-detail]').every(node=>!node.open)));
     const originalApi=window.api;
     const requests=[];
-    window.api=async path=>{requests.push(path);const response=await originalApi(path);return path.startsWith('/api/dashboard-financial')?response.executive:response;};
+    const dashboardApi=async path=>{requests.push(path);const response=await originalApi(path);return path.startsWith('/api/dashboard-financial')?response.executive:response;};
+    window.api=dashboardApi;
     detail('filters').open=true;
     detail('finance:USD').open=true;
     $('dashboardStartDate').value='2026-09-01';
@@ -121,12 +122,12 @@ for (const width of [1280,390]) {
     check('closed state also survives render',()=>assert.equal(detail('finance:USD').open,false));
     detail('finance:USD').open=true;
     let resolveRequest;
-    window.api=()=>new Promise(resolve=>{resolveRequest=resolve;});
+    window.api=path=>path==='/api/dashboard'?new Promise(resolve=>{resolveRequest=resolve;}):dashboardApi(path);
     const pending=window.ExecutiveDashboard.refresh();
     const duplicate=await window.ExecutiveDashboard.refresh();
     check('duplicate refresh suppressed',()=>assert.equal(duplicate,false));
     check('filter apply disabled while loading',()=>assert.equal($('dashboardApplyFilters').disabled,true));
-    resolveRequest(await originalApi('/api/dashboard'));
+    resolveRequest(await dashboardApi('/api/dashboard'));
     await pending;
     window.api=async()=>{throw Error('TEST_ONLY database diagnostic must not render');};
     await window.ExecutiveDashboard.refresh();
@@ -134,7 +135,7 @@ for (const width of [1280,390]) {
       assert.match($('dashboardSection').textContent,/No pudimos actualizar/);
       assert.doesNotMatch($('dashboardSection').textContent,/TEST_ONLY/);
     });
-    window.api=originalApi;
+    window.api=dashboardApi;
     await window.ExecutiveDashboard.refresh({});
     check('disclosures survive error and retry',()=>assert.ok(detail('finance:USD').open));
     const eur=all('.executive-currency-panel').find(node=>node.querySelector('h3').textContent==='EUR');
