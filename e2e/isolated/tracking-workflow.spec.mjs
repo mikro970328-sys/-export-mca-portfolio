@@ -99,7 +99,7 @@ test('tracking workflow: two real sessions, document tasks, personal inbox and l
       await navigate(a,'containersSection');await a.locator(`[data-container-menu="${shipment.id}"]:visible`).click();await a.locator('[data-container-action="manual_update"]').click();
       await a.locator('.manual-track-step').filter({has:a.locator('[name="manualTrackingEvent"][value="arrived"]')}).click();await a.locator('#manualTrackingLocation').fill('Mariel QA');await a.locator('.manual-track-confirm').click();await expect(a.locator('[data-manual-track]')).toHaveCount(0);
       await expect(a.locator(`[data-shipment-row="${shipment.id}"]:visible`).first()).toContainText('Llegó al puerto');
-      await openInbox(b);await expect(b.locator('.notification-item').filter({hasText:'Tracking actualizado'}).filter({hasText:'Llegó al puerto'})).toBeVisible();await b.locator('#notificationClose').click();
+      await reconcileNotifications();await openInbox(b);await expect(b.locator('.notification-item').filter({hasText:'Tracking actualizado'}).filter({hasText:'Llegó al puerto'})).toBeVisible();await b.locator('#notificationClose').click();
       expect((await f.one("select count(*)::int as count from shipment_history where shipment_id=$1 and event_type='manual_arrv'",[shipment.id])).count).toBe(1);
     });
     await step('TW-06 manual assignee survives tracking reconciliation in both sessions',async()=>{
