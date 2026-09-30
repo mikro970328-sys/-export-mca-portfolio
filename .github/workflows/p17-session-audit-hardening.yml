@@ -13,6 +13,7 @@ on:
       - 'supabase/tests/p17_session_audit_hardening.sql'
       - 'scripts/check-session-audit-hardening.mjs'
       - 'scripts/check-session-version-runtime.mjs'
+      - 'scripts/check-account-load-performance.mjs'
       - '.github/workflows/p17-session-audit-hardening.yml'
   workflow_dispatch:
 
@@ -38,6 +39,8 @@ jobs:
         run: node scripts/check-session-audit-hardening.mjs
       - name: Verify session-version runtime behavior
         run: node scripts/check-session-version-runtime.mjs
+      - name: Verify parallel account reads and access guards
+        run: node scripts/check-account-load-performance.mjs
       - name: Preserve P15 privilege boundary
         run: node scripts/check-b9-database-privileges.mjs
       - name: Preserve B9 API boundary inventory

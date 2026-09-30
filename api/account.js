@@ -3,17 +3,26 @@ import { authenticateAdmin, createToken, fail, hashPassword, loadAdminAccessCont
 const publicFields = 'id,full_name,username,role,is_active,last_login_at,password_changed_at,created_at,updated_at,access_role_id';
 
 export default async function handler(req, res) {
+  const requestStartedAt=Date.now();
   const admin = await authenticateAdmin(req, res);
+  const authorizedAt=Date.now();
   if (!admin) return;
 
   try {
     if (req.method === 'GET') {
-      const rows = await supabase('admin_users', {
-        query: `?select=${publicFields}&id=eq.${encodeURIComponent(admin.admin_id)}&limit=1`
-      });
+      const readStartedAt=Date.now();
+      const timing={authorization_ms:authorizedAt-requestStartedAt};
+      const [rows,access] = await Promise.all([
+        supabase('admin_users', {
+          query: `?select=${publicFields}&id=eq.${encodeURIComponent(admin.admin_id)}&limit=1`
+        }).then(rows=>{timing.account_read_ms=Date.now()-readStartedAt;return rows;}),
+        loadAdminAccessContext(admin.admin_id)
+          .then(access=>{timing.access_ms=Date.now()-readStartedAt;return access;})
+      ]);
       const account = rows?.[0] || null;
       if (!account || account.is_active === false) return fail(res, 403, 'La cuenta no está disponible');
-      const access = await loadAdminAccessContext(admin.admin_id);
+      timing.total_ms=Date.now()-requestStartedAt;
+      res.setHeader?.('Server-Timing',Object.entries(timing).map(([name,duration])=>`${name};dur=${duration}`).join(', '));
       return ok(res, { account: { ...account, ...access } });
     }
 
