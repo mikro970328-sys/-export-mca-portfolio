@@ -100,8 +100,8 @@ jobs:
           PGRST_JWT_SECRET: isolated-postgrest-qa-secret-never-production-2026
         ports: ['3000:3000']
     env:
-      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@postgres:5432/erp_operator_qa
-      ERP_TEST_POSTGREST_URL: http://postgrest:3000
+      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
+      ERP_TEST_POSTGREST_URL: http://127.0.0.1:3000
       ERP_TEST_POSTGREST_SECRET: isolated-postgrest-qa-secret-never-production-2026
     steps:
       - uses: actions/checkout@v4
@@ -114,6 +114,36 @@ jobs:
             e2e/isolated/package-lock.json
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
+      - name: Bind disposable services to loopback
+        run: |
+          node --input-type=module <<'NODE' &
+          import net from 'node:net';
+          for (const [port,host] of [[5432,'postgres'],[3000,'postgrest']]) {
+            net.createServer(client => {
+              const upstream=net.connect(port,host);
+              client.on('error',()=>upstream.destroy());
+              upstream.on('error',()=>client.destroy());
+              client.pipe(upstream).pipe(client);
+            }).listen(port,'127.0.0.1');
+          }
+          NODE
+          node --input-type=module <<'NODE'
+          import net from 'node:net';
+          for (const port of [5432,3000]) {
+            await new Promise((resolve,reject) => {
+              let attempts=0;
+              const connect=()=>{
+                const socket=net.connect(port,'127.0.0.1');
+                socket.once('connect',()=>{socket.destroy();resolve();});
+                socket.once('error',error=>{
+                  socket.destroy();
+                  if(++attempts>=50)reject(error);else setTimeout(connect,100);
+                });
+              };
+              connect();
+            });
+          }
+          NODE
       - name: Preserve operator-local dispatch instants
         run: node e2e/isolated/dispatch-time-check.mjs
       - name: Actual UI and disposable PostgreSQL
