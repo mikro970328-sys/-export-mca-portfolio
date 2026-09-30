@@ -19,6 +19,7 @@ on:
       - 'supabase/migrations/*b10_1*.sql'
       - 'scripts/check-b10-web-push.mjs'
       - 'scripts/check-b10-web-push-sql.mjs'
+      - 'scripts/check-push-device-renewal.mjs'
       - '.github/workflows/b10-web-push.yml'
   pull_request:
     paths:
@@ -37,6 +38,7 @@ on:
       - 'supabase/migrations/*b10_1*.sql'
       - 'scripts/check-b10-web-push.mjs'
       - 'scripts/check-b10-web-push-sql.mjs'
+      - 'scripts/check-push-device-renewal.mjs'
       - '.github/workflows/b10-web-push.yml'
   workflow_dispatch:
 
@@ -65,6 +67,8 @@ jobs:
           node --check sw.js
       - name: Verify B10.1 security and lifecycle
         run: node scripts/check-b10-web-push.mjs
+      - name: Verify explicit renewal after expiry and session revocation
+        run: node scripts/check-push-device-renewal.mjs
       - name: Verify B10.1 PostgreSQL authorization and queue behavior
         run: node scripts/check-b10-web-push-sql.mjs
       - name: Preserve P10 inbox ownership

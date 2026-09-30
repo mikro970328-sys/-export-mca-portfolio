@@ -243,7 +243,7 @@ select jsonb_build_object(
     left join public.clients c on c.id = s.client_id
   ), '[]'::jsonb)
 );
-$function$
+$function$;
 
 
 REVOKE ALL ON FUNCTION public.admin_dashboard_snapshot(boolean, boolean, boolean, boolean, boolean, boolean, boolean) FROM PUBLIC, anon, authenticated;

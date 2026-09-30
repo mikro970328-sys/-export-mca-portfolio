@@ -113,7 +113,7 @@ export default async function handler(req, res) {
     if (req.method === 'DELETE') {
       const body = await readJson(req);
       const endpoint = String(body.endpoint || '').trim();
-      const reason = ['logout','key_rotated','permission_revoked'].includes(String(body.reason || '').trim()) ? String(body.reason).trim() : 'logout';
+      const reason = ['logout','key_rotated','permission_revoked','subscription_renewed'].includes(String(body.reason || '').trim()) ? String(body.reason).trim() : 'logout';
       if (!validPushEndpoint(endpoint)) return fail(res, 400, 'La suscripción del navegador no es válida');
       const result = rpcRow(await supabase('rpc/deactivate_push_subscription', {
         method:'POST',

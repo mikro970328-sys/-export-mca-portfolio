@@ -35,6 +35,8 @@ jobs:
         run: node --test scripts/check-storage-backup.mjs
       - name: Verify the scheduled R2 backup worker
         run: npm run test:storage-backup-worker
+      - name: Verify the retention proposal without deleting any backup
+        run: node --test workers/storage-backup/test/retention-plan.test.mjs
       - name: Validate the Wrangler bundle without deploying
         run: npm run cf:backup:check
       # No credentials, schedules or uploaded artifacts. The real export is run privately.

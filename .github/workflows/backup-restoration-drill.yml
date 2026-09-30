@@ -16,6 +16,9 @@ on:
       - 'scripts/check-backup-restore.mjs'
       - '.github/workflows/backup-restoration-drill.yml'
   workflow_dispatch:
+  # Monthly rehearsal on disposable services. No production snapshot or secret.
+  schedule:
+    - cron: '23 13 1 * *'
 permissions:
   contents: read
 jobs:
