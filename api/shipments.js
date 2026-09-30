@@ -2,6 +2,7 @@ import { authorizeAdmin, fail, ok, publicNotificationData, publicNotificationErr
 import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
 import { claimNotificationDelivery, releaseNotificationDelivery } from './_notification-delivery.js';
 import { assertShipmentBusinessAction, loadShipmentActionCapabilityMap, loadShipmentActionCapabilities } from './_shipment-actions.js';
+import { readShipmentListPages } from './_shipment-list-pages.js';
 
 const cleanText = value => String(value ?? '').trim() || null;
 const cleanClientId = value => cleanText(value);
@@ -171,11 +172,11 @@ export default async function handler(req,res) {
   try {
     if (req.method === 'GET') {
       const [data,capabilityBundle,loadRows,directRows,directDispatchRows] = await Promise.all([
-        supabase('shipments',{ query:'?select=*,clients(id,name,company,phone,email,welcome_status,active)&order=created_at.desc' }),
+        readShipmentListPages('shipments','?select=*,clients(id,name,company,phone,email,welcome_status,active)&order=created_at.desc,id.desc'),
         loadShipmentActionCapabilityMap(admin),
-        supabase('loads',{ query:'?select=id,load_number,shipment_id,status,loaded_at,dispatched_at&shipment_id=not.is.null&status=neq.cancelled&order=created_at.desc&limit=5000' }),
-        supabase('direct_shipment_allocations',{ query:'?select=shipment_id&order=created_at.desc&limit=5000' }),
-        supabase('direct_shipment_dispatches',{ query:'?select=shipment_id,dispatched_at&limit=5000' })
+        readShipmentListPages('loads','?select=id,load_number,shipment_id,status,loaded_at,dispatched_at&shipment_id=not.is.null&status=neq.cancelled&order=created_at.desc,id.desc'),
+        readShipmentListPages('direct_shipment_allocations','?select=shipment_id&order=created_at.desc,id.desc'),
+        readShipmentListPages('direct_shipment_dispatches','?select=shipment_id,dispatched_at&order=shipment_id.asc')
       ]);
       const loadByShipment=new Map();
       for(const load of loadRows||[])if(load.shipment_id&&!loadByShipment.has(String(load.shipment_id)))loadByShipment.set(String(load.shipment_id),load);

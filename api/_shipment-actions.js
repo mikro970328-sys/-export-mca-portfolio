@@ -1,4 +1,5 @@
 import { loadAdminAccessContext, supabase } from './_lib.js';
+import { readShipmentListPages } from './_shipment-list-pages.js';
 
 const clone=value=>value&&typeof value==='object'?JSON.parse(JSON.stringify(value)):{actions:{}};
 const requiredPermission=action=>action==='view_documents'?'documents.read':(['view_info','view_history'].includes(action)?'logistics.read':'logistics.write');
@@ -29,7 +30,7 @@ export function maskShipmentActionCapabilities(raw,permissions){
 
 export async function loadShipmentActionCapabilityMap(admin){
   const permissions=await effectivePermissions(admin);
-  const rows=await supabase('shipment_action_capabilities',{query:'?select=shipment_id,capabilities&limit=5000'});
+  const rows=await readShipmentListPages('shipment_action_capabilities','?select=shipment_id,capabilities&order=shipment_id.asc');
   return {
     map:new Map((rows||[]).map(row=>[String(row.shipment_id),maskShipmentActionCapabilities(row.capabilities,permissions)])),
     write_access:permissions.has('logistics.write')

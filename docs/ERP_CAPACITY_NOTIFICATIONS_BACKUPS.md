@@ -12,6 +12,10 @@ PostgREST 12.2.3 y credenciales efímeras, exclusivamente por loopback. Iniciali
 una base vacía con las migraciones reales de finanzas, permisos, tareas, push,
 dashboard y caché. El límite REST de 1000 filas permite detectar truncamientos.
 
+La primera ejecución reprodujo que el listado devolvía 1000 de 2000 filas.
+Los contenedores, capacidades y relaciones de cumplimiento ahora se leen por
+páginas con orden estable. Un error en una página rechaza la lectura completa.
+
 Datos: 2000 contenedores, 500 clientes adicionales, 100 ventas/facturas emitidas y
 50 cuentas independientes. Tres rondas por nivel de 5, 20 y 50 usuarios hacen
 lecturas de cuenta, dashboard, finanzas y contenedores y guardados en registros

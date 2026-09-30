@@ -108,6 +108,7 @@ try{
     const summarize=values=>{const sorted=values.sort((a,b)=>a-b);return{n:sorted.length,p50_ms:+percentile(sorted,.5).toFixed(1),p95_ms:+percentile(sorted,.95).toFixed(1),p99_ms:+percentile(sorted,.99).toFixed(1),max_ms:+sorted.at(-1).toFixed(1)};};
     report.stages.push({concurrent_users:concurrentUsers,routes:Object.fromEntries([...samples].map(([name,values])=>[name,summarize(values)])),server_timing:Object.fromEntries([...timings].map(([name,values])=>[name,summarize(values)]))});
     console.log(JSON.stringify(report.stages.at(-1)));
+    if(report.errors.length)console.error(JSON.stringify(report.errors.slice(-5)));
     assert.equal(settled.filter(r=>r.status==='rejected').length,0,'all concurrent workflows must succeed');
   }
   for(const write of expectedWrites){
