@@ -42,7 +42,20 @@ html.admin-preparing body::after {
   }
   const canReadDashboard = user?.role === 'master_admin'
     || (Array.isArray(user?.permissions) && user.permissions.includes('dashboard.read'));
-  if (!token || !canReadDashboard) return;
+  if (!token) return;
+  const preload = (href, as) => {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = as;
+    link.href = href;
+    document.head.appendChild(link);
+  };
+  preload('/admin/access-control.css?v=20260926-business1', 'style');
+  preload('/admin/access-control-administration.js?v=20260929-section-source2', 'script');
+  preload('/admin/ui-icon-system.js?v=20260927-nohelp1', 'script');
+  if (!canReadDashboard) return;
+  preload('/admin/dashboard-executive.css?v=20260926-figma2', 'style');
+  preload('/admin/dashboard-operational-state.js?v=20260929-dashboard-cache-stable1', 'script');
   window.__exportMcaEarlyDashboard = fetch('/api/dashboard', {
     method:'GET',
     cache:'no-store',
