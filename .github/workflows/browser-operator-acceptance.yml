@@ -36,6 +36,9 @@ permissions:
 jobs:
   header-contrast:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --init --ipc=host
     timeout-minutes: 8
     strategy:
       fail-fast: false
@@ -54,9 +57,6 @@ jobs:
       - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
       - name: Help content, navigation and access contract
         run: node scripts/check-help-center.mjs
-      - name: Install browser engines
-        working-directory: e2e/isolated
-        run: npx playwright install --with-deps chromium webkit
       - name: Computed header and icon contrast without business data
         working-directory: e2e/isolated
         run: npm test -- help-center.spec.mjs header-contrast.spec.mjs figma-sales.spec.mjs figma-costs.spec.mjs figma-purchases.spec.mjs figma-warehouse.spec.mjs figma-stock-catalog.spec.mjs figma-logistics.spec.mjs figma-finance.spec.mjs figma-directories.spec.mjs figma-tasks-workers.spec.mjs figma-access-account.spec.mjs figma-home-communications.spec.mjs figma-publications-workflow.spec.mjs figma-desktop-integration.spec.mjs --project=${{ matrix.project }}
@@ -68,6 +68,9 @@ jobs:
           retention-days: 14
   isolated-browser:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --init --ipc=host
     timeout-minutes: 12
     strategy:
       fail-fast: false
@@ -97,8 +100,8 @@ jobs:
           PGRST_JWT_SECRET: isolated-postgrest-qa-secret-never-production-2026
         ports: ['3000:3000']
     env:
-      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
-      ERP_TEST_POSTGREST_URL: http://127.0.0.1:3000
+      ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@postgres:5432/erp_operator_qa
+      ERP_TEST_POSTGREST_URL: http://postgrest:3000
       ERP_TEST_POSTGREST_SECRET: isolated-postgrest-qa-secret-never-production-2026
     steps:
       - uses: actions/checkout@v4
@@ -113,9 +116,6 @@ jobs:
       - run: npm ci --prefix e2e/isolated --ignore-scripts --no-audit --no-fund
       - name: Preserve operator-local dispatch instants
         run: node e2e/isolated/dispatch-time-check.mjs
-      - name: Install isolated browser engines
-        working-directory: e2e/isolated
-        run: npx playwright install --with-deps chromium webkit
       - name: Actual UI and disposable PostgreSQL
         working-directory: e2e/isolated
         env:
