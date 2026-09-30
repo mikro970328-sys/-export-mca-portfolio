@@ -340,7 +340,7 @@ export default async function handler(req,res) {
       resultShipment.capabilities=capabilities;
       timing.side_effects_ms=Date.now()-phaseStartedAt;
       timing.total_ms=Date.now()-requestStartedAt;
-      console.info('SHIPMENT_PATCH_TIMING',timing);
+      console.info?.('SHIPMENT_PATCH_TIMING',timing);
       return ok(res,{ shipment:publicNotificationData(resultShipment) });
     }
 
