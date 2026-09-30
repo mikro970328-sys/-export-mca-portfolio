@@ -121,14 +121,22 @@ for (const width of [1280,390]) {
     window.renderDashboardDetails();
     check('closed state also survives render',()=>assert.equal(detail('finance:USD').open,false));
     detail('finance:USD').open=true;
-    let resolveRequest;
-    window.api=path=>path==='/api/dashboard'?new Promise(resolve=>{resolveRequest=resolve;}):dashboardApi(path);
+    let resolveRequest,holdOperationalRequest=true;
+    window.api=path=>{
+      if(path==='/api/dashboard'&&holdOperationalRequest){
+        holdOperationalRequest=false;
+        return new Promise(resolve=>{resolveRequest=resolve;});
+      }
+      return dashboardApi(path);
+    };
     const pending=window.ExecutiveDashboard.refresh();
-    const duplicate=await window.ExecutiveDashboard.refresh();
-    check('duplicate refresh suppressed',()=>assert.equal(duplicate,false));
+    const duplicate=window.ExecutiveDashboard.refresh();
+    check('duplicate refresh queues one follow-up',()=>assert.equal(window.ExecutiveDashboard.getState().refreshQueued,true));
     check('filter apply disabled while loading',()=>assert.equal($('dashboardApplyFilters').disabled,true));
     resolveRequest(await dashboardApi('/api/dashboard'));
     await pending;
+    const duplicateResult=await duplicate;
+    check('queued refresh completes',()=>assert.equal(duplicateResult,true));
     window.api=async()=>{throw Error('TEST_ONLY database diagnostic must not render');};
     await window.ExecutiveDashboard.refresh();
     check('friendly error without internal details',()=>{
