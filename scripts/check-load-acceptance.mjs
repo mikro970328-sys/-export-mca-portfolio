@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 import { performance } from 'node:perf_hooks';
 import { createOperatorAcceptanceDb } from './lib/operator-acceptance-db.mjs';
 import { applyTrackingWorkflowAcceptanceSchema } from './lib/tracking-workflow-acceptance-db.mjs';
@@ -13,7 +15,15 @@ import shipments from '../api/shipments.js';
 
 if(process.env.ERP_LOAD_ACCEPTANCE!=='synthetic-only')throw Error('Explicit synthetic-only load acceptance is required');
 const levels=[5,20,50],rounds=3,shipmentCount=2000,clientCount=500,invoiceCount=100;
+const baselineDir=process.env.ERP_LOAD_BASELINE_DIR;
+let baselineShipments;
+if(baselineDir){
+  const expected=path.resolve('.load-acceptance-baseline');
+  assert.equal(fs.realpathSync(baselineDir),expected,'baseline must be the isolated local checkout');
+  baselineShipments=(await import(pathToFileURL(path.join(expected,'api/shipments.js')))).default;
+}
 const report={environment:'isolated-loopback PostgreSQL/PostgREST; not production latency',
+  baseline_ref:process.env.ERP_LOAD_BASELINE_REF||null,
   seed:{shipments:shipmentCount,additional_clients:clientCount,invoices:invoiceCount},rounds,stages:[],errors:[]};
 const db=await createOperatorAcceptanceDb(),nativeFetch=globalThis.fetch;
 let api;
@@ -31,7 +41,8 @@ try{
   await db.exec(attention.slice(attention.indexOf(marker)));
   for(const name of ['20260831235500_ux5_shipment_action_capabilities.sql',
     '20260928232500_admin_dashboard_snapshot.sql','20260929041000_dashboard_cache_stable_versions.sql',
-    '20260929042623_dashboard_operational_cache_cleanup_fix.sql'])await db.exec(fs.readFileSync(`supabase/migrations/${name}`,'utf8'));
+    '20260929042623_dashboard_operational_cache_cleanup_fix.sql',
+    '20261001025606_shipment_action_capability_snapshot.sql'])await db.exec(fs.readFileSync(`supabase/migrations/${name}`,'utf8'));
   const {f,users}=await operatorFixture(db);
   const permissions=['dashboard.read','clients.read','logistics.read','logistics.write','documents.read','finance.read','reports.read','sales.read','warehouse.read','procurement.read','tasks.read','notifications.read'];
   await db.query('select set_access_role_permissions($1,$2::text[],$3)',[users.a.access_role_id,permissions,users.master.id]);
@@ -48,10 +59,24 @@ try{
     from generate_series(1,$3) g cross join (select array_agg(id order by id) ids from clients where name like 'QA load customer %') c`,[clientCount,f.importer,shipmentCount]);
   const rows=await f.rows("select id from shipments where container_number like 'QA-LOAD-%' order by container_number");
   assert.equal(rows.length,shipmentCount);
+  const snapshot=await f.one(`select shipment_action_capability_snapshot() snapshot,
+    (select jsonb_agg(jsonb_build_object('shipment_id',shipment_id,'capabilities',capabilities) order by shipment_id) from shipment_action_capabilities) canonical`);
+  assert.deepEqual(snapshot.snapshot,snapshot.canonical,'batched snapshot must preserve every canonical business action');
+  assert.equal(snapshot.snapshot.length,shipmentCount);
+  await assert.rejects(db.query('select shipment_action_capability_snapshot(1000)'),/SHIPMENT_LIST_VOLUME_LIMIT/);
+  for(const limit of [null,0,50001])await assert.rejects(db.query('select shipment_action_capability_snapshot($1)',[limit]),/SHIPMENT_LIST_QUERY_INVALID/);
+  const privilege=await f.one(`select prosecdef as definer,provolatile as volatility,
+    has_function_privilege('anon',oid,'execute') anonymous,
+    has_function_privilege('authenticated',oid,'execute') authenticated,
+    has_function_privilege('service_role',oid,'execute') service
+    from pg_proc where oid='public.shipment_action_capability_snapshot(integer)'::regprocedure`);
+  assert.deepEqual(privilege,{definer:false,volatility:'s',anonymous:false,authenticated:false,service:true});
+  report.snapshot_verified=true;
   for(let i=0;i<invoiceCount;i++)await f.invoice(await f.sale());
   await db.exec('analyze');
   const expectedFinancial=await f.dashboard();
   const handlers={'/api/dashboard':dashboard,'/api/dashboard-financial':financial,'/api/shipments':shipments};
+  if(baselineShipments)handlers['/api/load-baseline-shipments']=baselineShipments;
   api=await startOperatorApi({fallbackHandler:async(req,res,url)=>{
     req.query=Object.fromEntries(url.searchParams);
     const handler=handlers[url.pathname];
@@ -59,9 +84,14 @@ try{
     await handler(req,res);
   }});
   const allowed=new Set([api.base,new URL(process.env.ERP_TEST_POSTGREST_URL).origin]);
+  let databaseRequests;
   globalThis.fetch=(input,options)=>{
     const url=new URL(typeof input==='string'||input instanceof URL?input:input.url);
     if(!allowed.has(url.origin))throw Error('Load acceptance refuses external traffic');
+    if(databaseRequests&&url.pathname.startsWith('/rest/v1/')){
+      const key=(options?.method||'GET')+' '+url.pathname.slice('/rest/v1/'.length);
+      databaseRequests.set(key,(databaseRequests.get(key)||0)+1);
+    }
     return nativeFetch(input,options);
   };
   await api.ready(db);
@@ -70,9 +100,24 @@ try{
     assert.equal(login.status,200,'real QA login');assert.equal(login.body.user.id,actor.id);
     actor.token=login.body.token;delete actor.password;
   }
+  if(baselineShipments){
+    const [before,after]=await Promise.all([
+      api.request('load-baseline-shipments',{token:actors[0].token}),
+      api.request('shipments',{token:actors[0].token})
+    ]);
+    assert.equal(before.status,200);assert.equal(after.status,200);
+    assert.deepEqual(after.body,before.body,'optimization must preserve the full shipment list, fulfillment and permission contract');
+    report.list_contract_matches_baseline=true;
+  }
   const expectedWrites=[];
   const percentile=(values,p)=>values[Math.max(0,Math.ceil(values.length*p)-1)];
   for(const concurrentUsers of levels){
+    // Alternate which implementation runs first, on the same seeded database,
+    // runner and real HTTP/PostgREST transport. No response/permission caching.
+    const variants=baselineShipments?(concurrentUsers===20?['current','baseline']:['baseline','current']):['current'];
+    for(const variant of variants){
+    const shipmentPath=variant==='baseline'?'load-baseline-shipments':'shipments';
+    databaseRequests=new Map();
     const samples=new Map(),timings=new Map();
     const measure=async(label,path,actor,{method='GET',body,validate=()=>{}}={})=>{
       const started=performance.now();
@@ -87,7 +132,7 @@ try{
           const match=metric.trim().match(/^([a-z_]+);dur=([\d.]+)$/);
           if(match){const key=label+':'+match[1];if(!timings.has(key))timings.set(key,[]);timings.get(key).push(Number(match[2]));}
         }
-      }catch(error){report.errors.push({concurrent_users:concurrentUsers,route:label,message:error.message});throw error;}
+      }catch(error){report.errors.push({variant,concurrent_users:concurrentUsers,route:label,message:error.message});throw error;}
     };
     const settled=await Promise.allSettled(actors.slice(0,concurrentUsers).map(async(actor,index)=>{
       for(let round=0;round<rounds;round++){
@@ -96,21 +141,34 @@ try{
         await measure('financial','dashboard-financial',actor,{validate:data=>{
           const {owner,generated_at,...payload}=data;assert.deepEqual(payload,expectedFinancial);
         }});
-        await measure('shipments','shipments',actor,{validate:data=>{
+        await measure('shipments',shipmentPath,actor,{validate:data=>{
           assert.equal(data.shipments.length,shipmentCount,'shipment list must include the entire seeded dataset');
           assert.ok(data.shipments.every(row=>row.capabilities?.actions?.edit?.allowed===true),'capabilities must cover all pages');
         }});
-        const row=rows[levels.indexOf(concurrentUsers)*200+round*50+index],booking=`QA-LOAD-${concurrentUsers}-${round}-${index}`;
-        await measure('save','shipments',actor,{method:'PATCH',body:{id:row.id,booking_number:booking},validate:data=>assert.equal(data.shipment.booking_number,booking)});
+        const row=rows[(variant==='baseline'?800:0)+levels.indexOf(concurrentUsers)*200+round*50+index],booking=`QA-LOAD-${variant}-${concurrentUsers}-${round}-${index}`;
+        await measure('save',shipmentPath,actor,{method:'PATCH',body:{id:row.id,booking_number:booking},validate:data=>assert.equal(data.shipment.booking_number,booking)});
         expectedWrites.push({id:row.id,booking});
       }
     }));
     const summarize=values=>{const sorted=values.sort((a,b)=>a-b);return{n:sorted.length,p50_ms:+percentile(sorted,.5).toFixed(1),p95_ms:+percentile(sorted,.95).toFixed(1),p99_ms:+percentile(sorted,.99).toFixed(1),max_ms:+sorted.at(-1).toFixed(1)};};
-    report.stages.push({concurrent_users:concurrentUsers,routes:Object.fromEntries([...samples].map(([name,values])=>[name,summarize(values)])),server_timing:Object.fromEntries([...timings].map(([name,values])=>[name,summarize(values)]))});
+    if(variant==='current'){
+      assert.equal(databaseRequests.get('POST rpc/shipment_action_capability_snapshot'),concurrentUsers*rounds,'every complete list must use the scalar snapshot over real HTTP');
+      assert.equal(databaseRequests.get('GET shipment_action_capabilities'),concurrentUsers*rounds,'only individual save receipts may read the capability view; lists must not fall back');
+    }
+    report.stages.push({variant,concurrent_users:concurrentUsers,routes:Object.fromEntries([...samples].map(([name,values])=>[name,summarize(values)])),server_timing:Object.fromEntries([...timings].map(([name,values])=>[name,summarize(values)])),database_requests:Object.fromEntries(databaseRequests)});
     console.log(JSON.stringify(report.stages.at(-1)));
     if(report.errors.length)console.error(JSON.stringify(report.errors.slice(-5)));
     assert.equal(settled.filter(r=>r.status==='rejected').length,0,'all concurrent workflows must succeed');
+    }
   }
+  databaseRequests=null;
+  report.comparison=levels.map(concurrent_users=>{
+    const before=report.stages.find(s=>s.variant==='baseline'&&s.concurrent_users===concurrent_users);
+    const after=report.stages.find(s=>s.variant==='current'&&s.concurrent_users===concurrent_users);
+    return before?{concurrent_users,p95_change_percent:Object.fromEntries(['shipments','save'].map(route=>
+      [route,+((after.routes[route].p95_ms/before.routes[route].p95_ms-1)*100).toFixed(1)]))}:null;
+  }).filter(Boolean);
+  console.log('LOAD_COMPARISON '+JSON.stringify(report.comparison));
   for(const write of expectedWrites){
     const stored=await f.one('select booking_number from shipments where id=$1',[write.id]);assert.equal(stored.booking_number,write.booking);
     const evidence=await f.one(`select

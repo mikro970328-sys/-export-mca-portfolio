@@ -73,7 +73,7 @@ requireText(manual,"delivered: { order:6, status:'Entregado', eventType:'DELIVER
 requireText(manual,"assertShipmentBusinessAction(shipment.id,'manual_tracking')",'debe respetar capability canónica antes de mutar tracking');
 
 const shipmentActions='api/_shipment-actions.js';
-for(const text of ['loadAdminAccessContext','shipment_action_capabilities',"supabase('rpc/assert_shipment_action'",'assertShipmentBusinessAction'])requireText(shipmentActions,text);
+for(const text of ['admin_effective_permissions','permission_key=in.(logistics.read,logistics.write,documents.read)','shipment_action_capabilities',"supabase('rpc/assert_shipment_action'",'assertShipmentBusinessAction'])requireText(shipmentActions,text);
 
 const shipments='api/shipments.js';
 for(const text of [

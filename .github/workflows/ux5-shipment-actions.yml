@@ -12,6 +12,7 @@ on:
       - 'supabase/tests/ux5_shipment_actions.sql'
       - 'scripts/check-ux5-shipment-actions.mjs'
       - 'scripts/check-shipment-save-concurrency.mjs'
+      - 'scripts/check-shipment-action-reads.mjs'
       - '.github/workflows/ux5-shipment-actions.yml'
   workflow_dispatch:
 
@@ -27,6 +28,8 @@ jobs:
         run: node scripts/check-ux5-shipment-actions.mjs
       - name: Validate save concurrency and write guards
         run: node scripts/check-shipment-save-concurrency.mjs
+      - name: Validate minimal action reads and live permission changes
+        run: node scripts/check-shipment-action-reads.mjs
       - name: Validate JavaScript syntax
         run: |
           node --check api/_shipment-actions.js

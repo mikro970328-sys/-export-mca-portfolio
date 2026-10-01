@@ -184,7 +184,10 @@ try{
     const b=await f.bill(await f.purchase());await f.payBill(b,50);
     const ar=(await f.report('invoices')).rows[0],ap=(await f.report('supplier_bills')).rows[0];
     assert.equal(n(ar.balance_due),360);assert.equal(ar.overdue,true);assert.equal(n(ap.balance_due),200);assert.equal(ap.overdue,true);
-    const roll=await f.dashboard({start_date:'2026-10-01',end_date:'2026-10-31'});
+    // Sales and supplier payment actions use the real database date. A fixed
+    // "empty next month" stops being empty when CI crosses that month boundary.
+    const emptyWindow=await one("select (current_date+1)::text as start_date,(current_date+31)::text as end_date");
+    const roll=await f.dashboard(emptyWindow);
     assert.equal(roll.activity_by_currency.length,0);
     const balances=roll.balances_by_currency.find(x=>x.currency==='USD');assert.equal(n(balances.ar_balance),360);assert.equal(n(balances.ap_balance),200);
   });
