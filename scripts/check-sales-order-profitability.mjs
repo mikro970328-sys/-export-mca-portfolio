@@ -32,7 +32,7 @@ for(const text of [
   'function financialWritable(){return state.data?.financial_access?.write===true;}',
   "key!=='costs'||financialReadable()",
   "financialReadable()?`${kpi('Costo mercancía'",
-  'COGS, gastos directos y márgenes requieren permiso de Finanzas.',
+  'Necesitas permiso de Finanzas para ver costos y ganancia.',
   "financialWritable()?'<button class=\"btn orange\" data-ws-action=\"new_cost\">+ Agregar gasto</button>':''",
   "if(action==='new_cost'){if(!financialWritable())throw new Error('No tienes permiso para registrar gastos.')",
   "function openCostModal(costChargeId=''){if(!financialWritable())throw new Error('No tienes permiso para registrar gastos.')",

@@ -22,7 +22,7 @@ export function financeAcceptanceApi(db) {
     'supplier_bills','supplier_bill_financial_progress','purchase_orders','cost_charges','cost_charge_allocations','cost_charge_progress',
     'cost_charge_action_capabilities','warehouse_receipts','loads','shipments','operations','purchase_order_item_merchandise_cost_basis',
     'warehouse_receipt_item_merchandise_cost','load_merchandise_cogs','posted_cost_charge_allocations','load_direct_costs',
-    'shipment_direct_costs','operation_direct_costs','sales_order_direct_costs']);
+    'shipment_direct_costs','operation_direct_costs','sales_order_direct_costs','sales_order_direct_operation_summary','sales_order_workspace_summary']);
   const readSql={
     supplier_bills:'select b.*,to_jsonb(s) as supplier,to_jsonb(po) as purchase_order from supplier_bills b join suppliers s on s.id=b.supplier_id join purchase_orders po on po.id=b.purchase_order_id',
     supplier_bill_items:'select i.*,to_jsonb(p) as product from supplier_bill_items i join products p on p.id=i.product_id',

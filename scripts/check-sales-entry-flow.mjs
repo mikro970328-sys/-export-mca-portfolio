@@ -46,14 +46,14 @@ w.fetch=async(path,options={})=>{
 };
 w.eval(fs.readFileSync('admin/sales-supply-workspace.js','utf8'));
 await w.SalesSupplyWorkspace.open('fixture-sale-0');
-d.querySelector('[data-supply-action="plan-direct"]').click();
+d.querySelector('[data-supply-action="new-plan"]').click();change(w,d.getElementById('supplyMethod'),'purchase_direct');
 assert.equal(d.getElementById('supplyMethod').value,'purchase_direct');
 assert.equal(d.getElementById('supplyPlannedQty').value,'19600');assert.equal(d.getElementById('supplyPlannedPallets').value,'40');
 input(w,d.getElementById('supplyPlannedQty'),9800);assert.equal(d.getElementById('supplyPlannedPallets').value,'20');
 input(w,d.getElementById('supplyPlannedPallets'),18);input(w,d.getElementById('supplyPlannedQty'),9000);assert.equal(d.getElementById('supplyPlannedPallets').value,'18','Preserve explicit pallet correction');
 d.getElementById('salesSupplyFormSave').click();await tick();assert.equal(Number(supplyWrites[0].planned_pallets),18);
 item.supply_plans=[{id:'qa-existing-plan',supply_method:'purchase_direct',planned_quantity:9800,planned_pallets:20,procurement_allocations:[]}];item.supply_progress.unplanned_quantity=9800;
-await w.SalesSupplyWorkspace.open('fixture-sale-0');d.querySelector('[data-supply-action="plan-direct"]').click();assert.equal(d.getElementById('supplyPlannedPallets').value,'20','Only use the unplanned pallet balance');
+await w.SalesSupplyWorkspace.open('fixture-sale-0');d.querySelector('[data-supply-action="new-plan"]').click();change(w,d.getElementById('supplyMethod'),'purchase_direct');assert.equal(d.getElementById('supplyPlannedPallets').value,'20','Only use the unplanned pallet balance');
 w.__fixtureWorkspace.items=[item];w.__fixtureWorkspace.billing.capabilities={create_invoice:{allowed:true}};w.__fixtureWorkspace.summary.fully_invoiced=false;
 await w.SalesWorkspace.open('fixture-sale-0');
 d.querySelector('[data-ws-tab="billing"]')?.click();

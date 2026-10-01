@@ -78,7 +78,7 @@ function render(){
     <div class="actions sales-order-actions" aria-label="Acciones de ${esc(o.so_number)}">
       <button class="btn" type="button" data-view-order="${o.id}"><span class="sales-order-open-desktop">Abrir</span><span class="sales-order-open-mobile">Abrir venta</span></button>
       <details class="sales-more-actions"><summary aria-label="Más acciones de ${esc(o.so_number)}"><span class="sales-more-desktop">Más</span><span class="sales-more-mobile">Más acciones</span></summary><div class="sales-more-actions-menu">
-        <button class="btn" type="button" data-supply-order="${o.id}">Asignar mercancía</button>
+        <button class="btn" type="button" data-supply-order="${o.id}">Compra y contenedor</button>
         ${can(o,'edit')?`<button class="btn" type="button" data-edit-order="${o.id}">Editar</button>`:''}
         ${can(o,'allocate_load')?`<button class="btn orange" type="button" data-load-order="${o.id}">Crear Cargue</button>`:''}
       </div></details>

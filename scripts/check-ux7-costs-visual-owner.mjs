@@ -48,7 +48,7 @@ const workflow = read(files.workflow);
   '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/costs.css?v=20260927-simple1',
-  '/admin/costs.js?v=20260927-simple1',
+  '/admin/costs.js?v=20261001-direct-operation1',
   '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1',
   'class="module-hero costs-page-head"',
   'id="costsPageTitle">Gastos y rentabilidad',
@@ -433,7 +433,7 @@ if (!fixtureNodes.get('content').innerHTML.includes('data-post="cost-1"')) failu
 if (fixtureNodes.get('content').innerHTML.includes('data-edit="cost-1"')) failures.push('Costos presenta edit pese a estar denegado por capabilities');
 if (fixtureNodes.get('content').innerHTML.includes('data-void="cost-1"')) failures.push('Costos presenta void pese a estar denegado por capabilities');
 if ((fixtureNodes.get('metrics').innerHTML.match(/<article/g) || []).length !== 5) failures.push('Costos no presenta exactamente cinco métricas');
-if (fixtureNodes.get('costsResultCount').textContent !== '1 gasto') failures.push('Costos no actualiza el contador de cargos');
+if (fixtureNodes.get('costsResultCount').textContent !== '1 grupo') failures.push('Costos no actualiza el contador de grupos por pedido');
 if (fixtureNodes.get('newCharge').hidden) failures.push('Costos oculta la creación pese a write_access');
 
 fixtureWindow.CostsModule?.openCost('cost-1');

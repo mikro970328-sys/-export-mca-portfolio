@@ -16,15 +16,16 @@ const directSaleMigration=read('supabase/migrations/20260920213000_direct_sale_f
 const {buildPurchaseOptions}=await import('../api/sales-supply.js');
 
 assert(html.includes('/admin/sales-supply-workspace.css?v=20260902-ux7sales1'),'Ventas no carga CSS de abastecimiento versionado');
-assert(html.includes('/admin/sales-supply-workspace.js?v=20261001-sales-flow1'),'Ventas no carga Asignar mercancía versionado');
+assert(html.includes('/admin/sales-supply-workspace.js?v=20261001-direct-operation1'),'Ventas no carga Compra y contenedor versionado');
 assert(html.includes('id="openSupplyWorkspace"'),'Ventas no expone acceso a Abastecimiento');
-assert(html.includes('Asignar mercancía'),'Ventas no muestra el acceso para asignar mercancía');
-assert(salesUi.includes('data-supply-order'),'La lista de Ventas no expone Asignar mercancía');
+assert(html.includes('Compra y contenedor'),'Ventas no muestra el acceso para asignar mercancía');
+assert(salesUi.includes('data-supply-order'),'La lista de Ventas no expone Compra y contenedor');
 assert(salesUi.includes('window.SalesSupplyWorkspace?.open'),'La lista de Ventas no abre el flujo Direct Ship');
 
 for(const forbidden of ['MutationObserver','prompt(', 'alert(', 'confirm('])assert(!ui.includes(forbidden),`Abastecimiento contiene patrón prohibido: ${forbidden}`);
 for(const required of ['Stock existente','Compra para almacén','Direct Ship','/api/sales-supply','/api/direct-shipment-dispatch','allocated_sales_quantity','allocated_purchase_quantity','Corregir cantidades','correct_quantity','planned_sales_quantity','latest_correction_reason'])assert(ui.includes(required),`Falta contrato UI de abastecimiento: ${required}`);
-for(const required of ['data-supply-action="${directAction}"','Elegir Direct Ship',"action==='plan-direct'","editPlan(data.itemId,null,'purchase_direct')","plan?.supply_method||preferredMethod"])assert(ui.includes(required),`Direct Ship no queda visible o preseleccionado: ${required}`);
+for(const required of ['data-supply-action="direct-operation"','Falta registrar la compra','directSupplierReference','supplyNewContainer','/api/sales-direct-operation','data-direct-cost',"plan?.supply_method||preferredMethod"])assert(ui.includes(required),`Direct Ship no queda visible o preseleccionado: ${required}`);
+assert(!ui.includes('Usar contenedor existente'),'Direct Ship debe pedir solo el número de contenedor');
 assert(!ui.includes('Usar almacén o inventario'),'Abastecimiento conserva un texto ambiguo frente a Direct Ship');
 assert(ui.includes('El ERP asignará automáticamente el saldo disponible y sus pallets.'),'Direct Ship no explica la asignación automática');
 assert(ui.includes("action:'quick_link_direct_purchase'"),'Una ruta Direct Ship existente no vincula la compra automáticamente');

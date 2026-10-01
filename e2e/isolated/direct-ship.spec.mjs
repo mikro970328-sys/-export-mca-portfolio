@@ -37,6 +37,12 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     await db.exec(fs.readFileSync('supabase/migrations/20260910123500_direct_ship_quantity_corrections.sql','utf8'));
     const {f,users}=await operatorFixture(db);
+    // Credential-free actor anchors only; the full account deletion migration
+    // is covered with this same RPC by check-direct-operation.mjs.
+    await db.exec('create schema if not exists private; grant usage on schema private to service_role; create table private.admin_actor_identities(id uuid primary key); insert into private.admin_actor_identities select id from admin_users');
+    const operationFile=fs.existsSync('docs/direct-operation.pending.sql')?'docs/direct-operation.pending.sql':'supabase/migrations/'+fs.readdirSync('supabase/migrations').find(file=>file.endsWith('_sales_direct_operation.sql'));
+    const operationSql=fs.readFileSync(operationFile,'utf8');
+    await db.exec(operationSql.slice(0,operationSql.indexOf('-- Estimates remain separate')));
     api=await startBrowserAcceptanceServer({beforeApiResponse:async(req,url,body)=>{
       // Delay one completed real read, without replacing its status or payload.
       if(!reportGate.armed||req.method!=='GET'||url.pathname!=='/api/reports'||url.searchParams.get('dataset')!=='invoices')return;
@@ -190,7 +196,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await supplyAction.locator('xpath=ancestor::details').locator('summary').click();
       await supplyAction.click();
       await expect(sales.locator('#salesSupplyModal')).toBeVisible();
-      await expect(sales.locator('#salesSupplyBody')).toContainText('Paso 1 listo');
+      await expect(sales.locator('#salesSupplyBody')).toContainText('Compra lista');
       await expect(sales.locator('#salesSupplyBody')).toContainText(`Asignada a ${so.so_number} · QA finance customer`);
       await expect(sales.locator('[data-supply-action="link-purchase"]')).toHaveCount(0);
       await expect(sales.locator(`[data-supply-action="edit-purchase"][data-proc-id="${procurement.id}"]`)).toHaveCount(0);
@@ -198,12 +204,13 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     await step('DS-05 register and link the Direct Ship container',async()=>{
       await sales.locator('[data-supply-action="new-direct"]').click();
       await sales.locator('#supplyNewContainer').fill('QA-DIRECT-840');
+      await sales.locator('#salesSupplyFormBody details').filter({hasText:'Más datos del envío'}).locator('summary').click();
       await sales.locator('#supplyNewCarrier').fill('QA Carrier');
       await sales.locator('#supplyNewBooking').fill('QA-BOOK-840');
       await sales.locator('#supplyNewBol').fill('QA-BOL-840');
-      const creation=responseFor('direct-shipment-dispatch'),linkage=responseFor('sales-supply');
+      const creation=responseFor('sales-direct-operation');
       await sales.locator('#salesSupplyFormSave').click();
-      await checked(creation,'direct-shipment-dispatch');await checked(linkage,'sales-supply');
+      await checked(creation,'sales-direct-operation');
       await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();
       await expect(sales.locator('#salesSupplyBody')).toContainText('QA-DIRECT-840');
       shipment=await f.one("select * from shipments where container_number='QA-DIRECT-840'");
@@ -226,13 +233,15 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await expect(sales.locator('[data-supply-action="unlink-direct"]')).toHaveCount(0);
       expect((await f.rows('select id from direct_shipment_allocations')).length).toBe(0);
       expect((await f.rows('select id from shipments')).length).toBe(1);
-      await sales.locator('[data-supply-action="link-direct"]').click();
-      await sales.locator('#supplyDirectShipment').selectOption(shipment.id);
-      await mutation('sales-supply',()=>sales.locator('#salesSupplyFormSave').click());
+      await expect(sales.locator('[data-supply-action="link-direct"]')).toHaveCount(0);
+      await sales.locator('[data-supply-action="new-direct"]').click();
+      await sales.locator('#supplyNewContainer').fill(shipment.container_number);
+      await mutation('sales-direct-operation',()=>sales.locator('#salesSupplyFormSave').click());
       await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();
       direct=await f.one('select * from direct_shipment_allocations');
       expect(direct.shipment_id).toBe(shipment.id);
       expect(Number(direct.allocated_sales_quantity)).toBe(840);
+      expect((await f.rows('select id from shipments')).length).toBe(1);
     });
     await step('DS-08 cancelled or empty dispatch form does not record a departure',async()=>{
       await sales.locator(`[data-supply-action="dispatch-direct"][data-shipment-id="${shipment.id}"]`).click();

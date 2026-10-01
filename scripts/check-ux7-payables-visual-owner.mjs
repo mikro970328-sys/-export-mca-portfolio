@@ -51,7 +51,7 @@ for (const text of [
   '<body class="erp-module-page erp-module-payables" data-owner="payables.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
   '/admin/payables.css?v=20260926-figma1',
-  '/admin/payables.js?v=20260926-figma1',
+  '/admin/payables.js?v=20261001-direct-operation1',
   '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1',
   'class="module-hero payables-page-head"',
   'id="payablesLastUpdated"',

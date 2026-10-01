@@ -350,7 +350,7 @@
     const box = document.createElement('div');
     box.id = 'salesFinanceInline';
     box.className = 'sales-finance-inline-summary';
-    box.innerHTML = `<div class="sales-ws-row-head"><div><div class="sales-ws-row-title">Anticipos del cliente</div><div class="sales-ws-meta">Cash previo a factura y aplicaciones sin doble conteo.</div></div><button type="button" class="btn" data-cf-open-inline>Administrar</button></div><div class="sales-finance-values"><span>Recibido: <b>${esc(money(p.advance_cash_received,p.currency))}</b></span><span>Disponible: <b>${esc(money(p.advance_available_amount,p.currency))}</b></span><span>Cash neto venta: <b>${esc(money(p.cash_received_net,p.currency))}</b></span></div>`;
+    box.innerHTML = `<details><summary>Anticipos y proformas · opciones adicionales</summary><div class="sales-ws-row-head"><div><div class="sales-ws-row-title">Anticipos del cliente</div><div class="sales-ws-meta">Cash previo a factura y aplicaciones sin doble conteo.</div></div><button type="button" class="btn" data-cf-open-inline>Administrar</button></div><div class="sales-finance-values"><span>Recibido: <b>${esc(money(p.advance_cash_received,p.currency))}</b></span><span>Disponible: <b>${esc(money(p.advance_available_amount,p.currency))}</b></span><span>Cash neto venta: <b>${esc(money(p.cash_received_net,p.currency))}</b></span></div></details>`;
     content.appendChild(box);
     box.querySelector('[data-cf-open-inline]').onclick = () => open(state.salesOrderId);
   }
@@ -381,7 +381,7 @@
   function updateHeaderButton() {
     const button = byId('openCustomerFinance');
     if (!button) return;
-    button.classList.toggle('hidden', !state.salesOrderId);
+    button.classList.add('hidden');
     button.onclick = () => open(state.salesOrderId);
   }
 

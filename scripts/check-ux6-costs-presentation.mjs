@@ -116,7 +116,7 @@ for(const text of [
   'id="costDecisionAccept"',
   '<body class="erp-module-page erp-module-costs" data-owner="costs.js">',
   '/admin/costs.css?v=20260927-simple1',
-  '/admin/costs.js?v=20260927-simple1',
+  '/admin/costs.js?v=20261001-direct-operation1',
   '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1'
 ]) requireText(html,text,`HTML ${text}`);
 

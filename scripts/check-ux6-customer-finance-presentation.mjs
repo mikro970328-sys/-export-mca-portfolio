@@ -15,7 +15,7 @@ const forbid=(source,re,label)=>{if(re.test(source))failures.push(label);};
 
 for(const text of [
   '/admin/sales-customer-finance.css?v=20260902-ux7sales1',
-  '/admin/sales-customer-finance.js?v=20260902-ux6owner1'
+  '/admin/sales-customer-finance.js?v=20261001-direct-operation1'
 ])requireText(html,text,`asset versionado ${text}`);
 
 for(const text of [

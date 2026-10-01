@@ -1,0 +1,32 @@
+name: Sale Purchase and Container Operation
+on:
+  pull_request:
+    paths:
+      - 'admin/sales*.js'
+      - 'admin/costs.*'
+      - 'admin/payables.*'
+      - 'api/sales-direct-operation.js'
+      - 'api/sales-workspace.js'
+      - 'api/costs.js'
+      - 'api/payables.js'
+      - 'supabase/migrations/*_sales_direct_operation.sql'
+      - 'scripts/check-direct-operation*.mjs'
+      - 'scripts/lib/operator-acceptance-db.mjs'
+      - 'scripts/lib/figma-costs-fixture.mjs'
+      - '.github/workflows/sales-direct-operation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify purchase, container, retries, permissions and independent supplier balances
+        run: node scripts/check-direct-operation.mjs
+      - name: Verify the actual UI owners and order expense allocations
+        run: node scripts/check-direct-operation-ui.mjs

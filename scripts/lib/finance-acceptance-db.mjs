@@ -59,4 +59,8 @@ export async function applyFinanceAcceptanceSchema(db) {
       try { await db.exec(sql); }
       catch (error) { throw new Error(`Finance migration ${file}: ${error.message}`); }
     }
+    // Published read model only. Transactional writes and credential-free actor
+    // anchors are verified together by check-direct-operation.mjs.
+    const directSql=fs.readFileSync('supabase/migrations/20261001174409_sales_direct_operation.sql','utf8');
+    await db.exec(directSql.slice(directSql.indexOf('-- Estimates remain separate')));
 }

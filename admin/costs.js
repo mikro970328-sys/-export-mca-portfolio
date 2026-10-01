@@ -9,6 +9,8 @@
 
   const state = {
     charges: [],
+    orderOperations: [],
+    orderSummaries: [],
     targets: {},
     products: [],
     models: {},
@@ -73,6 +75,8 @@
     ['weight', 'Peso']
   ];
   const targetTypes = [
+    ['sales_order_id', 'Pedido de venta'],
+    ['sales_order_item_id', 'Producto de un pedido'],
     ['purchase_order_id', 'Orden de compra'],
     ['warehouse_receipt_id', 'Recepción de almacén'],
     ['load_id', 'Cargue'],
@@ -328,6 +332,8 @@
   };
 
   function targetConfig(key) {
+    if (key === 'sales_order_id') return { rows:state.targets.sales_orders || [], label:row=>row.so_number || row.id };
+    if (key === 'sales_order_item_id') return { rows:state.targets.sales_order_items || [], label:row=>{const order=(state.targets.sales_orders||[]).find(o=>o.id===row.sales_order_id);return (order?.so_number||'Pedido')+' · '+costProductName(row.product_id);} };
     if (key === 'purchase_order_id') return { rows: state.targets.purchase_orders || [], label: row => row.po_number || row.id };
     if (key === 'warehouse_receipt_id') return { rows: state.targets.warehouse_receipts || [], label: row => row.receipt_number || row.id };
     if (key === 'load_id') return { rows: state.targets.loads || [], label: row => row.load_number || row.id };
@@ -389,35 +395,39 @@
     return edit + '<details class="cost-actions-menu"><summary aria-label="Más opciones para ' + esc(charge.cost_number || 'este gasto') + '">Más</summary><div class="cost-actions-options">' + actions.join('') + '</div></details>';
   }
 
-  function renderCharges() {
-    const rows = state.charges.filter(chargeMatches);
-    if (!rows.length) {
-      return emptyState(
-        state.search ? 'Sin resultados' : 'Sin gastos registrados',
-        state.search ? 'Ajusta la búsqueda para consultar otros gastos.' : 'Los gastos que registres aparecerán aquí.'
-      );
+  function expenseOrderId(allocation){
+    if(allocation.sales_order_id)return allocation.sales_order_id;
+    if(allocation.sales_order_item_id)return (state.targets.sales_order_items||[]).find(i=>i.id===allocation.sales_order_item_id)?.sales_order_id||null;
+    const candidates=state.orderOperations.filter(o=>(allocation.purchase_order_id&&(o.purchase_orders||[]).some(p=>p.purchase_order_id===allocation.purchase_order_id))||(allocation.shipment_id&&(o.containers||[]).some(c=>c.shipment_id===allocation.shipment_id)));
+    return candidates.length===1?candidates[0].sales_order_id:null;
+  }
+
+  function expenseGroups(){
+    const groups=new Map();
+    for(const order of state.targets.sales_orders||[])groups.set(order.id,{order,charges:[],totals:new Map()});
+    const get=id=>{if(!groups.has(id))groups.set(id,{order:null,charges:[],totals:new Map()});return groups.get(id);};
+    for(const charge of state.charges){
+      const amounts=new Map();let allocated=0;
+      for(const allocation of charge.allocations||[]){const amount=num(allocation.amount),id=expenseOrderId(allocation)||'general';allocated+=amount;amounts.set(id,(amounts.get(id)||0)+amount);}
+      const remaining=Math.max(0,num(charge.amount)-allocated);
+      if(remaining>0||!amounts.size)amounts.set('general',(amounts.get('general')||0)+remaining);
+      for(const [id,amount]of amounts){const group=get(id);group.charges.push({charge,amount});if(['posted'].includes(charge.status))group.totals.set(charge.currency,(group.totals.get(charge.currency)||0)+amount);}
     }
-    const records = rows.map(charge => {
-      const progress = charge.progress || {};
-      const allocations = charge.allocations || [];
-      const destination = allocations.length === 1 ? allocationTarget(allocations[0]).label : allocations.length ? allocations.length + ' destinos' : 'Sin asignar';
-      return [
-        '<article class="cost-record"><div class="cost-row">',
-        '<div class="cost-identity"><div class="cost-title">', esc(charge.cost_number || 'Gasto'), '</div><div class="cost-sub">', esc(date(charge.incurred_date)), '</div></div>',
-        '<div class="cost-concept"><b>', esc(categoryLabel(charge.category)), '</b><div class="cost-sub">', esc(stageLabel(charge.stage)),
-        charge.supplier_id ? ' · ' + esc(supplierName(charge.supplier_id)) : '', '</div></div>',
-        '<div class="cost-amount"><div class="money-strong">', esc(money(charge.amount, charge.currency)), '</div><div class="cost-sub">Asignado ', esc(money(progress.allocated_amount, charge.currency)), '</div></div>',
-        '<div class="cost-status">', statusPill(charge.status), '</div>',
-        '<div class="cost-destination"><b>', esc(destination), '</b><div class="cost-sub">', esc(charge.reference || allocationLabel(progress.allocation_status)), '</div></div>',
-        '<div class="cost-row-actions">', renderChargeActions(charge), '</div></div>',
-        '</article>'
-      ].join('');
+    return [...groups.values()].filter(g=>(g.order?.status!=='cancelled'||g.charges.length>0)&&matches([g.order?.so_number,g.order?.customer_reference,...g.charges.flatMap(({charge})=>[charge.cost_number,charge.reference,categoryLabel(charge.category),charge.notes])]));
+  }
+
+  function renderCharges(){
+    const groups=expenseGroups();
+    if(!groups.length)return emptyState(state.search?'Sin pedidos coincidentes':'Sin pedidos ni gastos','Los gastos de cada pedido aparecerán juntos aquí.');
+    return groups.map(group=>{
+      const order=group.order,o=state.orderOperations.find(row=>row.sales_order_id===order?.id)||{},summary=state.orderSummaries.find(row=>row.sales_order_id===order?.id)||{};
+      const total=[...group.totals].map(([currency,amount])=>money(amount,currency)).join(' · ')||money(0,order?.currency||'USD');
+      const complete=num(o.direct_required_quantity)>0&&num(o.direct_pending_purchase_quantity)===0&&num(o.non_direct_quantity)===0;
+      const comparable=complete&&num(o.direct_purchase_currency_count)===1&&o.direct_purchase_currency===order?.currency&&o.direct_purchase_amount!=null&&([...group.totals.keys()].every(currency=>currency===order.currency));
+      const gain=comparable?num(summary.order_total)-num(o.direct_purchase_amount)-num(group.totals.get(order.currency)):null;
+      const records=group.charges.map(({charge,amount})=>`<article class="cost-record"><div class="cost-row"><div class="cost-identity"><div class="cost-title">${esc(charge.cost_number||'Gasto')}</div><div class="cost-sub">${esc(date(charge.incurred_date))}</div></div><div class="cost-concept"><b>${esc(categoryLabel(charge.category))}</b><div class="cost-sub">${esc(charge.reference||stageLabel(charge.stage))}${charge.supplier_id?' · '+esc(supplierName(charge.supplier_id)):''}</div></div><div class="cost-amount"><div class="money-strong">${esc(money(amount,charge.currency))}</div><div class="cost-sub">${order?'Aplicado a este pedido':'Gasto general / sin pedido único'}</div></div><div class="cost-status">${statusPill(charge.status)}</div><div class="cost-destination"><b>${esc(order?.so_number||'General')}</b></div><div class="cost-row-actions">${renderChargeActions(charge)}</div></div></article>`).join('');
+      return `<section class="model-card cost-order-group" data-cost-order="${esc(order?.id||'general')}"><div class="model-head"><div><div class="model-title">${esc(order?.so_number||'Gastos generales y sin pedido único')}${summary.client_company||summary.client_name?' · '+esc(summary.client_company||summary.client_name):''}</div><div class="small">${order?esc((o.purchase_orders||[]).map(po=>[po.po_number,po.supplier_reference].filter(Boolean).join(' · ')).join(', ')||'Compra pendiente')+' · '+esc((o.containers||[]).map(c=>c.container_number).join(', ')||'Contenedor pendiente'):'Gastos de la compañía o asignaciones compartidas sin reparto por pedido.'}</div></div>${order&&state.writeAccess?`<button class="btn orange" type="button" data-order-cost="${esc(order.id)}">Agregar gasto al pedido</button>`:''}</div><div class="model-grid">${order?`<div class="model-cell"><b>Venta</b><span>${esc(money(summary.order_total,order.currency))}</span></div><div class="model-cell"><b>Compra de mercancía</b><span>${esc(complete?money(o.direct_purchase_amount,o.direct_purchase_currency):'Falta costo completo')}</span></div>`:''}<div class="model-cell"><b>Gastos contabilizados</b><span>${esc(total)}</span></div>${order?`<div class="model-cell"><b>Ganancia estimada</b><span>${esc(comparable?money(gain,order.currency):'Pendiente de compra completa')}</span></div>`:''}</div>${order?'<div class="small">Estimación antes del despacho, sin gastos generales. Los cobros del cliente no pagan automáticamente al proveedor.</div>':''}<details class="cost-order-expenses" ${group.charges.length<=4?'open':''}><summary>${group.charges.length} gasto${group.charges.length===1?'':'s'} de ${order?'este pedido':'la compañía'}</summary><div class="cost-list">${records||'<p class="small">No hay gastos registrados en este pedido.</p>'}</div></details></section>`;
     }).join('');
-    return [
-      '<div class="costs-table-wrap"><div class="costs-table-head" aria-hidden="true">',
-      '<span>Gasto</span><span>Concepto</span><span>Importe</span><span>Estado</span><span>Distribución</span><span class="costs-visually-hidden">Acciones</span>',
-      '</div><div class="cost-list">', records, '</div></div>'
-    ].join('');
   }
 
   function landedRows() {
@@ -781,14 +791,14 @@
   }
 
   function resultCount() {
-    if (state.view === 'charges') return state.charges.filter(chargeMatches).length;
+    if (state.view === 'charges') return expenseGroups().length;
     if (state.view === 'landed') return landedRows().length;
     if (state.view === 'cogs') return cogsRows().length;
     return state.profitabilityLoaded ? (state.subview==='company'?companyPeriodRows().length:profitabilityRows().length) : 0;
   }
 
   function resultLabel(count) {
-    if (state.view === 'charges') return count + (count === 1 ? ' gasto' : ' gastos');
+    if (state.view === 'charges') return count + (count === 1 ? ' grupo' : ' grupos');
     if (state.view === 'landed') return count + (count === 1 ? ' recepción' : ' recepciones');
     if (state.view === 'cogs') return count + (count === 1 ? ' Cargue' : ' Cargues');
     return state.profitabilityLoading && !state.profitabilityLoaded ? 'Consultando…' : count + (count === 1 ? ' resultado' : ' resultados');
@@ -806,7 +816,7 @@
       button.setAttribute('aria-pressed', String(active));
     });
     $('costsResultCount').textContent = resultLabel(resultCount());
-    $('costsListTitle').textContent = ({ charges: 'Gastos registrados', landed: 'Costo recibido', cogs: 'Costo de Cargues', profitability: 'Rentabilidad' })[state.view];
+    $('costsListTitle').textContent = ({ charges: 'Gastos por pedido', landed: 'Costo recibido', cogs: 'Costo de Cargues', profitability: 'Rentabilidad' })[state.view];
     if (state.view === 'landed') $('content').innerHTML = renderLanded();
     else if (state.view === 'cogs') $('content').innerHTML = renderCogs();
     else if (state.view === 'profitability') $('content').innerHTML = renderProfitability();
@@ -851,6 +861,8 @@
     state.targets = data.targets || {};
     state.products = Array.isArray(data.products) ? data.products : [];
     state.models = data.cost_models || {};
+    state.orderOperations = data.order_operations || [];
+    state.orderSummaries = data.order_summaries || [];
     state.writeAccess = data.write_access === true;
     state.loaded = true;
     if (state.view === 'profitability') await loadProfitability(true, false);
@@ -1386,6 +1398,9 @@
     });
 
     document.addEventListener('click', event => {
+      const orderCost=event.target.closest?.('[data-order-cost]');
+      if(orderCost){if(!openCreate())return;$('allocationEditor').innerHTML='';addAllocation({sales_order_id:orderCost.dataset.orderCost,amount:'',basis:'manual'});return;}
+
       const close = event.target.closest?.('[data-close]');
       if (close) {
         closeNamedModal(close.dataset.close);

@@ -101,7 +101,7 @@ requireText(foundation,'.erp-module-page button:focus-visible','foco accesible d
 
 for(const asset of [
   '/admin/sales-workspace.css?v=20261001-sales-flow1',
-  '/admin/sales-workspace.js?v=20261001-sales-flow1',
+  '/admin/sales-workspace.js?v=20261001-direct-operation1',
   '/admin/sales-controller.js?v=20260920-freshcaps1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 
@@ -151,15 +151,15 @@ try {
   qa.fixture(directSale);
   const directNext=qa.nextAction();
   assert.match(directNext.text,/Direct Ship/,'Direct Ship should be the next step for a direct purchase');
-  assert.match(directNext.text,/Asignar mercancía/,'Direct Ship instructions should point to the existing assignment button');
+  assert.match(directNext.text,/Compra y contenedor/,'Direct Ship instructions should point to the existing assignment button');
   assert.equal(directNext.actions.length,0,'Direct Ship must not show warehouse load actions');
   assert.doesNotMatch(qa.renderSummary(),/data-ws-action="(?:create_load|link_load)"|Falta asignar mercancía a un Cargue/,'Direct Ship workspace must not ask for a Cargue');
   directSale.financial_access={read:true,write:false};
   directSale.summary.profitability_status='no_fulfillment';
   directSale.summary.contribution_status='no_fulfillment';
   qa.fixture(directSale);
-  assert.match(qa.renderCosts(),/asigna la compra al contenedor/i,'Costs tab should explain the missing Direct Ship cost link');
-  assert.match(qa.renderCosts(),/broker o gestión se muestran por separado/i,'Costs tab should keep broker fees separate from purchase COGS');
+  assert.match(qa.renderCosts(),/ganancia real se reconoce al despachar/i,'Costs tab should explain the missing Direct Ship cost link');
+  assert.match(qa.renderCosts(),/gastos registrados/i,'Costs tab should keep broker fees separate from purchase COGS');
 
   const unplannedSale=fixture('confirmed',false);
   unplannedSale.capabilities.actions.allocate_load={allowed:true};
