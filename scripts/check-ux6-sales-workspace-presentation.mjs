@@ -101,7 +101,7 @@ requireText(foundation,'.erp-module-page button:focus-visible','foco accesible d
 
 for(const asset of [
   '/admin/sales-workspace.css?v=20261001-sales-flow1',
-  '/admin/sales-workspace.js?v=20261001-direct-operation1',
+  '/admin/sales-workspace.js?v=20261001-direct-operation2',
   '/admin/sales-controller.js?v=20260920-freshcaps1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 
@@ -158,7 +158,8 @@ try {
   directSale.summary.profitability_status='no_fulfillment';
   directSale.summary.contribution_status='no_fulfillment';
   qa.fixture(directSale);
-  assert.match(qa.renderCosts(),/ganancia real se reconoce al despachar/i,'Costs tab should explain the missing Direct Ship cost link');
+  assert.match(qa.renderCosts(),/mercancía vinculada a contenedores o Cargues/i,'Costs tab must describe the actual allocation-based financial model');
+  assert.match(qa.renderCosts(),/cantidades todavía sin despachar/i,'Assigned financial results must not pretend that dispatch has already occurred');
   assert.match(qa.renderCosts(),/gastos registrados/i,'Costs tab should keep broker fees separate from purchase COGS');
 
   const unplannedSale=fixture('confirmed',false);
@@ -174,6 +175,22 @@ try {
   qa.fixture(directSale);
   assert.match(qa.nextAction().text,/Falta registrar la compra/,'A paid client invoice must still identify the missing supplier purchase');
   assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'direct_operation');
+  directSale.direct_operation.direct_pending_purchase_quantity=0;
+  qa.fixture(directSale);
+  assert.equal(qa.nextAction().actions[0][0],'Poner número de contenedor');
+  directSale.direct_operation.containers=[{shipment_id:'qa-container',container_number:'QA1234567'}];
+  directSale.capabilities.actions.allocate_load={allowed:false};
+  qa.fixture(directSale);
+  assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'supply','A purchased direct sale must lead to dispatch review instead of another purchase form');
+  directSale.summary.fulfillment_status='dispatched';
+  directSale.billing={invoices:[],capabilities:{create_invoice:{allowed:true}}};
+  qa.fixture(directSale);
+  assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'new_invoice','A fully dispatched order must proceed to billing');
+  directSale.summary.fulfillment_status='partial';
+  directSale.items[0].supply_plans.push({supply_method:'inventory'});
+  directSale.capabilities.actions.allocate_load={allowed:true};
+  qa.fixture(directSale);
+  assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'create_load,link_load','The dispatch shortcut must preserve a mixed order warehouse allocation');
 
   const warehouseSale=fixture('confirmed',false);
   warehouseSale.capabilities.actions.allocate_load={allowed:true};

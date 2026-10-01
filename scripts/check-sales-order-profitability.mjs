@@ -31,7 +31,7 @@ for(const text of [
   'function financialReadable(){return state.data?.financial_access?.read===true;}',
   'function financialWritable(){return state.data?.financial_access?.write===true;}',
   "key!=='costs'||financialReadable()",
-  "financialReadable()?`${kpi('Costo mercancía'",
+  "financialReadable()?`${kpi('Costo asignado'",
   'Necesitas permiso de Finanzas para ver costos y ganancia.',
   "financialWritable()?'<button class=\"btn orange\" data-ws-action=\"new_cost\">+ Agregar gasto</button>':''",
   "if(action==='new_cost'){if(!financialWritable())throw new Error('No tienes permiso para registrar gastos.')",
