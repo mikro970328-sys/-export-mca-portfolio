@@ -145,7 +145,7 @@ test('financial cancellations preserve balances, permissions and history', async
       await sales.locator('#oImporter').selectOption(f.importer);await sales.locator('#oCurrency').fill(currency);
       await sales.locator('#oNationalization').selectOption('nationalized');
       await sales.locator('#oReference').fill(reference);await sales.locator('.lProduct').selectOption(f.product);
-      await sales.locator('.lQty').fill('100');await sales.locator('.lPallets').fill('10');await sales.locator('.lTotal').fill('400');
+      await sales.locator('.lPallets').fill('10');await expect(sales.locator('.lQty')).toHaveValue('100');await sales.locator('.lTotal').fill('400');
       await mutation('sales-order-ux',()=>sales.locator('#saveOrder').click());await expect(sales.locator('#orderModal')).toBeHidden();
       const so=await f.one('select * from sales_orders where customer_reference=$1',[reference]);
       await sales.locator(`[data-view-order="${so.id}"]`).click();await sales.locator('[data-ws-action="confirm"]').first().click();

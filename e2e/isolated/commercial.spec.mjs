@@ -252,7 +252,7 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await sales.locator('#oImporter').selectOption(f.importer);
       await sales.locator('#oNationalization').selectOption('nationalized');
       await sales.locator('.lProduct').selectOption(f.product);
-      await sales.locator('.lQty').fill('100');await sales.locator('.lTotal').fill('400');
+      await sales.locator('.lQuantityMode').selectOption('quantity');await sales.locator('.lQty').fill('100');await sales.locator('.lTotal').fill('400');
       await mutation(a,'sales-order-ux',()=>sales.locator('#saveOrder').click());
       await expect(sales.locator('#orderModal')).toBeHidden();
       so=await f.one('select * from sales_orders');evidence.documents.sale=so.so_number;
