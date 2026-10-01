@@ -3,6 +3,7 @@ import { reconcileOperationLifecycle } from './_operation-lifecycle.js';
 import { claimNotificationDelivery, releaseNotificationDelivery } from './_notification-delivery.js';
 import { assertShipmentBusinessAction, loadShipmentActionCapabilityMap, loadShipmentActionCapabilities } from './_shipment-actions.js';
 import { readShipmentListPages } from './_shipment-list-pages.js';
+import { shipmentCargoMap, SHIPMENT_DIRECT_CARGO_SELECT, SHIPMENT_LOAD_CARGO_SELECT } from './_shipment-cargo.js';
 
 const cleanText = value => String(value ?? '').trim() || null;
 const cleanClientId = value => cleanText(value);
@@ -154,6 +155,8 @@ function translatedError(error) {
     ['SHIPMENT_LINKED_TO_LOAD','No se puede eliminar este contenedor porque está vinculado a un Cargue.'],
     ['SHIPMENT_ACTION_NOT_ALLOWED','Esta acción no está permitida para el contenedor.'],
     ['SHIPMENT_ACTION_INVALID','Acción de contenedor no válida.'],
+    ['SHIPMENT_CARGO_LINKED','La mercancía y el cliente se toman de la venta o cargue. Corrígelos en esa operación.'],
+    ['SHIPMENT_NOTE_TOO_LONG','La nota puede tener hasta 4,000 caracteres.'],
     ['CONTAINER_REFERENCE_INVALID','La referencia del contenedor no es válida. Usa letras/números y, si necesitas, espacios, guion, punto, slash o underscore.']
   ];
   const translated=map.find(([key])=>raw.includes(key))?.[1];
@@ -177,22 +180,25 @@ export default async function handler(req,res) {
         try{return await read();}
         finally{timing[name]=Date.now()-startedAt;}
       };
-      const [data,capabilityBundle,loadRows,directRows,directDispatchRows] = await Promise.all([
-        timedRead('shipments_ms',()=>readShipmentListPages('shipments','?select=*,clients(id,name,company,phone,email,welcome_status,active)&order=created_at.desc,id.desc')),
+      const [data,capabilityBundle,loadRows,directRows,directDispatchRows,effectiveDirectRows] = await Promise.all([
+        timedRead('shipments_ms',()=>readShipmentListPages('shipments','?select=*,clients(id,name,company,phone,email,welcome_status,active),importer:importers(id,name)&order=created_at.desc,id.desc')),
         timedRead('capabilities_ms',()=>loadShipmentActionCapabilityMap(admin)),
-        timedRead('loads_ms',()=>readShipmentListPages('loads','?select=id,load_number,shipment_id,status,loaded_at,dispatched_at&shipment_id=not.is.null&status=neq.cancelled&order=created_at.desc,id.desc')),
-        timedRead('direct_allocations_ms',()=>readShipmentListPages('direct_shipment_allocations','?select=shipment_id&order=created_at.desc,id.desc')),
-        timedRead('direct_dispatches_ms',()=>readShipmentListPages('direct_shipment_dispatches','?select=shipment_id,dispatched_at&order=shipment_id.asc'))
+        timedRead('loads_ms',()=>readShipmentListPages('loads',`?select=${SHIPMENT_LOAD_CARGO_SELECT}&shipment_id=not.is.null&status=neq.cancelled&order=created_at.desc,id.desc`)),
+        timedRead('direct_allocations_ms',()=>readShipmentListPages('direct_shipment_allocations',`?select=${SHIPMENT_DIRECT_CARGO_SELECT}&order=created_at.desc,id.desc`)),
+        timedRead('direct_dispatches_ms',()=>readShipmentListPages('direct_shipment_dispatches','?select=shipment_id,dispatched_at&order=shipment_id.asc')),
+        timedRead('direct_effective_ms',()=>readShipmentListPages('direct_shipment_effective_allocations','?select=id,allocated_sales_quantity,allocated_sales_pallets&order=created_at.desc,id.desc'))
       ]);
       const projectionStartedAt=Date.now();
       const loadByShipment=new Map();
       for(const load of loadRows||[])if(load.shipment_id&&!loadByShipment.has(String(load.shipment_id)))loadByShipment.set(String(load.shipment_id),load);
       const directShipments=new Set((directRows||[]).map(row=>String(row.shipment_id||'')).filter(Boolean));
       const directDispatchByShipment=new Map((directDispatchRows||[]).map(row=>[String(row.shipment_id||''),row]));
+      const cargoByShipment=shipmentCargoMap(loadRows||[],directRows||[],effectiveDirectRows||[]);
       // Sanitize stored shipment/client fields before adding canonical action
       // state. Re-walking every action entry adds no notification protection.
       const shipments=publicNotificationData(data||[]).map(shipment=>({
         ...shipment,
+        cargo:cargoByShipment.get(String(shipment.id))||null,
         fulfillment:(()=>{
           const load=loadByShipment.get(String(shipment.id));
           if(load)return {mode:'warehouse',status:load.status,load_id:load.id,load_number:load.load_number,loaded_at:load.loaded_at||null,dispatched_at:load.dispatched_at||null};
@@ -340,6 +346,17 @@ export default async function handler(req,res) {
       }
 
       const clientChanged = Object.prototype.hasOwnProperty.call(patch,'client_id') && patch.client_id !== shipment.client_id;
+      const cargoChanged=['product','quantity','quantity_unit'].some(field=>Object.hasOwn(patch,field)&&String(patch[field]??'')!==String(shipment[field]??''));
+      if (cargoChanged||clientChanged) {
+        const linked = await Promise.all([
+          cargoChanged?supabase('loads',{query:`?select=id&shipment_id=eq.${encodeURIComponent(id)}&status=neq.cancelled&limit=1`}):Promise.resolve([]),
+          supabase('direct_shipment_allocations',{query:`?select=id&shipment_id=eq.${encodeURIComponent(id)}&limit=1`})
+        ]);
+        if(linked.some(rows=>rows?.length))throw new Error('SHIPMENT_CARGO_LINKED');
+      }
+      const note=cleanText(body.note);
+      if(note&&note.length>4000)throw new Error('SHIPMENT_NOTE_TOO_LONG');
+
       phaseStartedAt=Date.now();
       const updated = await supabase('shipments',{ method:'PATCH',query:`?id=eq.${encodeURIComponent(id)}&select=*`,body:patch });
       timing.update_ms=Date.now()-phaseStartedAt;
@@ -352,6 +369,7 @@ export default async function handler(req,res) {
         finally { timing[name]=Date.now()-startedAt; }
       };
       const historyWrites=async()=>{
+        if (note) await supabase('shipment_history',{method:'POST',prefer:'return=minimal',body:[{shipment_id:resultShipment.id,client_id:resultShipment.client_id||null,event_type:'note',title:'Nota del contenedor',details:note,source:'admin'}]});
         if (clientChanged) {
           const assigned = Boolean(patch.client_id);
           await history({ ...shipment,client_id:patch.client_id },assigned ? 'client_assigned' : 'client_unassigned',assigned ? 'Cliente asignado al contenedor' : 'Cliente removido del contenedor',assigned ? `Cliente: ${patch.client_id} · Asignado por ${admin.username || 'administrador'}` : `Sin cliente · Cambio por ${admin.username || 'administrador'}`);
@@ -363,7 +381,7 @@ export default async function handler(req,res) {
       };
       const auditWrites=async()=>{
         if (clientChanged) await audit(patch.client_id ? 'shipment_client_assigned' : 'shipment_client_unassigned',shipment,{ previous_client_id:shipment.client_id || null,client_id:patch.client_id || null,actor:admin.username });
-        await audit('shipment_updated',shipment,patch);
+        await audit('shipment_updated',shipment,{...patch,...(note?{note}: {})});
       };
       const sideEffects=await Promise.allSettled([
         timedSideEffect('capabilities_ms',()=>loadShipmentActionCapabilities(admin,resultShipment.id)),

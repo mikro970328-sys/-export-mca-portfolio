@@ -33,7 +33,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       grant select on load_expediente_documents, documents, load_traceability_sources,
         load_traceability_summary to service_role;
       grant select,insert on shipment_history to service_role;
-      grant insert on shipments to service_role;`);
+      grant insert,update on shipments to service_role;`);
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     await db.exec(fs.readFileSync('supabase/migrations/20260910123500_direct_ship_quantity_corrections.sql','utf8'));
     const {f,users}=await operatorFixture(db);
@@ -222,6 +222,29 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       expect(Number(direct.allocated_sales_quantity)).toBe(840);expect(Number(direct.allocated_sales_pallets)).toBe(10);
       await shot('05-direct-linked');
     });
+    await step('DS-05b Tracking inherits container cargo and note edits preserve the sale',async()=>{
+      const before=await f.one('select client_id,importer_id,product,quantity,quantity_unit from shipments where id=$1',[shipment.id]);
+      await navigate('containers');
+      const trackingRow=page.locator(`[data-shipment-row="${shipment.id}"]:visible`).first();
+      const product=await f.one('select name from products where id=$1',[f.product]);
+      await expect(trackingRow).toContainText(product.name);
+      await expect(trackingRow).toContainText('840');await expect(trackingRow).toContainText('10 pallets');
+      await expect(trackingRow).toContainText(so.so_number);
+      const importer=await f.one('select name from importers where id=$1',[so.importer_id]);
+      await expect(trackingRow).toContainText(importer.name);
+      await trackingRow.locator('[data-container-menu]').click();await page.locator('[data-container-action="edit"]').click();
+      for(const id of ['editorClient','editorImporter','editorProduct','editorQuantity','editorQuantityUnit'])await expect(page.locator('#'+id)).toHaveCount(0);
+      await expect(page.locator('.shipment-editor')).toContainText('840');
+      await page.locator('#editorNote').fill('Nota aislada del contenedor de prueba');
+      const save=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/shipments'&&r.request().method()==='PATCH');
+      await page.locator('#shipmentEditorSave').click();expect((await save).status()).toBe(200);
+      await expect(page.locator('#modal')).toBeHidden();
+      expect(await f.one('select client_id,importer_id,product,quantity,quantity_unit from shipments where id=$1',[shipment.id])).toEqual(before);
+      expect((await f.one("select details from shipment_history where shipment_id=$1 and event_type='note'",[shipment.id])).details).toBe('Nota aislada del contenedor de prueba');
+      await expect(trackingRow).toContainText('10 pallets');await shot('05b-tracking-inherited-cargo');
+      await expect(trackingRow).toContainText('QA finance customer');
+      await navigate('sales');
+    });
     await step('DS-06 declining unlink preserves the container allocation',async()=>{
       await sales.locator(`[data-supply-action="unlink-direct"][data-direct-id="${direct.id}"]`).click();
       await expect(sales.locator('#salesSupplyDecisionModal')).toBeVisible();
@@ -330,6 +353,13 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await reportShot('11-observer-corrected-report');
       evidence.physicalCorrection={planned:840,shipped:810,difference:30};
       await shot('11-direct-corrected-810');
+    });
+    await step('DS-11b Tracking shows the corrected physical cargo',async()=>{
+      await navigate('containers');
+      const trackingRow=page.locator(`[data-shipment-row="${shipment.id}"]:visible`).first();
+      await expect(trackingRow).toContainText('810',{timeout:45_000});await expect(trackingRow).toContainText('10 pallets');
+      await shot('11b-tracking-corrected-cargo');
+      await navigate('sales');
     });
     await step('DS-12 correction cannot exceed original plan and no-op is rejected',async()=>{
       await sales.locator(`[data-supply-action="correct-direct"][data-direct-id="${direct.id}"]`).click();
@@ -676,7 +706,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       evidence.supplierVariants={advance:1600,partialBills:[1050,1050],initialDistribution:[1000,500],redistribution:[1050,550],displayedRemainderPaid:500,advanceReversed:true,concurrentStatuses:[200,400],reader:403,finalAP:1050,activeSupplierCash:1050,customerAR:120,physicalQuantity:810};
     });
     expect(reportNavigations).toBe(reportNavBaseline);evidence.reportNavigations={initial:reportNavBaseline,final:reportNavigations};
-    expect(evidence.checkpoints).toHaveLength(33);
+    expect(evidence.checkpoints).toHaveLength(35);
     expect(evidence.errors).toEqual([]);expect(evidence.crashes).toEqual([]);expect(evidence.external).toEqual([]);
     expect(evidence.api.filter(row=>row.status===404||row.status>=500)).toEqual([]);
   } finally {

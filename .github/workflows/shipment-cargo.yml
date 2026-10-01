@@ -1,0 +1,30 @@
+name: Shipment Cargo Inheritance
+
+on:
+  pull_request:
+    paths:
+      - 'api/_shipment-cargo.js'
+      - 'api/shipments.js'
+      - 'admin/containers-module.js'
+      - 'admin/shipment-editor.js'
+      - 'scripts/check-shipment-cargo.mjs'
+      - 'scripts/lib/figma-logistics-fixture.mjs'
+      - '.github/workflows/shipment-cargo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-inheritance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node scripts/check-shipment-cargo.mjs
+      - run: node scripts/check-shipment-editor-save-performance.mjs
+      - run: node scripts/check-shipment-save-concurrency.mjs

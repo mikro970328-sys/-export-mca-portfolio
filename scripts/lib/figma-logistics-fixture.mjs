@@ -60,7 +60,7 @@ export function logisticsFixture({module='loads',writable=true,failRead=false}={
         return ok({load});
       }
       if(url.pathname==='/api/shipments'){
-        if(method==='POST'){const shipment={...p.shipments[2],...body,id:'fixture-created-shipment'};p.shipments.push(shipment);return ok({shipment});}
+        if(method==='POST'){const shipment={...p.shipments[2],...body,id:'fixture-created-shipment',fulfillment:{mode:'unlinked',status:'unlinked'},cargo:null};p.shipments.push(shipment);return ok({shipment});}
         if(method==='PATCH'){const shipment=p.shipments.find(s=>s.id===body.id);Object.assign(shipment,body);return ok({shipment});}
       }
       if(url.pathname==='/api/importers'&&body.action==='assign_shipment')return ok({state:window.__fixtureImporters});
