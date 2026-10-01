@@ -213,6 +213,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await checked(creation,'sales-direct-operation');
       await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();
       await expect(sales.locator('#salesSupplyBody')).toContainText('QA-DIRECT-840');
+      await expect(sales.locator('#salesSupplyBody')).toContainText('listos · falta despacho');
+      await expect(sales.locator('[data-supply-action="direct-operation"]')).toHaveCount(0);
+      await expect(sales.locator('[data-supply-action="new-direct"]')).toHaveCount(0);
       shipment=await f.one("select * from shipments where container_number='QA-DIRECT-840'");
       evidence.documents.container=shipment.container_number;
       direct=await f.one('select * from direct_shipment_allocations where shipment_id=$1',[shipment.id]);
@@ -318,6 +321,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await expect(sales.locator('#salesSupplyBody')).toContainText('Enviado real:');
       await expect(sales.locator('#salesSupplyBody')).toContainText('810');
       await expect(sales.locator('#salesSupplyBody')).toContainText('Diferencia: 30');
+      await expect(sales.locator('#salesSupplyBody')).toContainText('Despacho registrado · hay diferencias');
+      await expect(sales.locator('[data-supply-action="direct-operation"]')).toHaveCount(0);
+      await expect(sales.locator('[data-supply-action="new-direct"]')).toHaveCount(0);
       await expect.poll(()=>reportNumber('COGS reconocido'),{timeout:45_000}).toBe(2025);
       await expect.poll(()=>reportNumber('Venta atribuida')).toBe(3240);
       await expect.poll(()=>reportNumber('Valor no atribuido')).toBe(120);
