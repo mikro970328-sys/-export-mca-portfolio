@@ -38,6 +38,7 @@ function harness({authorized=true}={}){
       if(table==='shipments'&&method==='GET')return read.promise;
       if(table==='shipments'&&method==='PATCH')return [{...row,...options.body}];
       if(table==='shipments'&&method==='DELETE')return [{id:row.id,container_number:row.container_number}];
+      if(['loads','direct_shipment_allocations'].includes(table)&&method==='GET')return [];
       if(['shipment_history','audit_log'].includes(table)&&method==='POST'){
         await effects[table==='shipment_history'?'history':'audit'].promise;
         return null;

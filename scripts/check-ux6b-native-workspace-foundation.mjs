@@ -131,7 +131,7 @@ forbid(loader,/registration-form-shell/,'el loader conserva el shell visual reti
 for(const ref of [
   "/admin/clients-module.js?v=",
   "/admin/workers-module.js?v=20260927-simple1",
-  "/admin/containers-module.js?v=20260927-containerflow1",
+  "/admin/containers-module.js?v=20261001-cargo1",
   "/admin/operational-alert-center.js?v=20260926-figma2",
   "/admin/access-control-administration.js?v=",
   "/admin/account-administration.js?v=20260926-figma2",

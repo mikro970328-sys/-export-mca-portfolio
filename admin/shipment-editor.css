@@ -16,13 +16,17 @@
 .shipment-editor-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px; }
 .shipment-editor-grid .full { grid-column:1/-1; }
 .shipment-editor-field { display:grid;gap:8px;min-width:0;margin:0;color:var(--text);font-size:14px;font-weight:600;line-height:20px; }
-.shipment-editor-field input,.shipment-editor-field select { appearance:none;width:100%;min-width:0;min-height:44px;margin:0;padding:11px 12px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font:400 14px/20px var(--font-sans);box-shadow:none; }
+.shipment-editor-field input,.shipment-editor-field select,.shipment-editor-field textarea { appearance:none;width:100%;min-width:0;min-height:44px;margin:0;padding:11px 12px;border:1px solid var(--line-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font:400 14px/20px var(--font-sans);box-shadow:none; }
 .shipment-editor-field select { padding-right:40px;background-image:url('/admin/assets/purchase-chevron.svg');background-position:right 12px center;background-repeat:no-repeat;background-size:18px 18px; }
 .shipment-editor-field small { color:var(--muted);font-size:12px;font-weight:400;line-height:18px; }
 .shipment-editor-info { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px; }
 .shipment-editor-card { display:flex;flex-direction:column;gap:4px;min-width:0; }
+.shipment-editor-card.shipment-editor-cargo-card b { color:var(--text);font-weight:600;font-size:14px; }
+.shipment-editor-cargo-card span { order:0;font-weight:400; }
+.shipment-editor-cargo-card small { color:var(--muted); }
+.shipment-editor-field textarea { resize:vertical; }
 .shipment-editor-card b { color:var(--muted);font-size:12px;font-weight:400;line-height:18px; }
-.shipment-editor-card span { order:-1;color:var(--text);font-weight:600;overflow-wrap:anywhere; }
+.shipment-editor-card:not(.shipment-editor-cargo-card) span { order:-1;color:var(--text);font-weight:600;overflow-wrap:anywhere; }
 .shipment-editor-footer { display:flex;justify-content:flex-end;gap:16px;margin:0;padding:0;background:var(--surface); }
 .shipment-editor-footer button { min-width:132px; }
 .shipment-editor button.orange { border-color:var(--orange);background:var(--orange);color:#fff; }
@@ -37,7 +41,7 @@
   #modal:has(.shipment-editor) #closeModal { min-width:72px; }
   .shipment-editor-summary { flex-wrap:wrap;gap:8px; }
   .shipment-editor-grid,.shipment-editor-info { grid-template-columns:1fr;gap:16px; }
-  .shipment-editor-field input,.shipment-editor-field select { font-size:16px; }
+  .shipment-editor-field input,.shipment-editor-field select,.shipment-editor-field textarea { font-size:16px; }
   .shipment-editor-footer { flex-wrap:wrap; }
   .shipment-editor-footer button { flex:1;min-width:0; }
 }

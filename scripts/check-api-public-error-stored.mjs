@@ -1,3 +1,4 @@
+import * as shipmentCargo from '../api/_shipment-cargo.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -56,6 +57,7 @@ async function request(name,options={}){
   const pageSource=fs.readFileSync('api/_shipment-list-pages.js','utf8')
     .replace(/^import \{([^}]+)\} from '([^']+)';$/gm,(_,bindings,path)=>'const {'+bindings+'} = deps['+JSON.stringify(path)+'];')
     .replace('export async function readShipmentListPages','async function readShipmentListPages');
+  deps['./_shipment-cargo.js']=shipmentCargo;
   deps['./_shipment-list-pages.js']=new Function('deps',pageSource+'\nreturn {readShipmentListPages};')(deps);
   const source=fs.readFileSync('api/'+name+'.js','utf8')
     .replace(/^import \{([^}]+)\} from '([^']+)';$/gm,(_,bindings,path)=>'const {'+bindings+'} = deps['+JSON.stringify(path)+'];')

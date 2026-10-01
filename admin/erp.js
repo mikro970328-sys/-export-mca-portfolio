@@ -291,11 +291,11 @@
       }
       if (accessCan('logistics.read')) {
         await loadStylesheet('/admin/containers-module.css?v=20260927-containerflow1', 'data-containers-module-style');
-        await loadScript('/admin/containers-module.js?v=20260927-containerflow1', 'data-containers-module');
+        await loadScript('/admin/containers-module.js?v=20261001-cargo1', 'data-containers-module');
       }
       if (accessCan('logistics.write')) {
-        await loadStylesheet('/admin/shipment-editor.css?v=20260926-figma1', 'data-shipment-editor-style');
-        await loadScript('/admin/shipment-editor.js?v=20260930-performance1', 'data-shipment-editor');
+        await loadStylesheet('/admin/shipment-editor.css?v=20261001-cargo1', 'data-shipment-editor-style');
+        await loadScript('/admin/shipment-editor.js?v=20261001-cargo1', 'data-shipment-editor');
       }
       await loadScript('/admin/modal-dismissal.js?v=20260902-ux6c1', 'data-modal-dismissal');
       await loadStylesheet('/admin/account-administration.css?v=20260926-figma2', 'data-account-administration-style');

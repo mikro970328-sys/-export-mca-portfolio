@@ -1,3 +1,4 @@
+import * as shipmentCargo from '../api/_shipment-cargo.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as lib from '../api/_lib.js';
@@ -54,6 +55,7 @@ function fixture(options = {}) {
       },
       loadShipmentActionCapabilityMap:async()=>new Map(),loadShipmentActionCapabilities:async()=>({})}
   };
+  deps['./_shipment-cargo.js']=shipmentCargo;
   deps['./_shipment-list-pages.js'] = compile('api/_shipment-list-pages.js', deps, 'readShipmentListPages');
   deps['./_notification-delivery.js'] = compile('api/_notification-delivery.js', deps,
     'claimNotificationDelivery, releaseNotificationDelivery, whatsappMilestoneAllowed');
