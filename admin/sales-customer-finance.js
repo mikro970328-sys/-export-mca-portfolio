@@ -409,7 +409,8 @@
   document.addEventListener('click', event => {
     const tab = event.target.closest('#detailBody [data-ws-tab]');
     if (tab?.dataset.wsTab === 'billing') queueMicrotask(() => { fetchData().then(augmentBillingTab).catch(() => {}); });
-  });
+  // Read the tab before its native handler replaces the workspace DOM.
+  }, true);
 
   updateHeaderButton();
   window.SalesCustomerFinance = Object.freeze({ open, refresh:refreshAll, owner:'sales-customer-finance.js' });

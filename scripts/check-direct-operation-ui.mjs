@@ -42,6 +42,30 @@ assert.equal(writes[1].supplier_reference,'PO12567');assert.equal(writes[1].cont
 assert.equal(d.getElementById('salesSupplyFormModal').classList.contains('hidden'),true);
 assert.deepEqual(sale.errors,[]);sale.dom.window.close();
 
+const customerFinance=mount(salesFixture({workspace:true}));await tick();
+const financeFetch=customerFinance.w.fetch;
+customerFinance.w.fetch=async(path,options={})=>{
+  if(String(path).startsWith('/api/customer-advances'))return{ok:true,status:200,json:async()=>({progress:{so_number:'SO-DEMO-0248',currency:'USD',sales_order_total:39916,advance_cash_received:0,advance_available_amount:0,cash_received_net:39916,issued_invoice_total:39916,invoice_balance_due:0},advances:[],invoices:[],sales_order_capabilities:{actions:{}}})};
+  if(String(path).startsWith('/api/proformas'))return{ok:true,status:200,json:async()=>({proformas:[],sales_order_capabilities:{actions:{}}})};
+  return financeFetch(path,options);
+};
+customerFinance.w.eval(fs.readFileSync('admin/sales-customer-finance.js','utf8'));
+await customerFinance.w.SalesWorkspace.open('fixture-sale-0');await tick();
+assert.equal(customerFinance.d.getElementById('openCustomerFinance').classList.contains('hidden'),true);
+for(let visit=0;visit<2;visit++){
+  customerFinance.d.querySelector('[data-ws-tab="billing"]').click();await tick();
+  const options=customerFinance.d.querySelector('#salesFinanceInline details');
+  assert.ok(options,'Additional finance options must survive the workspace replacing the clicked tab');
+  assert.equal(options.open,false);
+  options.open=true;
+  customerFinance.d.querySelector('[data-cf-open-inline]').click();await tick();
+  assert.equal(customerFinance.d.getElementById('salesFinanceModal').classList.contains('hidden'),false);
+  assert.equal(customerFinance.d.querySelector('[data-cf-register]'),null,'A read-only finance operator must not get a write button');
+  customerFinance.d.querySelector('[data-cf-close-main]').click();
+  customerFinance.d.querySelector('[data-ws-tab="summary"]').click();await tick();
+}
+assert.deepEqual(customerFinance.errors,[]);customerFinance.dom.window.close();
+
 const cost=(id,allocations)=>({id,cost_number:id,status:'posted',category:'ocean_freight',currency:'USD',amount:allocations.reduce((s,a)=>s+a.amount,0),allocations,capabilities:{actions:{}}});
 const costs=mount(costsFixture({orderData:{
   charges:[cost('FLETE-A',[{sales_order_id:'sale-a',amount:4300}]),cost('BROKER-A',[{sales_order_id:'sale-a',amount:300}]),cost('COMPARTIDO',[{sales_order_id:'sale-a',amount:100},{sales_order_id:'sale-b',amount:200}])],
@@ -64,4 +88,4 @@ ap.d.querySelector('[data-pending-purchase]').click();
 assert.equal(ap.d.getElementById('bPO').value,'fixture-po');
 assert.equal(ap.d.getElementById('billModal').classList.contains('hidden'),false);
 assert.deepEqual(ap.errors,[]);ap.dom.window.close();
-console.log('Direct operation UI: clear missing purchase, inherited quantities, PO reference, single transaction, safe retries, separate order expenses, correct split amounts and purchase-to-bill shortcut passed.');
+console.log('Direct operation UI: clear missing purchase, inherited quantities, PO reference, single transaction, safe retries, finance options after tab replacement, separate order expenses, correct split amounts and purchase-to-bill shortcut passed.');
