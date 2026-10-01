@@ -249,7 +249,7 @@
         loadScript('/admin/dashboard-operational-state.js?v=20260930-performance1', 'data-dashboard-operational-state')
       ]);
     }
-    const accessAdministrationScriptPromise = loadScript('/admin/access-control-administration.js?v=20260929-section-source2', 'data-access-control-administration');
+    const accessAdministrationScriptPromise = loadScript('/admin/access-control-administration.js?v=20261001-account-delete1', 'data-access-control-administration');
 
     bootPromise = (async () => {
       await Promise.all([accessStylesPromise,accessAdministrationScriptPromise]);

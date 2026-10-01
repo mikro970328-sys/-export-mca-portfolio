@@ -100,8 +100,8 @@ for(const text of [
 requireText(foundation,'.erp-module-page button:focus-visible','foco accesible de la base visual');
 
 for(const asset of [
-  '/admin/sales-workspace.css?v=20260922-scroll1',
-  '/admin/sales-workspace.js?v=20260928-directshipflow1',
+  '/admin/sales-workspace.css?v=20261001-sales-flow1',
+  '/admin/sales-workspace.js?v=20261001-sales-flow1',
   '/admin/sales-controller.js?v=20260920-freshcaps1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 

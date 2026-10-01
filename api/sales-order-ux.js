@@ -46,17 +46,25 @@ async function listClients(req) {
   const pageSize = int(req.query?.page_size, 25, 10, 100);
   const q = safeSearch(req.query?.q);
   const offset = (page - 1) * pageSize;
-  let query = '?select=id,name,company,mipyme_name,nit,active&active=eq.true&order=name.asc';
+  let query = '?select=id,name,company,mipyme_name,nit,phone,email,active&active=eq.true&order=name.asc';
   if (q) {
     const pattern = encodeURIComponent(`*${q}*`);
-    query += `&or=(name.ilike.${pattern},company.ilike.${pattern},mipyme_name.ilike.${pattern},nit.ilike.${pattern})`;
+    query += `&or=(name.ilike.${pattern},company.ilike.${pattern},mipyme_name.ilike.${pattern},nit.ilike.${pattern},phone.ilike.${pattern},email.ilike.${pattern})`;
   }
   query += `&limit=${pageSize + 1}&offset=${offset}`;
   const rows = await supabase('clients', { query });
   const list = Array.isArray(rows) ? rows : [];
   const hasMore = list.length > pageSize;
+  const pageRows = list.slice(0,pageSize);
+  const links = pageRows.length ? await supabase('client_importers', { query:`?select=client_id,importer:importers(id,name,active)&client_id=in.(${pageRows.map(row=>row.id).join(',')})&limit=5000` }) : [];
+  const importersByClient = new Map();
+  for (const link of links || []) {
+    if (link.importer?.active !== true) continue;
+    if (!importersByClient.has(link.client_id)) importersByClient.set(link.client_id,[]);
+    importersByClient.get(link.client_id).push(link.importer);
+  }
   return {
-    clients:list.slice(0,pageSize).map(row => ({ ...row, display_name:clientLabel(row) })),
+    clients:pageRows.map(row => ({ ...row, display_name:clientLabel(row),importers:importersByClient.get(row.id) || [] })),
     page,
     page_size:pageSize,
     has_more:hasMore

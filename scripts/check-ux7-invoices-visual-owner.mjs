@@ -44,8 +44,8 @@ const workflow = read(files.workflow);
 for (const text of [
   '<body class="erp-module-page erp-module-invoices" data-owner="invoices.js">',
   '/admin/embedded-foundation.css?v=20260922-figma1',
-  '/admin/invoices.css?v=20260927-simple1',
-  '/admin/invoices.js?v=20260927-simple1',
+  '/admin/invoices.css?v=20261001-sales-flow1',
+  '/admin/invoices.js?v=20261001-sales-flow1',
   '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1',
   'class="module-hero invoices-page-head"',
   'id="invoiceLastUpdated"',
@@ -63,7 +63,7 @@ for (const text of [
 ]) requireText(html, text, `HTML canónico ${text}`);
 
 const foundationIndex = html.indexOf('/admin/embedded-foundation.css?v=20260922-figma1');
-const ownerCssIndex = html.indexOf('/admin/invoices.css?v=20260927-simple1');
+const ownerCssIndex = html.indexOf('/admin/invoices.css?v=20261001-sales-flow1');
 if (foundationIndex < 0 || ownerCssIndex < 0 || foundationIndex > ownerCssIndex) {
   failures.push('la base visual compartida debe cargar antes de invoices.css');
 }

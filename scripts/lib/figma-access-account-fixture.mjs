@@ -45,6 +45,15 @@ export function accessAccountFixture({module='access',permissions=['administrati
    window.__fixtureAccount.password_changed_at='2026-09-26T11:00:00Z';return response({token:'fixture-rotated-token'});
   }
   if(url.pathname==='/api/admins'){
+   if(method==='DELETE'){
+    const user=window.__fixtureUsers.find(u=>u.id===body.id);
+    if(!user)return failure('La cuenta ya no existe; actualiza el directorio',404);
+    if(window.__fixtureAccount.role!=='master_admin'||user.role==='master_admin'||body.id===window.__fixtureAccount.id)return failure('La cuenta de administrador maestro está protegida y no se puede eliminar',403);
+    if(String(body.confirm_username||'').trim().toLowerCase()!==user.username.toLowerCase())return failure('El nombre de usuario no coincide; revisa la cuenta que quieres eliminar',400);
+    window.__fixtureUsers=window.__fixtureUsers.filter(u=>u.id!==body.id);
+    for(const team of window.__fixtureTeams)team.member_ids=team.member_ids.filter(id=>id!==body.id);
+    return response({deleted:true,sessions_revoked:true});
+   }
    if(body.revoke_sessions)return response({ok:true,...(body.id===window.__fixtureAccount.id?{token:'fixture-revoked-token'}:{})});
    if(method==='POST'){window.__fixtureUsers.push({...body,id:'user-created',role:'admin',is_active:true});return response({ok:true});}
    const user=window.__fixtureUsers.find(u=>u.id===body.id);Object.assign(user,body);return response({ok:true});

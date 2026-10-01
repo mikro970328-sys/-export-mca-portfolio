@@ -152,3 +152,5 @@
 #creditLines .invoice-form-section input { margin-top:8px; }
 #creditSummary,#balanceSummary { margin:24px 0 0;color:var(--muted);line-height:20px; }
 #balanceTargetWrap { margin-bottom:24px; }
+
+.invoice-preview-total{padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface-soft);font-weight:600;font-size:15px;line-height:22px}
