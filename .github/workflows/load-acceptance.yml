@@ -8,6 +8,8 @@ on:
       - 'scripts/lib/*acceptance*.mjs'
       - 'scripts/check-load-acceptance.mjs'
       - 'scripts/check-shipment-list-pages.mjs'
+      - 'scripts/check-shipment-action-reads.mjs'
+      - 'scripts/check-shipment-capability-snapshot.mjs'
       - 'package*.json'
       - '.github/workflows/load-acceptance.yml'
   push:
@@ -17,6 +19,8 @@ on:
       - 'supabase/migrations/**'
       - 'scripts/check-load-acceptance.mjs'
       - 'scripts/check-shipment-list-pages.mjs'
+      - 'scripts/check-shipment-action-reads.mjs'
+      - 'scripts/check-shipment-capability-snapshot.mjs'
       - '.github/workflows/load-acceptance.yml'
   workflow_dispatch:
 permissions:
@@ -66,6 +70,10 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Verify complete pages and reject incomplete list responses
         run: node scripts/check-shipment-list-pages.mjs
+      - name: Verify snapshot bounds, canonical business rules and public denial
+        run: node scripts/check-shipment-capability-snapshot.mjs
+      - name: Verify live action permissions and rollout fallback
+        run: node scripts/check-shipment-action-reads.mjs
       - name: Before/after actual handlers, 2000 shipments, 100 invoices and 5/20/50 sessions
         run: node scripts/check-load-acceptance.mjs
       - name: Preserve anonymous aggregate timings

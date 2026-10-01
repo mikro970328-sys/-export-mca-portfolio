@@ -10,9 +10,9 @@ const raw={active:true,actions:{edit:{allowed:true,reason:null},view_info:{allow
 for(const action of Object.values(raw.actions))Object.freeze(action);
 Object.freeze(raw.actions);Object.freeze(raw);
 const operator={admin_id:'synthetic-admin',role:'admin'},requests=[];
-let granted=['logistics.read'],denied=false;
+let granted=['logistics.read'],denied=false,snapshotError=null,snapshotValue;
 try{
-  globalThis.fetch=async input=>{
+  globalThis.fetch=async (input,options)=>{
     const url=new URL(input);assert.equal(url.origin,'http://127.0.0.1:9999');
     const table=url.pathname.split('/').at(-1);requests.push(table);
     if(table==='admin_effective_permissions'){
@@ -20,6 +20,11 @@ try{
       assert.equal(url.searchParams.get('permission_key'),'in.(logistics.read,logistics.write,documents.read)');
       return denied?Response.json({code:'42501',message:'synthetic permission denied'},{status:403})
         :Response.json(granted.map(permission_key=>({permission_key})));
+    }
+    if(table==='shipment_action_capability_snapshot'){
+      assert.equal(options.method,'POST');assert.deepEqual(JSON.parse(options.body),{p_max_rows:50000});
+      if(snapshotError)return Response.json({code:snapshotError.code,message:'synthetic snapshot rejected'},{status:snapshotError.status});
+      return Response.json(snapshotValue===undefined?[{shipment_id:'synthetic-shipment',capabilities:raw}]:snapshotValue);
     }
     assert.equal(table,'shipment_action_capabilities','unrelated team/account reads are forbidden');
     return Response.json([{shipment_id:'synthetic-shipment',capabilities:raw}]);
@@ -31,8 +36,20 @@ try{
   assert.equal(state.actions.release.reason,'SHIPMENT_ALREADY_RELEASED');assert.equal(state.write_access,false);
   requests.length=0;granted=['logistics.read','logistics.write','documents.read'];
   const bundle=await loadShipmentActionCapabilityMap(operator);
-  assert.equal(requests.length,2);assert.equal(bundle.write_access,true);
+  assert.deepEqual(requests.sort(),['admin_effective_permissions','shipment_action_capability_snapshot']);assert.equal(bundle.write_access,true);
   assert.equal(bundle.map.get('synthetic-shipment').actions.edit.allowed,true);
+  requests.length=0;snapshotError={status:404,code:'PGRST202'};
+  assert.equal((await loadShipmentActionCapabilityMap(operator)).map.size,1);
+  assert.ok(requests.includes('shipment_action_capabilities'),'missing migration keeps the bounded complete-page fallback');
+  requests.length=0;snapshotError={status:403,code:'42501'};
+  await assert.rejects(loadShipmentActionCapabilityMap(operator),/synthetic snapshot rejected/);
+  assert.ok(!requests.includes('shipment_action_capabilities'),'permission rejection must never switch transports');
+  snapshotError=null;
+  for(const invalid of [null,{},[{}]]){
+    snapshotValue=invalid;
+    await assert.rejects(loadShipmentActionCapabilityMap(operator),/RESPONSE_INVALID/);
+  }
+  snapshotValue=undefined;
   granted=[];
   const revoked=await loadShipmentActionCapabilities(operator,'synthetic-shipment');
   assert.equal(revoked.actions.edit.allowed,false,'revocations apply on the next request without a permission cache');

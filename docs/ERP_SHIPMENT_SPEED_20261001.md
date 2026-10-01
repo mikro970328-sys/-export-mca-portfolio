@@ -20,6 +20,13 @@ CI measurements, not production latency or a comparison with another ERP.
 - Full list reads expose aggregate `Server-Timing` phases for permissions and
   capabilities, shipments, loads, direct fulfillment and projection. The headers
   contain durations only, with no identities or database diagnostics.
+- A service-only, read-only scalar snapshot collects canonical action state in
+  one REST request. It delegates every business rule to the unchanged
+  `shipment_action_state` owner, uses one database snapshot and refuses more
+  than 50,000 rows before computing action JSON. The scalar JSON result avoids
+  REST's table row cap. Only a missing-function `PGRST202` response enables the
+  existing complete-page fallback during migration/schema-cache rollout;
+  permissions, transport failures and malformed responses never do.
 
 ## Verification
 
@@ -42,5 +49,9 @@ Focused tests also verify live permission revocation, read-only operators,
 master business restrictions, immutable source capabilities and failure behavior.
 The existing save guard, public-error projection and shipment action checks remain.
 
-No database schema, financial transaction, business action eligibility, notification
-delivery or external resource is changed by these optimizations.
+The additive function is `STABLE SECURITY INVOKER`, with an empty search path,
+schema-qualified relations and execution revoked from PUBLIC/anon/authenticated.
+Tests compare all 2,000 action states with the canonical view, enforce volume
+limits and confirm that only service_role may execute it. No financial
+transaction, business action eligibility, notification delivery or external
+resource is changed.

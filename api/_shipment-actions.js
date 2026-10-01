@@ -13,6 +13,22 @@ async function effectivePermissions(admin){
   return new Set((rows||[]).map(row=>row.permission_key));
 }
 
+async function readCapabilitySnapshot(){
+  try{
+    const rows=await supabase('rpc/shipment_action_capability_snapshot',{
+      method:'POST',body:{p_max_rows:50000},readOnly:true
+    });
+    if(!Array.isArray(rows)||rows.some(row=>!row?.shipment_id||!row.capabilities||typeof row.capabilities!=='object'))throw Error('SHIPMENT_LIST_RESPONSE_INVALID');
+    if(rows.length>50000)throw Error('SHIPMENT_LIST_VOLUME_LIMIT');
+    return rows;
+  }catch(error){
+    // Compatibility while the additive migration/schema cache rolls out.
+    // Permission, transport and malformed response errors must still fail.
+    if(error?.status!==404||error?.code!=='PGRST202')throw error;
+    return readShipmentListPages('shipment_action_capabilities','?select=shipment_id,capabilities&order=shipment_id.asc');
+  }
+}
+
 export function maskShipmentActionCapabilities(raw,permissions){
   const state=raw&&typeof raw==='object'?{...raw}:{actions:{}};
   const actions=state.actions&&typeof state.actions==='object'?{...state.actions}:{};
@@ -36,7 +52,7 @@ export function maskShipmentActionCapabilities(raw,permissions){
 export async function loadShipmentActionCapabilityMap(admin){
   const [permissions,rows]=await Promise.all([
     effectivePermissions(admin),
-    readShipmentListPages('shipment_action_capabilities','?select=shipment_id,capabilities&order=shipment_id.asc')
+    readCapabilitySnapshot()
   ]);
   return {
     map:new Map((rows||[]).map(row=>[String(row.shipment_id),maskShipmentActionCapabilities(row.capabilities,permissions)])),

@@ -41,7 +41,8 @@ try{
   await db.exec(attention.slice(attention.indexOf(marker)));
   for(const name of ['20260831235500_ux5_shipment_action_capabilities.sql',
     '20260928232500_admin_dashboard_snapshot.sql','20260929041000_dashboard_cache_stable_versions.sql',
-    '20260929042623_dashboard_operational_cache_cleanup_fix.sql'])await db.exec(fs.readFileSync(`supabase/migrations/${name}`,'utf8'));
+    '20260929042623_dashboard_operational_cache_cleanup_fix.sql',
+    '20261001025606_shipment_action_capability_snapshot.sql'])await db.exec(fs.readFileSync(`supabase/migrations/${name}`,'utf8'));
   const {f,users}=await operatorFixture(db);
   const permissions=['dashboard.read','clients.read','logistics.read','logistics.write','documents.read','finance.read','reports.read','sales.read','warehouse.read','procurement.read','tasks.read','notifications.read'];
   await db.query('select set_access_role_permissions($1,$2::text[],$3)',[users.a.access_role_id,permissions,users.master.id]);
@@ -58,6 +59,19 @@ try{
     from generate_series(1,$3) g cross join (select array_agg(id order by id) ids from clients where name like 'QA load customer %') c`,[clientCount,f.importer,shipmentCount]);
   const rows=await f.rows("select id from shipments where container_number like 'QA-LOAD-%' order by container_number");
   assert.equal(rows.length,shipmentCount);
+  const snapshot=await f.one(`select shipment_action_capability_snapshot() snapshot,
+    (select jsonb_agg(jsonb_build_object('shipment_id',shipment_id,'capabilities',capabilities) order by shipment_id) from shipment_action_capabilities) canonical`);
+  assert.deepEqual(snapshot.snapshot,snapshot.canonical,'batched snapshot must preserve every canonical business action');
+  assert.equal(snapshot.snapshot.length,shipmentCount);
+  await assert.rejects(db.query('select shipment_action_capability_snapshot(1000)'),/SHIPMENT_LIST_VOLUME_LIMIT/);
+  for(const limit of [null,0,50001])await assert.rejects(db.query('select shipment_action_capability_snapshot($1)',[limit]),/SHIPMENT_LIST_QUERY_INVALID/);
+  const privilege=await f.one(`select prosecdef as definer,provolatile as volatility,
+    has_function_privilege('anon',oid,'execute') anonymous,
+    has_function_privilege('authenticated',oid,'execute') authenticated,
+    has_function_privilege('service_role',oid,'execute') service
+    from pg_proc where oid='public.shipment_action_capability_snapshot(integer)'::regprocedure`);
+  assert.deepEqual(privilege,{definer:false,volatility:'s',anonymous:false,authenticated:false,service:true});
+  report.snapshot_verified=true;
   for(let i=0;i<invoiceCount;i++)await f.invoice(await f.sale());
   await db.exec('analyze');
   const expectedFinancial=await f.dashboard();
@@ -137,6 +151,10 @@ try{
       }
     }));
     const summarize=values=>{const sorted=values.sort((a,b)=>a-b);return{n:sorted.length,p50_ms:+percentile(sorted,.5).toFixed(1),p95_ms:+percentile(sorted,.95).toFixed(1),p99_ms:+percentile(sorted,.99).toFixed(1),max_ms:+sorted.at(-1).toFixed(1)};};
+    if(variant==='current'){
+      assert.equal(databaseRequests.get('POST rpc/shipment_action_capability_snapshot'),concurrentUsers*rounds,'every complete list must use the scalar snapshot over real HTTP');
+      assert.equal(databaseRequests.get('GET shipment_action_capabilities'),concurrentUsers*rounds,'only individual save receipts may read the capability view; lists must not fall back');
+    }
     report.stages.push({variant,concurrent_users:concurrentUsers,routes:Object.fromEntries([...samples].map(([name,values])=>[name,summarize(values)])),server_timing:Object.fromEntries([...timings].map(([name,values])=>[name,summarize(values)])),database_requests:Object.fromEntries(databaseRequests)});
     console.log(JSON.stringify(report.stages.at(-1)));
     if(report.errors.length)console.error(JSON.stringify(report.errors.slice(-5)));
