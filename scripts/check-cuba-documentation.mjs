@@ -80,7 +80,8 @@ if(Object.values(files).every(file=>fs.existsSync(path.join(root,file)))){
   // UX-5: shipment capabilities carry the effective documents.read permission from DB-backed P3 access.
   for(const required of [
     "action==='view_documents'?'documents.read'",
-    'loadAdminAccessContext',
+    'admin_effective_permissions',
+    'permission_key=in.(logistics.read,logistics.write,documents.read)',
     'shipment_action_capabilities'
   ]) if(!shipmentActions.includes(required))failures.push(`api/_shipment-actions.js: falta contrato documental UX-5 ${required}`);
 
