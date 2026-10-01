@@ -33,7 +33,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       grant select on load_expediente_documents, documents, load_traceability_sources,
         load_traceability_summary to service_role;
       grant select,insert on shipment_history to service_role;
-      grant insert on shipments to service_role;`);
+      grant insert,update on shipments to service_role;`);
     await db.exec(fs.readFileSync('supabase/migrations/20260831235500_ux5_shipment_action_capabilities.sql','utf8'));
     await db.exec(fs.readFileSync('supabase/migrations/20260910123500_direct_ship_quantity_corrections.sql','utf8'));
     const {f,users}=await operatorFixture(db);
