@@ -33,6 +33,7 @@
   let clientHasMore = false;
   let clientQuery = '';
   let clientTimer = null;
+  let clientRequest = 0;
   let quickProductLine = null;
   const inventoryCache = new Map();
 
@@ -74,10 +75,11 @@
     modal.setAttribute('aria-modal','true');
     modal.setAttribute('aria-labelledby','clientPickerTitle');
     modal.innerHTML = `<div class="dialog client-picker-dialog">
-      <div class="dialog-head"><div><span class="sales-dialog-kicker">Directorio comercial</span><h2 id="clientPickerTitle">Seleccionar cliente</h2><div class="muted">Busca por nombre, empresa o NIT.</div></div><button type="button" class="btn sales-close-button" data-client-close aria-label="Cerrar selector de clientes">✕</button></div>
+      <div class="dialog-head"><div><span class="sales-dialog-kicker">Directorio comercial</span><h2 id="clientPickerTitle">Seleccionar cliente</h2><div class="muted">Busca por empresa, nombre, NIT, teléfono o correo.</div></div><button type="button" class="btn sales-close-button" data-client-close aria-label="Cerrar selector de clientes">✕</button></div>
       <div class="client-picker-create"><button id="clientQuickAddToggle" type="button" class="btn orange" hidden>＋ Nuevo cliente</button></div>
       <form id="clientQuickAddForm" class="client-quick-form" hidden><div class="client-quick-grid"><div><label for="clientQuickName">Nombre completo *</label><input id="clientQuickName" required autocomplete="name"></div><div><label for="clientQuickCompany">Empresa o MIPYME</label><input id="clientQuickCompany" autocomplete="organization"></div><div><label for="clientQuickNIT">NIT</label><input id="clientQuickNIT" autocomplete="off"></div><div><label for="clientQuickPhone">WhatsApp (opcional)</label><input id="clientQuickPhone" type="tel" inputmode="tel" placeholder="+5351234567" autocomplete="tel"></div><div><label for="clientQuickEmail">Correo</label><input id="clientQuickEmail" type="email" autocomplete="email"></div><div><label for="clientQuickImporters">Importadoras cubanas</label><input id="clientQuickImporters" placeholder="Ej. Cítricos Caribe, Quimimport" autocomplete="off"><div class="muted">Puedes registrar varias separadas por comas.</div></div></div><div id="clientQuickAddMsg" class="msg" role="status" aria-live="polite"></div><div class="actions"><button id="clientQuickAddCancel" type="button" class="btn">Cancelar</button><button id="clientQuickAddSave" type="submit" class="btn orange">Guardar y seleccionar</button></div></form>
-      <label class="sales-visually-hidden" for="clientPickerSearch">Buscar cliente o empresa</label><input id="clientPickerSearch" class="client-picker-search" type="search" autocomplete="off" placeholder="Buscar cliente o NIT">
+      <label for="clientPickerSearch">Buscar cliente</label><input id="clientPickerSearch" class="client-picker-search" type="search" autocomplete="off" placeholder="Empresa, nombre, NIT o contacto">
+      <div class="client-picker-columns" aria-hidden="true"><span>Cliente / Empresa</span><span>Identificación / Importadora</span><span>Contacto</span><span></span></div>
       <div id="clientPickerList" class="client-picker-list"></div>
       <div class="client-picker-footer"><button id="clientPrev" type="button" class="btn">← Anterior</button><span id="clientPageLabel" class="muted">Página 1</span><button id="clientNext" type="button" class="btn">Siguiente →</button></div>
       <div id="clientPickerMsg" class="msg" role="status" aria-live="polite"></div>
@@ -293,23 +295,27 @@
   async function loadClientPage() {
     const list = byId('clientPickerList');
     if (!list) return;
+    const requestId = ++clientRequest;
     list.innerHTML = '<div class="empty">Cargando clientes…</div>';
     byId('clientPickerMsg').textContent = '';
     try {
       const params = new URLSearchParams({mode:'clients',page:String(clientPage),page_size:'25'});
       if (clientQuery) params.set('q',clientQuery);
       const data = await uxApi(`/api/sales-order-ux?${params.toString()}`);
+      if (requestId !== clientRequest) return;
       clientHasMore = Boolean(data.has_more);
       const rows = Array.isArray(data.clients) ? data.clients : [];
       list.innerHTML = rows.length ? rows.map(row => `<button type="button" class="client-picker-row" data-client-id="${esc(row.id)}">
-        <div><b>${esc(row.display_name || row.company || row.mipyme_name || row.name || 'Cliente')}</b><div class="small">${esc(row.name || '')}${row.nit?` · NIT ${esc(row.nit)}`:''}</div></div>
-        <div class="secondary small">${esc(row.company || row.mipyme_name || '')}</div><span class="choose">Seleccionar</span>
+        <span class="client-picker-cell"><b>${esc(row.display_name || row.company || row.mipyme_name || row.name || 'Cliente')}</b><span>${esc(row.name || 'Sin contacto registrado')}</span></span>
+        <span class="client-picker-cell"><b>${row.nit?`NIT ${esc(row.nit)}`:'Sin NIT registrado'}</b><span>${esc((row.importers || []).map(importer=>importer.name).join(', ') || 'Sin importadora registrada')}</span></span>
+        <span class="client-picker-cell"><b>${esc(row.phone || 'Sin teléfono')}</b><span>${esc(row.email || 'Sin correo')}</span></span><span class="choose">Elegir</span>
       </button>`).join('') : '<div class="empty">No se encontraron clientes.</div>';
       list.querySelectorAll('[data-client-id]').forEach(button => button.onclick = () => chooseClient(button.dataset.clientId));
       byId('clientPageLabel').textContent = `Página ${clientPage}`;
       byId('clientPrev').disabled = clientPage <= 1;
       byId('clientNext').disabled = !clientHasMore;
     } catch (error) {
+      if (requestId !== clientRequest) return;
       list.innerHTML = '<div class="empty">No se pudieron cargar los clientes.</div>';
       byId('clientPickerMsg').textContent = reportOrderError('clients',error,'No se pudieron cargar los clientes. Intenta nuevamente.');
     }
@@ -353,6 +359,28 @@
     const upp = line.querySelector('.lUpp');
     const product = line.querySelector('.lProduct');
     if (!price || !qty || !pallets || !upp || !product) return;
+    const quantityWrap = document.createElement('div');
+    quantityWrap.className = 'sales-quantity-entry';
+    quantityWrap.innerHTML = `<label for="${qty.id}-mode">Introducir mercancía por</label><select id="${qty.id}-mode" class="lQuantityMode"><option value="pallets">Pallets (cantidad calculada)</option><option value="quantity">Cantidad directa</option></select><div class="muted">Pallets × unidades por pallet = cantidad vendida.</div>`;
+    line.querySelector('.sales-product-grid')?.insertAdjacentElement('beforebegin',quantityWrap);
+    line.dataset.quantityMode = line.dataset.quantityMode || (num(pallets.value) > 0 || !qty.value ? 'pallets' : 'quantity');
+    const quantityMode = quantityWrap.querySelector('select');
+    const syncQuantityMode = () => {
+      quantityMode.value = line.dataset.quantityMode;
+      qty.readOnly = line.dataset.quantityMode === 'pallets';
+      qty.required = false;
+      qty.placeholder = qty.readOnly ? 'Se calcula automáticamente' : 'Cantidad de cajas o unidades';
+      qty.closest('div').querySelector('label').textContent = qty.readOnly ? 'Cantidad vendida (calculada)' : 'Cantidad vendida';
+      if (qty.readOnly) syncQuantityFromPallets(line);
+      else syncPalletsFromQuantity(line);
+      syncPricing(line,line.dataset.priceMode);
+    };
+    quantityMode.addEventListener('change', () => {
+      line.dataset.quantityMode = quantityMode.value;
+      syncQuantityMode();
+      updateStockWarning(line);
+      window.SalesOrderDrafts?.touch?.();
+    });
 
     const priceLabel = price.closest('div')?.querySelector('label');
     if (priceLabel) priceLabel.textContent = 'Precio unitario (opcional)';
@@ -390,12 +418,16 @@
     });
     qty.addEventListener('input', () => {
       line.dataset.quantityMode = 'quantity';
+      quantityMode.value = 'quantity';
       syncPalletsFromQuantity(line);
       syncPricing(line,line.dataset.priceMode);
       updateStockWarning(line);
     });
     pallets.addEventListener('input', () => {
       line.dataset.quantityMode = 'pallets';
+      quantityMode.value = 'pallets';
+      qty.readOnly = true;
+      qty.closest('div').querySelector('label').textContent = 'Cantidad vendida (calculada)';
       syncQuantityFromPallets(line);
       syncPricing(line,line.dataset.priceMode);
       updateStockWarning(line);
@@ -413,9 +445,13 @@
             if (p?.default_units_per_pallet) upp.value = p.default_units_per_pallet;
           } catch {}
         }
+        if (line.dataset.quantityMode === 'pallets') syncQuantityFromPallets(line);
+        else syncPalletsFromQuantity(line);
+        syncPricing(line,line.dataset.priceMode);
         loadInventory(line);
       },0);
     });
+    syncQuantityMode();
     if (product.value) loadInventory(line);
   }
 
@@ -428,7 +464,7 @@
   function syncQuantityFromPallets(line) {
     const pallets = num(line.querySelector('.lPallets')?.value);
     const upp = num(line.querySelector('.lUpp')?.value);
-    if (upp > 0) line.querySelector('.lQty').value = pallets > 0 ? inputNumber(pallets * upp) : '';
+    line.querySelector('.lQty').value = pallets > 0 && upp > 0 ? inputNumber(pallets * upp) : '';
   }
 
   function syncPricing(line, mode) {
@@ -530,6 +566,7 @@
   function collectUxLines() {
     return [...document.querySelectorAll('#orderLines .line')].map((line,index) => {
       const productId = line.querySelector('.lProduct')?.value || '';
+      if (line.dataset.quantityMode === 'pallets') syncQuantityFromPallets(line);
       const qty = line.querySelector('.lQty')?.value || '';
       const pallets = line.querySelector('.lPallets')?.value || '';
       const upp = line.querySelector('.lUpp')?.value || '';
@@ -537,7 +574,7 @@
       const total = line.querySelector('.lTotal')?.value ?? '';
       const mode = line.dataset.priceMode || (total !== '' ? 'total' : price !== '' ? 'unit' : '');
       if (!productId) throw new Error(`Selecciona o agrega la mercancía de la línea ${index+1}.`);
-      if (num(qty) <= 0 && !(num(pallets) > 0 && num(upp) > 0)) throw new Error(`Indica cantidad o pallets válidos en la línea ${index+1}.`);
+      if (num(qty) <= 0) throw new Error(line.dataset.quantityMode === 'pallets' ? `Indica pallets y unidades por pallet para calcular la línea ${index+1}.` : `Indica la cantidad de la línea ${index+1}.`);
       if (!mode || (mode === 'total' && total === '') || (mode === 'unit' && price === '')) throw new Error(`Indica el total acordado o el precio unitario de la línea ${index+1}.`);
       return {
         product_id:productId,

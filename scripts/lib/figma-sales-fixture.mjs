@@ -20,7 +20,7 @@ export function salesFixture({ writable = true, clientWritable = writable, works
   csp.httpEquiv = 'Content-Security-Policy';
   csp.content = "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; font-src data:";
   doc.head.prepend(csp);
-  const client = { id:'fixture-client', name:'Cliente ficticio', company:'Costa Sur Comercial', nit:'987-654321' };
+  const client = { id:'fixture-client', name:'Cliente ficticio', company:'Costa Sur Comercial', nit:'987-654321',phone:'+5350000101',email:'ventas@example.com',importers:[{name:'Importadora de ejemplo'}] };
   const product = { id:'fixture-product', name:'Producto de demostración', sku:'DEMO-1', unit:'cajas', default_units_per_pallet:10 };
   const orders = ['confirmed','confirmed','confirmed','draft','closed'].map((status, index) => ({
     id:`fixture-sale-${index}`, so_number:`SO-DEMO-024${8-index}`, status,
@@ -97,7 +97,7 @@ export function salesFixture({ writable = true, clientWritable = writable, works
       }else throw Error('Fixture blocks network');
       return {ok:true,status:200,json:async()=>data};
     };`;
-  for (const code of [harness, read('admin/sales.js'), read('admin/sales-order-ux.js'), ...(workspace?[read('admin/sales-workspace.js'),read('admin/sales-controller.js')]:[])]) {
+  for (const code of [harness, read('admin/sales.js'), read('admin/sales-order-ux.js'), read('admin/sales-invoice-preview.js'), ...(workspace?[read('admin/sales-workspace.js'),read('admin/sales-controller.js')]:[])]) {
     const script=doc.createElement('script');
     script.textContent=code.replaceAll('</script','<\\/script');
     doc.body.append(script);

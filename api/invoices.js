@@ -133,7 +133,7 @@ async function loadInvoices(admin){
 async function loadSalesOrders(){
   const [orders,items,progress]=await Promise.all([
     supabase('sales_orders',{query:'?select=id,so_number,client_id,status,currency,customer_reference,order_date,client:clients(id,name,company,mipyme_name)&status=in.(confirmed,closed)&order=created_at.desc&limit=1000'}),
-    supabase('sales_order_items',{query:'?select=id,sales_order_id,product_id,ordered_quantity,unit,unit_price,product:products(id,sku,name,brand)&order=created_at.asc&limit=5000'}),
+    supabase('sales_order_items',{query:'?select=id,sales_order_id,product_id,ordered_quantity,ordered_pallets,units_per_pallet,unit,unit_price,entered_line_total,product:products(id,sku,name,brand)&order=created_at.asc&limit=5000'}),
     supabase('sales_order_item_invoice_progress',{query:'?select=*&limit=5000'})
   ]);
   const progressByItem=new Map((progress||[]).map(row=>[row.sales_order_item_id,row]));

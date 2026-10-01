@@ -117,6 +117,22 @@ export default async function handler(req, res) {
 
     const body = await readJson(req);
 
+    if (req.method === 'DELETE') {
+      if (actor.role !== 'master_admin') return fail(res, 403, 'Solo el administrador maestro puede eliminar cuentas');
+      if (resource !== 'admins') return fail(res, 400, 'Recurso inválido');
+      const id = String(body.id || '').trim();
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return fail(res, 400, 'Usuario inválido');
+      if (id.toLowerCase() === actor.admin_id.toLowerCase()) return fail(res, 403, 'Tu cuenta de administrador maestro está protegida');
+      const confirmation = String(body.confirm_username || '').trim();
+      if (!confirmation) return fail(res, 400, 'Escribe el nombre de usuario para confirmar la eliminación');
+      const rows = await rpc('delete_admin_account_with_audit', {
+        p_admin_user_id: id,
+        p_actor: actor.admin_id,
+        p_confirm_username: confirmation
+      });
+      return ok(res, { deleted: true, sessions_revoked: true, account: rows?.[0] || null });
+    }
+
     if (req.method === 'POST') {
       const fullName = String(body.full_name || '').trim();
       const username = normalizeUsername(body.username || '');
@@ -206,6 +222,9 @@ export default async function handler(req, res) {
     if (message.includes('LAST_MASTER_ADMIN_REQUIRED')) return fail(res, 409, 'Debe existir al menos una cuenta maestra activa');
     if (message.includes('MASTER_ADMIN_CHANGE_FORBIDDEN')) return fail(res, 403, 'Solo el administrador maestro puede modificar otra cuenta maestra');
     if (message.includes('SELF_DEACTIVATION_FORBIDDEN')) return fail(res, 400, 'No puedes desactivar tu propia cuenta');
+    if (message.includes('MASTER_ADMIN_DELETE_FORBIDDEN') || message.includes('SELF_DELETION_FORBIDDEN')) return fail(res, 403, 'La cuenta de administrador maestro está protegida y no se puede eliminar');
+    if (message.includes('ADMIN_DELETE_CONFIRMATION_REQUIRED')) return fail(res, 400, 'El nombre de usuario no coincide; revisa la cuenta que quieres eliminar');
+    if (message.includes('ADMIN_USER_NOT_FOUND')) return fail(res, 404, 'La cuenta ya no existe; actualiza el directorio');
     if (message.includes('WORKER_DEACTIVATION_REASON_REQUIRED')) return fail(res, 400, 'El motivo de desactivación es obligatorio');
     if (message.includes('ADMIN_PERMISSION_DENIED')) return fail(res, 403, 'No tienes permiso para realizar esta acción');
     console.error('[api/admins]', error);

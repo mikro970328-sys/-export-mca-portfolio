@@ -419,3 +419,5 @@
   .sales-ws-decision-panel{border-radius:22px 22px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom))}
   .sales-ws-decision-actions button{flex:1}
 }
+
+.sales-ws-invoice-total{padding:14px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface-soft);font-weight:600;font-size:15px;line-height:22px}

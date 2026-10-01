@@ -103,7 +103,7 @@ forbid(owner,/\b(?:prompt|alert|confirm)\s*\(/,'Usuarios y acceso usa diálogos 
 forbid(owner,/document\.createElement\(['"]style['"]\)|style\.textContent/,'Usuarios y acceso inyecta CSS desde JavaScript');
 forbid(owner,/\bMutationObserver\b|\bResizeObserver\b/,'Usuarios y acceso observa y recompone el DOM');
 forbid(owner,/\.style(?:\.|\[)/,'Usuarios y acceso muta estilos inline');
-forbid(owner,/method\s*:\s*['"]DELETE['"]/i,'Usuarios y acceso introduce eliminación física');
+requireText(owner,'function openUserDeletion','La eliminación tiene un único propietario');
 forbid(shell,/id=["'](?:saveAdmin|adminName|adminUsername|adminPassword)["']/,'index.html reintroduce controles de administración duplicados');
 
 [

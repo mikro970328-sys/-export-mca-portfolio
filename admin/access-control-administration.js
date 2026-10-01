@@ -130,6 +130,14 @@
     'Debe existir al menos una cuenta maestra activa',
     'Solo el administrador maestro puede modificar otra cuenta maestra',
     'No puedes desactivar tu propia cuenta',
+    'El nombre de usuario no coincide.',
+    'El nombre de usuario no coincide; revisa la cuenta que quieres eliminar',
+    'La cuenta ya no existe; actualiza el directorio',
+    'La cuenta de administrador maestro está protegida y no se puede eliminar',
+    'Tu cuenta de administrador maestro está protegida',
+    'Solo el administrador maestro puede eliminar cuentas',
+    'Escribe el nombre de usuario para confirmar la eliminación',
+    'Usuario inválido',
     'El nombre del rol es obligatorio',
     'Rol inválido',
     'Ya existe un rol con ese nombre',
@@ -564,7 +572,8 @@
       const editable = user.role !== 'master_admin' || state.account?.role === 'master_admin';
       const mayEditProfile = editable && user.role !== 'master_admin';
       const mayChangePassword = editable;
-      return directoryCard(user.full_name,'@'+user.username,[[role,'Rol'],[teams.join(', ') || 'Sin equipo','Equipos']],user.is_active,`${mayEditProfile?`<button type="button" class="access-secondary" data-access-action="edit-user" data-id="${esc(user.id)}">Editar</button>`:''}${mayChangePassword?`<button type="button" class="access-secondary" data-access-action="password-user" data-id="${esc(user.id)}">Contraseña</button>`:''}${editable&&user.id!==state.account?.id?`<button type="button" class="${user.is_active?'access-danger':'access-secondary'}" data-access-action="toggle-user" data-id="${esc(user.id)}">${user.is_active?'Desactivar':'Activar'}</button>`:''}`);
+      const mayDelete = state.account?.role === 'master_admin' && user.role !== 'master_admin' && user.id !== state.account?.id;
+      return directoryCard(user.full_name,'@'+user.username,[[role,'Rol'],[teams.join(', ') || 'Sin equipo','Equipos']],user.is_active,`${mayEditProfile?`<button type="button" class="access-secondary" data-access-action="edit-user" data-id="${esc(user.id)}">Editar</button>`:''}${mayChangePassword?`<button type="button" class="access-secondary" data-access-action="password-user" data-id="${esc(user.id)}">Contraseña</button>`:''}${editable&&user.id!==state.account?.id?`<button type="button" class="${user.is_active?'access-danger':'access-secondary'}" data-access-action="toggle-user" data-id="${esc(user.id)}">${user.is_active?'Desactivar':'Activar'}</button>`:''}${mayDelete?`<button type="button" class="access-danger" data-access-action="delete-user" data-id="${esc(user.id)}">Eliminar cuenta</button>`:''}`);
     }).join('') : emptyDirectory(
       total ? 'No hay coincidencias' : 'No hay usuarios registrados',
       total ? 'Cambia la búsqueda o el filtro de estado para ver otros resultados.' : 'Crea la primera cuenta para comenzar a delegar acceso.',
@@ -620,6 +629,29 @@
       { label:'Actualizar', onClick:async()=>{ const form=byId('accessPasswordForm'); const password=new FormData(form).get('password'); if(String(password||'').length<10) throw new Error('La contraseña debe tener al menos 10 caracteres'); await request('/api/admins',{method:'PATCH',body:JSON.stringify({id:user.id,password})}); closeModal(); setMessage('Contraseña actualizada.',true); } }
     ]);
     bindModalSubmit('accessPasswordForm');
+  }
+
+  function openUserDeletion(id) {
+    const user = state.usersData?.admins?.find(row => String(row.id) === String(id));
+    if (!user || state.account?.role !== 'master_admin') return;
+    if (user.role === 'master_admin' || user.id === state.account?.id) return setMessage('Tu cuenta de administrador maestro está protegida.',false);
+    openModal('Eliminar cuenta', `<form id="accessDeleteUserForm" class="access-form"><p>Eliminarás la cuenta <strong>@${esc(user.username)}</strong> de ${esc(user.full_name)}. Perderá el acceso y se cerrarán sus sesiones. Esta acción es permanente.</p><p>Sus operaciones e historial se conservarán. Sus tareas quedarán disponibles para reasignarlas.</p><div><label for="accessDeleteUsername">Escribe ${esc(user.username)} para confirmar</label><input id="accessDeleteUsername" name="confirm_username" autocomplete="off" autocapitalize="none" spellcheck="false" required></div></form>`, [
+      { label:'Cancelar', className:'access-secondary', onClick:closeModal },
+      { label:'Eliminar cuenta', className:'access-danger', onClick:async()=>{
+        const form = byId('accessDeleteUserForm');
+        if (!formReady(form)) return;
+        const confirmation = String(new FormData(form).get('confirm_username') || '').trim();
+        if (confirmation.toLowerCase() !== user.username.toLowerCase()) throw new Error('El nombre de usuario no coincide.');
+        await request('/api/admins',{method:'DELETE',body:JSON.stringify({id:user.id,confirm_username:confirmation})});
+        closeModal();
+        setMessage(`Cuenta @${user.username} eliminada. Sus sesiones quedaron cerradas.`,true);
+        state.loaded.teams = false;
+        state.teamUsers = state.teamUsers.filter(row => String(row.id) !== String(user.id));
+        await loadUsers();
+        renderUsersPane();
+      } }
+    ]);
+    bindModalSubmit('accessDeleteUserForm');
   }
 
   function permissionMatrix(selected = [], disabled = false) {
@@ -913,6 +945,7 @@
     if(type==='retry')return switchTab(state.activeTab);
     if(type==='edit-user')return openUserEditor(id);
     if(type==='password-user')return openPasswordEditor(id);
+    if(type==='delete-user')return openUserDeletion(id);
     if(type==='toggle-user'){
       const user=state.usersData?.admins?.find(row=>String(row.id)===String(id));if(!user)return;
       return confirmAction(user.is_active?'Desactivar usuario':'Activar usuario',`${user.is_active?'Desactivar':'Activar'} la cuenta ${user.username}?`,async()=>{await request('/api/admins',{method:'PATCH',body:JSON.stringify({id:user.id,is_active:!user.is_active})});setMessage(`Usuario ${user.is_active?'desactivado':'activado'}.`,true);await loadUsers();renderUsersPane();},user.is_active);

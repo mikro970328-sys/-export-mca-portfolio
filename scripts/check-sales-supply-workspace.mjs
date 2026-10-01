@@ -16,7 +16,7 @@ const directSaleMigration=read('supabase/migrations/20260920213000_direct_sale_f
 const {buildPurchaseOptions}=await import('../api/sales-supply.js');
 
 assert(html.includes('/admin/sales-supply-workspace.css?v=20260902-ux7sales1'),'Ventas no carga CSS de abastecimiento versionado');
-assert(html.includes('/admin/sales-supply-workspace.js?v=20260921-balance1'),'Ventas no carga Asignar mercancía versionado');
+assert(html.includes('/admin/sales-supply-workspace.js?v=20261001-sales-flow1'),'Ventas no carga Asignar mercancía versionado');
 assert(html.includes('id="openSupplyWorkspace"'),'Ventas no expone acceso a Abastecimiento');
 assert(html.includes('Asignar mercancía'),'Ventas no muestra el acceso para asignar mercancía');
 assert(salesUi.includes('data-supply-order'),'La lista de Ventas no expone Asignar mercancía');

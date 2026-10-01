@@ -1,0 +1,33 @@
+name: Account Deletion and Sales Entry Flow
+on:
+  pull_request:
+    paths:
+      - 'api/admins.js'
+      - 'api/sales-order-ux.js'
+      - 'api/invoices.js'
+      - 'admin/access-control-administration.js'
+      - 'admin/sales*.js'
+      - 'admin/sales*.css'
+      - 'admin/sales.html'
+      - 'admin/invoices.*'
+      - 'supabase/migrations/*_admin_account_deletion.sql'
+      - 'scripts/check-account-deletion.mjs'
+      - 'scripts/check-sales-entry-flow.mjs'
+      - 'scripts/lib/figma-*.mjs'
+      - '.github/workflows/account-deletion-sales-flow.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Verify permanent account deletion and session rejection
+        run: node scripts/check-account-deletion.mjs
+      - name: Verify calculated quantities, customer information, pallets and invoice amounts
+        run: node scripts/check-sales-entry-flow.mjs

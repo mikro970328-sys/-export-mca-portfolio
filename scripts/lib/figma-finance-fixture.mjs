@@ -69,6 +69,6 @@ export function financeFixture({module='invoices',writable=true,failRead=false}=
       }
       throw Error('Unsupported fixture request');
     };`;
-  for(const code of [harness,...(module==='reports'?[]:[read('admin/form-drafts.js')]),read(`admin/${module}.js`)]){const script=doc.createElement('script');script.textContent=code.replaceAll('</script','<\\/script');doc.body.append(script);}
+  for(const code of [harness,...(module==='reports'?[]:[read('admin/form-drafts.js')]),...(module==='invoices'?[read('admin/sales-invoice-preview.js')]:[]),read(`admin/${module}.js`)]){const script=doc.createElement('script');script.textContent=code.replaceAll('</script','<\\/script');doc.body.append(script);}
   const html=dom.serialize();dom.window.close();return html;
 }

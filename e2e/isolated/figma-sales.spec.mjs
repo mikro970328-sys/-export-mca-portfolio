@@ -48,6 +48,7 @@ test('Figma sales: white theme, real filters, accessible actions and form pricin
   await page.locator('#newOrder').click();
   await expect(page.locator('#orderModal')).toBeVisible();
   await expect(page.locator('#oClientPickerButton')).toBeVisible();
+  await page.locator('.lQuantityMode').selectOption('quantity');
   await page.locator('.lQty').fill('10');
   await page.locator('.lPrice').fill('12.5');
   await expect(page.locator('.lTotal')).toHaveValue('125');
@@ -56,6 +57,7 @@ test('Figma sales: white theme, real filters, accessible actions and form pricin
   await expect(page.locator('.lPrice')).toHaveValue('25');
   await expect(page.locator('.lPriceMode')).toHaveValue('total');
   await page.locator('.lPriceMode').selectOption('unit');
+  await page.locator('.lQuantityMode').selectOption('quantity');
   await page.locator('.lQty').fill('20');
   await expect(page.locator('.lTotal')).toHaveValue('500');
   await expect(page.locator('#salesOrderTotalPreview b')).toHaveText('$500.00');
@@ -203,6 +205,7 @@ test('Create a client directly from a sale without shell permissions or lost sal
   await page.locator('#salesQuickProductUnit').fill('cajas');
   await page.locator('#salesQuickProductForm button[type="submit"]').click();
   await expect(page.locator('.lProduct')).toHaveValue('fixture-made-to-order');
+  await page.locator('.lQuantityMode').selectOption('quantity');
   await page.locator('.lQty').fill('1');
   await expect(page.locator('.lTotal')).toHaveValue('2300');
   await page.locator('#saveOrder').click();

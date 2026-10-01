@@ -314,6 +314,18 @@
     $('iSalesOrder').innerHTML = '<option value="">Selecciona una venta</option>' + orders.map(order => `<option value="${esc(order.id)}">${esc(order.so_number)} · ${esc(clientName(order))}</option>`).join('');
   }
 
+  function refreshInvoicePreview() {
+    const order=state.salesOrders.find(row=>String(row.id)===String($('iSalesOrder').value));
+    if (!order) return;
+    const lines=[...document.querySelectorAll('[data-invoice-line]')].map(row=>({item:order.items.find(item=>item.id===row.dataset.invoiceLine),quantity:row.querySelector('[data-qty]').value})).filter(line=>line.item);
+    for (const line of lines) {
+      const row=[...document.querySelectorAll('[data-invoice-line]')].find(row=>row.dataset.invoiceLine===line.item.id);
+      row.querySelector('[data-invoice-amount]').textContent=money(window.SalesInvoicePreview.lineAmount(line.item,line.quantity),order.currency);
+    }
+    const total=window.SalesInvoicePreview.totals(lines);
+    $('invoicePreview').textContent=`Total a facturar: ${total.units.map(row=>`${new Intl.NumberFormat('en-US',{maximumFractionDigits:3}).format(row.quantity)} ${row.unit}`).join(' · ')||'0 unidades'} · ${money(total.amount,order.currency)}`;
+  }
+
   function renderInvoiceLines(editingInvoice = null) {
     const order = state.salesOrders.find(row => String(row.id) === String($('iSalesOrder').value));
     if (!order) {
@@ -329,11 +341,16 @@
       const quantity = own ? num(own.quantity) : available;
       return `<div class="invoice-line" data-invoice-line="${esc(item.id)}">
         <div class="invoice-line-title">${esc(label)}</div>
-        <div class="invoice-line-meta">Ordenado ${esc(item.ordered_quantity)} ${esc(item.unit)} · Disponible ${esc(available)} · Precio ${esc(money(item.unit_price, order.currency))}</div>
-        <div class="grid"><div><label for="invoice-qty-${esc(item.id)}">Cantidad a facturar</label><input id="invoice-qty-${esc(item.id)}" data-qty type="number" min="0" max="${esc(available)}" step="any" value="${esc(quantity)}"></div><div><label for="invoice-note-${esc(item.id)}">Nota</label><input id="invoice-note-${esc(item.id)}" data-note value="${esc(own?.notes || '')}" placeholder="Opcional"></div></div>
+        <div class="invoice-line-meta">Venta: ${esc(item.ordered_quantity)} ${esc(item.unit)} · Importe acordado: ${esc(money(item.entered_line_total ?? num(item.ordered_quantity)*num(item.unit_price),order.currency))} · Disponible: ${esc(available)} ${esc(item.unit)}</div>
+        <div class="grid"><div><label for="invoice-qty-${esc(item.id)}">Cantidad a facturar (tomada de la venta)</label><input id="invoice-qty-${esc(item.id)}" data-qty type="number" min="0" max="${esc(available)}" step="any" value="${esc(quantity)}"></div><div><label for="invoice-note-${esc(item.id)}">Nota</label><input id="invoice-note-${esc(item.id)}" data-note value="${esc(own?.notes || '')}" placeholder="Opcional"></div></div>
+        <div class="invoice-line-meta">Importe a facturar: <strong data-invoice-amount></strong></div>
       </div>`;
     }).filter(Boolean);
-    $('invoiceLines').innerHTML = rows.length ? rows.join('') : emptyState('Sin saldo disponible', 'Esta venta no tiene cantidades pendientes de facturar.');
+    $('invoiceLines').innerHTML = rows.length ? rows.join('')+'<div id="invoicePreview" class="invoice-preview-total" role="status" aria-live="polite"></div>' : emptyState('Sin saldo disponible', 'Esta venta no tiene cantidades pendientes de facturar.');
+    if (rows.length) {
+      $('invoiceLines').querySelectorAll('[data-qty]').forEach(input=>input.addEventListener('input',refreshInvoicePreview));
+      refreshInvoicePreview();
+    }
   }
 
   function captureInvoiceDraft() {
@@ -364,7 +381,7 @@
       if (!line) return;
       const quantity = node.querySelector('[data-qty]');
       const notes = node.querySelector('[data-note]');
-      if (quantity) quantity.value = line.quantity || '';
+      if (quantity) {quantity.value = line.quantity || '';quantity.dispatchEvent(new Event('input',{bubbles:true}));}
       if (notes) notes.value = line.notes || '';
     });
   }

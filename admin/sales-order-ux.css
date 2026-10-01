@@ -41,24 +41,44 @@
 
 .client-picker-list{
   display:grid;
+  align-content:start;
+  grid-auto-rows:max-content;
   gap:8px;
-  min-height:280px;
+  max-height:min(440px,50vh);
+  overflow-y:auto;
 }
 
 .erp-module-sales .client-picker-row{
   display:grid;
-  grid-template-columns:minmax(180px,1fr) minmax(160px,.8fr) auto;
+  grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,.95fr) auto;
   align-items:center;
   gap:14px;
   width:100%;
-  min-height:58px;
+  min-height:80px;
   border:1px solid var(--line);
   border-radius:var(--radius-md);
-  padding:12px 13px;
+  padding:12px;
   background:#fff;
   color:var(--text);
   text-align:left;
-  box-shadow:var(--shadow-xs);
+  box-shadow:none;
+}
+
+.client-picker-cell{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:12px;line-height:18px;color:var(--muted);overflow-wrap:anywhere}
+.client-picker-cell b{font-size:14px;line-height:20px;color:var(--text);font-weight:600}
+.client-picker-columns{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,.95fr) auto;gap:14px;padding:0 12px 12px;color:var(--muted);font-size:12px;line-height:18px}
+.erp-module-sales .client-picker-dialog{padding:24px}
+.erp-module-sales .client-picker-row .choose{padding:0;background:none;color:var(--orange-strong);font-size:12px;font-weight:400}
+.sales-quantity-entry{display:grid;grid-template-columns:minmax(170px,240px) 1fr;gap:4px 16px;margin:12px 0}
+.sales-quantity-entry label{grid-column:1/-1}
+.sales-quantity-entry .muted{align-self:center;font-size:12px}
+.erp-module-sales .lQty[readonly]{background:var(--surface-soft);color:var(--text)}
+
+@media(max-width:680px){
+  .client-picker-columns{display:none}
+  .erp-module-sales .client-picker-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 14px;align-items:start}
+  .client-picker-row .choose{justify-self:end;align-self:center}
+  .sales-quantity-entry{grid-template-columns:1fr}
 }
 
 .erp-module-sales .client-picker-row:hover{
@@ -165,7 +185,8 @@
 @media(max-width:900px){
   .erp-module-sales .grid3.sales-price-grid{grid-template-columns:1fr 1fr}
   .sales-stock-row{grid-template-columns:1fr 1fr}
-  .erp-module-sales .client-picker-row{grid-template-columns:1fr auto}
+  .erp-module-sales .client-picker-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .client-picker-columns{display:none}
   .client-picker-row .secondary{grid-column:1}
 }
 
@@ -174,9 +195,11 @@
   .sales-stock-row{grid-template-columns:1fr}
 
   .erp-module-sales .client-picker-row{grid-template-columns:1fr}
-  .client-picker-row .choose{justify-self:start}
+  .client-picker-row .choose{justify-self:end}
   .erp-module-sales .client-quick-grid{grid-template-columns:1fr}
   .sales-total-preview > div{width:100%;min-width:0}
 }
 
 .client-new-button { margin-top:8px; }
+
+.erp-module-sales .client-picker-dialog .dialog-head h2{font-size:20px;line-height:28px;letter-spacing:-.3px}
