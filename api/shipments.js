@@ -345,10 +345,11 @@ export default async function handler(req,res) {
         patch.last_status = patch.operational_status;
       }
 
-      const protectedFields=['client_id','product','quantity','quantity_unit'];
-      if (protectedFields.some(field=>Object.hasOwn(patch,field)&&String(patch[field]??'')!==String(shipment[field]??''))) {
+      const clientChanged = Object.prototype.hasOwnProperty.call(patch,'client_id') && patch.client_id !== shipment.client_id;
+      const cargoChanged=['product','quantity','quantity_unit'].some(field=>Object.hasOwn(patch,field)&&String(patch[field]??'')!==String(shipment[field]??''));
+      if (cargoChanged||clientChanged) {
         const linked = await Promise.all([
-          supabase('loads',{query:`?select=id&shipment_id=eq.${encodeURIComponent(id)}&status=neq.cancelled&limit=1`}),
+          cargoChanged?supabase('loads',{query:`?select=id&shipment_id=eq.${encodeURIComponent(id)}&status=neq.cancelled&limit=1`}):Promise.resolve([]),
           supabase('direct_shipment_allocations',{query:`?select=id&shipment_id=eq.${encodeURIComponent(id)}&limit=1`})
         ]);
         if(linked.some(rows=>rows?.length))throw new Error('SHIPMENT_CARGO_LINKED');
@@ -356,7 +357,6 @@ export default async function handler(req,res) {
       const note=cleanText(body.note);
       if(note&&note.length>4000)throw new Error('SHIPMENT_NOTE_TOO_LONG');
 
-      const clientChanged = Object.prototype.hasOwnProperty.call(patch,'client_id') && patch.client_id !== shipment.client_id;
       phaseStartedAt=Date.now();
       const updated = await supabase('shipments',{ method:'PATCH',query:`?id=eq.${encodeURIComponent(id)}&select=*`,body:patch });
       timing.update_ms=Date.now()-phaseStartedAt;

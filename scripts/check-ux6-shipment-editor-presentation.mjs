@@ -30,7 +30,7 @@ for(const contract of [
   "action:'assign_shipment'",
   'window.ContainersModule?.syncImporters?.(importerResult.state)',
   'validReference(reference)',
-  "const importerChanged = !linkedCargo(current) && Boolean(byId('editorImporter')) && norm(importerName) !== norm(currentImporterName)",
+  "const importerChanged = !linkedSale(current) && Boolean(byId('editorImporter')) && norm(importerName) !== norm(currentImporterName)",
   'function updateCachedShipment('
 ]) requireText(js,contract);
 

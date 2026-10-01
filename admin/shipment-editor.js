@@ -105,6 +105,10 @@
     return shipment.cargo?.linked || ['direct','warehouse'].includes(shipment.fulfillment?.mode);
   }
 
+  function linkedSale(shipment) {
+    return shipment.cargo?.mode === 'direct' || shipment.fulfillment?.mode === 'direct';
+  }
+
   function cargoHtml(shipment) {
     const format = value => new Intl.NumberFormat('es-US',{maximumFractionDigits:3}).format(Number(value) || 0);
     const items = shipment.cargo?.items || [];
@@ -116,12 +120,13 @@
     const status = shipment.operational_status || shipment.last_status || 'Registrado';
     const importerName = importerNameForShipment(shipment.id);
     const linked = linkedCargo(shipment);
+    const commercialLinked = linkedSale(shipment);
     const referenceHelp = 'Referencia operativa del ERP. Puede ser un número ISO real o una referencia provisional mientras la naviera entrega el número definitivo.';
     return `<div class="shipment-editor" data-owner="shipment-editor.js">
       <header class="shipment-editor-summary"><div><span>Operación marítima</span><strong>${esc(shipment.container_number)}</strong><small>Edita únicamente información confirmada.</small></div><span class="shipment-editor-status">${esc(status)}</span></header>
       <div id="shipmentEditorMessage" role="status" aria-live="polite"></div>
       <section class="shipment-editor-section" aria-labelledby="shipmentEditorAssignmentTitle"><div class="shipment-editor-section-head"><div><h3 id="shipmentEditorAssignmentTitle">Asignación comercial</h3><p>Cliente comprador e importadora cubana vinculados a esta operación.</p></div></div><div class="shipment-editor-grid">
-        ${linked ? `<div class="shipment-editor-card"><b>Cliente</b><span>${esc(shipment.clients?.company || shipment.clients?.name || 'Sin cliente')}</span></div><div class="shipment-editor-card"><b>Importadora cubana</b><span>${esc(importerName || 'Sin definir')}</span></div>` : `<label class="shipment-editor-field" for="editorClient"><span>Cliente</span><select id="editorClient">${clientOptions(shipment.client_id)}</select><small>Si proviene de una venta o cargue, debe coincidir con esa operación.</small></label>
+        ${commercialLinked ? `<div class="shipment-editor-card"><b>Cliente</b><span>${esc(shipment.clients?.company || shipment.clients?.name || 'Sin cliente')}</span></div><div class="shipment-editor-card"><b>Importadora cubana</b><span>${esc(importerName || 'Sin definir')}</span></div>` : `<label class="shipment-editor-field" for="editorClient"><span>Cliente</span><select id="editorClient">${clientOptions(shipment.client_id)}</select><small>Si proviene de una venta o cargue, debe coincidir con esa operación.</small></label>
         <label class="shipment-editor-field" for="editorImporter"><span>Importadora cubana</span><input id="editorImporter" list="editorImporterOptions" value="${esc(importerName)}" placeholder="Ej. Quimimport, Servoven"><datalist id="editorImporterOptions">${importerSuggestions()}</datalist><small>No depende de las importadoras donde esté registrado el cliente y puede corregirse sin cambiar su ficha.</small></label>`}
       </div></section>
       <section class="shipment-editor-section" aria-labelledby="shipmentEditorTransportTitle"><div class="shipment-editor-section-head"><div><h3 id="shipmentEditorTransportTitle">Identificación y transporte</h3><p>Referencias emitidas por la naviera y estado operativo interno.</p></div></div><div class="shipment-editor-grid">
@@ -195,7 +200,8 @@
     };
     const changed = { id: current.id };
     for (const [key, value] of Object.entries(values)) {
-      if (linkedCargo(current) && ['client_id','product','quantity','quantity_unit'].includes(key)) continue;
+      if (linkedCargo(current) && ['product','quantity','quantity_unit'].includes(key)) continue;
+      if (linkedSale(current) && key === 'client_id') continue;
       if (String(value ?? '') !== String(original[key] ?? '')) changed[key] = value;
     }
     const note = String(byId('editorNote')?.value || '').trim();
@@ -246,7 +252,7 @@
     const changes = payload();
     const shipmentChanged = Object.keys(changes).length > 1;
     const importerName = String(byId('editorImporter')?.value || '').trim();
-    const importerChanged = !linkedCargo(current) && Boolean(byId('editorImporter')) && norm(importerName) !== norm(currentImporterName);
+    const importerChanged = !linkedSale(current) && Boolean(byId('editorImporter')) && norm(importerName) !== norm(currentImporterName);
     if (!shipmentChanged && !importerChanged) {
       window.closeModal?.();
       return;
@@ -301,7 +307,7 @@
     if (!shipment) throw new Error('No se encontró el contenedor.');
     current = shipment;
     try {
-      if (!linkedCargo(shipment)) await ensureImporterState();
+      if (!linkedSale(shipment)) await ensureImporterState();
       currentImporterName = importerNameForShipment(shipment.id);
     } catch (error) {
       console.error('SHIPMENT_EDITOR_IMPORTERS_LOAD_FAILED', error);

@@ -83,6 +83,7 @@ assert.equal((await apiRequest('PATCH',{id:'container-a',note:'x'.repeat(4001)})
 assert.equal((await apiRequest('PATCH',{id:'container-a',note:'Observación ejemplo'},{failNote:true})).res.statusCode,500,'failed note must not report success');
 assert.equal((await apiRequest('PATCH',{id:'container-a',product:'Manual permitido'},{unlinked:true})).res.statusCode,200);
 assert.equal((await apiRequest('PATCH',{id:'container-a',quantity:999},{warehouse:true,unlinked:true})).res.statusCode,400);
+assert.equal((await apiRequest('PATCH',{id:'container-a',client_id:'client-warehouse'},{warehouse:true,unlinked:true})).res.statusCode,200,'warehouse client assignment keeps its existing canonical rules');
 const denied=await apiRequest('GET',{}, {denied:true});assert.equal(denied.calls.length,0);
 
 const fixture=logisticsFixture({module:'tracking'});
@@ -127,6 +128,13 @@ window.document.getElementById('editorBooking').value='BOOK-UPDATED';
 await window.document.getElementById('shipmentEditorSave').onclick();
 assert.deepEqual(JSON.parse(JSON.stringify(window.__fixtureCalls.at(-1).body)),{id:row.id,booking_number:'BOOK-UPDATED'});
 assert.equal(window.__fixtureCalls.some(call=>call.path==='/api/importers'&&call.method==='PATCH'),false);
+window.shipments[0].fulfillment={mode:'warehouse',status:'loaded'};
+window.shipments[0].cargo={...window.shipments[0].cargo,mode:'warehouse'};
+await window.ShipmentEditor.open(row.id);
+assert.ok(window.document.getElementById('editorClient'),'warehouse client assignment is retained');
+assert.ok(window.document.getElementById('editorImporter'),'warehouse operative importer remains independent');
+assert.equal(window.document.getElementById('editorProduct'),null,'warehouse cargo stays derived from the load');
+window.document.getElementById('shipmentEditorCancel').onclick();
 assert.deepEqual(errors,[]);
 dom.window.close();
 console.log('Shipment cargo regression passed: exact allocations, split containers, effective corrections, mixed units, operational importer, protected edits, sparse notes and native UI.');

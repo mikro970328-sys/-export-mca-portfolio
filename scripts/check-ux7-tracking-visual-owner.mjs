@@ -152,7 +152,7 @@ for(const text of [
   "request('/api/shipments', { method:'PATCH', body:JSON.stringify(changes) })",
   "action:'assign_shipment'",
   "window.ContainersModule?.syncImporters?.(importerResult.state)",
-  "const importerChanged = !linkedCargo(current) && Boolean(byId('editorImporter')) && norm(importerName) !== norm(currentImporterName)",
+  "const importerChanged = !linkedSale(current) && Boolean(byId('editorImporter')) && norm(importerName) !== norm(currentImporterName)",
   "function updateCachedShipment(",
   "owner:'containers-module.js'"
 ])requireText(editor,text,`editor ${text}`);
