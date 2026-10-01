@@ -148,7 +148,8 @@ test('financial cancellations preserve balances, permissions and history', async
       await sales.locator('.lPallets').fill('10');await expect(sales.locator('.lQty')).toHaveValue('100');await sales.locator('.lTotal').fill('400');
       await mutation('sales-order-ux',()=>sales.locator('#saveOrder').click());await expect(sales.locator('#orderModal')).toBeHidden();
       const so=await f.one('select * from sales_orders where customer_reference=$1',[reference]);
-      await sales.locator(`[data-view-order="${so.id}"]`).click();await sales.locator('[data-ws-action="confirm"]').first().click();
+      await expect(sales.locator('#detailModal')).toBeVisible();await expect(sales.locator('#detailTitle')).toContainText(so.so_number);
+      await sales.locator('[data-ws-action="confirm"]').first().click();
       await mutation('sales',()=>sales.locator('[data-sales-workspace-accept]').click());
       await expect(sales.locator('#detailSubtitle')).toContainText('Confirmada');
       await sales.locator('[data-close="detail"]').click();return so;
@@ -173,7 +174,13 @@ test('financial cancellations preserve balances, permissions and history', async
     evidence.documents={sale:so.so_number,purchase:po.po_number,controlSale:controlSale.so_number,controlPurchase:controlPO.po_number};
     await sales.locator(`[data-view-order="${so.id}"]`).click();
     let advance,invoice,application,refund,bill,payment;
-    const openFinance=async()=>{await sales.locator('#openCustomerFinance').click();await expect(sales.locator('#salesFinanceModal')).toBeVisible();};
+    const openFinanceFor=async(frame)=>{
+      await frame.locator('[data-ws-tab="billing"]').click();
+      await frame.locator('#salesFinanceInline summary').click();
+      await frame.locator('[data-cf-open-inline]').click();
+      await expect(frame.locator('#salesFinanceModal')).toBeVisible();
+    };
+    const openFinance=()=>openFinanceFor(sales);
     const closeFinance=()=>sales.locator('[data-cf-close-main]').click();
     const metric=async(index,value)=>expect(sales.locator('.sales-finance-metric').nth(index).locator('b')).toHaveText(value);
     const savedFinance=async()=>{await expect(sales.locator('#salesFinanceFormModal')).toBeHidden();};
@@ -270,7 +277,7 @@ test('financial cancellations preserve balances, permissions and history', async
     });
     await step('CF-11 read-only operator cannot execute financial reversals',async()=>{
       const readSales=await navigate(b,'sales');await readSales.locator('[data-view="open"]').click();
-      await readSales.locator(`[data-view-order="${so.id}"]`).click();await readSales.locator('#openCustomerFinance').click();
+      await readSales.locator(`[data-view-order="${so.id}"]`).click();await openFinanceFor(readSales);
       await expect(readSales.locator('#salesFinanceBody')).toContainText(advance.advance_number);
       await expect(readSales.locator('[data-cf-register], [data-cf-refund], [data-cf-reverse], [data-cf-apply], [data-cf-reverse-app], [data-cf-reverse-refund]')).toHaveCount(0);
       await denied('customer-advances',{action:'reverse',customer_advance_id:advance.id,reason:'QA denied employee'},/permiso|autorizado/i,403,readToken);

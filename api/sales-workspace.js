@@ -26,9 +26,10 @@ function invoiceCreationCapability(summary,financeWritable){
 async function workspaceAccess(admin){if(admin.role==='master_admin')return{documentsReadable:true,financeReadable:true,financeWritable:true,salesWritable:true};const context=await loadAdminAccessContext(admin.admin_id),permissions=new Set(context.permissions||[]);return{documentsReadable:permissions.has('documents.read'),financeReadable:permissions.has('finance.read'),financeWritable:permissions.has('finance.write'),salesWritable:permissions.has('sales.write')};}
 
 async function workspace(salesOrderId,{documentsReadable=false,financeReadable=false,financeWritable=false,salesCapabilities={actions:{}},invoiceCapabilityMap=new Map(),costCapabilityMap=new Map()}={}){
-  const [summaryRows,orderRows]=await Promise.all([
+  const [summaryRows,orderRows,directRows]=await Promise.all([
     rows('sales_order_workspace_summary',`?select=*&sales_order_id=eq.${salesOrderId}&limit=1`),
-    rows('sales_orders',`?select=id,nationalization_status&id=eq.${salesOrderId}&limit=1`)
+    rows('sales_orders',`?select=id,nationalization_status&id=eq.${salesOrderId}&limit=1`),
+    rows('sales_order_direct_operation_summary',`?select=*&sales_order_id=eq.${salesOrderId}&limit=1`)
   ]);
   const normalizedSummary=normalizeSummary(summaryRows[0]||null);if(!normalizedSummary)return null;
   const authoritativeSummary={...normalizedSummary,nationalization_status:orderRows[0]?.nationalization_status||null};
@@ -53,6 +54,7 @@ async function workspace(salesOrderId,{documentsReadable=false,financeReadable=f
   const history=auditEntityIds.length?await rows('audit_log',`?select=id,action,entity_type,entity_id,details,created_at,actor_admin_id,actor_username&entity_id=in.(${inFilter(auditEntityIds)})&order=created_at.desc&limit=1000`):[];
   return {
     summary:financialSummary(authoritativeSummary,financeReadable),
+    direct_operation:directRows[0]?{...directRows[0],...(!financeReadable?{direct_purchase_amount:undefined,direct_purchase_currency:undefined,direct_purchase_currency_count:undefined}:{})}:null,
     financial_access:{read:financeReadable,write:financeWritable},
     items:mergeItems(itemRows,itemProgress,itemInvoiceProgress),
     logistics,

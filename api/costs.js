@@ -75,7 +75,7 @@ async function bootstrap(admin) {
   const [
     capabilityBundle, charges, allocations, progress, suppliers,
     purchaseOrders, receipts, loads, shipments, operations,
-    salesOrders, salesOrderItems, products,
+    salesOrders, salesOrderItems, products, directOperations, salesSummaries,
     poCosts, wrCosts, loadCogs, postedAllocations,
     loadDirect, shipmentDirect, operationDirect, salesOrderDirect
   ] = await Promise.all([
@@ -89,9 +89,11 @@ async function bootstrap(admin) {
     supabase('loads', { query:'?select=id,load_number,status,shipment_id,warehouse_id&order=created_at.desc&limit=2000' }),
     supabase('shipments', { query:'?select=id,container_number,operation_id&order=id.desc&limit=3000' }),
     supabase('operations', { query:'?select=id,operation_code,status,currency,container_number&order=created_at.desc&limit=3000' }),
-    supabase('sales_orders', { query:'?select=id,so_number,status,currency,client_id,importer_id&order=created_at.desc&limit=3000' }),
+    supabase('sales_orders', { query:'?select=id,so_number,status,currency,client_id,importer_id,client:clients(id,name,company)&order=created_at.desc&limit=3000' }),
     supabase('sales_order_items', { query:'?select=id,sales_order_id,product_id,ordered_quantity,unit,entered_line_total&order=created_at.asc&limit=10000' }),
     supabase('products', { query:'?select=id,sku,name,brand&order=name.asc&limit=5000' }),
+    supabase('sales_order_direct_operation_summary', { query:'?select=*&limit=3000' }),
+    supabase('sales_order_profitability', { query:'?select=*&limit=3000' }),
     supabase('purchase_order_item_merchandise_cost_basis', { query:'?select=*&limit=10000' }),
     supabase('warehouse_receipt_item_merchandise_cost', { query:'?select=*&limit=10000' }),
     supabase('load_merchandise_cogs', { query:'?select=*&limit=5000' }),
@@ -118,6 +120,8 @@ async function bootstrap(admin) {
   return {
     charges:chargesDecorated,
     write_access:capabilityBundle.write_access,
+    order_operations:directOperations || [],
+    order_summaries:salesSummaries || [],
     targets:{
       suppliers:suppliers || [],
       purchase_orders:purchaseOrders || [],

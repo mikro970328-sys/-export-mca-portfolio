@@ -19,7 +19,7 @@
   }
   const state={salesOrderId:null,data:null,busy:false};
   const nativeWorkspace=window.SalesWorkspace||null;
-  const publicErrorEndpoints=new Set(['/api/sales-supply','/api/direct-shipment-dispatch']);
+  const publicErrorEndpoints=new Set(['/api/sales-supply','/api/direct-shipment-dispatch','/api/sales-direct-operation']);
 
   async function request(path,options={}){
     const response=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(token()?{Authorization:`Bearer ${token()}`}:{}) ,...(options.headers||{})}});
@@ -33,6 +33,7 @@
     const message=String(error?.message||'').trim();
     const status=Number(error?.status||0);
     if(error?.code==='DIRECT_DISPATCH_LOCAL_TIME_INVALID')return 'Indica una fecha y hora válida de despacho.';
+    if(error?.code==='DIRECT_OPERATION_LOCAL_INPUT')return message;
     if(message==='Sesión vencida'||status===401)return 'Tu sesión terminó. Inicia sesión nuevamente para continuar.';
     if(status===403)return 'No tienes permiso para completar esta acción.';
     if(publicErrorEndpoints.has(error?.endpoint)&&[400,404,409,422].includes(status)&&message)return message;
@@ -158,7 +159,7 @@
   async function open(salesOrderId=state.salesOrderId){
     if(!salesOrderId)throw new Error('No hay una venta seleccionada.');
     state.salesOrderId=String(salesOrderId);ensureModals();
-    byId('salesSupplyTitle').textContent='Asignar mercancía';
+    byId('salesSupplyTitle').textContent='Compra y contenedor';
     byId('salesSupplySubtitle').textContent='Cargando opciones…';
     byId('salesSupplyBody').innerHTML='<div class="sales-ws-loading">Cargando opciones…</div>';
     byId('salesSupplyMsg').textContent='';
@@ -169,27 +170,25 @@
   function render(){
     if(!state.data)return;
     const order=state.data.order,items=state.data.items||[];
-    byId('salesSupplyTitle').textContent=`${order.so_number} · Asignar mercancía`;
-    byId('salesSupplySubtitle').textContent='Elige si la mercancía sale del almacén o va directo del proveedor al cliente.';
-    byId('salesSupplyBody').innerHTML=`<div class="sales-supply-intro"><div><strong>Direct Ship tiene solo 2 pasos.</strong><div>Paso 1: eliges la compra. Paso 2: registras un contenedor nuevo o usas uno existente. La mercancía no crea WR ni entra al inventario.</div></div><span class="sales-supply-status ${order.status==='confirmed'?'ok':'warn'}">${esc(orderStatus(order.status))}</span></div><div class="sales-supply-items">${items.map(renderItem).join('')}</div>`;
+    byId('salesSupplyTitle').textContent=`${order.so_number} · Compra y contenedor`;
+    byId('salesSupplySubtitle').textContent='Registra la compra y escribe el número de contenedor. Cantidades y pallets vienen de la venta.';
+    const pending=items.some(item=>remainingDirectPurchase(item)>0);
+    byId('salesSupplyBody').innerHTML=`<div class="sales-supply-intro"><div><strong>${pending?'Falta registrar la compra':'Compra vinculada'}</strong><div>${pending?'Para conocer el costo y la deuda al proveedor, registra la compra desde aquí. El PO del almacén es una referencia; no sustituye la compra.':'Revisa el contenedor y el despacho de este pedido.'}</div><div class="sales-supply-actions"><button type="button" class="btn orange" data-supply-action="direct-operation">${pending?'Registrar compra y contenedor':'Completar Direct Ship'}</button></div></div><span class="sales-supply-status ${order.status==='confirmed'?'ok':'warn'}">${esc(orderStatus(order.status))}</span></div><div class="sales-supply-items">${items.map(renderItem).join('')}</div>`;
     bindMainActions();
   }
 
   function renderItem(item){
     const p=item.supply_progress||{},plans=item.supply_plans||[];
     const metrics=[['Vendido',p.ordered_quantity,item.unit],['Stock',p.planned_inventory_quantity,item.unit],['Compra almacén',p.planned_purchase_warehouse_quantity,item.unit],['Direct Ship',p.planned_purchase_direct_quantity,item.unit],['Sin planificar',p.unplanned_quantity,item.unit]];
-    const directOptions=(state.data.purchase_options||[]).filter(row=>row.product_id===item.product_id&&row.purchase_order?.status==='confirmed'&&row.compatible_methods?.includes('purchase_direct')&&purchaseAvailable(row));
     const hasUnplanned=Number(p.unplanned_quantity||0)>0;
-    const directAction=directOptions.length?'quick-direct':'plan-direct';
-    const directLabel=directOptions.length?'Enviar Direct Ship':'Elegir Direct Ship';
     const emptyMessage=hasUnplanned?'Elige Direct Ship, stock existente o compra para almacén.':'Toda la mercancía ya tiene una ruta asignada.';
-    return `<section class="sales-supply-item"><div class="sales-supply-item-head"><div><div class="sales-supply-item-title">${esc(productTitle(item))}</div><div class="sales-supply-item-sub">${fmt(item.ordered_quantity)} ${esc(item.unit)}${Number(item.ordered_pallets||0)>0?` · ${fmt(item.ordered_pallets)} pallets`:''}</div></div><div class="sales-supply-actions">${hasUnplanned?`<button type="button" class="btn orange" data-supply-action="${directAction}" data-item-id="${esc(item.id)}">${directLabel}</button>`:''}<button type="button" class="btn" data-supply-action="new-plan" data-item-id="${esc(item.id)}">Elegir stock o almacén</button></div></div><div class="sales-supply-metrics">${metrics.map(([label,value,unit],index)=>`<div class="sales-supply-metric ${index===4&&Number(value||0)>0?'pending':''}"><span>${esc(label)}</span><b>${fmt(value)} ${esc(unit||'')}</b></div>`).join('')}</div><div class="sales-supply-plan-list">${plans.length?plans.map(plan=>renderPlan(item,plan)).join(''):`<div class="sales-supply-empty">${emptyMessage}</div>`}</div></section>`;
+    return `<section class="sales-supply-item"><div class="sales-supply-item-head"><div><div class="sales-supply-item-title">${esc(productTitle(item))}</div><div class="sales-supply-item-sub">${fmt(item.ordered_quantity)} ${esc(item.unit)}${Number(item.ordered_pallets||0)>0?` · ${fmt(item.ordered_pallets)} pallets`:''}</div></div>${hasUnplanned?`<details><summary>Usar mercancía de almacén</summary><button type="button" class="btn" data-supply-action="new-plan" data-item-id="${esc(item.id)}">Elegir stock o compra para almacén</button></details>`:''}</div><div class="sales-supply-plan-list">${plans.length?plans.map(plan=>renderPlan(item,plan)).join(''):`<div class="sales-supply-empty">${emptyMessage}</div>`}</div></section>`;
   }
 
   function renderPlan(item,plan){
     const allocations=plan.procurement_allocations||[],needsPurchase=plan.supply_method!=='inventory';
     const allocated=allocations.reduce((sum,row)=>sum+Number(row.allocated_sales_quantity||0),0),purchaseComplete=needsPurchase&&allocated>=Number(plan.planned_quantity||0);
-    return `<div class="sales-supply-plan"><div class="sales-supply-plan-head"><div><span class="sales-supply-route ${methodClass(plan.supply_method)}">${esc(methodLabel(plan.supply_method))}</span><div class="sales-supply-detail">Plan: ${fmt(plan.planned_quantity)} ${esc(item.unit)}${Number(plan.planned_pallets||0)>0?` · ${fmt(plan.planned_pallets)} pallets`:''}${plan.warehouse_id?` · ${esc(warehouseName(plan.warehouse_id))}`:''}</div>${plan.notes?`<div class="sales-supply-detail">${esc(plan.notes)}</div>`:''}</div><div class="sales-supply-actions"><button type="button" class="btn" data-supply-action="edit-plan" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Editar</button><button type="button" class="btn" data-supply-action="delete-plan" data-plan-id="${esc(plan.id)}">Eliminar</button>${plan.supply_method==='inventory'?`<button type="button" class="btn orange" data-supply-action="prepare-load">Crear cargue</button>`:''}${needsPurchase&&!purchaseComplete?`<button type="button" class="btn orange" data-supply-action="link-purchase" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Elegir compra</button>`:''}${purchaseComplete?'<span class="sales-supply-status ok">Compra asignada</span>':''}</div></div>${needsPurchase?`<div class="sales-supply-proc-list">${allocations.length?allocations.map(allocation=>renderProcurement(item,plan,allocation)).join(''):'<div class="sales-supply-empty">Paso 1 pendiente: elige la compra que abastecerá esta venta.</div>'}</div>`:''}</div>`;
+    return `<div class="sales-supply-plan"><div class="sales-supply-plan-head"><div><span class="sales-supply-route ${methodClass(plan.supply_method)}">${esc(methodLabel(plan.supply_method))}</span><div class="sales-supply-detail">Plan: ${fmt(plan.planned_quantity)} ${esc(item.unit)}${Number(plan.planned_pallets||0)>0?` · ${fmt(plan.planned_pallets)} pallets`:''}${plan.warehouse_id?` · ${esc(warehouseName(plan.warehouse_id))}`:''}</div>${plan.notes?`<div class="sales-supply-detail">${esc(plan.notes)}</div>`:''}</div><div class="sales-supply-actions"><details><summary>Ruta y ajustes</summary><button type="button" class="btn" data-supply-action="edit-plan" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Editar</button><button type="button" class="btn" data-supply-action="delete-plan" data-plan-id="${esc(plan.id)}">Eliminar</button>${plan.supply_method==='inventory'?`<button type="button" class="btn orange" data-supply-action="prepare-load">Crear cargue</button>`:''}${needsPurchase&&!purchaseComplete?`<button type="button" class="btn orange" data-supply-action="link-purchase" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Elegir compra</button>`:''}${purchaseComplete?'<span class="sales-supply-status ok">Compra asignada</span>':''}</details></div></div>${needsPurchase?`<div class="sales-supply-proc-list">${allocations.length?allocations.map(allocation=>renderProcurement(item,plan,allocation)).join(''):'<div class="sales-supply-empty">Falta registrar la compra del proveedor para esta venta.</div>'}</div>`:''}</div>`;
   }
 
   function renderProcurement(item,plan,allocation){
@@ -197,13 +196,13 @@
     const salesAssigned=direct.reduce((sum,row)=>sum+Number(row.allocated_sales_quantity||0),0);
     const purchaseAssigned=direct.reduce((sum,row)=>sum+Number(row.allocated_purchase_quantity||0),0);
     const hasDirectRemaining=Number(allocation.allocated_sales_quantity||0)-salesAssigned>0&&Number(allocation.allocated_purchase_quantity||0)-purchaseAssigned>0;
-    const containerActions=plan.supply_method==='purchase_direct'&&hasDirectRemaining?`<button type="button" class="btn orange" data-supply-action="new-direct" data-proc-id="${esc(allocation.id)}" data-item-id="${esc(item.id)}">Registrar contenedor nuevo</button><button type="button" class="btn" data-supply-action="link-direct" data-proc-id="${esc(allocation.id)}" data-item-id="${esc(item.id)}">Usar contenedor existente</button>`:'';
+    const containerActions=plan.supply_method==='purchase_direct'&&hasDirectRemaining?`<button type="button" class="btn orange" data-supply-action="new-direct" data-proc-id="${esc(allocation.id)}" data-item-id="${esc(item.id)}">Poner número de contenedor</button>`:'';
     const order=state.data?.order||{},client=order.client||{},saleAssignment=`Asignada a ${order.so_number||'esta venta'} · ${client.name||client.company||client.mipyme_name||'Cliente'}`;
     const quantityDetail=plan.supply_method==='purchase_direct'
       ?`${esc(saleAssignment)}: ${fmt(allocation.allocated_sales_quantity)} ${esc(item.unit)} · ${esc(orderStatus(po.status))}`
       :`Venta: ${fmt(allocation.allocated_sales_quantity)} ${esc(item.unit)} · Compra: ${fmt(allocation.allocated_purchase_quantity)} ${esc(poi.unit||'unidad de compra')} · ${esc(orderStatus(po.status))}`;
     const editAction=plan.supply_method==='purchase_direct'?'':`<button type="button" class="btn" data-supply-action="edit-purchase" data-proc-id="${esc(allocation.id)}" data-plan-id="${esc(plan.id)}" data-item-id="${esc(item.id)}">Cambiar cantidades</button>`;
-    return `<div class="sales-supply-proc"><div class="sales-supply-proc-head"><div><div class="sales-supply-proc-title">${esc(po.po_number||'PO')} · ${esc(supplier.name||supplier.legal_name||'Proveedor')}</div><div class="sales-supply-detail">${quantityDetail}</div></div><div class="sales-supply-actions"><button type="button" class="btn" data-supply-action="open-po" data-po-id="${esc(po.id||poi.purchase_order_id||'')}">Abrir compra</button>${editAction}<button type="button" class="btn" data-supply-action="unlink-purchase" data-proc-id="${esc(allocation.id)}">Quitar compra</button>${containerActions}</div></div>${plan.supply_method==='purchase_direct'?`<div class="sales-supply-direct-list">${direct.length?direct.map(row=>renderDirect(item,allocation,row)).join(''):'<div class="sales-supply-empty"><b>Paso 1 listo.</b> Paso 2: registra un contenedor nuevo o usa uno existente.</div>'}</div>`:''}</div>`;
+    return `<div class="sales-supply-proc"><div class="sales-supply-proc-head"><div><div class="sales-supply-proc-title">${esc(po.po_number||'PO')} · ${esc(supplier.name||supplier.legal_name||'Proveedor')}</div><div class="sales-supply-detail">${quantityDetail}${po.supplier_reference?` · PO almacén/proveedor: ${esc(po.supplier_reference)}`:''}</div></div><div class="sales-supply-actions">${containerActions}<details><summary>Más opciones</summary><button type="button" class="btn" data-supply-action="open-po" data-po-id="${esc(po.id||poi.purchase_order_id||'')}">Abrir compra</button>${editAction}<button type="button" class="btn" data-supply-action="unlink-purchase" data-proc-id="${esc(allocation.id)}">Quitar compra</button></details></div></div>${plan.supply_method==='purchase_direct'?`<div class="sales-supply-direct-list">${direct.length?direct.map(row=>renderDirect(item,allocation,row)).join(''):'<div class="sales-supply-empty">Compra lista · falta el número de contenedor.</div>'}</div>`:''}</div>`;
   }
 
   function renderDirect(item,allocation,row){
@@ -222,6 +221,52 @@
   function findProcurement(id){for(const item of state.data?.items||[])for(const plan of item.supply_plans||[]){const allocation=(plan.procurement_allocations||[]).find(row=>row.id===id);if(allocation)return {item,plan,allocation};}return null;}
   function findDirect(id){for(const item of state.data?.items||[])for(const plan of item.supply_plans||[])for(const allocation of plan.procurement_allocations||[]){const direct=(allocation.direct_shipments||[]).find(row=>String(row.id)===String(id));if(direct)return {item,plan,allocation,direct};}return null;}
 
+  function remainingDirectPurchase(item){
+    const plans=item.supply_plans||[],warehouse=plans.filter(plan=>plan.supply_method!=='purchase_direct').reduce((sum,plan)=>sum+Number(plan.planned_quantity||0),0);
+    const bought=plans.filter(plan=>plan.supply_method==='purchase_direct').flatMap(plan=>plan.procurement_allocations||[]).filter(row=>row.purchase_order?.status!=='cancelled').reduce((sum,row)=>sum+Number(row.allocated_sales_quantity||0),0);
+    return Math.max(0,Number(item.ordered_quantity||0)-warehouse-bought);
+  }
+
+  async function openOperation(preselectedPurchaseId=null,salesOrderId=state.salesOrderId){
+    if(!salesOrderId)return;
+    state.salesOrderId=String(salesOrderId);
+    const [access]=await Promise.all([request('/api/sales-direct-operation'),fetchSupply()]);
+    const items=state.data.items||[],pending=items.filter(item=>remainingDirectPurchase(item)>0),order=state.data.order;
+    const linked=items.flatMap(item=>(item.supply_plans||[]).filter(plan=>plan.supply_method==='purchase_direct').flatMap(plan=>plan.procurement_allocations||[]));
+    const options=new Map();
+    for(const row of state.data.purchase_options||[])if(row.purchase_order?.status==='confirmed'&&row.compatible_methods?.includes('purchase_direct')&&purchaseAvailable(row))options.set(row.purchase_order.id,row.purchase_order);
+    for(const row of linked)if(row.purchase_order?.id)options.set(row.purchase_order.id,row.purchase_order);
+    const selected=preselectedPurchaseId||(!pending.length&&options.size===1?[...options.keys()][0]:null);
+    const poOptions=[...options.values()].map(po=>`<option value="${esc(po.id)}">${esc(po.po_number)} · ${esc(po.supplier?.name||po.supplier?.legal_name||'Proveedor')}${po.supplier_reference?` · ${esc(po.supplier_reference)}`:''}</option>`).join('');
+    const noteReference=items.flatMap(item=>item.supply_plans||[]).map(plan=>String(plan.notes||'').trim()).find(note=>/^PO[\s#-]*[A-Z0-9-]+$/i.test(note))||'';
+    let requestId=crypto.randomUUID(),attemptedPayload=null;
+    openForm({title:`${order.so_number} · Direct Ship`,subtitle:'Compra, PO del proveedor y contenedor en un solo formulario.',saveLabel:'Guardar compra y contenedor',canSave:access.write_access===true,
+      html:`<div class="sales-supply-form">
+      <div class="full"><label for="directPurchaseMode">Compra de mercancía</label><select id="directPurchaseMode"><option value="new" ${pending.length?'':'disabled'}>Registrar compra desde esta venta</option><option value="existing" ${options.size?'':'disabled'}>Usar una compra ya registrada</option></select></div>
+      <div id="directNewPurchase" class="full"><div class="sales-supply-form"><div><label for="directSupplier">Proveedor *</label><select id="directSupplier"><option value="">Seleccionar proveedor</option>${(access.suppliers||[]).map(s=>`<option value="${esc(s.id)}">${esc(s.legal_name||s.name)}</option>`).join('')}</select></div><div><label for="directSupplierReference">PO del proveedor / almacén</label><input id="directSupplierReference" maxlength="250" value="${esc(noteReference)}" placeholder="Ej.: PO12567"></div><div class="full"><h3>Mercancía a comprar · ${esc(order.currency)}</h3>${pending.map(item=>`<div class="sales-ws-row"><b>${esc(productTitle(item))}</b><div class="sales-supply-detail">${fmt(remainingDirectPurchase(item))} ${esc(item.unit)} · ${fmt(Number(item.ordered_quantity)>0?Number(item.ordered_pallets||0)*remainingDirectPurchase(item)/Number(item.ordered_quantity):0)} pallets · tomados de la venta</div><label for="direct-cost-${esc(item.id)}">Costo total de esta mercancía *</label><input id="direct-cost-${esc(item.id)}" data-direct-cost="${esc(item.id)}" type="number" min="0" step="0.01" placeholder="Monto que cobra el proveedor"></div>`).join('')}</div></div></div>
+      <div id="directExistingPurchase" class="full hidden"><label for="directPurchaseOrder">Compra registrada *</label><select id="directPurchaseOrder"><option value="">Seleccionar compra confirmada</option>${poOptions}</select><div class="sales-supply-helper">Se usa la cantidad pendiente y sus pallets. Si la compra ya está vinculada, solo completas el contenedor.</div></div>
+      <div class="full"><label for="supplyNewContainer">Número de contenedor</label><input id="supplyNewContainer" maxlength="40" ${access.logistics_write?'':'disabled'} placeholder="Ej.: ABCD1234567"><div class="sales-supply-helper">Puedes dejarlo pendiente si aún no lo tienes. El número queda vinculado a esta venta en Tracking.</div></div>
+      <details class="full"><summary>Más datos del envío</summary><div class="sales-supply-form"><div><label for="supplyNewCarrier">Naviera</label><input id="supplyNewCarrier"></div><div><label for="supplyNewBooking">Booking</label><input id="supplyNewBooking"></div><div><label for="supplyNewBol">B/L</label><input id="supplyNewBol"></div><div><label for="supplyNewDeparture">Fecha de salida planificada</label><input id="supplyNewDeparture" type="date"></div></div></details>
+      ${access.finance_write?'<details class="full"><summary>Factura del proveedor, si ya la tienes</summary><label for="directSupplierInvoice">Número de factura del proveedor</label><input id="directSupplierInvoice" maxlength="200"><div class="sales-supply-helper">Crea la deuda en Cuentas por pagar por el importe de la compra. Queda pendiente de pago. Si aún no tienes la factura, la compra aparecerá como «Por facturar».</div></details>':''}
+      <div class="full sales-supply-helper">${order.status==='draft'?'Al guardar se confirma la venta y se registra la compra. ':''}El cobro al cliente y el pago al proveedor se registran por separado. Los gastos se añaden en «Gastos y ganancia» de este pedido.</div></div>`,
+      onOpen:()=>{byId('directPurchaseMode').value=selected||!pending.length?'existing':'new';byId('directPurchaseOrder').value=selected||'';const sync=()=>{const isNew=byId('directPurchaseMode').value==='new';byId('directNewPurchase').classList.toggle('hidden',!isNew);byId('directExistingPurchase').classList.toggle('hidden',isNew);byId('salesSupplyFormSave').textContent=isNew?'Guardar compra y contenedor':'Guardar operación';};byId('directPurchaseMode').onchange=sync;sync();},
+      onSave:async()=>{
+        const isNew=byId('directPurchaseMode').value==='new',purchaseId=isNew?null:byId('directPurchaseOrder').value;
+        const localError=message=>{const e=new Error(message);e.code='DIRECT_OPERATION_LOCAL_INPUT';throw e;};
+        if(isNew&&!byId('directSupplier').value)localError('Selecciona el proveedor de la mercancía.');
+        if(!isNew&&!purchaseId)localError('Selecciona una compra confirmada.');
+        const lines=isNew?[...document.querySelectorAll('[data-direct-cost]')].map(input=>({sales_order_item_id:input.dataset.directCost,total:input.value})):[];
+        if(lines.some(line=>!/^\d+(?:\.\d{1,2})?$/.test(line.total)))localError('Indica el costo total de cada producto pendiente de comprar.');
+        const payload={sales_order_id:state.salesOrderId,purchase_order_id:purchaseId,supplier_id:isNew?byId('directSupplier').value:null,supplier_reference:isNew?byId('directSupplierReference').value:'',lines,container_number:byId('supplyNewContainer').value,carrier:byId('supplyNewCarrier').value,booking_number:byId('supplyNewBooking').value,bol_number:byId('supplyNewBol').value,departure_date:byId('supplyNewDeparture').value||null,supplier_invoice_number:byId('directSupplierInvoice')?.value||''};
+        const serialized=JSON.stringify(payload);
+        if(attemptedPayload&&attemptedPayload!==serialized)localError('No se confirmó el intento anterior. Reintenta con los mismos datos o actualiza la venta antes de cambiarlos.');
+        attemptedPayload=serialized;
+        try{const result=await request('/api/sales-direct-operation',{method:'POST',body:JSON.stringify({...payload,request_id:requestId})});if(!result.operation?.purchase_order_id)throw new Error('DIRECT_OPERATION_CONFIRMATION_MISSING');}
+        catch(error){if([400,403,404,409,422].includes(error.status)){attemptedPayload=null;requestId=crypto.randomUUID();}throw error;}
+      }
+    });
+  }
+
   function bindMainActions(){
     byId('salesSupplyBody')?.querySelectorAll('[data-supply-action]').forEach(button=>button.onclick=()=>runAction(button.dataset));
   }
@@ -229,18 +274,18 @@
   function runAction(data){
     const action=data.supplyAction;
     try{
+      if(action==='direct-operation')return openOperation().catch(error=>showMessage(safeSupplyMessage(error)));
       if(action==='new-plan')return editPlan(data.itemId,null);
       if(action==='plan-direct')return editPlan(data.itemId,null,'purchase_direct');
       if(action==='quick-direct')return quickDirect(data.itemId);
       if(action==='edit-plan'){const found=findPlan(data.planId);return editPlan(data.itemId,found?.plan||null);}
       if(action==='delete-plan')return removePlan(data.planId);
       if(action==='prepare-load')return prepareLoad();
-      if(action==='link-purchase'){const found=findPlan(data.planId);return editPurchase(found?.item,found?.plan,null);}
+      if(action==='link-purchase'){const found=findPlan(data.planId);return found?.plan?.supply_method==='purchase_direct'?openOperation().catch(error=>showMessage(safeSupplyMessage(error))):editPurchase(found?.item,found?.plan,null);}
       if(action==='edit-purchase'){const found=findProcurement(data.procId);return editPurchase(found?.item,found?.plan,found?.allocation);}
       if(action==='unlink-purchase')return unlinkPurchase(data.procId);
       if(action==='open-po')return nav()?.openPurchase?.({purchaseOrderId:data.poId});
-      if(action==='link-direct'){const found=findProcurement(data.procId);return linkDirect(found?.item,found?.allocation,null);}
-      if(action==='new-direct'){const found=findProcurement(data.procId);return createDirect(found?.item,found?.allocation);}
+      if(action==='new-direct'){const found=findProcurement(data.procId);return openOperation(found?.allocation?.purchase_order_item?.purchase_order_id||found?.allocation?.purchase_order?.id).catch(error=>showMessage(safeSupplyMessage(error)));}
       if(action==='open-tracking')return nav()?.openTracking?.({shipmentId:data.shipmentId});
       if(action==='dispatch-direct')return dispatchDirect(data.shipmentId);
       if(action==='unlink-direct')return unlinkDirect(data.directId);
@@ -270,7 +315,7 @@
     const item=findItem(itemId);if(!item)return;
     const progress=item.supply_progress||{},matching=(state.data.purchase_options||[]).filter(row=>row.product_id===item.product_id&&row.purchase_order?.status==='confirmed'&&row.compatible_methods?.includes('purchase_direct')),available=matching.filter(purchaseAvailable);
     const options=available.map(row=>`<option value="${esc(row.id)}">${esc(purchaseOptionText(row))}</option>`).join('');
-    openForm({title:'Asignar Direct Ship',subtitle:`${productTitle(item)} · Pendiente ${fmt(progress.unplanned_quantity||0)} ${esc(item.unit)}`,saveLabel:'Asignar mercancía',canSave:available.length>0,html:`<div class="sales-supply-form"><div class="full"><label>Compra que enviará el proveedor *</label><select id="quickDirectPo" ${available.length?'':'disabled'}><option value="">${available.length?'Seleccionar compra':'No hay compras con saldo disponible'}</option>${options}</select></div><div id="quickDirectSummary" class="full sales-supply-helper">${available.length?'Elige una compra confirmada. El ERP asignará automáticamente el saldo disponible y sus pallets.':'Todas las compras compatibles ya están asignadas a otras ventas.'}</div>${purchaseUsageNotice(matching)}<div class="full sales-supply-helper">Después podrás registrar un contenedor nuevo o usar uno existente.</div></div>`,onOpen:()=>{const select=byId('quickDirectPo'),sync=()=>{const selected=available.find(row=>row.id===select.value);byId('quickDirectSummary').textContent=selected?`${selected.purchase_order?.po_number||'Compra'} · Saldo ${fmt(purchaseRemaining(selected))} ${selected.unit}. Se usará automáticamente el saldo compatible con la venta.`:'Elige una compra confirmada. El ERP asignará automáticamente el saldo disponible y sus pallets.';};select.onchange=sync;sync();},onSave:()=>request('/api/sales-supply',{method:'POST',body:JSON.stringify({action:'quick_direct',sales_order_item_id:item.id,purchase_order_item_id:byId('quickDirectPo').value})})});
+    openForm({title:'Asignar Direct Ship',subtitle:`${productTitle(item)} · Pendiente ${fmt(progress.unplanned_quantity||0)} ${esc(item.unit)}`,saveLabel:'Asignar mercancía',canSave:available.length>0,html:`<div class="sales-supply-form"><div class="full"><label>Compra que enviará el proveedor *</label><select id="quickDirectPo" ${available.length?'':'disabled'}><option value="">${available.length?'Seleccionar compra':'No hay compras con saldo disponible'}</option>${options}</select></div><div id="quickDirectSummary" class="full sales-supply-helper">${available.length?'Elige una compra confirmada. El ERP asignará automáticamente el saldo disponible y sus pallets.':'Todas las compras compatibles ya están asignadas a otras ventas.'}</div>${purchaseUsageNotice(matching)}<div class="full sales-supply-helper">Completa el número de contenedor en Compra y contenedor.</div></div>`,onOpen:()=>{const select=byId('quickDirectPo'),sync=()=>{const selected=available.find(row=>row.id===select.value);byId('quickDirectSummary').textContent=selected?`${selected.purchase_order?.po_number||'Compra'} · Saldo ${fmt(purchaseRemaining(selected))} ${selected.unit}. Se usará automáticamente el saldo compatible con la venta.`:'Elige una compra confirmada. El ERP asignará automáticamente el saldo disponible y sus pallets.';};select.onchange=sync;sync();},onSave:()=>request('/api/sales-supply',{method:'POST',body:JSON.stringify({action:'quick_direct',sales_order_item_id:item.id,purchase_order_item_id:byId('quickDirectPo').value})})});
   }
 
   function editPurchase(item,plan,allocation){
@@ -289,28 +334,6 @@
   }
 
   function unlinkPurchase(procurementId){askAction({title:'Desvincular Purchase Order',message:'Se quitará la relación entre esta venta y la línea de compra. Un contenedor Direct Ship vinculado debe retirarse primero.',acceptLabel:'Desvincular',onAccept:()=>request('/api/sales-supply',{method:'POST',body:JSON.stringify({action:'unlink_purchase',procurement_allocation_id:procurementId})})});}
-
-  function linkDirect(item,allocation,preselectedShipmentId){
-    if(!item||!allocation)return;
-    const options=(state.data.direct_shipment_options||[]).map(row=>`<option value="${esc(row.id)}">${esc(row.container_number)} · ${esc(row.carrier||'Naviera pendiente')} · ${esc(row.operational_status||'Registrado')}</option>`).join('');
-    openForm({title:'Paso 2 de 2 · Usar contenedor existente',subtitle:productTitle(item),saveLabel:'Usar este contenedor',html:`<div class="sales-supply-form"><div class="full"><label>Contenedor *</label><select id="supplyDirectShipment"><option value="">Seleccionar</option>${options}</select></div><div class="full sales-supply-helper">El ERP asignará automáticamente a este contenedor toda la mercancía pendiente de la compra elegida.</div></div>`,onOpen:()=>{if(preselectedShipmentId)byId('supplyDirectShipment').value=preselectedShipmentId;},onSave:()=>request('/api/sales-supply',{method:'POST',body:JSON.stringify({action:'quick_link_direct_shipment',procurement_allocation_id:allocation.id,shipment_id:byId('supplyDirectShipment').value})})});
-  }
-
-  function createDirect(item,allocation){
-    if(!item||!allocation)return;
-    openForm({
-      title:'Paso 2 de 2 · Registrar contenedor nuevo',
-      subtitle:'Se crea en Tracking y queda vinculado automáticamente a esta compra y venta.',
-      saveLabel:'Registrar y usar',
-      html:`<div class="sales-supply-form"><div><label>Contenedor / referencia *</label><input id="supplyNewContainer" maxlength="40"></div><div><label>Naviera</label><input id="supplyNewCarrier"></div><div><label>Booking</label><input id="supplyNewBooking"></div><div><label>B/L</label><input id="supplyNewBol"></div><div><label>Fecha de salida planificada</label><input id="supplyNewDeparture" type="date"></div><div class="full sales-supply-helper">Al guardar aparecerá directamente en Tracking. El despacho real seguirá siendo una acción separada.</div></div>`,
-      onSave:async()=>{
-        const result=await request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({action:'create',sales_order_id:state.salesOrderId,container_number:byId('supplyNewContainer').value,carrier:byId('supplyNewCarrier').value,booking_number:byId('supplyNewBooking').value,bol_number:byId('supplyNewBol').value,departure_date:byId('supplyNewDeparture').value})});
-        await request('/api/sales-supply',{method:'POST',body:JSON.stringify({
-          action:'quick_link_direct_shipment',procurement_allocation_id:allocation.id,shipment_id:result.shipment?.id
-        })});
-      }
-    });
-  }
 
   function dispatchDirect(shipmentId){
     openForm({title:'Marcar Direct Ship como despachado',subtitle:'Este evento cuenta como despacho físico para cumplimiento de la venta.',saveLabel:'Registrar despacho',html:`<div class="sales-supply-form"><div><label>Fecha y hora real *</label><input id="supplyDispatchAt" type="datetime-local" value="${esc(localDateTime())}"></div><div class="full"><label>Nota</label><textarea id="supplyDispatchNotes"></textarea><div class="sales-supply-helper">Después del despacho la asignación original queda protegida. Si descubres una diferencia física, usa Corregir cantidades para conservar el historial.</div></div></div>`,onSave:()=>request('/api/direct-shipment-dispatch',{method:'POST',body:JSON.stringify({action:'dispatch',shipment_id:shipmentId,dispatched_at:localDispatchInstant(byId('supplyDispatchAt').value),notes:byId('supplyDispatchNotes').value})})});
@@ -369,7 +392,7 @@
     content.appendChild(host);
   }
 
-  function updateHeaderButton(){const button=byId('openSupplyWorkspace');if(!button)return;button.classList.toggle('hidden',!state.salesOrderId);button.onclick=()=>open(state.salesOrderId);}
+  function updateHeaderButton(){const button=byId('openSupplyWorkspace');if(!button)return;button.classList.add('hidden');button.onclick=()=>open(state.salesOrderId);}
 
   if(nativeWorkspace){
     window.SalesWorkspace=Object.freeze({...nativeWorkspace,
@@ -387,5 +410,5 @@
   });
 
   updateHeaderButton();
-  window.SalesSupplyWorkspace=Object.freeze({open,refresh:refreshAll,owner:'sales-supply-workspace.js'});
+  window.SalesSupplyWorkspace=Object.freeze({open,openOperation,refresh:refreshAll,owner:'sales-supply-workspace.js'});
 })();

@@ -26,7 +26,7 @@ for(const text of [
   'Recibir en mi almacén',
   'Direct Ship al cliente (sin WR)',
   'id="oDestinationHelp"',
-  '/admin/purchases.js?v=20260926-relations2',
+  '/admin/purchases.js?v=20261001-direct-operation1',
   '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1'
 ])requireText(purchasesHtml,text,`Compras ${text}`);
 
@@ -34,7 +34,7 @@ for(const text of [
   'function isDirectPurchase(order)',
   'function setPurchaseDestination(mode)',
   "warehouse_id:direct?null:$('oWarehouse').value",
-  'Ventas → Asignar mercancía',
+  'Ventas → Compra y contenedor',
   'Direct Ship · sin WR',
   'No entra a inventario',
   'No se creará un WR.',
@@ -62,8 +62,8 @@ for(const text of ['sales.write','rpc/create_direct_sale_from_purchase_order','p
 for(const text of ['create_direct_sale_from_purchase_order','assign_sales_supply_plan_direct_purchase','DIRECT_SALE_PO_ALREADY_LINKED','grant execute on function public.create_direct_sale_from_purchase_order','revoke all on function public.create_direct_sale_from_purchase_order'])requireText(directSaleMigration,text,`operación atómica compra a venta ${text}`);
 
 for(const text of [
-  'Asignar mercancía',
-  '/admin/sales.js?v=20261001-sales-flow1',
+  'Compra y contenedor',
+  '/admin/sales.js?v=20261001-direct-operation1',
   '/admin/embedded-auto-refresh.js?v=20260928-lazy-workspaces1'
 ])requireText(salesHtml,text,`ruta visible desde Ventas ${text}`);
 for(const text of [

@@ -65,7 +65,7 @@ async function loadSupply(salesOrderId){
   const clientShipmentIds=clientShipments.map(row=>row.id);
   const [procurements,pos,activeLoads,purchaseUsageRows]=await Promise.all([
     planIds.length?supabase('sales_procurement_allocations',{query:`?select=*&supply_plan_line_id=${inFilter(planIds)}&order=created_at.asc&limit=5000`}):[],
-    poIds.length?supabase('purchase_orders',{query:`?select=id,po_number,supplier_id,warehouse_id,status,order_date,expected_at,currency&id=${inFilter(poIds)}&limit=5000`}):[],
+    poIds.length?supabase('purchase_orders',{query:`?select=id,po_number,supplier_id,warehouse_id,status,order_date,expected_at,currency,supplier_reference&id=${inFilter(poIds)}&limit=5000`}):[],
     clientShipmentIds.length?supabase('loads',{query:`?select=id,shipment_id,status&shipment_id=${inFilter(clientShipmentIds)}&status=neq.cancelled&limit=5000`}):[],
     poItems.length?supabase('sales_procurement_allocations',{query:`?select=id,purchase_order_item_id,allocated_purchase_quantity,allocated_purchase_pallets,supply_plan_line:sales_supply_plan_lines(id,sales_order_item:sales_order_items(id,sales_order:sales_orders(id,so_number,status,client_id,client:clients(id,name,company,mipyme_name))))&purchase_order_item_id=${inFilter(poItems.map(row=>row.id))}&limit=5000`}):[]
   ]);

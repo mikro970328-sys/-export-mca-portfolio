@@ -318,11 +318,18 @@
     if (!rows.length) {
       $('list').innerHTML = emptyState(
         total ? 'Sin resultados' : state.entity === 'bills' ? 'Aún no hay facturas de proveedor' : 'Aún no hay pagos de proveedor',
-        total ? 'Ajusta la búsqueda o cambia el filtro para consultar otros registros.' : state.entity === 'bills' ? 'Las obligaciones creadas desde Compras aparecerán aquí.' : 'Los pagos y anticipos registrados aparecerán aquí.'
+        total ? 'Ajusta la búsqueda o cambia el filtro para consultar otros registros.' : state.entity === 'bills' ? 'Registra la compra y después la factura del proveedor. Las compras sin factura se muestran abajo.' : 'Los pagos y anticipos registrados aparecerán aquí.'
       );
       return;
     }
     $('list').innerHTML = rows.map(state.entity === 'bills' ? billRow : paymentRow).join('');
+  }
+
+  function renderPendingPurchases(){
+    const host=$('pendingPurchases');if(!host)return;
+    const orders=state.purchaseOrders.filter(order=>order.status!=='cancelled'&&(order.items||[]).some(item=>num(item.ap_progress?.available_to_bill_quantity)>0));
+    host.classList.toggle('hidden',state.entity!=='bills'||!orders.length);
+    host.innerHTML=`<header class="payables-section-head"><div><h2>Compras por facturar</h2><p>Compra registrada, factura del proveedor pendiente. El cobro al cliente no salda esta compra.</p></div><span class="payables-result-count">${orders.length} compra${orders.length===1?'':'s'}</span></header><div class="payables-list">${orders.map(order=>{const amount=(order.items||[]).reduce((sum,item)=>sum+(item.entered_line_total!=null?num(item.entered_line_total)*num(item.ap_progress?.available_to_bill_quantity)/num(item.ordered_quantity):num(item.unit_cost)*num(item.ap_progress?.available_to_bill_quantity)),0);return `<article class="payable-record"><div class="payable-record-main"><b>${esc(order.po_number)} · ${esc(supplierName(order))}</b><p class="small">PO proveedor / almacén: ${esc(order.supplier_reference||'Sin referencia')} · Mercancía pendiente de facturar: ${esc(money(amount,order.currency))}</p>${state.writeAccess?`<button class="btn orange" type="button" data-pending-purchase="${esc(order.id)}">Registrar factura del proveedor</button>`:''}</div></article>`;}).join('')}</div>`;
   }
 
   function render() {
@@ -334,6 +341,7 @@
       button.setAttribute('aria-pressed', String(active));
     });
     renderList();
+    renderPendingPurchases();
   }
 
   function modalId(name) {
@@ -490,8 +498,8 @@
       const label = product.sku ? `${product.sku} · ${product.name || ''}` : (product.name || 'Producto');
       const quantity = own ? num(own.billed_quantity) : available;
       const cost = own ? num(own.unit_cost) : num(item.unit_cost);
-      const pricingMode = own?.pricing_mode === 'total' ? 'total' : 'unit';
-      const lineTotal = own ? num(own.line_total) : Number(billPreviewCents(quantity, cost)) / 100;
+      const pricingMode = own ? (own.pricing_mode === 'total' ? 'total' : 'unit') : item.entered_line_total != null ? 'total' : 'unit';
+      const lineTotal = own ? num(own.line_total) : item.entered_line_total != null ? Math.round(num(item.entered_line_total) * quantity / num(item.ordered_quantity) * 100) / 100 : Number(billPreviewCents(quantity, cost)) / 100;
       const hint = pricingMode === 'total' ? 'Importe exacto: total facturado' : 'Importe calculado: cantidad × costo unitario';
       return `<article class="payable-line" data-bill-line="${esc(item.id)}" data-pricing-mode="${pricingMode}">
         <div class="payable-line-title">${esc(label)}</div>
@@ -1112,6 +1120,9 @@
       renderList();
     });
     document.addEventListener('click', event => {
+      const pending=event.target.closest?.('[data-pending-purchase]');
+      if(pending){if(!openBillCreate())return;$('bPO').value=pending.dataset.pendingPurchase;renderBillLines();return;}
+
       const target = event.target instanceof Element ? event.target : null;
       if (!target) return;
       const close = target.closest('[data-close]');

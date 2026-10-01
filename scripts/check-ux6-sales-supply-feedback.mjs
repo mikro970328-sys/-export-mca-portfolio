@@ -23,7 +23,7 @@ const directApi=read(files.directApi);
 const workflow=read(files.workflow);
 
 for(const text of [
-  "const publicErrorEndpoints=new Set(['/api/sales-supply','/api/direct-shipment-dispatch'])",
+  "const publicErrorEndpoints=new Set(['/api/sales-supply','/api/direct-shipment-dispatch','/api/sales-direct-operation'])",
   'function safeSupplyMessage(',
   'SALES_SUPPLY_WORKSPACE_FAILED',
   'error.status=response.status',
@@ -59,7 +59,7 @@ for(const text of [
 ])requireText(css,text,`presentación dedicada ${text}`);
 
 requireText(html,'/admin/sales-supply-workspace.css?v=20260902-ux7sales1','revisión del CSS de Abastecimiento');
-requireText(html,'/admin/sales-supply-workspace.js?v=20261001-sales-flow1','revisión del JS de Asignar mercancía');
+requireText(html,'/admin/sales-supply-workspace.js?v=20261001-direct-operation1','revisión del JS de Asignar mercancía');
 
 for(const text of [
   "const errors={",

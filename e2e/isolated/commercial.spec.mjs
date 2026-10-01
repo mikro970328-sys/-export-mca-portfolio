@@ -256,7 +256,8 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await mutation(a,'sales-order-ux',()=>sales.locator('#saveOrder').click());
       await expect(sales.locator('#orderModal')).toBeHidden();
       so=await f.one('select * from sales_orders');evidence.documents.sale=so.so_number;
-      await sales.locator(`[data-view-order="${so.id}"]`).click();
+      await expect(sales.locator('#detailModal')).toBeVisible();
+      await expect(sales.locator('#detailTitle')).toContainText(so.so_number);
       await sales.locator('[data-ws-action="confirm"]').first().click();
       await mutation(a,'sales',()=>sales.locator('[data-sales-workspace-accept]').click());
       await expect(sales.locator('#detailSubtitle')).toContainText('Confirmada');

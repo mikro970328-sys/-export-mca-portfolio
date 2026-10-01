@@ -7,7 +7,7 @@ const read = path => readFileSync(`${root}${path}`, 'utf8');
 const font = readFileSync(`${root}admin/fonts/InterVariable.woff2`).toString('base64');
 
 // Real UI owner and fictional records. All requests, including saves, stay in memory.
-export function costsFixture({ writable = true, companyPending = false } = {}) {
+export function costsFixture({ writable = true, companyPending = false, orderData = null } = {}) {
   const dom = new JSDOM(read('admin/costs.html'));
   const doc = dom.window.document;
   doc.querySelectorAll('script,link:not([rel="stylesheet"])').forEach(node => node.remove());
@@ -35,6 +35,7 @@ export function costsFixture({ writable = true, companyPending = false } = {}) {
     purchase_orders:[{id:'fixture-po',po_number:'PO-DEMO-0248'}],
     loads:[{id:'fixture-load',load_number:'LD-DEMO-0248'}]
   },cost_models:{warehouse_receipt_items:[],loads:[]} };
+  if(orderData)Object.assign(payload,orderData);
   const period = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}`;
   const profitability = { profitability:{
     sales_orders:[],

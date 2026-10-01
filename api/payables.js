@@ -91,7 +91,7 @@ async function loadBills(capabilityMap = new Map()) {
 async function loadPurchaseOrders() {
   const [orders, items, progress] = await Promise.all([
     supabase('purchase_orders', { query:'?select=id,po_number,supplier_id,status,currency,supplier_reference,order_date,supplier:suppliers(id,name,legal_name)&status=in.(issued,confirmed,closed)&order=created_at.desc&limit=1000' }),
-    supabase('purchase_order_items', { query:'?select=id,purchase_order_id,product_id,ordered_quantity,unit,unit_cost,currency,product:products(id,sku,name,brand)&order=created_at.asc&limit=5000' }),
+    supabase('purchase_order_items', { query:'?select=id,purchase_order_id,product_id,ordered_quantity,unit,unit_cost,entered_line_total,currency,product:products(id,sku,name,brand)&order=created_at.asc&limit=5000' }),
     supabase('purchase_order_ap_item_progress', { query:'?select=*&limit=5000' })
   ]);
   const progressByItem = new Map((progress || []).map(row => [row.purchase_order_item_id,row]));

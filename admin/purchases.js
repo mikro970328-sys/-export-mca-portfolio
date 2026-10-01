@@ -85,7 +85,7 @@ function setPurchaseDestination(mode){
   if(direct){const title=document.createElement('strong');title.textContent='Proveedor → cliente';help.append(title);}
   help.append(document.createTextNode(editingLocks.destination
     ?'El destino está protegido porque esta compra ya tiene mercancía recibida o una venta vinculada.'
-    :direct?'Esta compra no genera WR ni existencias. Después podrás crear una venta Direct Ship o vincularla desde Ventas → Asignar mercancía.'
+    :direct?'Esta compra no genera WR ni existencias. Después podrás crear una venta Direct Ship o vincularla desde Ventas → Compra y contenedor.'
     :'Al recibir físicamente la mercancía se genera un WR y se actualizan las existencias.'));
 }
 function filtered(){

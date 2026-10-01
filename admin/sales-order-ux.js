@@ -623,12 +623,13 @@
         notes:byId('oNotes')?.value || null,
         lines:collectUxLines()
       };
-      await uxApi('/api/sales-order-ux',{method:'POST',body:JSON.stringify(body)});
+      const saved=await uxApi('/api/sales-order-ux',{method:'POST',body:JSON.stringify(body)});
       window.SalesOrderDrafts?.saved?.();
       try { closeModal('order'); } catch { byId('orderModal')?.classList.add('hidden'); }
       try { await load(); } catch (error) { console.error('SALES_ORDER_REFRESH_FAILED',{error}); location.reload(); }
       const notice=byId('salesSaveNotice');
-      if(notice){notice.textContent=edit?'Cambios de la venta guardados.':'Venta guardada como borrador. Abre la venta y pulsa “Confirmar venta” para continuar.';notice.hidden=false;}
+      if(notice){notice.textContent=edit?'Cambios de la venta guardados.':'Venta guardada. Completa la compra y el contenedor si va por Direct Ship.';notice.hidden=false;}
+      if(!edit&&saved.order?.id&&window.SalesWorkspace?.open)await window.SalesWorkspace.open(saved.order.id);
     } catch (error) {
       msg.textContent = reportOrderError('save',error,'No se pudo guardar la venta. Revisa los datos e intenta nuevamente.');
     } finally {
