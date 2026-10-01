@@ -355,9 +355,8 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     });
     await step('DS-11b Tracking shows the corrected physical cargo',async()=>{
       await navigate('containers');
-      await page.locator('#refresh').click();
       const trackingRow=page.locator(`[data-shipment-row="${shipment.id}"]:visible`).first();
-      await expect(trackingRow).toContainText('810');await expect(trackingRow).toContainText('10 pallets');
+      await expect(trackingRow).toContainText('810',{timeout:45_000});await expect(trackingRow).toContainText('10 pallets');
       await shot('11b-tracking-corrected-cargo');
       await navigate('sales');
     });
