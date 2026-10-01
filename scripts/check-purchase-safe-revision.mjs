@@ -24,7 +24,9 @@ assert.match(ui,/Puedes corregir cantidades, costos, fechas, referencia y notas/
 assert.match(supplyApi,/action==='quick_direct'/);
 assert.match(supplyApi,/rpc\/assign_sales_order_item_direct_ship/);
 assert.match(supplyUi,/Asignar Direct Ship/);
-assert.match(supplyUi,/Paso 2 de 2 · Registrar contenedor nuevo/);
+assert.match(supplyUi,/Número de contenedor/);
+assert.match(supplyUi,/request\('\/api\/sales-direct-operation'/);
+assert.doesNotMatch(supplyUi,/Usar contenedor existente/);
 assert.match(ui,/data-cancel-order/);
 assert.match(ui,/Cancelar compra/);
 assert.match(cancelMigration,/v_has_direct_shipments/);

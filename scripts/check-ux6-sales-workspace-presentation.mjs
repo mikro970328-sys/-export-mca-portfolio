@@ -166,6 +166,14 @@ try {
   unplannedSale.items=[{id:'unplanned-item',supply_plans:[]}];
   qa.fixture(unplannedSale);
   assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'create_load,link_load','Sales without an explicit Direct Ship plan must preserve the existing warehouse flow');
+  unplannedSale.direct_operation={direct_required_quantity:100,direct_pending_purchase_quantity:100,containers:[]};
+  qa.fixture(unplannedSale);
+  assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'direct_operation,create_load','The new purchase shortcut must preserve the explicit warehouse preparation option');
+  directSale.direct_operation={direct_required_quantity:100,direct_pending_purchase_quantity:100,containers:[]};
+  directSale.summary.collected_amount=400;directSale.summary.balance_due=0;
+  qa.fixture(directSale);
+  assert.match(qa.nextAction().text,/Falta registrar la compra/,'A paid client invoice must still identify the missing supplier purchase');
+  assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'direct_operation');
 
   const warehouseSale=fixture('confirmed',false);
   warehouseSale.capabilities.actions.allocate_load={allowed:true};

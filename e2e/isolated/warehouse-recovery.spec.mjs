@@ -75,6 +75,7 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
       const context=await browser.newContext({viewport:use.viewport,userAgent:use.userAgent,isMobile:use.isMobile,
         hasTouch:use.hasTouch,deviceScaleFactor:use.deviceScaleFactor,locale:'es-US',timezoneId:'America/New_York'});
       contexts.push(context);
+      await context.addInitScript(()=>{window.__qaModulesReady=false;window.addEventListener('export-mca:modules-ready',()=>{window.__qaModulesReady=true;},{once:true});});
       await context.route('**/*',route=>{
         const request=route.request(),url=new URL(request.url());
         if(url.origin===api.base)return route.continue();
@@ -102,7 +103,7 @@ test('manual receipt: offline, lost confirmation, refresh failure and current pe
       const loginResponse=await response;expect(loginResponse.status()).toBe(200);
       if(key==='a')fault.readToken=(await loginResponse.json()).token;
       await expect(page.locator('#loginPage')).toBeHidden();
-      await page.waitForFunction(()=>window.NavigationShell?.owner==='navigation-shell.js');
+      await page.waitForFunction(()=>window.__qaModulesReady&&window.NavigationShell?.owner==='navigation-shell.js');
     }
     const {a,b}=sessions;
     const navigate=async(session,name)=>{
