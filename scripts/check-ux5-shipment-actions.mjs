@@ -28,7 +28,7 @@ for(const token of [
 ])requireText(migration,token,'DB shipment action owner');
 
 for(const token of [
-  'loadAdminAccessContext',
+  'admin_effective_permissions',
   "admin?.role==='master_admin'",
   "'logistics.read'",
   "'logistics.write'",

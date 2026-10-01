@@ -171,18 +171,27 @@ export default async function handler(req,res) {
 
   try {
     if (req.method === 'GET') {
+      const timing={authorization_ms:authorizationFinishedAt-requestStartedAt};
+      const timedRead=async(name,read)=>{
+        const startedAt=Date.now();
+        try{return await read();}
+        finally{timing[name]=Date.now()-startedAt;}
+      };
       const [data,capabilityBundle,loadRows,directRows,directDispatchRows] = await Promise.all([
-        readShipmentListPages('shipments','?select=*,clients(id,name,company,phone,email,welcome_status,active)&order=created_at.desc,id.desc'),
-        loadShipmentActionCapabilityMap(admin),
-        readShipmentListPages('loads','?select=id,load_number,shipment_id,status,loaded_at,dispatched_at&shipment_id=not.is.null&status=neq.cancelled&order=created_at.desc,id.desc'),
-        readShipmentListPages('direct_shipment_allocations','?select=shipment_id&order=created_at.desc,id.desc'),
-        readShipmentListPages('direct_shipment_dispatches','?select=shipment_id,dispatched_at&order=shipment_id.asc')
+        timedRead('shipments_ms',()=>readShipmentListPages('shipments','?select=*,clients(id,name,company,phone,email,welcome_status,active)&order=created_at.desc,id.desc')),
+        timedRead('capabilities_ms',()=>loadShipmentActionCapabilityMap(admin)),
+        timedRead('loads_ms',()=>readShipmentListPages('loads','?select=id,load_number,shipment_id,status,loaded_at,dispatched_at&shipment_id=not.is.null&status=neq.cancelled&order=created_at.desc,id.desc')),
+        timedRead('direct_allocations_ms',()=>readShipmentListPages('direct_shipment_allocations','?select=shipment_id&order=created_at.desc,id.desc')),
+        timedRead('direct_dispatches_ms',()=>readShipmentListPages('direct_shipment_dispatches','?select=shipment_id,dispatched_at&order=shipment_id.asc'))
       ]);
+      const projectionStartedAt=Date.now();
       const loadByShipment=new Map();
       for(const load of loadRows||[])if(load.shipment_id&&!loadByShipment.has(String(load.shipment_id)))loadByShipment.set(String(load.shipment_id),load);
       const directShipments=new Set((directRows||[]).map(row=>String(row.shipment_id||'')).filter(Boolean));
       const directDispatchByShipment=new Map((directDispatchRows||[]).map(row=>[String(row.shipment_id||''),row]));
-      const shipments=(data||[]).map(shipment=>({
+      // Sanitize stored shipment/client fields before adding canonical action
+      // state. Re-walking every action entry adds no notification protection.
+      const shipments=publicNotificationData(data||[]).map(shipment=>({
         ...shipment,
         fulfillment:(()=>{
           const load=loadByShipment.get(String(shipment.id));
@@ -192,7 +201,10 @@ export default async function handler(req,res) {
         })(),
         capabilities:capabilityBundle.map.get(String(shipment.id))||{actions:{}}
       }));
-      return ok(res,{ shipments:publicNotificationData(shipments),write_access:capabilityBundle.write_access });
+      timing.projection_ms=Date.now()-projectionStartedAt;
+      timing.total_ms=Date.now()-requestStartedAt;
+      res.setHeader?.('Server-Timing',Object.entries(timing).map(([name,duration])=>`${name};dur=${duration}`).join(', '));
+      return ok(res,{ shipments,write_access:capabilityBundle.write_access });
     }
 
     if (req.method === 'DELETE') {

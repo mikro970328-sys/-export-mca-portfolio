@@ -50,8 +50,15 @@ jobs:
       ERP_TEST_DATABASE_URL: postgres://postgres:isolated-qa-only@127.0.0.1:5432/erp_operator_qa
       ERP_TEST_POSTGREST_URL: http://127.0.0.1:3000
       ERP_TEST_POSTGREST_SECRET: isolated-postgrest-qa-secret-never-production-2026
+      ERP_LOAD_BASELINE_DIR: .load-acceptance-baseline
+      ERP_LOAD_BASELINE_REF: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
     steps:
       - uses: actions/checkout@v4
+      - name: Pin the comparison to the previous production code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.ERP_LOAD_BASELINE_REF }}
+          path: .load-acceptance-baseline
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -59,7 +66,7 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Verify complete pages and reject incomplete list responses
         run: node scripts/check-shipment-list-pages.mjs
-      - name: Actual API handlers, 2000 shipments, 100 invoices and 5/20/50 sessions
+      - name: Before/after actual handlers, 2000 shipments, 100 invoices and 5/20/50 sessions
         run: node scripts/check-load-acceptance.mjs
       - name: Preserve anonymous aggregate timings
         if: always()

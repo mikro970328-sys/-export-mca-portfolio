@@ -1,26 +1,31 @@
-import { loadAdminAccessContext, supabase } from './_lib.js';
+import { supabase } from './_lib.js';
 import { readShipmentListPages } from './_shipment-list-pages.js';
 
-const clone=value=>value&&typeof value==='object'?JSON.parse(JSON.stringify(value)):{actions:{}};
 const requiredPermission=action=>action==='view_documents'?'documents.read':(['view_info','view_history'].includes(action)?'logistics.read':'logistics.write');
 
 async function effectivePermissions(admin){
   if(admin?.role==='master_admin')return new Set(['logistics.read','logistics.write','documents.read']);
-  const access=await loadAdminAccessContext(admin?.admin_id);
-  return new Set(access?.permissions||[]);
+  const id=String(admin?.admin_id||'');
+  if(!id)return new Set();
+  // Action buttons only need these permissions. Teams and role descriptions
+  // belong to the account screen and must not add reads to every list/save.
+  const rows=await supabase('admin_effective_permissions',{query:`?select=permission_key&admin_user_id=eq.${encodeURIComponent(id)}&permission_key=in.(logistics.read,logistics.write,documents.read)`});
+  return new Set((rows||[]).map(row=>row.permission_key));
 }
 
 export function maskShipmentActionCapabilities(raw,permissions){
-  const state=clone(raw);
-  const actions=state.actions&&typeof state.actions==='object'?state.actions:{};
+  const state=raw&&typeof raw==='object'?{...raw}:{actions:{}};
+  const actions=state.actions&&typeof state.actions==='object'?{...state.actions}:{};
   for(const [key,entry] of Object.entries(actions)){
     if(!entry||typeof entry!=='object')continue;
+    const masked={...entry};
+    actions[key]=masked;
     const required=requiredPermission(key);
-    entry.business_allowed=entry.allowed===true;
-    entry.required_permission=required;
+    masked.business_allowed=entry.allowed===true;
+    masked.required_permission=required;
     if(entry.allowed===true&&!permissions.has(required)){
-      entry.allowed=false;
-      entry.reason='PERMISSION_REQUIRED';
+      masked.allowed=false;
+      masked.reason='PERMISSION_REQUIRED';
     }
   }
   state.actions=actions;
@@ -29,8 +34,10 @@ export function maskShipmentActionCapabilities(raw,permissions){
 }
 
 export async function loadShipmentActionCapabilityMap(admin){
-  const permissions=await effectivePermissions(admin);
-  const rows=await readShipmentListPages('shipment_action_capabilities','?select=shipment_id,capabilities&order=shipment_id.asc');
+  const [permissions,rows]=await Promise.all([
+    effectivePermissions(admin),
+    readShipmentListPages('shipment_action_capabilities','?select=shipment_id,capabilities&order=shipment_id.asc')
+  ]);
   return {
     map:new Map((rows||[]).map(row=>[String(row.shipment_id),maskShipmentActionCapabilities(row.capabilities,permissions)])),
     write_access:permissions.has('logistics.write')
@@ -38,8 +45,10 @@ export async function loadShipmentActionCapabilityMap(admin){
 }
 
 export async function loadShipmentActionCapabilities(admin,shipmentId){
-  const permissions=await effectivePermissions(admin);
-  const rows=await supabase('shipment_action_capabilities',{query:`?select=shipment_id,capabilities&shipment_id=eq.${encodeURIComponent(shipmentId)}&limit=1`});
+  const [permissions,rows]=await Promise.all([
+    effectivePermissions(admin),
+    supabase('shipment_action_capabilities',{query:`?select=shipment_id,capabilities&shipment_id=eq.${encodeURIComponent(shipmentId)}&limit=1`})
+  ]);
   const row=rows?.[0];
   return row?maskShipmentActionCapabilities(row.capabilities,permissions):{actions:{},write_access:permissions.has('logistics.write')};
 }
