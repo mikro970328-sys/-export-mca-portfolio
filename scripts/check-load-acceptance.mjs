@@ -106,8 +106,16 @@ try{
       api.request('shipments',{token:actors[0].token})
     ]);
     assert.equal(before.status,200);assert.equal(after.status,200);
-    assert.deepEqual(after.body,before.body,'optimization must preserve the full shipment list, fulfillment and permission contract');
-    report.list_contract_matches_baseline=true;
+    // Cargo and operative importer are additive Tracking fields. Preserve every
+    // stored field, fulfillment state and permission from the previous release.
+    const legacy={...after.body,shipments:after.body.shipments.map(({cargo,importer,...shipment})=>{
+      assert.equal(cargo,null,'these synthetic containers have no cargo allocation');
+      assert.equal(importer.id,f.importer,'operative importer is included independently of directory reads');
+      return shipment;
+    })};
+    assert.deepEqual(legacy,before.body,'stored shipment, fulfillment and permission contracts must remain identical');
+    report.stored_list_contract_matches_baseline=true;
+    report.added_tracking_fields=['cargo','importer'];
   }
   const expectedWrites=[];
   const percentile=(values,p)=>values[Math.max(0,Math.ceil(values.length*p)-1)];
