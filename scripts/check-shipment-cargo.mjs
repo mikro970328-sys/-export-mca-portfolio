@@ -111,6 +111,7 @@ await window.ShipmentEditor.open(row.id);
 for(const id of ['editorClient','editorImporter','editorProduct','editorQuantity','editorQuantityUnit'])assert.equal(window.document.getElementById(id),null,'linked '+id+' is read-only');
 assert.match(window.document.querySelector('.shipment-editor').textContent,/90 unidades · 1.5 pallets/);
 const before=window.__fixtureCalls.length;
+window.clients=[]; // Logistics operators need not load the client directory.
 window.document.getElementById('editorNote').value='Nota aislada ejemplo';
 await window.document.getElementById('shipmentEditorSave').onclick();
 const saved=window.__fixtureCalls.slice(before);
@@ -118,6 +119,7 @@ assert.equal(saved.length,1);
 assert.equal(saved[0].path,'/api/shipments');
 assert.deepEqual(JSON.parse(JSON.stringify(saved[0].body)),{id:row.id,note:'Nota aislada ejemplo'});
 assert.equal(window.shipments[0].client_id,row.client_id);
+assert.equal(window.shipments[0].clients.name,row.clients.name);
 assert.equal(window.shipments[0].importer_id,row.importer_id);
 assert.equal(window.shipments[0].cargo.items[0].quantity,90);
 await window.ShipmentEditor.open(row.id);

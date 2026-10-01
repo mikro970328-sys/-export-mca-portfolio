@@ -242,6 +242,7 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       expect(await f.one('select client_id,importer_id,product,quantity,quantity_unit from shipments where id=$1',[shipment.id])).toEqual(before);
       expect((await f.one("select details from shipment_history where shipment_id=$1 and event_type='note'",[shipment.id])).details).toBe('Nota aislada del contenedor de prueba');
       await expect(trackingRow).toContainText('10 pallets');await shot('05b-tracking-inherited-cargo');
+      await expect(trackingRow).toContainText('QA finance customer');
       await navigate('sales');
     });
     await step('DS-06 declining unlink preserves the container allocation',async()=>{

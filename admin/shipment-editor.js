@@ -206,7 +206,7 @@
   function updateCachedShipment(shipmentUpdate = null, importerAssignment = null) {
     if (!current) return;
     const next = { ...current, ...(shipmentUpdate || {}) };
-    if (shipmentUpdate && Object.prototype.hasOwnProperty.call(shipmentUpdate, 'client_id') && !Object.prototype.hasOwnProperty.call(shipmentUpdate, 'clients')) {
+    if (shipmentUpdate && Object.prototype.hasOwnProperty.call(shipmentUpdate, 'client_id') && !Object.prototype.hasOwnProperty.call(shipmentUpdate, 'clients') && String(shipmentUpdate.client_id || '') !== String(current.client_id || '')) {
       const clientId = shipmentUpdate.client_id;
       next.clients = clientId
         ? clientRows().find(client => String(client.id) === String(clientId)) || null
