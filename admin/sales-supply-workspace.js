@@ -177,6 +177,15 @@
     byId('salesSupplySubtitle').textContent='Compra, contenedor y despacho de este pedido. Cantidades y pallets vienen de la venta.';
     const step=directOperationStep();
     byId('salesSupplyBody').innerHTML=`<div class="sales-supply-intro"><div><strong>${esc(step.title)}</strong><div>${esc(step.text)}</div>${step.action?`<div class="sales-supply-actions"><button type="button" class="btn orange" data-supply-action="direct-operation">${esc(step.action)}</button></div>`:''}</div><span class="sales-supply-status ${order.status==='confirmed'?'ok':'warn'}">${esc(orderStatus(order.status))}</span></div><div class="sales-supply-items">${items.map(renderItem).join('')}</div>`;
+    // A container can carry several sale lines; dispatch is one event per container.
+    const seen=new Set();
+    for(const button of byId('salesSupplyBody').querySelectorAll('[data-supply-action]')){
+      const action=button.dataset.supplyAction;
+      if(action==='new-direct'&&step.action){button.remove();continue;}
+      if(!['open-tracking','dispatch-direct'].includes(action))continue;
+      const key=JSON.stringify([action,button.dataset.shipmentId]);
+      if(seen.has(key))button.remove();else seen.add(key);
+    }
     bindMainActions();
   }
 
@@ -251,7 +260,7 @@
     if(rows.some(row=>!row.shipment||row.shipment.active===false))return {title:'Revisar contenedor',text:'Hay un contenedor inactivo o no disponible. Revisa su estado desde «Abrir contenedor».'};
     if(rows.some(row=>!row.dispatch))return {title:'Compra y contenedor listos · falta despacho',text:'Revisa las cantidades de abajo. Cuando salga la mercancía, pulsa «Marcar despachado» en su contenedor.'};
     const shortfall=rows.some(row=>Number(row.allocated_sales_quantity||0)<Number(row.planned_sales_quantity??row.allocated_sales_quantity??0));
-    return {title:shortfall?'Despacho registrado · hay diferencias':'Despacho registrado',text:shortfall?'Revisa el enviado real y la diferencia con el plan original de abajo. La factura y el pago al proveedor se revisan en Cuentas por pagar.':'La mercancía tiene su despacho registrado. La factura y el pago al proveedor se revisan en Cuentas por pagar.'};
+    return {title:shortfall?'Despacho registrado · hay diferencias':'Despacho registrado',text:shortfall?'Revisa el enviado real y la diferencia con el plan original de abajo. La factura del proveedor y su pago se revisan en Cuentas por pagar. La factura al cliente se prepara en Facturación y cobros.':'La mercancía tiene su despacho registrado. La factura del proveedor y su pago se revisan en Cuentas por pagar. La factura al cliente se prepara en Facturación y cobros.'};
   }
 
   async function openOperation(preselectedPurchaseId=null,salesOrderId=state.salesOrderId){
@@ -413,17 +422,23 @@
     if(!salesOrderId||!['logistics','documents'].includes(tab))return;
     if(refresh)try{await fetchSupply();}catch(error){safeSupplyMessage(error,'No se pudo actualizar Abastecimiento. Intenta nuevamente.');return;}
     if(state.salesOrderId!==salesOrderId||selectedNativeTab()!==tab)return;
-    const shipments=directShipments();if(!shipments.length)return;
+    const nativeContainers=new Set([...byId('detailBody').querySelectorAll('[data-ws-action="open_tracking"][data-ws-id]')].map(button=>button.dataset.wsId));
+    const shipments=directShipments().filter(row=>tab!=='documents'||!nativeContainers.has(String(row.shipment.id)));if(!shipments.length)return;
     const content=byId('detailBody')?.querySelector('.sales-workspace-content');if(!content)return;
     content.querySelector('[data-direct-supply-augment]')?.remove();
     const host=document.createElement('div');host.dataset.directSupplyAugment='true';host.className='sales-supply-direct-augment';
     if(tab==='logistics'){
-      host.innerHTML=`<h3>Direct Ship</h3><div class="sales-ws-list">${shipments.map(row=>`<div class="sales-ws-row"><div class="sales-ws-row-head"><div><div class="sales-ws-row-title">${esc(row.shipment.container_number)}</div><div class="sales-ws-meta">Sin Cargue / sin WR · ${esc(row.shipment.carrier||'Naviera pendiente')} · ${row.lines.length} línea${row.lines.length===1?'':'s'}</div></div><span class="sales-supply-status ${row.dispatch?'ok':'warn'}">${row.dispatch?'Despachado':'Planificado'}</span></div><div class="sales-ws-actions"><button type="button" class="btn" data-supply-track="${esc(row.shipment.id)}">Ver Tracking</button><button type="button" class="btn" data-supply-open-main>Abastecimiento</button></div></div>`).join('')}</div>`;
+      host.innerHTML=`<h3>Direct Ship</h3><div class="sales-ws-list">${shipments.map(row=>`<div class="sales-ws-row"><div class="sales-ws-row-head"><div><div class="sales-ws-row-title">${esc(row.shipment.container_number)}</div><div class="sales-ws-meta">Sin Cargue / sin WR · ${esc(row.shipment.carrier||'Naviera pendiente')} · ${row.lines.length} línea${row.lines.length===1?'':'s'}</div></div><span class="sales-supply-status ${row.dispatch?'ok':'warn'}">${row.dispatch?'Despachado':'Planificado'}</span></div><div class="sales-ws-actions"><button type="button" class="btn" data-supply-track="${esc(row.shipment.id)}">Ver Tracking</button><button type="button" class="btn" data-supply-open-main>Compra, contenedor y despacho</button></div></div>`).join('')}</div>`;
     }else if(tab==='documents'){
       const readiness=await request('/api/shipment-document-readiness');const rows=Array.isArray(readiness.readiness)?readiness.readiness:[];
       host.innerHTML=`<h3>Contenedores Direct Ship</h3><div class="sales-ws-list">${shipments.map(row=>{const r=rows.find(item=>item.shipment_id===row.shipment.id);return `<div class="sales-ws-row"><div class="sales-ws-row-head"><div><div class="sales-ws-row-title">${esc(row.shipment.container_number)}</div><div class="sales-ws-meta">Documentación Cuba controlada directamente por contenedor.</div></div><span class="sales-supply-status ${r?.document_status==='ready'?'ok':r?.documentation_required?'warn':''}">${esc(r?.document_status==='ready'?'READY':r?.documentation_required?'Pendiente':'Aún no requerido')}</span></div><div class="sales-ws-actions"><button type="button" class="btn" data-supply-track="${esc(row.shipment.id)}">Abrir contenedor / documentos</button></div></div>`;}).join('')}</div>`;
     }
-    if(state.salesOrderId===salesOrderId&&selectedNativeTab()===tab&&byId('detailBody')?.querySelector('.sales-workspace-content')===content)content.appendChild(host);
+    if(state.salesOrderId===salesOrderId&&selectedNativeTab()===tab&&byId('detailBody')?.querySelector('.sales-workspace-content')===content){
+      if(tab==='logistics')content.querySelector('[data-direct-logistics-placeholder]')?.remove();
+      if(tab==='documents')content.querySelector('.sales-ws-empty')?.remove();
+      content.appendChild(host);
+      nativeWorkspace?.reconcileActions?.();
+    }
   }
 
   function updateHeaderButton(){const button=byId('openSupplyWorkspace');if(!button)return;button.classList.add('hidden');button.onclick=()=>open(state.salesOrderId);}

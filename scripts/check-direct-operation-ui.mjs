@@ -52,6 +52,7 @@ item.supply_plans[0].procurement_allocations=[procurement];
 await w.SalesSupplyWorkspace.open('qa-sale');
 assert.match(d.getElementById('salesSupplyBody').textContent,/Compra registrada · falta contenedor/);
 assert.equal(d.querySelector('[data-supply-action="direct-operation"]').textContent,'Poner número de contenedor');
+assert.equal(d.querySelector('[data-supply-action="new-direct"]'),null,'The guided container step replaces the repeated line shortcut');
 const direct={id:'qa-direct',shipment_id:'qa-shipment',allocated_sales_quantity:2730,allocated_sales_pallets:21,allocated_purchase_quantity:2730,allocated_purchase_pallets:21,shipment:{id:'qa-shipment',container_number:'QA1234567',active:true},dispatch:null};
 procurement.direct_shipments=[{...direct,allocated_sales_quantity:1000,allocated_purchase_quantity:1000}];
 await w.SalesSupplyWorkspace.open('qa-sale');
@@ -70,6 +71,7 @@ d.querySelector('[data-supply-close="main"]').click();
 w.__fixtureWorkspace={...w.__fixtureWorkspace,items:[item],direct_operation:{direct_required_quantity:2730,direct_pending_purchase_quantity:0,non_direct_quantity:0,direct_purchase_currency_count:1,direct_purchase_currency:'USD',direct_purchase_amount:13000,purchase_orders:[procurement.purchase_order],containers:[direct.shipment]},summary:{...w.__fixtureWorkspace.summary,order_total:18994,fulfillment_status:'partial',attributed_sales_revenue:9497,recognized_merchandise_cogs:6500,cogs_currency:'USD',direct_cost_amount:4600,direct_cost_currency_count:1,direct_cost_currency:'USD',contribution_margin:-1603,merchandise_cost_coverage:'estimated'}};
 await w.SalesWorkspace.open('qa-sale');
 assert.equal(d.querySelector('.sales-workspace-next [data-ws-action="supply"]').textContent,'Contenedor y despacho');
+assert.equal(d.querySelectorAll('#detailBody [data-ws-action="supply"]').length,1,'The same operation must not appear again in the order card');
 const estimate=d.querySelector('#salesWorkspacePanel .sales-ws-money-table .total');
 assert.match(estimate.textContent,/Ganancia estimada del pedido.*1,394.00/,'The full-order estimate must not borrow the partial assigned contribution');
 const recognized=d.querySelector('#salesWorkspacePanel details');
@@ -86,10 +88,38 @@ for(let visit=0;visit<2;visit++)for(const tab of ['logistics','documents']){
   const augmentation=d.querySelector('[data-direct-supply-augment]');
   assert.ok(augmentation,`${tab}: Direct Ship must survive the native tab replacement`);
   assert.match(augmentation.textContent,/QA1234567/);
+  if(tab==='logistics'){
+    assert.equal(d.querySelector('[data-direct-logistics-placeholder]'),null,'A linked container replaces the empty Direct Ship card');
+    assert.equal(d.querySelectorAll('#detailBody [data-ws-action="supply"], #detailBody [data-supply-open-main]').length,1,'Logistics keeps one operation entry');
+  }
   assert.equal(d.querySelectorAll('[data-direct-supply-augment]').length,1);
   await w.SalesWorkspace.reload({keepTab:true});
   assert.equal(d.querySelectorAll('[data-direct-supply-augment]').length,1,'Refreshing the active tab must restore exactly one Direct Ship block');
 }
+// Multi-product containers dispatch once, while corrections retain their line IDs.
+const secondDirect={...direct,id:'qa-direct-second'};
+const secondItem={...item,id:'qa-item-second',supply_plans:[{...item.supply_plans[0],id:'qa-plan-second',procurement_allocations:[{...procurement,id:'qa-procurement-second',direct_shipments:[secondDirect]}]}]};
+supply.items=[item,secondItem];
+await w.SalesSupplyWorkspace.open('qa-sale');
+assert.equal(d.querySelectorAll('[data-supply-action="dispatch-direct"]').length,1);
+assert.equal(d.querySelectorAll('[data-supply-action="open-tracking"]').length,1);
+assert.equal(d.querySelectorAll('[data-supply-action="unlink-direct"]').length,2,'Line allocation changes must stay distinct');
+secondDirect.dispatch={dispatched_at:'2026-10-01T14:00:00Z'};
+direct.dispatch=secondDirect.dispatch;
+await w.SalesSupplyWorkspace.open('qa-sale');
+assert.equal(d.querySelectorAll('[data-supply-action="correct-direct"]').length,2,'Each product keeps its own physical correction');
+direct.dispatch=null;supply.items=[item];
+d.querySelector('[data-supply-close="main"]').click();
+
+// When the native read model already contains this container, do not add it again.
+w.__fixtureWorkspace.logistics=[{shipment_id:'qa-shipment',container_number:'QA1234567'}];
+await w.SalesWorkspace.open('qa-sale');
+d.querySelector('[data-ws-tab="documents"]').click();await tick();
+assert.equal(d.querySelector('[data-direct-supply-augment]'),null,'Native documents already own the linked container');
+assert.equal(d.querySelectorAll('[data-ws-action="open_tracking"][data-ws-id="qa-shipment"]').length,1);
+w.__fixtureWorkspace.logistics=[];
+await w.SalesWorkspace.reload();
+
 documentGate=new Promise(resolve=>{releaseDocuments=resolve;});
 d.querySelector('[data-ws-tab="documents"]').click();await tick();
 d.querySelector('[data-ws-tab="summary"]').click();
