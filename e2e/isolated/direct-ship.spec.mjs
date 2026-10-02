@@ -202,7 +202,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       await expect(sales.locator(`[data-supply-action="edit-purchase"][data-proc-id="${procurement.id}"]`)).toHaveCount(0);
     });
     await step('DS-05 register and link the Direct Ship container',async()=>{
-      await sales.locator('[data-supply-action="new-direct"]').click();
+      await expect(sales.locator('[data-supply-action="new-direct"]')).toHaveCount(0);
+      await expect(sales.locator('[data-supply-action="direct-operation"]')).toHaveCount(1);
+      await sales.locator('[data-supply-action="direct-operation"]').click();
       await sales.locator('#supplyNewContainer').fill('QA-DIRECT-840');
       await sales.locator('#salesSupplyFormBody details').filter({hasText:'Más datos del envío'}).locator('summary').click();
       await sales.locator('#supplyNewCarrier').fill('QA Carrier');
@@ -260,7 +262,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
       expect((await f.rows('select id from direct_shipment_allocations')).length).toBe(0);
       expect((await f.rows('select id from shipments')).length).toBe(1);
       await expect(sales.locator('[data-supply-action="link-direct"]')).toHaveCount(0);
-      await sales.locator('[data-supply-action="new-direct"]').click();
+      await expect(sales.locator('[data-supply-action="new-direct"]')).toHaveCount(0);
+      await expect(sales.locator('[data-supply-action="direct-operation"]')).toHaveCount(1);
+      await sales.locator('[data-supply-action="direct-operation"]').click();
       await sales.locator('#supplyNewContainer').fill(shipment.container_number);
       await mutation('sales-direct-operation',()=>sales.locator('#salesSupplyFormSave').click());
       await expect(sales.locator('#salesSupplyFormModal')).toBeHidden();

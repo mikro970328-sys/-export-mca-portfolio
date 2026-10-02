@@ -307,7 +307,7 @@ async function detailAction(action){
   if(!config||!order||!can(order,config.capability))return;
   if(!await purchaseDecision(config))return;
   if(!can(order,config.capability))return;
-  try{await api('/api/purchases',{method:'POST',body:JSON.stringify({action,purchase_order_id:order.id})});closeModal('detail');await load();}catch(error){console.error('PURCHASE_ORDER_TRANSITION_FAILED',{purchase_order_id:order.id,action,error});$('detailMsg').textContent=safePurchaseMessage(error);}
+  try{await api('/api/purchases',{method:'POST',body:JSON.stringify({action,purchase_order_id:order.id})});await load();closeModal('detail');}catch(error){console.error('PURCHASE_ORDER_TRANSITION_FAILED',{purchase_order_id:order.id,action,error});$('detailMsg').textContent=safePurchaseMessage(error);}
 }
 
 function syncDirectSaleImporters(){
