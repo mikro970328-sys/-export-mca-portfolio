@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {JSDOM,VirtualConsole} from 'jsdom';
 import {salesFixture} from './lib/figma-sales-fixture.mjs';
 import {costsFixture} from './lib/figma-costs-fixture.mjs';
+import {purchasesFixture} from './lib/figma-purchases-fixture.mjs';
 import {financeFixture} from './lib/figma-finance-fixture.mjs';
 const tick=()=>new Promise(resolve=>setTimeout(resolve,35));
 function mount(html){const errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));const dom=new JSDOM(html,{url:'https://erp-visual.invalid',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:vc});return{dom,w:dom.window,d:dom.window.document,errors};}
@@ -187,10 +188,44 @@ assert.equal(costs.d.querySelector('[data-target-type]').value,'sales_order_id')
 assert.equal(costs.d.querySelector('[data-target-id]').value,'sale-a');
 assert.deepEqual(costs.errors,[]);costs.dom.window.close();
 
-const ap=mount(financeFixture({module:'payables'}));await tick();
+const ap=mount(financeFixture({module:'payables'}));
+assert.equal(ap.d.getElementById('newBill').disabled,true,'The supplier invoice action waits for its initial purchase and permission data');
+await tick();
+assert.equal(ap.d.getElementById('newBill').disabled,false,'A writable purchase enables the invoice action after loading');
 assert.match(ap.d.getElementById('pendingPurchases').textContent,/Compras por facturar/);
 ap.d.querySelector('[data-pending-purchase]').click();
 assert.equal(ap.d.getElementById('bPO').value,'fixture-po');
 assert.equal(ap.d.getElementById('billModal').classList.contains('hidden'),false);
 assert.deepEqual(ap.errors,[]);ap.dom.window.close();
+// A rapid issue → confirm sequence must wait for the refreshed canonical purchase.
+const purchase=mount(purchasesFixture());await tick();
+const pw=purchase.w,pd=purchase.d;
+const seed=await (await pw.fetch('/api/purchases')).json();
+const order=seed.orders.find(row=>row.status==='draft');
+order.capabilities.actions.issue={allowed:true};
+order.capabilities.actions.confirm={allowed:false};
+let releasePurchaseRead,holdPurchaseRead=false;
+const purchaseReadGate=new Promise(resolve=>{releasePurchaseRead=resolve;});
+pw.fetch=async(path,options={})=>{
+  if(options.method==='POST'){
+    assert.equal(JSON.parse(options.body).action,'issue');
+    order.status='issued';order.capabilities.actions.issue.allowed=false;order.capabilities.actions.confirm.allowed=true;
+    holdPurchaseRead=true;
+    return{ok:true,status:200,json:async()=>({order})};
+  }
+  if(holdPurchaseRead)await purchaseReadGate;
+  return{ok:true,status:200,json:async()=>seed};
+};
+await pw.load();
+pd.querySelector('[data-view="all"]').click();
+pd.querySelector(`[data-view-order="${order.id}"]`).click();
+pd.querySelector('[data-detail-action="issue"]').click();
+pd.getElementById('purchaseDecisionAccept').click();await tick();
+assert.equal(pd.getElementById('detailModal').classList.contains('hidden'),false,'The previous purchase must not be reopened before its canonical refresh');
+releasePurchaseRead();await tick();
+assert.equal(pd.getElementById('detailModal').classList.contains('hidden'),true);
+pd.querySelector(`[data-view-order="${order.id}"]`).click();
+assert.ok(pd.querySelector('[data-detail-action="confirm"]'),'The next action uses refreshed purchase capabilities');
+assert.deepEqual(purchase.errors,[]);purchase.dom.window.close();
+
 console.log('Direct operation UI: purchase/container/dispatch stages, stale shortcuts, physical corrections, native tab replacement, late document responses, partial assigned results, currency and finance guards, safe retries, grouped expenses and purchase-to-bill shortcut passed.');
