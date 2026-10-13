@@ -264,7 +264,7 @@ test('financial cancellations preserve balances, permissions and history', async
       await cash(100,'supplier bill voided');
     });
     await step('CF-10 cancel resolved purchase while preserving historical financial records',async()=>{
-      await navigate(a,'purchases');await purchase.locator(`[data-view-order="${po.id}"]`).click();
+      await navigate(a,'purchases');await purchase.locator(`[data-view-order="${po.id}"]:visible`).first().click();
       await expect(purchase.locator('#detailModal')).toBeVisible();
       const cancelAction=purchase.locator('[data-detail-action="cancel"]');await expect(cancelAction).toBeVisible();await cancelAction.click();
       await mutation('purchases',()=>purchase.locator('#purchaseDecisionAccept').click());await expect(purchase.locator('#detailModal')).toBeHidden();
