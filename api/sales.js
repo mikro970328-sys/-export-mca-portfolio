@@ -88,6 +88,7 @@ function translatedError(raw) {
     ['SO_CLIENT_IMPORTER_MISMATCH','Ese importador no está asociado al cliente seleccionado.'],
     ['SO_CURRENCY_INVALID','La moneda debe tener un código de 3 letras.'],
     ['SO_NATIONALIZATION_STATUS_INVALID','Selecciona si la mercancía está nacionalizada o no nacionalizada.'],
+    ['SO_STRUCTURE_LOCKED','Los datos operativos vinculados no pueden sustituirse desde esta corrección.'],
     ['SO_HAS_NO_ITEMS','Agrega al menos una línea a la Sales Order.'],
     ['SO_PRODUCT_NOT_FOUND','Uno de los productos no existe.'],
     ['SO_PRODUCT_INACTIVE','Uno de los productos está inactivo.'],
@@ -171,6 +172,27 @@ export default async function handler(req, res) {
       }});
       const order = rpcRow(result);
       await writeAudit(admin,'sales_order_updated','sales_order',orderId,{ so_number:order?.so_number || null });
+      return ok(res,{ order });
+    }
+
+    if (action === 'correct_details') {
+      const orderId = text(body.sales_order_id,80);
+      if (!orderId) throw new Error('Falta la Sales Order');
+      const result = await supabase('rpc/revise_sales_order_details', { method:'POST', body:{
+        p_sales_order_id:orderId,
+        p_order_date:text(body.order_date,40) || null,
+        p_requested_at:text(body.requested_at,80) || null,
+        p_customer_reference:text(body.customer_reference,250) || null,
+        p_notes:text(body.notes,2000) || null,
+        p_nationalization_status:text(body.nationalization_status,40) || null
+      }});
+      const order = rpcRow(result);
+      if (!order?.id) throw new Error('No se pudo corregir la venta');
+      await writeAudit(admin,'sales_order_details_corrected','sales_order',orderId,{
+        so_number:order.so_number || null,
+        nationalization_status:order.nationalization_status || null,
+        customer_reference:order.customer_reference || null
+      });
       return ok(res,{ order });
     }
 
