@@ -155,7 +155,7 @@
   }
   async function callContextEmbedded(sectionId,method,args=[]){const ready=await installBridge(sectionId);if(!ready)return false;const fn=resolveMethod(frameFor(sectionId)?.contentWindow,method);if(!fn)return false;fn(...args);return true;}
 
-  function openTracking(context={},options={}){section('containersSection');const shipment=findShipment(context);if(!shipment)return false;if(options.history!==false)writeContext('tracking',shipment.id,options);requestAnimationFrame(()=>window.ContainersModule?.openDetails?.(shipment));return true;}
+  function openTracking(context={},options={}){section('containersSection');const shipment=findShipment(context);if(!shipment)return false;if(options.history!==false)writeContext('tracking',shipment.id,options);requestAnimationFrame(()=>{if(options.edit===true&&window.ShipmentEditor?.open)return window.ShipmentEditor.open(shipment.id);window.ContainersModule?.openDetails?.(shipment);});return true;}
   function openLoad({loadId=null}={},options={}){if(!loadId)return false;if(options.history!==false)writeContext('load',loadId,options);window.NavigationShell?.openLoads?.();return callEmbedded('loadsSection','LoadsModule.openLoad',[loadId]);}
   async function openLoadForShipment(shipmentId,options={}){const link=await loadForShipment(shipmentId);return link?openLoad({loadId:link.load_id},options):false;}
   function openInventoryReceipt(receiptNumber,options={}){const receipt=String(receiptNumber||'').trim();if(!receipt)return false;if(options.history!==false)writeContext('wr',receipt,options);window.NavigationShell?.openInventory?.();return callEmbedded('inventorySection','traceWR',[receipt]);}

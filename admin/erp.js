@@ -316,7 +316,7 @@
 
       window.ExportMcaAccessControl?.applyNavigation?.();
       await loadScript('/admin/section-state.js?v=20260928-startup-refresh1', 'data-section-state');
-      await loadScript('/admin/operational-navigation.js?v=20260928-lazy-workspaces1', 'data-operational-navigation');
+      await loadScript('/admin/operational-navigation.js?v=20261013-operation-corrections1', 'data-operational-navigation');
       await loadScript('/admin/ap-traceability.js?v=20260928-lazy-workspaces1', 'data-ap-traceability');
       await loadScript('/admin/admin-data-loader.js?v=20260928-dashboard-onview2', 'data-admin-data-loader');
       window.ExportMcaAccessControl?.applyNavigation?.();

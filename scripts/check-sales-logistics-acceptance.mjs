@@ -122,6 +122,20 @@ try {
     await rejects('select * from replace_sales_order_plan($1,$2,$3::jsonb)',[so.id,client,JSON.stringify([baseLine])],'SO_NOT_DRAFT');
     await rejects(transitionSql,[so.id,'close'],'SO_NOT_FULLY_DISPATCHED');
   });
+  await test('SO-06 confirmed sale permits audited detail corrections without reopening structure',async()=>{
+    const so=await sale();
+    await rejects("update sales_orders set nationalization_status='nationalized' where id=$1",[so.id],'SO_STRUCTURE_LOCKED');
+    const revised=await one(
+      'select * from revise_sales_order_details($1,$2,$3,$4,$5,$6)',
+      [so.id,'2026-10-13','2026-10-20T15:30:00Z','QA corrected reference',null,'nationalized']
+    );
+    assert.equal(revised.status,'confirmed');
+    assert.equal(revised.nationalization_status,'nationalized');
+    assert.equal(revised.customer_reference,'QA corrected reference');
+    const capabilities=await one('select * from sales_order_action_capabilities where sales_order_id=$1',[so.id]);
+    assert.equal(capabilities.capabilities.actions.correct_details.allowed,true);
+    await rejects('update sales_orders set client_id=$2 where id=$1',[so.id,clientB],'SO_STRUCTURE_LOCKED');
+  });
   await test('LD-01 sale load carries customer, importer, source lot and quantities',async()=>{
     const so=await sale(), wr=await stock(), load=await salesLoad(so,wr,40);
     assert.equal(load.client_id,client); assert.equal(load.importer_id,importer);

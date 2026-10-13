@@ -48,7 +48,8 @@ const extraMigrations = [
   '20260909180837_load_plan_container_consistency.sql',
   '20260916012951_customs_document_upload_idempotency.sql',
   '20260920113000_sales_nationalization_and_quick_direct.sql',
-  '20260920213000_direct_sale_from_purchase.sql'
+  '20260920213000_direct_sale_from_purchase.sql',
+  '20261013181011_advanced_operation_corrections.sql'
 ];
 
 // These historical migrations live outside supabase/migrations and precede P1.
