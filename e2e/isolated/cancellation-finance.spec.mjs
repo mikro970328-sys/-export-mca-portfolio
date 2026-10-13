@@ -196,13 +196,10 @@ test('financial cancellations preserve balances, permissions and history', async
       await denied('sales',{action:'cancel',sales_order_id:so.id},/anticipo de cliente activo/i);
     });
     await step('CF-02 applying advance settles invoice without creating cash; parent reversal is blocked',async()=>{
-      await closeFinance();await sales.locator('[data-ws-tab="billing"]').click();await sales.locator('[data-ws-action="new_invoice"]').first().click();
-      const result=await mutation('invoices',()=>sales.locator('#wsSaveInvoice').click());
-      await expect(sales.locator('#salesWorkspaceInvoiceModal')).toBeHidden();
+      await closeFinance();await sales.locator('[data-ws-tab="billing"]').click();await sales.locator('[data-ws-action="collect_sale"]').first().click();
+      await expect(sales.locator('#salesWorkspacePaymentModal')).toBeVisible();
+      await sales.locator('[data-ws-payment-close]').first().click();
       invoice=await f.one('select * from invoices where sales_order_id=$1',[so.id]);
-      await sales.locator('[data-ws-action="issue_invoice"]').first().click();
-      await mutation('invoices',()=>sales.locator('[data-sales-workspace-accept]').click());
-      await expect(sales.locator('#detailMsg')).toContainText('Factura emitida');
       await openFinance();const before=await cashRows();
       await sales.locator(`[data-cf-apply="${advance.id}"]`).click();await sales.locator('#cfApplyInvoice').selectOption(invoice.id);await sales.locator('#cfApplyAmount').fill('50');
       const applied=await mutation('customer-advances',()=>sales.locator('#salesFinanceFormSave').click());await savedFinance();application=applied.application;
@@ -326,25 +323,22 @@ test('financial cancellations preserve balances, permissions and history', async
         const sale=await createSale(f.client,`QA-CF-ACTIVE-${kind}`);
         await sales.locator(`[data-view-order="${sale.id}"]`).click();
         await sales.locator('[data-ws-tab="billing"]').click();
-        await sales.locator('[data-ws-action="new_invoice"]').first().click();
-        // Only bill half the sale: cancellation must hide the remaining 200.
-        await sales.locator('[data-ws-invoice-qty]').fill('50');
-        await mutation('invoices',()=>sales.locator('#wsSaveInvoice').click());
-        await expect(sales.locator('#salesWorkspaceInvoiceModal')).toBeHidden();
-        await expect(sales.locator('[data-ws-action="issue_invoice"]').first()).toBeVisible();
-        const inv=await f.one('select * from invoices where sales_order_id=$1',[sale.id]);
+        // Internal invoice variants are prepared through the same authenticated API
+        // because the operator UI intentionally exposes only the direct collection flow.
+        const item=await f.one('select id from sales_order_items where sales_order_id=$1',[sale.id]);
+        const created=await api.request('invoices',{method:'POST',token:writeToken,body:{action:'create_plan',sales_order_id:sale.id,lines:[{sales_order_item_id:item.id,quantity:50}]}});
+        expect(created.status,JSON.stringify(created.body)).toBe(200);
+        const inv=created.body.invoice;
         if(kind!=='draft'){
-          await sales.locator('[data-ws-action="issue_invoice"]').first().click();
-          await mutation('invoices',()=>sales.locator('[data-sales-workspace-accept]').click());
-          await expect(sales.locator('#detailMsg')).toHaveText('Factura emitida.');
+          const issued=await api.request('invoices',{method:'POST',token:writeToken,body:{action:'issue',invoice_id:inv.id}});
+          expect(issued.status,JSON.stringify(issued.body)).toBe(200);
         }
         if(kind==='partial'){
-          await sales.locator('[data-ws-action="payment"]').first().click();
-          await sales.locator('#wsPaymentAmount').fill('60');
-          await mutation('invoice-payments',()=>sales.locator('#wsSavePayment').click());
-          await expect(sales.locator('#salesWorkspacePaymentModal')).toBeHidden();
-          await expect(sales.locator('#detailMsg')).toContainText('Cobro registrado');
+          const paid=await api.request('invoice-payments',{method:'POST',token:writeToken,body:{action:'register',invoice_id:inv.id,amount:60}});
+          expect(paid.status,JSON.stringify(paid.body)).toBe(200);
         }
+        await sales.locator('[data-close="detail"]').click();
+        await sales.locator(`[data-view-order="${sale.id}"]`).click();
         const before=JSON.stringify({invoice:await f.one('select * from invoices where id=$1',[inv.id]),
           items:await f.rows('select * from invoice_items where invoice_id=$1 order by id',[inv.id]),
           payments:await f.rows('select * from payments where invoice_id=$1 order by id',[inv.id]),
@@ -369,7 +363,6 @@ test('financial cancellations preserve balances, permissions and history', async
         const workspace=await api.request(`sales-workspace?sales_order_id=${sale.id}`,{token:writeToken});
         expect(workspace.status).toBe(200);
         expect(workspace.body.workspace.billing.capabilities.create_invoice).toEqual({allowed:false,reason:'INVOICE_SO_NOT_BILLABLE'});
-        const item=await f.one('select id from sales_order_items where sales_order_id=$1',[sale.id]);
         await denied('invoices',{action:'create_plan',sales_order_id:sale.id,lines:[{sales_order_item_id:item.id,quantity:1}]},/facturar|facturable|confirmada|cerrada/i);
         const view=await navigate(b,'invoices');await view.locator('#invoiceView').selectOption('all');
         const row=view.locator(`[data-invoice-row="${inv.id}"]`);await expect(row).toBeVisible();

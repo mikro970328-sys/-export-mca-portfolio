@@ -392,10 +392,9 @@ test('direct ship: purchase to corrected physical dispatch without WR or stock',
     });
     await step('DS-14 direct sale invoice and collection appear live in reader reports',async()=>{
       await sales.locator('[data-supply-close="main"]').click();await sales.locator(`[data-view-order="${so.id}"]`).click();await sales.locator('[data-ws-tab="billing"]').click();
-      await sales.locator('[data-ws-action="new_invoice"]').first().click();await mutation('invoices',()=>sales.locator('#wsSaveInvoice').click());await expect(sales.locator('#salesWorkspaceInvoiceModal')).toBeHidden();
-      await sales.locator('[data-ws-action="issue_invoice"]').first().click();await mutation('invoices',()=>sales.locator('[data-sales-workspace-accept]').click());
+      await sales.locator('[data-ws-action="collect_sale"]').first().click();await expect(sales.locator('#salesWorkspacePaymentModal')).toBeVisible();
       await reports.locator('[data-dataset="invoices"]').click();await expect.poll(()=>reportNumber('Total'),{timeout:45_000}).toBe(3360);
-      await sales.locator('[data-ws-action="payment"]').first().click();await sales.locator('#wsPaymentAmount').fill('1000');await mutation('invoice-payments',()=>sales.locator('#wsSavePayment').click());await expect(sales.locator('#salesWorkspacePaymentModal')).toBeHidden();
+      await sales.locator('#wsPaymentAmount').fill('1000');await mutation('invoice-payments',()=>sales.locator('#wsSavePayment').click());await expect(sales.locator('#salesWorkspacePaymentModal')).toBeHidden();
       await expect.poll(()=>reportNumber('AR actual'),{timeout:45_000}).toBe(2360);await expect.poll(()=>reportNumber('Cobrado aplicado')).toBe(1000);
       expect(await reportNumber('COGS reconocido')).toBeNull();
       const invoice=await f.one('select * from invoices');expect([...(await f.rows('select total,paid_amount,balance_due from invoice_financial_progress where invoice_id=$1',[invoice.id]))].map(r=>[r.total,r.paid_amount,r.balance_due].map(Number))).toEqual([[3360,1000,2360]]);

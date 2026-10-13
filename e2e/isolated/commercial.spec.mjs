@@ -313,21 +313,18 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await screenshot(a,'09-dispatched-load');
       await loads.locator('#drawerModal [data-close]').click();
     });
-    await step('COM-10 invoice and issue the same sale for USD 400',async()=>{
+    await step('COM-10 prepare the receivable from the direct collection flow for USD 400',async()=>{
       await navigate(a,'sales');await sales.locator(`[data-view-order="${so.id}"]`).click();
       await sales.locator('[data-ws-tab="billing"]').click();
-      await sales.locator('[data-ws-action="new_invoice"]').first().click();
-      await mutation(a,'invoices',()=>sales.locator('#wsSaveInvoice').click());
-      await expect(sales.locator('#salesWorkspaceInvoiceModal')).toBeHidden();
+      await sales.locator('[data-ws-action="collect_sale"]').first().click();
+      await expect(sales.locator('#salesWorkspacePaymentModal')).toBeVisible();
       invoice=await f.one('select * from invoices');evidence.documents.invoice=invoice.invoice_number;
-      await sales.locator('[data-ws-action="issue_invoice"]').first().click();
-      await mutation(a,'invoices',()=>sales.locator('[data-sales-workspace-accept]').click());
-      await expect(sales.locator('[data-ws-action="payment"]').first()).toBeVisible();
+      await sales.locator('[data-ws-payment-close]').first().click();
       expect(Number((await f.financial(invoice)).balance_due)).toBe(400);
     });
     await step('COM-11 partial and final collections reconcile without duplicate payments',async()=>{
       for (const amount of [150,250]) {
-        await sales.locator('[data-ws-action="payment"]').first().click();
+        await sales.locator('[data-ws-action="collect_sale"]').first().click();
         await sales.locator('#wsPaymentAmount').fill(String(amount));
         if(amount===150){
           await sales.locator('#wsPaymentReference').fill('QA-SALES-LOST-CONFIRMATION');
