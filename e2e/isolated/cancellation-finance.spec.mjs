@@ -355,7 +355,8 @@ test('financial cancellations preserve balances, permissions and history', async
         await expect(sales.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
         await sales.locator('[data-ws-tab="billing"]').click();
         await expect(sales.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
-        await expect(sales.locator('#salesWorkspacePanel')).toContainText(inv.invoice_number);
+        await expect(sales.locator('#salesWorkspacePanel')).toContainText('La venta ya es el documento comercial');
+        await expect(sales.locator('#salesWorkspacePanel')).toContainText(kind==='partial'?'$60.00':'$0.00');
         expect(JSON.stringify({invoice:await f.one('select * from invoices where id=$1',[inv.id]),
           items:await f.rows('select * from invoice_items where invoice_id=$1 order by id',[inv.id]),
           payments:await f.rows('select * from payments where invoice_id=$1 order by id',[inv.id]),
