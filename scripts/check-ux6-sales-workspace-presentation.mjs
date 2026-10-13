@@ -52,12 +52,15 @@ for(const text of [
   'function safeWorkspaceMessage(error,fallback',
   'function workspaceDecision({title,copy,accept=',
   "saleAllowed('edit')",
+  "saleAllowed('correct_details')",
   "saleAllowed('confirm')",
   "saleAllowed('close')",
   "saleAllowed('cancel')",
   "saleAllowed('allocate_load')",
   "invoiceAllowed(invoice,'issue')",
   "invoiceAllowed(invoice,'record_payment')",
+  "data-ws-action=\"collect_sale\"",
+  "action:'correct_details'",
   'function historyTitle(row)',
   'function historyDetail(row)',
   'HISTORY_ACTION_LABELS',
@@ -101,7 +104,7 @@ requireText(foundation,'.erp-module-page button:focus-visible','foco accesible d
 
 for(const asset of [
   '/admin/sales-workspace.css?v=20261001-sales-flow1',
-  '/admin/sales-workspace.js?v=20261002-sale-actions1',
+  '/admin/sales-workspace.js?v=20261013-operation-corrections1',
   '/admin/sales-controller.js?v=20260920-freshcaps1'
 ]) requireText(html,asset,`asset versionado ${asset}`);
 
@@ -182,10 +185,11 @@ try {
   directSale.capabilities.actions.allocate_load={allowed:false};
   qa.fixture(directSale);
   assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'supply','A purchased direct sale must lead to dispatch review instead of another purchase form');
-  directSale.summary.fulfillment_status='dispatched';
+  directSale.summary.fulfillment_status='dispatched';directSale.summary.order_total=400;directSale.summary.collected_amount=0;
+  directSale.financial_access={read:true,write:true};
   directSale.billing={invoices:[],capabilities:{create_invoice:{allowed:true}}};
   qa.fixture(directSale);
-  assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'new_invoice','A fully dispatched order must proceed to billing');
+  assert.equal(qa.nextAction().actions.map(action=>action[1]).join(','),'collect_sale','A fully dispatched order proceeds directly to collection');
   directSale.summary.fulfillment_status='partial';
   directSale.items[0].supply_plans.push({supply_method:'inventory'});
   directSale.capabilities.actions.allocate_load={allowed:true};
@@ -208,15 +212,15 @@ try {
     data.financial_access={read:true,write:true};
     data.billing={invoices:[],capabilities:{create_invoice:{allowed:false}}};
     qa.fixture(data);
-    assert.equal(qa.nextAction().actions.some(action=>action[1]==='new_invoice'),false,`${status}: next step must not offer a rejected invoice`);
-    assert.equal(qa.renderBilling().includes('data-ws-action="new_invoice"'),false,`${status}: billing must not offer a rejected invoice`);
+    assert.equal(qa.nextAction().actions.some(action=>action[1]==='collect_sale'),false,`${status}: next step must not offer collection for a rejected sale`);
+    assert.equal(qa.renderBilling().includes('data-ws-action="collect_sale"'),false,`${status}: billing must not offer a rejected collection`);
   }
   for(const allowed of [true,false,undefined]){
     const data=fixture('confirmed',true);data.financial_access={read:true,write:true};
-    data.summary.available_to_invoice_value=400;data.billing={invoices:[],capabilities:{create_invoice:{allowed}}};
+    data.summary.available_to_invoice_value=400;data.summary.order_total=400;data.summary.collected_amount=0;data.billing={invoices:[],invoice_payments:[],capabilities:{create_invoice:{allowed}}};
     qa.fixture(data);
-    assert.equal(qa.renderBilling().includes('data-ws-action="new_invoice"'),allowed===true,'UI must honor capability, including missing permissions');
-    if(allowed!==true){await qa.runAction('new_invoice');assert.match(messages.textContent,/ya no está disponible/);}
+    assert.equal(qa.renderBilling().includes('data-ws-action="collect_sale"'),allowed===true,'UI must hide invoice steps and honor the collection capability');
+    assert.equal(qa.renderBilling().includes('data-ws-action="new_invoice"'),false,'Sales must not ask the user to create an invoice');
   }
   qa.fixture(fixture('confirmed',true));
   qa.decision(async config=>{decisions.push(config);return accepted;});
@@ -225,7 +229,7 @@ try {
   assert.equal(calls.length,0,'declining the dialog cannot cancel');assert.equal(reloads,0);
   accepted=true;await qa.runAction('cancel_sale');
   assert.deepEqual(calls,[{id:'qa-sale',action:'cancel'}]);assert.equal(reloads,1);
-  assert.match(decisions[0].copy,/facturas, cobros y saldos se conservarán/);assert.equal(decisions[0].danger,true);assert.equal(decisions[0].capability,'cancel');
+  assert.match(decisions[0].copy,/cobros y saldos se conservarán/);assert.equal(decisions[0].danger,true);assert.equal(decisions[0].capability,'cancel');
   assert.match(messages.textContent,/Venta cancelada/);
   qa.fixture(fixture('confirmed',false));
   await assert.rejects(()=>qa.transitionSale('cancel'),/ya no está disponible/);
