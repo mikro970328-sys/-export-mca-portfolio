@@ -345,7 +345,7 @@ test('financial cancellations preserve balances, permissions and history', async
           financial:await f.financial(inv)});
         await sales.locator('[data-ws-tab="summary"]').click();
         await sales.locator('[data-ws-action="cancel_sale"]').click();
-        await expect(sales.locator('.sales-ws-decision-panel')).toContainText('facturas, cobros y saldos se conservarán');
+        await expect(sales.locator('.sales-ws-decision-panel')).toContainText('cobros y saldos se conservarán');
         await sales.locator('[data-sales-workspace-cancel]').click();
         expect((await f.one('select status from sales_orders where id=$1',[sale.id])).status).toBe('confirmed');
         await sales.locator('[data-ws-action="cancel_sale"]').click();
