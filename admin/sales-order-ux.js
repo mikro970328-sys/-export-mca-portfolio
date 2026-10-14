@@ -368,6 +368,9 @@
     const syncQuantityMode = () => {
       quantityMode.value = line.dataset.quantityMode;
       qty.readOnly = line.dataset.quantityMode === 'pallets';
+      pallets.closest('div').hidden = !qty.readOnly;
+      upp.closest('div').hidden = !qty.readOnly;
+      quantityWrap.querySelector('.muted').textContent = qty.readOnly ? 'Pallets × unidades por pallet = cantidad vendida.' : 'Escribe la cantidad de cajas o unidades vendidas.';
       qty.required = false;
       qty.placeholder = qty.readOnly ? 'Se calcula automáticamente' : 'Cantidad de cajas o unidades';
       qty.closest('div').querySelector('label').textContent = qty.readOnly ? 'Cantidad vendida (calculada)' : 'Cantidad vendida';
@@ -418,18 +421,12 @@
     });
     qty.addEventListener('input', () => {
       line.dataset.quantityMode = 'quantity';
-      quantityMode.value = 'quantity';
-      syncPalletsFromQuantity(line);
-      syncPricing(line,line.dataset.priceMode);
+      syncQuantityMode();
       updateStockWarning(line);
     });
     pallets.addEventListener('input', () => {
       line.dataset.quantityMode = 'pallets';
-      quantityMode.value = 'pallets';
-      qty.readOnly = true;
-      qty.closest('div').querySelector('label').textContent = 'Cantidad vendida (calculada)';
-      syncQuantityFromPallets(line);
-      syncPricing(line,line.dataset.priceMode);
+      syncQuantityMode();
       updateStockWarning(line);
     });
     upp.addEventListener('input', () => {

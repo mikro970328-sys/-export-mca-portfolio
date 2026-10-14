@@ -61,7 +61,7 @@ function orderTotal(o){return (o.items||[]).reduce((sum,i)=>sum+lineTotal(i),0);
 function capability(order,key){return order?.capabilities?.actions?.[key]||{allowed:false,reason:'CAPABILITY_UNAVAILABLE'};}
 function can(order,key){return capability(order,key).allowed===true;}
 
-async function load(){const d=await api('/api/purchases');orders=d.orders||[];suppliers=d.suppliers||[];warehouses=d.warehouses||[];products=d.products||[];const context=purchaseContextOwners();context.nav?.invalidateLinks?.();context.ap?.invalidate?.();render();fillMasters();}
+async function load(){const d=await api('/api/purchases');orders=d.orders||[];suppliers=d.suppliers||[];warehouses=d.warehouses||[];products=d.products||[];const context=purchaseContextOwners();context.nav?.invalidateLinks?.();context.ap?.invalidate?.();render();fillMasters();setPurchaseDestination($('oDestinationMode').value);}
 function fillMasters(){
   // A catalogue response may finish after the user opens or changes a form.
   // Rebuilding options must preserve its current values, not an earlier snapshot.
@@ -82,11 +82,14 @@ function setPurchaseDestination(mode){
   });
   const help=$('oDestinationHelp');help.classList.toggle('direct',direct);
   help.replaceChildren();
-  if(direct){const title=document.createElement('strong');title.textContent='Proveedor → cliente';help.append(title);}
-  help.append(document.createTextNode(editingLocks.destination
-    ?'El destino está protegido porque esta compra ya tiene mercancía recibida o una venta vinculada.'
-    :direct?'Esta compra no genera WR ni existencias. Después podrás crear una venta Direct Ship o vincularla desde Ventas → Compra y contenedor.'
+  const title=document.createElement('strong');title.textContent=direct
+    ?'Direct Ship — la mercancía va directo del proveedor al cliente, no entra a tu almacén.'
+    :'Almacén — la mercancía entra a tu almacén.';help.append(title);
+  help.append(document.createTextNode(direct
+    ?'Esta compra no genera WR ni existencias. Después podrás crear una venta Direct Ship o vincularla desde Ventas → Compra y contenedor.'
     :'Al recibir físicamente la mercancía se genera un WR y se actualizan las existencias.'));
+  if(editingLocks.destination)help.append(document.createTextNode(' El destino está protegido porque esta compra ya tiene mercancía recibida o una venta vinculada.'));
+  if(!direct&&!warehouses.length){const warning=document.createElement('p');warning.className='purchase-warehouse-warning';warning.setAttribute('role','alert');warning.textContent='No hay almacenes disponibles. Crea un almacén o selecciona Direct Ship.';help.append(warning);}
 }
 function filtered(){
   const q=$('search').value.trim().toLowerCase();
@@ -184,7 +187,7 @@ function openOrder(order=null,repeatedOrder=null){
   $('orderSaveHelp').textContent=order?'Se actualizará el plan de esta compra. La recepción se registra por separado.':'Se guardará como borrador. La recepción se registra por separado.';
   $('oSupplier').value=plan?.supplier_id||'';$('oSupplier').disabled=editingLocks.supplier;
   $('oDestinationMode').disabled=editingLocks.destination;$('oWarehouse').value=plan?.warehouse_id||'';
-  setPurchaseDestination(plan&&isDirectPurchase(plan)?'direct':'warehouse');
+  setPurchaseDestination(!plan||isDirectPurchase(plan)?'direct':'warehouse');
   if(plan?.warehouse_id)$('oWarehouse').value=plan.warehouse_id;
   $('oCurrency').value=plan?.currency||'USD';$('oCurrency').disabled=editingLocks.currency;
   $('oDate').value=order?.order_date||localDateToday();$('oExpected').value=toLocalInput(order?.expected_at);
