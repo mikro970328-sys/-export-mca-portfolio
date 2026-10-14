@@ -132,22 +132,28 @@ test('Sales posted expense revision respects read-only capability',async({page})
 });
 
 
-test('Sales workspace asks to issue an existing draft before creating another invoice',async({page})=>{
+test('Sales workspace offers collection with an existing draft without manual invoice actions',async({page})=>{
   await open(page,{workspace:true,invoiceScenario:'draft'});
   await page.locator('[data-view-order]').first().click();
-  await expect(page.getByText('INV-DEMO-0248 está en borrador y puede emitirse.')).toBeVisible();
-  await expect(page.locator('[data-ws-action="issue_invoice"]')).toHaveCount(1);
-  await expect(page.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
+  await expect(page.getByText('Quedan $39,916.00 por cobrar de esta venta.')).toBeVisible();
+  for(const tab of ['summary','billing']){
+    await page.locator(`[data-ws-tab="${tab}"]`).click();
+    await expect(page.locator('[data-ws-action="collect_sale"]')).toHaveCount(1);
+    await expect(page.locator('[data-ws-action="collect_sale"]')).toBeVisible();
+    await expect(page.locator('[data-ws-action="issue_invoice"],[data-ws-action="new_invoice"]')).toHaveCount(0);
+  }
 });
 
-test('Sales workspace avoids duplicate invoice creation and shows payment and expense sections',async({page})=>{
+test('Sales workspace shows paid balances and expense actions without duplicate collection',async({page})=>{
   await open(page,{workspace:true});
   await page.locator('[data-view-order]').first().click();
-  await expect(page.getByText('La venta no tiene una acción crítica pendiente.')).toBeVisible();
-  await expect(page.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
+  await expect(page.getByText('Venta cobrada. No hay acciones críticas pendientes.')).toBeVisible();
+  await expect(page.locator('[data-ws-action="collect_sale"],[data-ws-action="new_invoice"]')).toHaveCount(0);
   await page.locator('[data-ws-tab="billing"]').click();
-  await expect(page.getByText('INV-DEMO-0248')).toBeVisible();
-  await expect(page.locator('[data-ws-action="new_invoice"]')).toHaveCount(0);
+  await expect(page.getByRole('heading',{name:'Cobros de esta venta'})).toBeVisible();
+  await expect(page.locator('.sales-ws-grid .sales-ws-card').filter({has:page.getByRole('heading',{name:'Cobrado',exact:true})}).locator('b')).toHaveText('$39,916.00');
+  await expect(page.locator('.sales-ws-grid .sales-ws-card').filter({has:page.getByRole('heading',{name:'Pendiente',exact:true})}).locator('b')).toHaveText('$0.00');
+  await expect(page.locator('[data-ws-action="collect_sale"],[data-ws-action="new_invoice"]')).toHaveCount(0);
   await page.locator('[data-ws-tab="costs"]').click();
   await expect(page.getByRole('button',{name:/Agregar gasto/})).toBeVisible();
 });
@@ -210,7 +216,7 @@ test('Create a client directly from a sale without shell permissions or lost sal
   await expect(page.locator('.lTotal')).toHaveValue('2300');
   await page.locator('#saveOrder').click();
   await expect(page.locator('#orderModal')).toBeHidden();
-  await expect(page.locator('#salesSaveNotice')).toContainText('Venta guardada como borrador');
+  await expect(page.locator('#salesSaveNotice')).toHaveText('Venta guardada. Completa la compra y el contenedor si va por Direct Ship.');
   await page.locator('[data-view-order="fixture-created-sale"]').click();
   await expect(page.getByRole('button',{name:'Confirmar venta'})).toBeVisible();
 });

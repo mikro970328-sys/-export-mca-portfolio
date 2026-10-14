@@ -49,10 +49,14 @@ test('Figma expenses: white list, readable cards, search, menus and financial vi
   await page.keyboard.press('Escape');
   await expect(row.locator('details')).not.toHaveAttribute('open');
   await page.locator('#search').fill('REF-DEMO-47');
-  await expect(page.locator('.cost-record')).toHaveCount(1);
-  await expect(page.locator('.cost-amount')).toContainText('EUR 2,100.00');
+  await expect(page.locator('.cost-order-group')).toHaveCount(1);
+  await expect(page.locator('.cost-record')).toHaveCount(5);
+  await expandExpenses(page);
+  const matchingExpense=page.locator('.cost-record').filter({hasText:'REF-DEMO-47'});
+  await expect(matchingExpense).toHaveCount(1);
+  await expect(matchingExpense.locator('.cost-amount')).toContainText('EUR 2,100.00');
   await page.locator('#search').fill('no existe');
-  await expect(page.locator('.costs-empty')).toContainText('Sin resultados');
+  await expect(page.locator('.costs-empty')).toContainText('Sin pedidos coincidentes');
   await page.locator('#clearCostFilters').click();
   for(const view of ['landed','cogs','profitability','charges']){
     await page.locator(`[data-view="${view}"]`).click();
