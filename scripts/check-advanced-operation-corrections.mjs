@@ -44,6 +44,6 @@ assert.match(navigation,/options\.edit===true&&window\.ShipmentEditor\?\.open/);
 for(const id of ['editorContainer','editorBooking','editorBol'])assert.ok(shipmentEditor.includes(`id="${id}"`),`missing shipment correction field ${id}`);
 
 assert.ok(html.includes('/admin/sales-workspace.js?v=20261013-operation-corrections1'));
-assert.ok(html.includes('/admin/sales-supply-workspace.js?v=20261013-operation-corrections1'));
+assert.ok(html.includes('/admin/sales-supply-workspace.js?v=20261014-direct-drafts1'));
 
 console.log('Advanced ERP corrections: sale metadata, purchase access, container references and direct collection contracts passed.');

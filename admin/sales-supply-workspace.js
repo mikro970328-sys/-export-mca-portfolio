@@ -18,6 +18,8 @@
     return date.toISOString();
   }
   const state={salesOrderId:null,data:null,busy:false};
+  let supplyFormDraft=null;
+  function closeSupplyForm(){if(state.busy)return;supplyFormDraft?.destroy({flush:true});supplyFormDraft=null;byId('salesSupplyFormModal')?.classList.add('hidden');}
   const nativeWorkspace=window.SalesWorkspace||null;
   const publicErrorEndpoints=new Set(['/api/sales-supply','/api/direct-shipment-dispatch','/api/sales-direct-operation']);
 
@@ -73,8 +75,8 @@
       modal.id='salesSupplyFormModal';modal.className='modal hidden sales-supply-modal';
       modal.innerHTML=`<div class="dialog sales-supply-form-dialog"><div class="dialog-head"><div><h2 id="salesSupplyFormTitle"></h2><div id="salesSupplyFormSubtitle" class="muted"></div></div><button type="button" class="btn" data-supply-form-close>Cerrar</button></div><div class="sales-supply-body"><div id="salesSupplyFormBody"></div><div class="sales-supply-form-actions"><button type="button" class="btn" data-supply-form-close>Cancelar</button><button type="button" id="salesSupplyFormSave" class="btn orange" data-supply-busy>Guardar</button></div><div id="salesSupplyFormMsg" class="msg"></div></div></div>`;
       document.body.appendChild(modal);
-      modal.querySelectorAll('[data-supply-form-close]').forEach(button=>button.onclick=()=>modal.classList.add('hidden'));
-      modal.addEventListener('click',event=>{if(event.target===modal)modal.classList.add('hidden');});
+      modal.querySelectorAll('[data-supply-form-close]').forEach(button=>button.onclick=closeSupplyForm);
+      modal.addEventListener('click',event=>{if(event.target===modal)closeSupplyForm();});
     }
     if(!byId('salesSupplyDecisionModal')){
       const modal=document.createElement('div');
@@ -86,8 +88,9 @@
     }
   }
 
-  function openForm({title,subtitle='',html,onOpen,onSave,saveLabel='Guardar',canSave=true}){
+  function openForm({title,subtitle='',html,onOpen,onSave,saveLabel='Guardar',canSave=true,draft=null}){
     ensureModals();
+    supplyFormDraft?.destroy({flush:true});supplyFormDraft=null;
     byId('salesSupplyFormTitle').textContent=title;
     byId('salesSupplyFormSubtitle').textContent=subtitle;
     byId('salesSupplyFormBody').innerHTML=html;
@@ -95,12 +98,13 @@
     const saveButton=byId('salesSupplyFormSave');saveButton.textContent=saveLabel;saveButton.classList.toggle('hidden',!canSave);saveButton.disabled=!canSave;
     saveButton.onclick=canSave?async()=>{
       if(state.busy)return;setBusy(true);byId('salesSupplyFormMsg').textContent='';
-      try{await onSave();byId('salesSupplyFormModal').classList.add('hidden');await refreshAll();}
-      catch(error){byId('salesSupplyFormMsg').textContent=safeSupplyMessage(error,'No se pudieron guardar los cambios. Intenta nuevamente.');}
+      try{await onSave();supplyFormDraft?.clear({silent:true});supplyFormDraft?.destroy({flush:false});supplyFormDraft=null;byId('salesSupplyFormModal').classList.add('hidden');await refreshAll();}
+      catch(error){supplyFormDraft?.flush();byId('salesSupplyFormMsg').textContent=safeSupplyMessage(error,'No se pudieron guardar los cambios. Intenta nuevamente.');}
       finally{setBusy(false);}
     }:null;
     byId('salesSupplyFormModal').classList.remove('hidden');
     onOpen?.();
+    if(draft&&canSave)supplyFormDraft=window.ExportMcaDrafts?.register({root:byId('salesSupplyFormModal').querySelector('.dialog'),title,...draft})||null;
   }
 
   function askAction({title,message,acceptLabel='Continuar',onAccept}){
@@ -268,7 +272,7 @@
     state.salesOrderId=String(salesOrderId);
     const [access]=await Promise.all([request('/api/sales-direct-operation'),fetchSupply()]);
     if(!directOperationStep().action){
-      ensureModals();render();byId('salesSupplyFormModal').classList.add('hidden');byId('salesSupplyModal').classList.remove('hidden');return;
+      ensureModals();render();closeSupplyForm();byId('salesSupplyModal').classList.remove('hidden');return;
     }
     const items=state.data.items||[],pending=items.filter(item=>remainingDirectPurchase(item)>0),order=state.data.order;
     const linked=items.flatMap(item=>(item.supply_plans||[]).filter(plan=>plan.supply_method==='purchase_direct').flatMap(plan=>plan.procurement_allocations||[]));
@@ -280,6 +284,7 @@
     const noteReference=items.flatMap(item=>item.supply_plans||[]).map(plan=>String(plan.notes||'').trim()).find(note=>/^PO[\s#-]*[A-Z0-9-]+$/i.test(note))||'';
     let requestId=crypto.randomUUID(),attemptedPayload=null;
     openForm({title:`${order.so_number} · Direct Ship`,subtitle:'Compra, PO del proveedor y contenedor en un solo formulario.',saveLabel:'Guardar compra y contenedor',canSave:access.write_access===true,
+      draft:{key:`sales-direct-operation:${order.id}`,capture:()=>({...window.ExportMcaDrafts.captureControls(byId('salesSupplyFormBody')),request_id:requestId,attempted_payload:attemptedPayload}),restore:async data=>{await window.ExportMcaDrafts.restoreControls(byId('salesSupplyFormBody'),data);if(data.attempted_payload){requestId=data.request_id;attemptedPayload=data.attempted_payload;}}},
       html:`<div class="sales-supply-form">
       <div class="full"><label for="directPurchaseMode">Compra de mercancía</label><select id="directPurchaseMode"><option value="new" ${pending.length?'':'disabled'}>Registrar compra desde esta venta</option><option value="existing" ${options.size?'':'disabled'}>Usar una compra ya registrada</option></select></div>
       <div id="directNewPurchase" class="full"><div class="sales-supply-form"><div><label for="directSupplier">Proveedor *</label><select id="directSupplier"><option value="">Seleccionar proveedor</option>${(access.suppliers||[]).map(s=>`<option value="${esc(s.id)}">${esc(s.legal_name||s.name)}</option>`).join('')}</select></div><div><label for="directSupplierReference">PO del proveedor / almacén</label><input id="directSupplierReference" maxlength="250" value="${esc(noteReference)}" placeholder="Ej.: PO12567"></div><div class="full"><h3>Mercancía a comprar · ${esc(order.currency)}</h3>${pending.map(item=>`<div class="sales-ws-row"><b>${esc(productTitle(item))}</b><div class="sales-supply-detail">${fmt(remainingDirectPurchase(item))} ${esc(item.unit)} · ${fmt(Number(item.ordered_quantity)>0?Number(item.ordered_pallets||0)*remainingDirectPurchase(item)/Number(item.ordered_quantity):0)} pallets · tomados de la venta</div><label for="direct-cost-${esc(item.id)}">Costo total de esta mercancía *</label><input id="direct-cost-${esc(item.id)}" data-direct-cost="${esc(item.id)}" type="number" min="0" step="0.01" placeholder="Monto que cobra el proveedor"></div>`).join('')}</div></div></div>
@@ -300,6 +305,7 @@
         const serialized=JSON.stringify(payload);
         if(attemptedPayload&&attemptedPayload!==serialized)localError('No se confirmó el intento anterior. Reintenta con los mismos datos o actualiza la venta antes de cambiarlos.');
         attemptedPayload=serialized;
+        supplyFormDraft?.flush();
         try{const result=await request('/api/sales-direct-operation',{method:'POST',body:JSON.stringify({...payload,request_id:requestId})});if(!result.operation?.purchase_order_id)throw new Error('DIRECT_OPERATION_CONFIRMATION_MISSING');}
         catch(error){if([400,403,404,409,422].includes(error.status)){attemptedPayload=null;requestId=crypto.randomUUID();}throw error;}
       }

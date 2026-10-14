@@ -13,6 +13,7 @@ on:
       - 'admin/purchases.*'
       - 'admin/sales.*'
       - 'admin/sales-order-ux.js'
+      - 'admin/sales-supply-workspace.js'
       - 'admin/invoices.*'
       - 'admin/payables.*'
       - 'scripts/check-form-drafts*.mjs'
@@ -30,6 +31,7 @@ on:
       - 'admin/purchases.*'
       - 'admin/sales.*'
       - 'admin/sales-order-ux.js'
+      - 'admin/sales-supply-workspace.js'
       - 'admin/invoices.*'
       - 'admin/payables.*'
       - 'scripts/check-form-drafts*.mjs'
@@ -55,3 +57,5 @@ jobs:
         run: node scripts/check-form-drafts.mjs
       - name: Verify form draft browser runtime
         run: node scripts/check-form-drafts-runtime.mjs
+      - name: Verify Direct Ship form recovery and safe retries
+        run: node scripts/check-form-drafts-direct-runtime.mjs

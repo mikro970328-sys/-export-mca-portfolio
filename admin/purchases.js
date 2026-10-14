@@ -5,7 +5,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 let orders=[],suppliers=[],warehouses=[],products=[],view='open',editing=null,editingLocks={},detailOrder=null,receiving=null,receivingMode='remaining',lineSeq=0,quickProductTarget=null;
 let directSaleOrder=null,directSaleClients=[],directSaleImporters=[],directSaleClientImporters=[];
 let purchaseDecisionResolve=null,purchaseDecisionReturnFocus=null;
-let orderDraft=null,repeatSource=null,repeatOpening=false;
+let orderDraft=null,directSaleDraft=null,repeatSource=null,repeatOpening=false;
 const purchaseModalReturnFocus=new Map();
 const SAFE_PURCHASE_ERROR_PATTERNS=[/^Sesión vencida$/i,/^No tienes permiso/i,/^No autorizado$/i,/^Agrega /i,/^Selecciona /i,/^Falta /i,/^Escribe /i,/^Confirma /i,/^Fecha y hora inválida$/i,/^Proveedor /i,/^El proveedor /i,/^Cliente /i,/^El cliente /i,/^Importador /i,/^El importador /i,/^Ese importador /i,/^Almacén /i,/^El almacén /i,/^Uno de los productos /i,/^La PO /i,/^La compra /i,/^La cantidad /i,/^La moneda /i,/^El valor total /i,/^Cada línea /i,/^Las (?:líneas|unidades) /i,/^Solo una PO /i,/^La mercancía /i,/^El ajuste /i,/^Una misma recepción /i,/^La recepción /i,/^Indica /i,/^El peso /i,/^No se puede /i,/^Acción de /i,/^Transición de /i,/^Esta (?:compra|PO|Purchase Order) /i,/^No se pudo (?:procesar Compras|crear la venta)/i];
 
@@ -226,9 +226,10 @@ async function openRepeatOrder(id){
   }finally{repeatOpening=false;}
 }
 function closeModal(name){
+  if(name==='directSale'&&directSaleDraft&&$('saveDirectSale').disabled)return;
   const modal=$(name+'Modal'),returnFocus=purchaseModalReturnFocus.get(name);
   modal?.classList.add('hidden');modal?.setAttribute('aria-hidden','true');purchaseModalReturnFocus.delete(name);
-  if(name==='order'){orderDraft?.destroy({flush:true});orderDraft=null;editing=null;repeatSource=null;editingLocks={};$('oSupplier').disabled=false;$('oDestinationMode').disabled=false;$('oWarehouse').disabled=false;$('oCurrency').disabled=false;$('addOrderLine').disabled=false;}if(name==='detail')detailOrder=null;if(name==='receive'){receiving=null;receivingMode='remaining';}if(name==='directSale'){directSaleOrder=null;directSaleClients=[];directSaleImporters=[];directSaleClientImporters=[];}if(name==='quickProduct')quickProductTarget=null;
+  if(name==='order'){orderDraft?.destroy({flush:true});orderDraft=null;editing=null;repeatSource=null;editingLocks={};$('oSupplier').disabled=false;$('oDestinationMode').disabled=false;$('oWarehouse').disabled=false;$('oCurrency').disabled=false;$('addOrderLine').disabled=false;}if(name==='detail')detailOrder=null;if(name==='receive'){receiving=null;receivingMode='remaining';}if(name==='directSale'){directSaleDraft?.destroy({flush:true});directSaleDraft=null;directSaleOrder=null;directSaleClients=[];directSaleImporters=[];directSaleClientImporters=[];}if(name==='quickProduct')quickProductTarget=null;
   if(returnFocus instanceof HTMLElement){const menu=returnFocus.closest('.purchase-more');(menu&&!menu.open?menu.querySelector('summary'):returnFocus)?.focus();}
 }
 async function saveOrder(){const btn=$('saveOrder'),repeated=Boolean(repeatSource);try{btn.disabled=true;$('orderMsg').textContent='';const direct=$('oDestinationMode').value==='direct';if(!direct&&!$('oWarehouse').value)throw new Error('Selecciona el almacén que recibirá la mercancía o elige Direct Ship.');const body={action:editing?'replace_plan':'create_plan',purchase_order_id:editing?.id,supplier_id:$('oSupplier').value,warehouse_id:direct?null:$('oWarehouse').value,order_date:$('oDate').value,expected_at:localToIso($('oExpected').value),currency:$('oCurrency').value,supplier_reference:$('oReference').value,notes:$('oNotes').value,lines:collectLines()};await api('/api/purchases',{method:'POST',body:JSON.stringify(body)});orderDraft?.clear({silent:true});orderDraft?.destroy({flush:false});orderDraft=null;closeModal('order');if(repeated){$('search').value='';selectPurchaseView('draft');}await load();}catch(error){console.error('PURCHASE_ORDER_SAVE_FAILED',{purchase_order_id:editing?.id||null,error});$('orderMsg').textContent=safePurchaseMessage(error,'No se pudo guardar la Purchase Order. Intenta nuevamente.');}finally{btn.disabled=false;}}
@@ -324,12 +325,15 @@ async function openDirectSale(order){
   const message=$('purchaseActionMsg');message.textContent='';
   try{
     const data=await api(`/api/purchase-direct-sale?purchase_order_id=${encodeURIComponent(order.id)}`);
+    directSaleDraft?.destroy({flush:true});directSaleDraft=null;
     directSaleOrder=order;directSaleClients=data.clients||[];directSaleImporters=data.importers||[];directSaleClientImporters=data.client_importers||[];
     $('directSaleTitle').textContent=`Crear venta desde ${order.po_number}`;$('directSaleSubtitle').textContent=`${order.supplier?.name||'Proveedor'} · Direct Ship completo`;
     $('dsClient').innerHTML='<option value="">Seleccionar cliente</option>'+directSaleClients.map(row=>`<option value="${row.id}">${esc(row.name||row.company||row.mipyme_name||'Cliente')}</option>`).join('');
     $('dsCurrency').value=order.currency||'USD';$('dsReference').value='';$('dsNationalization').value='not_nationalized';$('directSaleMsg').textContent='';syncDirectSaleImporters();
     $('directSaleLines').innerHTML=(order.items||[]).map(item=>`<div class="purchase-direct-sale-line" data-direct-sale-item="${item.id}"><div class="purchase-direct-sale-product"><b>${esc(item.product?.sku?item.product.sku+' · ':'')}${esc(item.product?.name||'Producto')}</b><span class="small">Compra completa: ${fmt(item.ordered_quantity)} ${esc(item.unit)}${n(item.ordered_pallets)?` · ${fmt(item.ordered_pallets)} pallets`:''}</span></div><div><label>Precio total de venta (${esc(order.currency||'USD')}) *</label><input class="dsLineTotal" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>`).join('');
+    document.querySelectorAll('[data-direct-sale-item]').forEach(row=>{row.querySelector('.dsLineTotal').dataset.draftField=`sale-total:${row.dataset.directSaleItem}`;});
     openPurchaseModal('directSale','dsClient');
+    directSaleDraft=window.ExportMcaDrafts?.register({root:document.querySelector('#directSaleModal .dialog'),key:`purchase-direct-sale:${order.id}`,title:`venta desde ${order.po_number}`})||null;
   }catch(error){console.error('PURCHASE_DIRECT_SALE_OPTIONS_FAILED',{purchase_order_id:order.id,error});message.textContent=safePurchaseMessage(error,'No se pudo preparar la venta Direct Ship. Intenta nuevamente.');}
 }
 
@@ -341,7 +345,7 @@ async function saveDirectSale(){
     if(!$('dsClient').value)throw new Error('Selecciona el cliente.');
     const lineTotals=[...document.querySelectorAll('[data-direct-sale-item]')].map((row,index)=>{const value=row.querySelector('.dsLineTotal').value;if(value===''||!Number.isFinite(Number(value))||Number(value)<0)throw new Error(`Escribe el precio total de venta del producto ${index+1}.`);return {purchase_order_item_id:row.dataset.directSaleItem,line_total:value};});
     const data=await api('/api/purchase-direct-sale',{method:'POST',body:JSON.stringify({purchase_order_id:directSaleOrder.id,client_id:$('dsClient').value,importer_id:$('dsImporter').value,currency:$('dsCurrency').value,nationalization_status:$('dsNationalization').value,customer_reference:$('dsReference').value,line_totals:lineTotals})});
-    const soNumber=data.sale?.so_number||'La venta';closeModal('directSale');await load();$('purchaseActionMsg').className='msg ok';$('purchaseActionMsg').textContent=`${soNumber} creada y vinculada con toda la mercancía Direct Ship.`;
+    const soNumber=data.sale?.so_number||'La venta';directSaleDraft?.clear({silent:true});directSaleDraft?.destroy({flush:false});directSaleDraft=null;closeModal('directSale');await load();$('purchaseActionMsg').className='msg ok';$('purchaseActionMsg').textContent=`${soNumber} creada y vinculada con toda la mercancía Direct Ship.`;
   }catch(error){console.error('PURCHASE_DIRECT_SALE_CREATE_FAILED',{purchase_order_id:directSaleOrder?.id||null,error});message.textContent=safePurchaseMessage(error,'No se pudo crear la venta Direct Ship. Intenta nuevamente.');}
   finally{button.disabled=false;}
 }
