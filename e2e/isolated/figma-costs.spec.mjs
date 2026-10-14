@@ -1,6 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { costsFixture } from '../../scripts/lib/figma-costs-fixture.mjs';
 
+async function expandExpenses(page) {
+  for (const group of await page.locator('.cost-order-expenses').all()) {
+    if (await group.getAttribute('open') === null) await group.locator(':scope > summary').click();
+  }
+}
+async function editExpense(page, id) {
+  await expandExpenses(page);
+  await page.locator(`.cost-record [data-edit="${id}"]`).click();
+}
+
 async function open(page, options) {
   const html=costsFixture(options);
   await page.route('**/*',route=>route.request().url()==='https://erp-visual.invalid/'
@@ -8,6 +18,7 @@ async function open(page, options) {
   await page.goto('https://erp-visual.invalid/');
   await page.evaluate(()=>document.fonts.ready);
   await expect(page.locator('.cost-record')).toHaveCount(5);
+  await expandExpenses(page);
 }
 async function fits(page) {
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -114,7 +125,7 @@ for(const viewport of [{width:390,height:500},{width:1440,height:700}]){
   test(`Expense form scroll, allocation preview and posted revision at ${viewport.width}`,async({page},info)=>{
     await page.setViewportSize(viewport);
     await open(page);
-    await page.locator('[data-edit="fixture-cost-0"]').click();
+    await editExpense(page, 'fixture-cost-0');
     await expect(page.locator('#chargeHelp')).toContainText('historial');
     await expect(page.locator('#cAmount')).toHaveValue('1250');
     await expect(page.locator('[data-target-id]')).toHaveValue('fixture-po');
@@ -164,7 +175,7 @@ test('Expense create, draft edit, validation, server failure and cancel keep cor
   await page.locator('#saveCharge').click();
   await expect(page.locator('#chargeModal')).not.toBeVisible();
   expect((await posts(page))[0]).toMatchObject({action:'create',amount:80,allocations:[{load_id:'fixture-load',amount:'80'}]});
-  await page.locator('[data-edit="fixture-cost-2"]').click();
+  await editExpense(page, 'fixture-cost-2');
   await expect(page.locator('#cCategory')).toBeFocused();
   await expect(page.locator('#chargeHelp')).not.toContainText('historial');
   await page.locator('#cAmount').fill('400');
@@ -180,7 +191,7 @@ test('Expense create, draft edit, validation, server failure and cancel keep cor
   await expect(page.locator('#chargeModal')).not.toBeVisible();
   expect((await posts(page)).at(-1)).toMatchObject({action:'replace',cost_charge_id:'fixture-cost-2',amount:400,allocations:[]});
   const before=(await posts(page)).length;
-  await page.locator('[data-edit="fixture-cost-0"]').click();
+  await editExpense(page, 'fixture-cost-0');
   await page.getByRole('button',{name:'Cancelar',exact:true}).click();
   expect((await posts(page)).length).toBe(before);
 });
