@@ -169,6 +169,8 @@ test('one commercial chain: purchase, receipt, stock, load, sale, collection and
       await purchase.locator('#newOrder').click();
       await expect(purchase.locator('#oSupplier')).toBeFocused();
       await purchase.locator('#oSupplier').selectOption(f.supplier);
+      await expect(purchase.locator('#oDestinationMode')).toHaveValue('direct');
+      await purchase.locator('[data-destination="warehouse"]').click();
       await purchase.locator('#oWarehouse').selectOption(f.warehouse);
       await purchase.locator('#oReference').fill('QA commercial chain');
       await purchase.locator('.lProduct').selectOption(f.product);

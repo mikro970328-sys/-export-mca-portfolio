@@ -12,6 +12,7 @@ async function posts(page){return page.evaluate(()=>window.__fixtureCalls.filter
 async function shot(page,info,name){const path=info.outputPath(`${name}.png`);await page.screenshot({path,fullPage:name==='compras',scale:'css'});await info.attach(name,{path,contentType:'image/png'});}
 async function fillOrder(page){
   await page.locator('#oSupplier').selectOption('fixture-supplier');
+  await page.locator('[data-destination="warehouse"]').click();
   await page.locator('#oWarehouse').selectOption('fixture-warehouse');
   await page.locator('.lProduct').selectOption('fixture-product');
   await page.locator('.lQty').fill('100');await page.locator('.lPallets').fill('10');
@@ -51,6 +52,7 @@ test('Figma purchases: white list, search, views, actions and keyboard menus',as
 for(const viewport of [{width:390,height:500},{width:1440,height:700}]){
   test(`Purchase forms: destination, pricing, scroll and save at ${viewport.width}`,async({page},info)=>{
     await page.setViewportSize(viewport);await open(page);await page.locator('#newOrder').click();await expect(page.locator('#oSupplier')).toBeFocused();
+    await expect(page.locator('#oDestinationMode')).toHaveValue('direct');await expect(page.locator('#oWarehouseField')).toBeHidden();
     await expect(page.locator('#oSupplier')).toBeFocused();await fillOrder(page);
     await expect(page.locator('#orderTotalPreview')).toHaveText('USD 2,400.00');
     await page.locator('.lPriceMode').selectOption('total');await expect(page.locator('.lPriceValue')).toHaveValue('2400.00');
@@ -66,7 +68,7 @@ for(const viewport of [{width:390,height:500},{width:1440,height:700}]){
     await page.locator('[data-destination="direct"]').click();await expect(page.locator('#oWarehouseField')).not.toBeVisible();
     await expect(page.locator('[data-destination="direct"]')).toHaveCSS('background-color','rgb(255, 241, 232)');
     await expect(page.locator('[data-destination="direct"]')).toHaveCSS('color','rgb(181, 71, 8)');
-    await expect(page.locator('#oWarehouse')).toHaveValue('');await expect(page.locator('#oDestinationHelp')).toContainText('Proveedor → cliente');
+    await expect(page.locator('#oWarehouse')).toHaveValue('');await expect(page.locator('#oDestinationHelp')).toContainText('Direct Ship — la mercancía va directo del proveedor al cliente, no entra a tu almacén.');
     await page.locator('#purchaseDestinationTitle').scrollIntoViewIfNeeded();await shot(page,info,'compra-direct-ship');
     await page.locator('#saveOrder').scrollIntoViewIfNeeded();
     const box=await page.locator('#saveOrder').boundingBox();expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(viewport.height+1);
