@@ -71,7 +71,7 @@ insert into public.operational_tasks values
   ('30000000-0000-0000-0000-000000000002','workflow','partial_admin','completed'),
   ('30000000-0000-0000-0000-000000000003','manual','partial_admin','pending');
 
-\ir ../migrations/20261016193000_workflow_route_directory_root_fix.sql
+\ir ../migrations/20261016211731_workflow_route_directory_root_fix.sql
 
 analyze public.teams;
 analyze public.admin_users;
