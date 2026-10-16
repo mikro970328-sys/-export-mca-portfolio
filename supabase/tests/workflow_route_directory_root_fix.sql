@@ -73,6 +73,13 @@ insert into public.operational_tasks values
 
 \ir ../migrations/20261016193000_workflow_route_directory_root_fix.sql
 
+analyze public.teams;
+analyze public.admin_users;
+analyze public.admin_effective_permissions;
+analyze public.team_memberships;
+analyze public.workflow_task_routes;
+analyze public.operational_tasks;
+
 do $$
 declare
   row_data record;
