@@ -130,7 +130,9 @@ begin
   if (plan->0->'Plan'->>'Total Cost')::numeric >= 1000 then
     raise exception 'route directory plan cost is unexpectedly high: %',plan->0->'Plan'->>'Total Cost';
   end if;
-  if plan::text like '%Subplan Name%' then raise exception 'correlated subplan returned to route directory'; end if;
+  if position('"Subplan Name": "SubPlan' in plan::text)>0 then
+    raise exception 'correlated subplan returned to route directory';
+  end if;
 end $$;
 
 select 'workflow route directory regression passed' as result;
