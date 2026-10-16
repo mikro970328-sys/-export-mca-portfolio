@@ -1,0 +1,31 @@
+name: Workflow Route Directory Root Fix
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*workflow_route_directory_root_fix.sql'
+      - 'supabase/tests/workflow_route_directory_root_fix.sql'
+      - '.github/workflows/workflow-route-directory-root-fix.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres-regression:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify routing permissions and set-based plan
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/workflow_route_directory_root_fix.sql
