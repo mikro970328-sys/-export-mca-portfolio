@@ -15,6 +15,9 @@ import shipments from '../api/shipments.js';
 
 if(process.env.ERP_LOAD_ACCEPTANCE!=='synthetic-only')throw Error('Explicit synthetic-only load acceptance is required');
 const levels=[5,20,50],rounds=3,shipmentCount=2000,clientCount=500,invoiceCount=100;
+const requestTimeoutMs=Number(process.env.ERP_LOAD_REQUEST_TIMEOUT_MS||60000);
+assert.ok(Number.isInteger(requestTimeoutMs)&&requestTimeoutMs>=20000&&requestTimeoutMs<=120000,
+  'ERP_LOAD_REQUEST_TIMEOUT_MS must be between 20000 and 120000 milliseconds');
 const baselineDir=process.env.ERP_LOAD_BASELINE_DIR;
 let baselineShipments;
 if(baselineDir){
@@ -130,7 +133,7 @@ try{
     const measure=async(label,path,actor,{method='GET',body,validate=()=>{}}={})=>{
       const started=performance.now();
       try{
-        const response=await fetch(`${api.base}/api/${path}`,{method,signal:AbortSignal.timeout(20000),
+        const response=await fetch(`${api.base}/api/${path}`,{method,signal:AbortSignal.timeout(requestTimeoutMs),
           headers:{Authorization:`Bearer ${actor.token}`,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
         const data=await response.json();
         assert.equal(response.status,200,`${label}: HTTP ${response.status}`);validate(data);

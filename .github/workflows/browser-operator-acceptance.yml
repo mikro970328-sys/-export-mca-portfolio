@@ -39,7 +39,9 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-noble
       options: --init --ipc=host
-    timeout-minutes: 8
+    # WebKit and Chromium each execute the complete visual/contrast suite.
+    # Cold container pulls can consume several minutes before Playwright starts.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
