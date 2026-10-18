@@ -1,0 +1,21 @@
+name: Validate Architecture
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'docs/ARCHITECTURE_V1.md'
+      - 'scripts/validate-architecture.mjs'
+      - '.github/workflows/validate-architecture.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate architecture migration
+        run: node scripts/validate-architecture.mjs
