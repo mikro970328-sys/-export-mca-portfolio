@@ -130,8 +130,8 @@ export default async function handler(req, res) {
 
     return fail(res, 405, 'Método no permitido');
   } catch (error) {
-    console.error('[products]', error);
     const friendly = PUBLIC_ERRORS.get(error?.message);
+    if (!friendly) console.error('[products]', error);
     return fail(res, upstreamFailureStatus(error, friendly ? 400 : 500), friendly || "No se pudo procesar el producto");
   }
 }

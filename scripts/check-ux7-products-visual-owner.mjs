@@ -175,6 +175,19 @@ forbid(owner, /method\s*:\s*['"]DELETE['"]/i, 'Productos introduce eliminación 
   'La unidad base debe ser texto',
   'Unidades por pallet inválidas'
 ].forEach(value => requireText(api,value,`API autoritativa ${value}`));
+
+const productCatch = api.slice(api.lastIndexOf('} catch (error) {'));
+const friendlyLookup = "const friendly = PUBLIC_ERRORS.get(error?.message);";
+const unexpectedLog = "if (!friendly) console.error('[products]', error);";
+requireText(productCatch,friendlyLookup,'clasificación de errores de Productos antes de responder');
+requireText(productCatch,unexpectedLog,'registro exclusivo de fallos inesperados de Productos');
+if (productCatch.indexOf(friendlyLookup) > productCatch.indexOf(unexpectedLog)) {
+  failures.push('Productos registra el error antes de clasificar una validación esperada');
+}
+if (/catch \(error\) \{\s*console\.error\('\[products\]'/m.test(api)) {
+  failures.push('Productos vuelve a registrar validaciones esperadas como errores de producción');
+}
+
 [
   "id:'productsSection'",
   "src:'/admin/products.html?embedded=1&v=20260926-figma1'"
