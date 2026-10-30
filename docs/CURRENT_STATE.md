@@ -1,3 +1,23 @@
+## Estado vigente · 30 oct 2026 · UX-7 y cierre de regresión
+
+Este corte sustituye como estado operativo los encabezados históricos que siguen debajo.
+
+- Fase reportada: UX-7, regresión integral y cierre. El cierre formal continúa pendiente porque los issues #129 y #195 permanecen abiertos; no declarar UX completado hasta reconciliarlos con esta evidencia.
+- Producción verificada: main `95ccc21421a2fe37da1452fcafb1362868a709ab`, Vercel `dpl_rsr1ewK3HkkKeqMDsxkQaAiVYGU4` READY, con `app.exportmca.com` y `admin.exportmca.com` asociados.
+- Última corrección publicada: PR #389, causa raíz del `SUPABASE_555` de alertas operativas. La migración `20261016211731_workflow_route_directory_root_fix` está aplicada.
+- Trabajo actual: PR #390, SHA `2518c527ed8c3c54057bc617ab8a56c10f7869b1`. Corrige la clasificación de validaciones esperadas de Productos antes de registrar errores. Preview Vercel READY; no cambia UX, datos, permisos, dependencias ni migraciones.
+- Bloqueo: Isolated Load Acceptance no termina. Los controles preliminares aprueban, pero GitHub Actions apaga externamente el runner durante el escenario de 2.000 embarques, 100 facturas y concurrencia 5/20/50. La repetición del 30 de octubre volvió a recibir `The runner has received a shutdown signal` a los 24,3 segundos, sin aserción funcional fallida.
+- PR #385 cerrada: aumentar timeouts o tolerancia por petición no corrige el apagado externo y no debe reincorporarse.
+- No fusionar #390 hasta completar la carga sobre el mismo SHA, obtener revisión humana y validar el Preview autenticado. Después verificar SHA exacto, aliases, respuesta 400 controlada, fallos inesperados y logs de producción.
+- Brechas de gobierno: no hay `.github/CODEOWNERS`, reviewer solicitado para #390 ni evidencia de protección obligatoria de `main`. Dependabot y CodeQL no aparecen en sus rutas convencionales.
+- Brechas técnicas: Supabase registra `20261013181800` mientras el repositorio conserva `20261013181011`; resolver en una PR de migración separada. Mantener trazabilidad de `DEP0169 url.parse()` sin ocultar la advertencia ni atribuirla al código sin evidencia.
+- Deuda Supabase pendiente de priorización arquitectónica: tablas RLS sin políticas bajo modelo backend-only, protección de contraseñas filtradas desactivada, llaves foráneas sin índice, tablas sin PK e índices duplicados/sin uso. No aplicar cambios masivos sin revisar acceso, carga y plan de reversión.
+- QA comercial continúa limitado a entornos desechables. No escribir datos reales, enviar mensajes, cambiar permisos o modificar reglas comerciales para cerrar pruebas.
+
+Evidencia principal: [PR #389](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/389), [PR #390](https://github.com/mikro970328-sys/-export-mca-portfolio/pull/390), [CI de carga](https://github.com/mikro970328-sys/-export-mca-portfolio/actions/runs/40011442983).
+
+---
+
 ## Continuidad · 26 sep 2026 · Mejoras ERP listas para revisión local
 
 Daniel solicitó simplificar el uso diario para él y su equipo, sin empezar el trabajo de iPhone. La sección Ayuda ya estaba publicada; este bloque añade y documenta los cambios solicitados en clientes, ventas, documentos, rentabilidad y salarios.
